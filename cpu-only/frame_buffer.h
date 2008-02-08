@@ -19,6 +19,31 @@
 #include <deque>
 #include <string>
 
+// Rename keys so a single namespace can be used for regular (ASCII)
+// keys and "special" ones.
+
+#define FB_KEY_F1         ( GLUT_KEY_F1          + 0x100 )
+#define FB_KEY_F2         ( GLUT_KEY_F2          + 0x100 )
+#define FB_KEY_F3         ( GLUT_KEY_F3          + 0x100 )
+#define FB_KEY_F4         ( GLUT_KEY_F4          + 0x100 )
+#define FB_KEY_F5         ( GLUT_KEY_F5          + 0x100 )
+#define FB_KEY_F6         ( GLUT_KEY_F6          + 0x100 )
+#define FB_KEY_F7         ( GLUT_KEY_F7          + 0x100 )
+#define FB_KEY_F8         ( GLUT_KEY_F8          + 0x100 )
+#define FB_KEY_F9         ( GLUT_KEY_F9          + 0x100 )
+#define FB_KEY_F10        ( GLUT_KEY_F10         + 0x100 )
+#define FB_KEY_F11        ( GLUT_KEY_F11         + 0x100 )
+#define FB_KEY_F12        ( GLUT_KEY_F12         + 0x100 )
+#define FB_KEY_LEFT       ( GLUT_KEY_LEFT        + 0x100 )
+#define FB_KEY_UP         ( GLUT_KEY_UP          + 0x100 )
+#define FB_KEY_RIGHT      ( GLUT_KEY_RIGHT       + 0x100 )
+#define FB_KEY_DOWN       ( GLUT_KEY_DOWN        + 0x100 )
+#define FB_KEY_PAGE_UP    ( GLUT_KEY_PAGE_UP     + 0x100 )
+#define FB_KEY_PAGE_DOWN  ( GLUT_KEY_PAGE_DOWN   + 0x100 )
+#define FB_KEY_HOME       ( GLUT_KEY_HOME        + 0x100 )
+#define FB_KEY_END        ( GLUT_KEY_END         + 0x100 )
+#define FB_KEY_INSERT     ( GLUT_KEY_INSERT      + 0x100 )
+
 typedef int int32_t;
 
 class pFrame_Buffer;
@@ -112,13 +137,13 @@ public:
 private:
   void init_gl(int& argc, char** argv)
   {
+    exe_file_name = argv && argv[0] ? argv[0] : "unknown name";
     glutInit(&argc, argv);
     /*  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );  */
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE );
     glutInitWindowSize(640,480+status_height);
 
-    std::string title("Frame Buffer Simulator - ");
-    if ( argv && argv[0] ) title.append(argv[0]);
+    std::string title("Frame Buffer Simulator - " + exe_file_name);
 
     glut_window_id = glutCreateWindow(title.c_str());
 
@@ -130,6 +155,7 @@ private:
   static void cb_display_w(void){ frame_buffer_self_->cb_display(); }
   void cb_display(void)
   {
+    if ( keyboard_key == FB_KEY_F12 ) write_img();
     frame_buffer_allocate();
     reset(0xff000000);
     glClearColor(0.5,0.5,0.5,1);
@@ -196,8 +222,37 @@ private:
     glutPostRedisplay();
   }
 
+  void write_img()
+  {
+    if ( !buffer ) return;
+    std::string pipe_name ( "pnmtopng > " + exe_file_name + ".png");
+    FILE* const fp = popen(pipe_name.c_str(), "w");
+    if ( !fp )
+      {
+        fprintf(stderr, "Could not open pipe for screenshot.\n");
+        return;
+      }
+    const int full_height = height + status_height;
+    fprintf(fp,"P6\n%d %d 255\n",width,full_height);
+    glReadBuffer(GL_FRONT_LEFT);
+    const int size = width * full_height;
+    char* const pbuffer = (char*) alloca(size * 3);
+    glReadPixels(0,0,width,full_height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
+    for ( int y=full_height-1; y>=0; y-- )
+      {
+        char* row = &pbuffer[ y * width * 3 ];
+        for ( int x=0; x<width; x++ )
+          {
+            putc(row[0],fp); putc(row[1],fp); putc(row[2],fp);
+            row += 3;
+          }
+      }
+    pclose(fp);
+  }
+
 private:
   static const int status_height = 26;
+  std::string exe_file_name;
   double render_start;
   int width;
   int height;  // Height of simulated frame buffer, not displayed window.
@@ -206,31 +261,5 @@ private:
   void (*user_display_func)(pFrame_Buffer& frame_buffer);
   std::deque<char*> print_list;
 };
-
-
-// Rename keys so a single namespace can be used for regular (ASCII)
-// keys and "special" ones.
-
-#define FB_KEY_F1         ( GLUT_KEY_F1          + 0x100 )
-#define FB_KEY_F2         ( GLUT_KEY_F2          + 0x100 )
-#define FB_KEY_F3         ( GLUT_KEY_F3          + 0x100 )
-#define FB_KEY_F4         ( GLUT_KEY_F4          + 0x100 )
-#define FB_KEY_F5         ( GLUT_KEY_F5          + 0x100 )
-#define FB_KEY_F6         ( GLUT_KEY_F6          + 0x100 )
-#define FB_KEY_F7         ( GLUT_KEY_F7          + 0x100 )
-#define FB_KEY_F8         ( GLUT_KEY_F8          + 0x100 )
-#define FB_KEY_F9         ( GLUT_KEY_F9          + 0x100 )
-#define FB_KEY_F10        ( GLUT_KEY_F10         + 0x100 )
-#define FB_KEY_F11        ( GLUT_KEY_F11         + 0x100 )
-#define FB_KEY_F12        ( GLUT_KEY_F12         + 0x100 )
-#define FB_KEY_LEFT       ( GLUT_KEY_LEFT        + 0x100 )
-#define FB_KEY_UP         ( GLUT_KEY_UP          + 0x100 )
-#define FB_KEY_RIGHT      ( GLUT_KEY_RIGHT       + 0x100 )
-#define FB_KEY_DOWN       ( GLUT_KEY_DOWN        + 0x100 )
-#define FB_KEY_PAGE_UP    ( GLUT_KEY_PAGE_UP     + 0x100 )
-#define FB_KEY_PAGE_DOWN  ( GLUT_KEY_PAGE_DOWN   + 0x100 )
-#define FB_KEY_HOME       ( GLUT_KEY_HOME        + 0x100 )
-#define FB_KEY_END        ( GLUT_KEY_END         + 0x100 )
-#define FB_KEY_INSERT     ( GLUT_KEY_INSERT      + 0x100 )
 
 #endif
