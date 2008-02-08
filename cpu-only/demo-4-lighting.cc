@@ -323,20 +323,18 @@ render_light(pFrame_Buffer &frame_buffer)
 
   static bool opt_attenuation = true;
   static bool opt_v_to_light = true;
-  static float opt_light_x = x_shift + ( r - 0.1 );
-  static float opt_light_y = 0;
-  static float opt_light_z = -3;
   static float opt_light_intensity = 2;
+  static pCoor light_location(x_shift + ( r - 0.1 ), 0, -3 );
 
   // Adjust lighting options based on user input.
   //
   switch ( frame_buffer.keyboard_key ) {
-  case FB_KEY_LEFT: opt_light_x -= 0.1; break;
-  case FB_KEY_RIGHT: opt_light_x += 0.1; break;
-  case FB_KEY_UP: opt_light_y += 0.1; break;
-  case FB_KEY_DOWN: opt_light_y -= 0.1; break;
-  case FB_KEY_PAGE_DOWN: opt_light_z += 0.2; break;
-  case FB_KEY_PAGE_UP: opt_light_z -= 0.2; break;
+  case FB_KEY_LEFT: light_location.x -= 0.1; break;
+  case FB_KEY_RIGHT: light_location.x += 0.1; break;
+  case FB_KEY_UP: light_location.y += 0.1; break;
+  case FB_KEY_DOWN: light_location.y -= 0.1; break;
+  case FB_KEY_PAGE_DOWN: light_location.z += 0.2; break;
+  case FB_KEY_PAGE_UP: light_location.z -= 0.2; break;
   case '-':case '_': opt_light_intensity *= 0.9; break;
   case '+':case '=': opt_light_intensity *= 1.1; break;
   case 'd': case 'D': opt_attenuation = !opt_attenuation; break;
@@ -350,8 +348,6 @@ render_light(pFrame_Buffer &frame_buffer)
     ("Lighting: Distance - %s,  Angle - %s  ('d' or 'a' to change).\n",
      opt_attenuation ? "On" : "Off", opt_v_to_light ? "On" : "Off");
   frame_buffer.fbprintf("Arrows, page up/down move light.\n");
-
-  pCoor light_location(opt_light_x,opt_light_y,opt_light_z);
 
   // Insert marker (green tetrahedron) to show light location.
   //
@@ -408,7 +404,7 @@ render_light(pFrame_Buffer &frame_buffer)
 
   // Convert light location to object space.
   //
-  light_location *= transform_to_eye;
+  pCoor light_location_e = transform_to_eye * light_location;
 
   ///
   /// Apply Lighting to Vertices
@@ -421,7 +417,7 @@ render_light(pFrame_Buffer &frame_buffer)
 
       // Compute vectors from vertex to light and to viewer.
       //
-      pVect v_to_light(v,light_location);
+      pVect v_to_light(v,light_location_e);
       pVect v_to_viewer(v,pCoor(0,0,0));
 
       // Distance from vertex to light.
