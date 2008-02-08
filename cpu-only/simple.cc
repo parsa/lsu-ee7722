@@ -13,7 +13,6 @@
 #include <strings.h>
 #include <math.h>
 #include <stdlib.h>
-#include <alloca.h>
 
 #include "frame_buffer.h"
 #include "coord.h"
@@ -349,7 +348,7 @@ render_z_color(pFrame_Buffer &frame_buffer)
   const int win_height = frame_buffer.get_height();
   const int fb_size = win_width * win_height;
   int32_t* const f_buffer = frame_buffer.get_buffer();
-  float* const z_buffer = (float*) alloca( fb_size * sizeof(*z_buffer) );
+  float* const z_buffer = (float*) malloc( fb_size * sizeof(*z_buffer) );
   for ( int i=0; i<fb_size; i++ ) z_buffer[i] = 1;
 
   // Specify Transformation
@@ -403,6 +402,7 @@ render_z_color(pFrame_Buffer &frame_buffer)
           fb_line_idx += win_width;
         }
     }
+  free(z_buffer);
 }
 
 void
@@ -535,7 +535,7 @@ render_light(pFrame_Buffer &frame_buffer)
   const int win_height = frame_buffer.get_height();
   const int fb_size = win_width * win_height;
   int32_t* const f_buffer = frame_buffer.get_buffer();
-  float* const z_buffer = (float*) alloca( fb_size * sizeof(*z_buffer) );
+  float* const z_buffer = (float*) malloc( fb_size * sizeof(*z_buffer) );
   for ( int i=0; i<fb_size; i++ ) z_buffer[i] = 1;
 
   const float aspect = float(win_width) / win_height;
@@ -628,6 +628,7 @@ render_light(pFrame_Buffer &frame_buffer)
 
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     delete *ci;
+  free(z_buffer);
 }
 
 void

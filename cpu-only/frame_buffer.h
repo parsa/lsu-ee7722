@@ -236,7 +236,7 @@ private:
     fprintf(fp,"P6\n%d %d 255\n",width,full_height);
     glReadBuffer(GL_FRONT_LEFT);
     const int size = width * full_height;
-    char* const pbuffer = (char*) alloca(size * 3);
+    char* const pbuffer = (char*) malloc(size * 3);
     glReadPixels(0,0,width,full_height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
     for ( int y=full_height-1; y>=0; y-- )
       {
@@ -248,6 +248,7 @@ private:
           }
       }
     pclose(fp);
+    free(pbuffer);
   }
 
 private:

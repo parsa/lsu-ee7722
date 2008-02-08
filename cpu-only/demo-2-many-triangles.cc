@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
-#include <alloca.h>
 #include <deque>
 
 #include "frame_buffer.h"

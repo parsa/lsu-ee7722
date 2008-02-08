@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
-#include <alloca.h>
 #include <deque>
 
 #include "frame_buffer.h"
@@ -370,7 +369,7 @@ render_light(pFrame_Buffer &frame_buffer)
   // Allocate and initialize a z buffer.
   // (Note: Allocation only need be performed when size changes.)
   //
-  float* const z_buffer = (float*) alloca( fb_size * sizeof(*z_buffer) );
+  float* const z_buffer = (float*) malloc( fb_size * sizeof(*z_buffer) );
   for ( int i=0; i<fb_size; i++ ) z_buffer[i] = 1;
 
   pMatrix_Translate center_eye(-1,-0.5,-3);
@@ -546,6 +545,7 @@ render_light(pFrame_Buffer &frame_buffer)
   //
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     delete *ci;
+  free(z_buffer);
 }
 
 int
