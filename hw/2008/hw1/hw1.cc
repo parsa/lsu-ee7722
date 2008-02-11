@@ -2,35 +2,70 @@
 //
 /// Homework 1
 
+ /// Name:
+
 // $Id:$
 
 /// Instructions
 
 // Follow the class account setup instructions linked to the
-// class Procedures page, 
+// class Procedures page, http://www.ece.lsu.edu/koppel/gp/proc.html
 
-// Pull.
-// Link Emacs or copy.
+// Checkout this assignment package:
+//  cd ~
+//  svn co https://svn.ece.lsu.edu/svn/gp/hw/2008/hw1
 
-// Check out code.
+// This file is named hw1/hw1.cc. Load it into Emacs (or your favorite
+//  text editor).
+
+// For the solutions to the problems below edit this file, even if
+// it makes more sense to edit others (namely, coord.h). If it seems
+// that coord.h must be edited, contact me.
+
+// The main code is in routine render_hw1.
+
+// The make will create two executable, hw1 and hw1-debug. Use
+// hw1-debug for debugging, it is not optimized. Use hw1 for timing.
+
 
 /// Problem 0
 
-// Display.
+// Fill in your name in the comment above. Then build and test the
+// program. It should display a tube similar to
+// demo-4-lighting. Promptly resolve any problems, feel free to ask
+// for help from Dr. Koppelman or others, especially on issues of
+// missing libraries, and other setup problems.
+
 
 /// Problem 1
 
 // The large triangle has a flaw: There is a line extending out of
 // the right side of the bottom of the triangle.  Fix the flaw.
 
+
 /// Problem 2
 
-// Rotate in y around center of tube (perpendicular to axis.
+// Modify the code so that pressing "R" will rotate the tube by 15
+// degrees in the y direction though the center of tube. Each R should
+// rotate by another 15 degrees.
+
 
 /// Problem 3
 
-// Provide a formula.
-// Compare optimized and unoptimized code.
+// Find a formula for render time in terms of triangles, vertices, and
+// pixels.  The formula should be of the form:
+//  t = t_tri n_tri + t_v n_v + t_p n_p,
+
+// where n_tri is the number of triangles, t_tri is the time per triangle
+// (which you have determined), n_v is the number of vertices, and n_p
+// is the number of pixels.
+
+// The formula should work for the code in this file and should continue
+// to work reasonably well if parameters such as pattern_levels change.
+
+// Be sure to base this formula on the optimized version of the code.
+
+// Provide suggestions on how the code may be sped up.
 
 
 #include <stdio.h>
@@ -193,7 +228,7 @@ insert_tetrahedron(pVertex_List& vtx_list, pCoor& loc, float size)
 
 
 void
-render_light(pFrame_Buffer &frame_buffer)
+render_hw1(pFrame_Buffer &frame_buffer)
 {
 
 
@@ -518,6 +553,6 @@ int
 main(int argc, char **argv)
 {
   pFrame_Buffer frame_buffer(argc,argv);
-  frame_buffer.show(render_light);
+  frame_buffer.show(render_hw1);
   return 0;
 }

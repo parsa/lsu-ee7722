@@ -272,7 +272,7 @@ _Zml7pMatrix5pCoor:
 _Z6clampifii:
 .LFB1167:
 	.file 2 "hw1.cc"
-	.loc 2 100 0
+	.loc 2 136 0
 .LVL3:
 	pushl	%ebp	#
 .LCFI6:
@@ -281,14 +281,14 @@ _Z6clampifii:
 	subl	$8, %esp	#,
 .LCFI8:
 .LBB1341:
-	.loc 2 102 0
+	.loc 2 138 0
 	fnstcw	-2(%ebp)	#
 	flds	8(%ebp)	# valp
 .LBE1341:
-	.loc 2 100 0
+	.loc 2 136 0
 	movl	12(%ebp), %edx	# min, min
 .LBB1342:
-	.loc 2 102 0
+	.loc 2 138 0
 	movzwl	-2(%ebp), %eax	#, tmp64
 	movb	$12, %ah	#, tmp64
 	movw	%ax, -4(%ebp)	# tmp64,
@@ -297,7 +297,7 @@ _Z6clampifii:
 	fldcw	-2(%ebp)	#
 	movl	-8(%ebp), %eax	#, val
 .LVL4:
-	.loc 2 103 0
+	.loc 2 139 0
 	cmpl	%edx, %eax	# min, val
 	jl	.L11	#,
 .LVL5:
@@ -306,7 +306,7 @@ _Z6clampifii:
 	jg	.L15	#,
 .L11:
 .LBE1342:
-	.loc 2 106 0
+	.loc 2 142 0
 	leave
 	movl	%edx, %eax	# min, <result>
 .LVL6:
@@ -316,10 +316,10 @@ _Z6clampifii:
 .L15:
 	leave
 .LBB1343:
-	.loc 2 103 0
+	.loc 2 139 0
 	movl	%eax, %edx	# val, min
 .LBE1343:
-	.loc 2 106 0
+	.loc 2 142 0
 	movl	%edx, %eax	# min, <result>
 .LVL8:
 	ret
@@ -3646,7 +3646,7 @@ _Z9invert3x3R7pMatrix:
 	.type	_Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf, @function
 _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LFB1181:
-	.loc 2 176 0
+	.loc 2 212 0
 .LVL189:
 	pushl	%ebp	#
 .LCFI74:
@@ -3660,26 +3660,26 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LCFI78:
 	subl	$108, %esp	#,
 .LCFI79:
-	.loc 2 176 0
+	.loc 2 212 0
 	movl	12(%ebp), %eax	# loc, loc
 	flds	16(%ebp)	# size
 	movl	8(%ebp), %edi	# vtx_list, vtx_list
 .LBB2743:
-	.loc 2 178 0
+	.loc 2 214 0
 	flds	8(%eax)	# <variable>.z
 	fstps	-96(%ebp)	# v0$z
 	flds	4(%eax)	# <variable>.y
 	fstps	-92(%ebp)	# v0$y
 	flds	(%eax)	# <variable>.x
 	fstps	-88(%ebp)	# v0$x
-	.loc 2 179 0
+	.loc 2 215 0
 	flds	-96(%ebp)	# v0$z
 	fadd	%st(1), %st	#,
 	fstps	-84(%ebp)	# v1$z
 	flds	-92(%ebp)	# v0$y
 	fsub	%st(1), %st	#,
 	fstps	-80(%ebp)	# v1$y
-	.loc 2 180 0
+	.loc 2 216 0
 	flds	.LC12	#
 	fmul	%st(1), %st	#,
 	fadds	-96(%ebp)	# v0$z
@@ -3690,7 +3690,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	fadd	%st(1), %st	#,
 	fstps	-72(%ebp)	# v2$x
 	fxch	%st(1)	#
-	.loc 2 181 0
+	.loc 2 217 0
 	fmull	.LC14	#
 	faddp	%st, %st(1)	#,
 	fstps	-68(%ebp)	# v3$x
@@ -3748,7 +3748,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2752:
 .LBE2745:
 .LBE2744:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LBB2754:
@@ -3757,11 +3757,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.41510
 .LBE2755:
 .LBE2754:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-96(%ebp)	# v0$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33343
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-92(%ebp)	# v0$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -3785,7 +3785,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2758:
 .LBE2757:
 .LBE2756:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB2764:
 .LBB2765:
@@ -3805,7 +3805,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2766:
 .LBE2765:
 .LBE2764:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL190:
 .LBB2772:
@@ -3828,13 +3828,13 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2775:
 .LBB2780:
 .LBB2781:
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x437f0000, %eax	#, tmp410
 .LVL191:
 	movl	%eax, 16(%esi)	# tmp410, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	%eax, 20(%esi)	# tmp410, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	%eax, 24(%esi)	# tmp410, <variable>.blue
 .LBE2781:
 .LBE2780:
@@ -3852,7 +3852,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2786:
 .LBB2787:
 .LBB2788:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$33554431, 28(%esi)	#, <variable>.color
 .LBE2788:
 .LBE2787:
@@ -3882,7 +3882,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .L222:
 .LBE2790:
 .LBE2789:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL194:
@@ -3892,11 +3892,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.41617
 .LBE2794:
 .LBE2793:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-84(%ebp)	# v1$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33347
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-80(%ebp)	# v1$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -3920,7 +3920,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2797:
 .LBE2796:
 .LBE2795:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB2803:
 .LBB2804:
@@ -3940,7 +3940,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2805:
 .LBE2804:
 .LBE2803:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL195:
 .LBB2811:
@@ -3963,11 +3963,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2814:
 .LBB2819:
 .LBB2820:
-	.loc 2 60 0
+	.loc 2 96 0
 	xorl	%eax, %eax	# tmp411
 .LVL196:
 	movl	%eax, 16(%esi)	# tmp411, <variable>.red
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	%eax, 24(%esi)	# tmp411, <variable>.blue
 .LBE2820:
 .LBE2819:
@@ -3985,9 +3985,9 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2825:
 .LBB2826:
 .LBB2827:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16842496, 28(%esi)	#, <variable>.color
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE2827:
 .LBE2826:
@@ -4016,7 +4016,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .L231:
 .LBE2829:
 .LBE2828:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL198:
@@ -4026,11 +4026,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.41724
 .LBE2833:
 .LBE2832:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-76(%ebp)	# v2$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33351
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-80(%ebp)	# v1$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -4054,7 +4054,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2836:
 .LBE2835:
 .LBE2834:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB2842:
 .LBB2843:
@@ -4074,7 +4074,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2844:
 .LBE2843:
 .LBE2842:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL199:
 .LBB2850:
@@ -4110,11 +4110,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2862:
 .LBB2863:
 .LBB2864:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16842496, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE2864:
 .LBE2863:
@@ -4133,7 +4133,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2869:
 .LBB2870:
 .LBB2871:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x00000000, 24(%esi)	#, <variable>.blue
 .LBE2871:
 .LBE2870:
@@ -4212,7 +4212,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2884:
 .LBE2877:
 .LBE2876:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL202:
@@ -4222,11 +4222,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.41831
 .LBE2887:
 .LBE2886:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-96(%ebp)	# v0$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33356
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-92(%ebp)	# v0$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -4250,7 +4250,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2890:
 .LBE2889:
 .LBE2888:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB2896:
 .LBB2897:
@@ -4270,7 +4270,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2898:
 .LBE2897:
 .LBE2896:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL203:
 .LBB2904:
@@ -4306,11 +4306,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2916:
 .LBB2917:
 .LBB2918:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$33554431, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x437f0000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE2918:
 .LBE2917:
@@ -4329,7 +4329,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2923:
 .LBB2924:
 .LBB2925:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x437f0000, 24(%esi)	#, <variable>.blue
 .LBE2925:
 .LBE2924:
@@ -4356,7 +4356,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .L249:
 .LBE2927:
 .LBE2926:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL206:
@@ -4366,11 +4366,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.41938
 .LBE2931:
 .LBE2930:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-76(%ebp)	# v2$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33360
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-80(%ebp)	# v1$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -4394,7 +4394,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2934:
 .LBE2933:
 .LBE2932:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB2940:
 .LBB2941:
@@ -4414,7 +4414,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2942:
 .LBE2941:
 .LBE2940:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL207:
 .LBB2948:
@@ -4450,11 +4450,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2960:
 .LBB2961:
 .LBB2962:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16842496, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE2962:
 .LBE2961:
@@ -4473,7 +4473,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB2967:
 .LBB2968:
 .LBB2969:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x00000000, 24(%esi)	#, <variable>.blue
 .LBE2969:
 .LBE2968:
@@ -4500,7 +4500,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .L258:
 .LBE2971:
 .LBE2970:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL210:
@@ -4510,11 +4510,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.42045
 .LBE2975:
 .LBE2974:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-76(%ebp)	# v2$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33364
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-80(%ebp)	# v1$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -4538,7 +4538,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2978:
 .LBE2977:
 .LBE2976:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB2984:
 .LBB2985:
@@ -4558,7 +4558,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE2986:
 .LBE2985:
 .LBE2984:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL211:
 .LBB2992:
@@ -4594,11 +4594,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3004:
 .LBB3005:
 .LBB3006:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16842496, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE3006:
 .LBE3005:
@@ -4617,7 +4617,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3011:
 .LBB3012:
 .LBB3013:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x00000000, 24(%esi)	#, <variable>.blue
 .LBE3013:
 .LBE3012:
@@ -4682,7 +4682,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3023:
 .LBE3019:
 .LBE3018:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL214:
@@ -4692,11 +4692,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.42152
 .LBE3026:
 .LBE3025:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-96(%ebp)	# v0$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33369
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-92(%ebp)	# v0$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -4720,7 +4720,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3029:
 .LBE3028:
 .LBE3027:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB3035:
 .LBB3036:
@@ -4740,7 +4740,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3037:
 .LBE3036:
 .LBE3035:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL215:
 .LBB3043:
@@ -4776,11 +4776,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3055:
 .LBB3056:
 .LBB3057:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$33554431, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x437f0000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE3057:
 .LBE3056:
@@ -4799,7 +4799,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3062:
 .LBB3063:
 .LBB3064:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x437f0000, 24(%esi)	#, <variable>.blue
 .LBE3064:
 .LBE3063:
@@ -4826,7 +4826,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .L276:
 .LBE3066:
 .LBE3065:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL218:
@@ -4836,11 +4836,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.42259
 .LBE3070:
 .LBE3069:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-76(%ebp)	# v2$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33373
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-80(%ebp)	# v1$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -4864,7 +4864,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3073:
 .LBE3072:
 .LBE3071:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB3079:
 .LBB3080:
@@ -4884,7 +4884,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3081:
 .LBE3080:
 .LBE3079:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL219:
 .LBB3087:
@@ -4920,11 +4920,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3099:
 .LBB3100:
 .LBB3101:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16842496, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE3101:
 .LBE3100:
@@ -4943,7 +4943,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3106:
 .LBB3107:
 .LBB3108:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x00000000, 24(%esi)	#, <variable>.blue
 .LBE3108:
 .LBE3107:
@@ -4970,7 +4970,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .L285:
 .LBE3110:
 .LBE3109:
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LVL222:
@@ -4980,11 +4980,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	movl	24(%edi), %edx	# <variable>.D.32890._M_impl._M_finish._M_cur, D.42366
 .LBE3114:
 .LBE3113:
-	.loc 2 55 0
+	.loc 2 91 0
 	flds	-84(%ebp)	# v1$z
-	.loc 2 189 0
+	.loc 2 225 0
 	movl	%eax, %esi	#, D.33377
-	.loc 2 55 0
+	.loc 2 91 0
 	fstps	8(%eax)	# <variable>.D.32177.z
 	flds	-80(%ebp)	# v1$y
 	fstps	4(%eax)	# <variable>.D.32177.y
@@ -5008,7 +5008,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3117:
 .LBE3116:
 .LBE3115:
-	.loc 2 55 0
+	.loc 2 91 0
 	movl	$0x3f800000, 12(%eax)	#, <variable>.D.32177.w
 .LBB3123:
 .LBB3124:
@@ -5028,7 +5028,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3125:
 .LBE3124:
 .LBE3123:
-	.loc 2 55 0
+	.loc 2 91 0
 	leal	32(%eax), %eax	#, this
 .LVL223:
 .LBB3131:
@@ -5064,11 +5064,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3143:
 .LBB3144:
 .LBB3145:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16842496, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%esi)	#, <variable>.green
 .LBE3145:
 .LBE3144:
@@ -5087,7 +5087,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBB3150:
 .LBB3151:
 .LBB3152:
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x00000000, 24(%esi)	#, <variable>.blue
 .LBE3152:
 .LBE3151:
@@ -5120,7 +5120,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3154:
 .LBE3153:
 .LBE2743:
-	.loc 2 191 0
+	.loc 2 227 0
 	addl	$108, %esp	#,
 	popl	%ebx	#
 	popl	%esi	#
@@ -5795,7 +5795,7 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 .LBE3274:
 .LBE3273:
 .LBE3160:
-	.loc 2 191 0
+	.loc 2 227 0
 	addl	$108, %esp	#,
 	popl	%ebx	#
 	popl	%esi	#
@@ -6076,11 +6076,11 @@ _Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf:
 	.text
 	.align 2
 	.p2align 4,,15
-.globl _Z12render_lightR13pFrame_Buffer
-	.type	_Z12render_lightR13pFrame_Buffer, @function
-_Z12render_lightR13pFrame_Buffer:
+.globl _Z10render_hw1R13pFrame_Buffer
+	.type	_Z10render_hw1R13pFrame_Buffer, @function
+_Z10render_hw1R13pFrame_Buffer:
 .LFB1182:
-	.loc 2 195 0
+	.loc 2 231 0
 .LVL273:
 	pushl	%ebp	#
 .LCFI80:
@@ -6145,16 +6145,16 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4376:
 .LBE4375:
 .LBE4374:
-	.loc 2 210 0
+	.loc 2 246 0
 	movl	8(%ebp), %edx	# frame_buffer,
 	cmpl	$110, (%edx)	#, <variable>.keyboard_key
 	jne	.L314	#,
 .LVL274:
-	.loc 2 211 0
-	xorb	$1, _ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal	#, opt_triangle_normal
+	.loc 2 247 0
+	xorb	$1, _ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal	#, opt_triangle_normal
 .L314:
-	.loc 2 213 0
-	cmpb	$0, _ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
+	.loc 2 249 0
+	cmpb	$0, _ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
 	movl	$.LC19, %eax	#, iftmp.101
 	jne	.L318	#,
 	movl	$.LC20, %eax	#, iftmp.101
@@ -6174,18 +6174,18 @@ _Z12render_lightR13pFrame_Buffer:
 .L320:
 .LBB4389:
 .LBB4390:
-	.loc 2 231 0
+	.loc 2 267 0
 	flds	.LC23	#
 	fsubrs	-1016(%ebp)	# z
-	.loc 2 234 0
+	.loc 2 270 0
 	testb	$1, -1000(%ebp)	#, i
-	.loc 2 231 0
+	.loc 2 267 0
 	fstps	-996(%ebp)	# next_z
-	.loc 2 232 0
+	.loc 2 268 0
 	flds	.LC23	#
 	fadds	-1016(%ebp)	# z
 	fstps	-992(%ebp)	# last_z
-	.loc 2 234 0
+	.loc 2 270 0
 	je	.L321	#,
 .LVL278:
 	flds	.LC24	#
@@ -6194,11 +6194,11 @@ _Z12render_lightR13pFrame_Buffer:
 	.p2align 4,,7
 .L681:
 .LBB4391:
-	.loc 2 240 0
+	.loc 2 276 0
 	movl	-992(%ebp), %ebx	# last_z, z1
 .LVL279:
 .L328:
-	.loc 2 245 0
+	.loc 2 281 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 	fldl	-1032(%ebp)	# D.33616
@@ -6223,15 +6223,15 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4394:
 .LBE4393:
 .LBE4392:
-	.loc 2 246 0
-	cmpb	$0, _ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
+	.loc 2 282 0
+	cmpb	$0, _ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
 .LBB4398:
 .LBB4399:
 .LBB4400:
 .LBB4401:
 .LBB4402:
 .LBB4403:
-	.loc 2 245 0
+	.loc 2 281 0
 	fadd	%st(0), %st	#,
 	faddl	.LC64	#
 	fstps	(%esi)	# <variable>.x
@@ -6246,30 +6246,30 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4401:
 .LBB4404:
 .LBB4405:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16364087, 28(%esi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x43790000, 16(%esi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x43320000, 20(%esi)	#, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x425c0000, 24(%esi)	#, <variable>.blue
 .LBE4405:
 .LBE4404:
 .LBE4400:
 .LBE4399:
 .LBE4398:
-	.loc 2 246 0
+	.loc 2 282 0
 	je	.L638	#,
 .L329:
-	.loc 2 249 0
+	.loc 2 285 0
 	flds	.LC24	#
 	fadds	-988(%ebp)	# theta
-	.loc 2 251 0
+	.loc 2 287 0
 	movl	$44, (%esp)	#,
-	.loc 2 249 0
+	.loc 2 285 0
 	fstps	-816(%ebp)	# theta.2770
-	.loc 2 251 0
+	.loc 2 287 0
 	call	_Znwj	#
 	flds	-816(%ebp)	# theta.2770
 	movl	%eax, %edi	#, v1
@@ -6292,15 +6292,15 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4408:
 .LBE4407:
 .LBE4406:
-	.loc 2 252 0
-	cmpb	$0, _ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
+	.loc 2 288 0
+	cmpb	$0, _ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
 .LBB4412:
 .LBB4413:
 .LBB4414:
 .LBB4415:
 .LBB4416:
 .LBB4417:
-	.loc 2 251 0
+	.loc 2 287 0
 	fadd	%st(0), %st	#,
 	faddl	.LC64	#
 	fstps	(%edi)	# <variable>.x
@@ -6314,30 +6314,30 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4415:
 .LBB4418:
 .LBB4419:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16364087, 28(%edi)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x43790000, 16(%edi)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x43320000, 20(%edi)	#, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x425c0000, 24(%edi)	#, <variable>.blue
 .LBE4419:
 .LBE4418:
 .LBE4414:
 .LBE4413:
 .LBE4412:
-	.loc 2 252 0
+	.loc 2 288 0
 	je	.L639	#,
 .L331:
-	.loc 2 255 0
+	.loc 2 291 0
 	flds	.LC24	#
 	fadds	-816(%ebp)	# theta.2770
-	.loc 2 257 0
+	.loc 2 293 0
 	movl	$44, (%esp)	#,
-	.loc 2 255 0
+	.loc 2 291 0
 	fstps	-988(%ebp)	# theta
-	.loc 2 257 0
+	.loc 2 293 0
 	call	_Znwj	#
 	flds	-988(%ebp)	# theta
 	movl	%eax, %ebx	#, v2
@@ -6361,15 +6361,15 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4422:
 .LBE4421:
 .LBE4420:
-	.loc 2 258 0
-	cmpb	$0, _ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
+	.loc 2 294 0
+	cmpb	$0, _ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal	# opt_triangle_normal
 .LBB4426:
 .LBB4427:
 .LBB4428:
 .LBB4429:
 .LBB4430:
 .LBB4431:
-	.loc 2 257 0
+	.loc 2 293 0
 	fadd	%st(0), %st	#,
 	faddl	.LC64	#
 	fstps	(%ebx)	# <variable>.x
@@ -6384,22 +6384,22 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4429:
 .LBB4432:
 .LBB4433:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$16364087, 28(%ebx)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x43790000, 16(%ebx)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x43320000, 20(%ebx)	#, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x425c0000, 24(%ebx)	#, <variable>.blue
 .LBE4433:
 .LBE4432:
 .LBE4428:
 .LBE4427:
 .LBE4426:
-	.loc 2 258 0
+	.loc 2 294 0
 	je	.L640	#,
-	.loc 2 262 0
+	.loc 2 298 0
 	flds	8(%edi)	# <variable>.D.32177.z
 	flds	4(%edi)	# <variable>.D.32177.y
 	flds	(%edi)	# <variable>.D.32177.x
@@ -6427,7 +6427,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fsubrs	4(%esi)	# <variable>.D.32177.y
 	fxch	%st(5)	#
 	fsubrs	8(%esi)	# <variable>.D.32177.z
-	.loc 2 262 0
+	.loc 2 298 0
 	fld	%st(1)	#
 	fmul	%st(5), %st	#,
 	fld	%st(3)	#
@@ -6464,7 +6464,7 @@ _Z12render_lightR13pFrame_Buffer:
 	movl	-88(%ebp), %edx	# vtx_list.D.32890._M_impl._M_finish._M_cur, D.43161
 .LBE4443:
 .LBE4442:
-	.loc 2 262 0
+	.loc 2 298 0
 	movl	%eax, 36(%esi)	# <variable>.normal, <variable>.normal
 	movl	40(%edi), %eax	# <variable>.normal, <variable>.normal
 	movl	%eax, 40(%esi)	# <variable>.normal, <variable>.normal
@@ -6559,7 +6559,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4461:
 .LBE4460:
 .LBE4391:
-	.loc 2 238 0
+	.loc 2 274 0
 	flds	-988(%ebp)	# theta
 	fstpl	-1032(%ebp)	# D.33616
 	fldl	.LC30	#
@@ -6570,7 +6570,7 @@ _Z12render_lightR13pFrame_Buffer:
 	sahf
 	jbe	.L641	#,
 .LBB4464:
-	.loc 2 240 0
+	.loc 2 276 0
 	fldl	.LC26	#
 	fldl	-1032(%ebp)	# D.33616
 	fxch	%st(1)	#
@@ -6584,7 +6584,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL286:
 	.p2align 4,,7
 .L638:
-	.loc 2 247 0
+	.loc 2 283 0
 	flds	-988(%ebp)	# theta
 	movl	$0x00000000, 40(%esi)	#, <variable>.normal.z
 	fstps	(%esp)	#
@@ -6600,7 +6600,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL287:
 	.p2align 4,,7
 .L640:
-	.loc 2 259 0
+	.loc 2 295 0
 	flds	-988(%ebp)	# theta
 	movl	$0x00000000, 40(%ebx)	#, <variable>.normal.z
 	fstps	(%esp)	#
@@ -6619,7 +6619,7 @@ _Z12render_lightR13pFrame_Buffer:
 	cmpl	%eax, %edx	# tmp561, D.43161
 .LBE4466:
 .LBE4465:
-	.loc 2 259 0
+	.loc 2 295 0
 	fchs
 	fstps	32(%ebx)	# <variable>.normal.x
 .LBB4467:
@@ -6878,7 +6878,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4503:
 .LBE4502:
 .LBE4501:
-	.loc 2 253 0
+	.loc 2 289 0
 	flds	-816(%ebp)	# theta.2770
 	movl	$0x00000000, 40(%edi)	#, <variable>.normal.z
 	fstps	(%esp)	#
@@ -6961,7 +6961,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4532:
 .LBE4464:
 .LBE4390:
-	.loc 2 229 0
+	.loc 2 265 0
 	addl	$1, -1000(%ebp)	#, i
 	cmpl	$50, -1000(%ebp)	#, i
 	flds	-996(%ebp)	# next_z
@@ -6970,7 +6970,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL302:
 .LBE4389:
 .LBB4539:
-	.loc 2 274 0
+	.loc 2 310 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LBB4540:
@@ -6987,7 +6987,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4542:
 .LBE4541:
 .LBE4540:
-	.loc 2 274 0
+	.loc 2 310 0
 	movl	%eax, %ebx	#, v0
 .LVL303:
 .LBB4546:
@@ -7006,20 +7006,20 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4549:
 .LBB4552:
 .LBB4553:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$5770662, 28(%eax)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x42b00000, 16(%eax)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x41500000, 20(%eax)	#, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x43260000, 24(%eax)	#, <variable>.blue
 .LBE4553:
 .LBE4552:
 .LBE4548:
 .LBE4547:
 .LBE4546:
-	.loc 2 275 0
+	.loc 2 311 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LBB4554:
@@ -7037,7 +7037,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4556:
 .LBE4555:
 .LBE4554:
-	.loc 2 275 0
+	.loc 2 311 0
 	movl	%eax, %edi	#, v1
 .LVL305:
 .LBB4560:
@@ -7055,20 +7055,20 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4563:
 .LBB4566:
 .LBB4567:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$65280, 28(%eax)	#, <variable>.color
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%eax)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x437f0000, 20(%eax)	#, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x00000000, 24(%eax)	#, <variable>.blue
 .LBE4567:
 .LBE4566:
 .LBE4562:
 .LBE4561:
 .LBE4560:
-	.loc 2 276 0
+	.loc 2 312 0
 	movl	$44, (%esp)	#,
 	call	_Znwj	#
 .LBB4568:
@@ -7085,7 +7085,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4570:
 .LBE4569:
 .LBE4568:
-	.loc 2 277 0
+	.loc 2 313 0
 	movl	%eax, %ecx	#,
 .LBB4574:
 .LBB4575:
@@ -7103,7 +7103,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4577:
 .LBB4580:
 .LBB4581:
-	.loc 2 277 0
+	.loc 2 313 0
 	flds	8(%edi)	# <variable>.D.32177.z
 	flds	4(%edi)	# <variable>.D.32177.y
 	flds	(%edi)	# <variable>.D.32177.x
@@ -7138,7 +7138,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4590:
 .LBB4593:
 .LBB4594:
-	.loc 2 59 0
+	.loc 2 95 0
 	movl	$255, 28(%eax)	#, <variable>.color
 .LBE4594:
 .LBE4593:
@@ -7162,11 +7162,11 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB4602:
 .LBB4603:
 .LBB4604:
-	.loc 2 60 0
+	.loc 2 96 0
 	movl	$0x00000000, 16(%eax)	#, <variable>.red
-	.loc 2 61 0
+	.loc 2 97 0
 	movl	$0x00000000, 20(%eax)	#, <variable>.green
-	.loc 2 62 0
+	.loc 2 98 0
 	movl	$0x437f0000, 24(%eax)	#, <variable>.blue
 .LBE4604:
 .LBE4603:
@@ -7188,7 +7188,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4607:
 .LBE4606:
 .LBE4605:
-	.loc 2 276 0
+	.loc 2 312 0
 	movl	%eax, -984(%ebp)	#, v2
 .LVL306:
 .LBB4610:
@@ -7202,7 +7202,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fsubrs	4(%ebx)	# <variable>.D.32177.y
 	fxch	%st(3)	#
 	fsubrs	8(%ebx)	# <variable>.D.32177.z
-	.loc 2 277 0
+	.loc 2 313 0
 	fld	%st(1)	#
 	fmul	%st(3), %st	#,
 	fld	%st(6)	#
@@ -7240,7 +7240,7 @@ _Z12render_lightR13pFrame_Buffer:
 	movl	-88(%ebp), %edx	# vtx_list.D.32890._M_impl._M_finish._M_cur, D.43586
 .LBE4616:
 .LBE4615:
-	.loc 2 277 0
+	.loc 2 313 0
 	movl	%eax, 36(%ebx)	# <variable>.normal, <variable>.normal
 	movl	40(%edi), %eax	# <variable>.normal, <variable>.normal
 	movl	%eax, 40(%ebx)	# <variable>.normal, <variable>.normal
@@ -7314,11 +7314,11 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4626:
 .LBE4625:
 .LBE4539:
-	.loc 2 290 0
-	cmpb	$0, _ZGVZ12render_lightR13pFrame_BufferE14light_location	#
+	.loc 2 326 0
+	cmpb	$0, _ZGVZ10render_hw1R13pFrame_BufferE14light_location	#
 	je	.L649	#,
 .L391:
-	.loc 2 294 0
+	.loc 2 330 0
 	movl	8(%ebp), %ecx	# frame_buffer,
 	movl	(%ecx), %eax	# <variable>.keyboard_key, <variable>.keyboard_key
 	cmpl	$97, %eax	#, <variable>.keyboard_key
@@ -7336,17 +7336,17 @@ _Z12render_lightR13pFrame_Buffer:
 	.p2align 4,,7
 	jne	.L394	#,
 .L396:
-	.loc 2 301 0
+	.loc 2 337 0
 	fldl	.LC42	#
-	fmuls	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
-	fstps	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
+	fmuls	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
+	fstps	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
 	jmp	.L394	#
 .LVL307:
 	.p2align 4,,7
 .L321:
 .LBB4629:
 .LBB4630:
-	.loc 2 234 0
+	.loc 2 270 0
 	fldz
 	fstps	-988(%ebp)	# theta
 	jmp	.L632	#
@@ -7354,7 +7354,7 @@ _Z12render_lightR13pFrame_Buffer:
 .L405:
 .LBE4630:
 .LBE4629:
-	.loc 2 294 0
+	.loc 2 330 0
 	cmpl	$358, %eax	#, <variable>.keyboard_key
 	je	.L401	#,
 	.p2align 4,,2
@@ -7368,12 +7368,12 @@ _Z12render_lightR13pFrame_Buffer:
 	.p2align 4,,7
 	jne	.L394	#,
 .L398:
-	.loc 2 303 0
-	xorb	$1, _ZZ12render_lightR13pFrame_BufferE15opt_attenuation	#, opt_attenuation
+	.loc 2 339 0
+	xorb	$1, _ZZ10render_hw1R13pFrame_BufferE15opt_attenuation	#, opt_attenuation
 	.p2align 4,,4
 	jmp	.L394	#
 .L406:
-	.loc 2 294 0
+	.loc 2 330 0
 	cmpl	$68, %eax	#, <variable>.keyboard_key
 	.p2align 4,,2
 	je	.L398	#,
@@ -7384,16 +7384,16 @@ _Z12render_lightR13pFrame_Buffer:
 	.p2align 4,,5
 	jne	.L394	#,
 .L397:
-	.loc 2 304 0
-	xorb	$1, _ZZ12render_lightR13pFrame_BufferE14opt_v_to_light	#, opt_v_to_light
+	.loc 2 340 0
+	xorb	$1, _ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light	#, opt_v_to_light
 .L394:
-	.loc 2 312 0
-	cmpb	$0, _ZZ12render_lightR13pFrame_BufferE14opt_v_to_light	# opt_v_to_light
+	.loc 2 348 0
+	cmpb	$0, _ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light	# opt_v_to_light
 	movl	$.LC44, %edx	#, iftmp.115
 	jne	.L410	#,
 	movl	$.LC45, %edx	#, iftmp.115
 .L410:
-	cmpb	$0, _ZZ12render_lightR13pFrame_BufferE15opt_attenuation	# opt_attenuation
+	cmpb	$0, _ZZ10render_hw1R13pFrame_BufferE15opt_attenuation	# opt_attenuation
 	movl	$.LC44, %eax	#, iftmp.116
 	jne	.L413	#,
 	movl	$.LC45, %eax	#, iftmp.116
@@ -7404,15 +7404,15 @@ _Z12render_lightR13pFrame_Buffer:
 	movl	$.LC46, 4(%esp)	#,
 	movl	%eax, (%esp)	#,
 	call	_ZN13pFrame_Buffer8fbprintfEPKcz	#
-	.loc 2 313 0
+	.loc 2 349 0
 	movl	8(%ebp), %edx	# frame_buffer,
 	movl	$.LC47, 4(%esp)	#,
 	movl	%edx, (%esp)	#,
 	call	_ZN13pFrame_Buffer8fbprintfEPKcz	#
-	.loc 2 317 0
+	.loc 2 353 0
 	leal	-112(%ebp), %ecx	#,
 	movl	$0x3d4ccccd, 8(%esp)	#,
-	movl	$_ZZ12render_lightR13pFrame_BufferE14light_location, 4(%esp)	#,
+	movl	$_ZZ10render_hw1R13pFrame_BufferE14light_location, 4(%esp)	#,
 	movl	%ecx, (%esp)	#,
 	call	_Z18insert_tetrahedronRSt5dequeIP7pVertexSaIS1_EER5pCoorf	#
 .LBB4631:
@@ -7452,7 +7452,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fmull	.LC49	#
 .LBE4641:
 .LBE4640:
-	.loc 2 330 0
+	.loc 2 367 0
 	movl	%ecx, %ebx	#, fb_size
 .LVL309:
 .LBB4642:
@@ -7462,7 +7462,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL310:
 .LBE4643:
 .LBE4642:
-	.loc 2 330 0
+	.loc 2 367 0
 	imull	%edx, %ebx	#, fb_size
 .LBB4644:
 .LBB4645:
@@ -7486,18 +7486,18 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL312:
 .LBE4649:
 .LBE4648:
-	.loc 2 336 0
+	.loc 2 373 0
 	leal	0(,%ebx,4), %eax	#, tmp747
 	movl	%eax, (%esp)	# tmp747,
 	call	malloc	#
 .LBB4650:
-	.loc 2 337 0
+	.loc 2 374 0
 	testl	%ebx, %ebx	# fb_size
 .LBE4650:
-	.loc 2 336 0
+	.loc 2 373 0
 	movl	%eax, -1036(%ebp)	#,
 .LBB4651:
-	.loc 2 337 0
+	.loc 2 374 0
 	jle	.L414	#,
 	movl	-1036(%ebp), %edx	#,
 	xorl	%eax, %eax	# i
@@ -7901,7 +7901,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fildl	(%esp)	#
 	addl	$4, %esp	#,
 	fsts	-524(%ebp)	# scale.D.31533.a
-	.loc 2 348 0
+	.loc 2 385 0
 	flds	-296(%ebp)	# center_eye.D.31567.a
 	fstps	-920(%ebp)	# transform_to_eye$a$3$2
 	flds	-300(%ebp)	# center_eye.D.31567.a
@@ -7920,7 +7920,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fstps	-948(%ebp)	# transform_to_eye$a$0$2
 	flds	-348(%ebp)	# center_eye.D.31567.a
 	fstps	-952(%ebp)	# transform_to_eye$a$0$1
-	.loc 2 349 0
+	.loc 2 386 0
 	flds	-356(%ebp)	# frustrum.D.31619.a
 	fstps	-1088(%ebp)	# SR.2204
 	flds	-364(%ebp)	# frustrum.D.31619.a
@@ -8248,7 +8248,7 @@ _Z12render_lightR13pFrame_Buffer:
 	addl	$16, %ecx	#, ivtmp.2681
 	cmpl	$4, %ebx	#, i
 	jne	.L420	#,
-	.loc 2 353 0
+	.loc 2 390 0
 	flds	-920(%ebp)	# transform_to_eye$a$3$2
 	movl	$1, %esi	#, row
 .LVL320:
@@ -8393,12 +8393,12 @@ _Z12render_lightR13pFrame_Buffer:
 	movzbl	%al, %eax	# tmp916, D.44219
 .LBE4867:
 .LBE4866:
-	.loc 2 359 0
+	.loc 2 396 0
 	testl	%eax, %eax	# D.44219
 	je	.L651	#,
 .L430:
 .LBB4868:
-	.loc 2 362 0
+	.loc 2 399 0
 	flds	-920(%ebp)	# transform_to_eye$a$3$2
 .LBB4869:
 .LBB4870:
@@ -8408,18 +8408,18 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4871:
 .LBE4870:
 .LBE4869:
-	.loc 2 362 0
+	.loc 2 399 0
 	fstps	-744(%ebp)	# m.a
-	.loc 2 361 0
+	.loc 2 398 0
 	movl	-888(%ebp), %eax	# ci$_M_cur,
-	.loc 2 362 0
+	.loc 2 399 0
 	flds	-924(%ebp)	# transform_to_eye$a$3$1
 	fstps	-748(%ebp)	# m.a
 	flds	-928(%ebp)	# transform_to_eye$a$3$0
 	fstps	-752(%ebp)	# m.a
-	.loc 2 361 0
+	.loc 2 398 0
 	movl	(%eax), %ebx	#, this
-	.loc 2 362 0
+	.loc 2 399 0
 	flds	-932(%ebp)	# transform_to_eye$a$2$1
 	fstps	-764(%ebp)	# m.a
 	flds	-936(%ebp)	# transform_to_eye$a$2$0
@@ -8496,7 +8496,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4874:
 .LBE4873:
 .LBE4872:
-	.loc 2 363 0
+	.loc 2 400 0
 	leal	32(%ebx), %edi	#, this
 .LVL331:
 .LBB4880:
@@ -8730,11 +8730,11 @@ _Z12render_lightR13pFrame_Buffer:
 	seta	%al	#, D.44219
 .LBE4936:
 .LBE4935:
-	.loc 2 359 0
+	.loc 2 396 0
 	testl	%eax, %eax	# D.44219
 	jne	.L430	#,
 .L651:
-	movl	_ZZ12render_lightR13pFrame_BufferE14light_location, %eax	# light_location, light_location
+	movl	_ZZ10render_hw1R13pFrame_BufferE14light_location, %eax	# light_location, light_location
 .LBE4860:
 .LBB4937:
 .LBB4938:
@@ -8755,24 +8755,24 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4938:
 .LBE4937:
 .LBB4945:
-	.loc 2 359 0
+	.loc 2 396 0
 	flds	-920(%ebp)	# transform_to_eye$a$3$2
 	fstps	-744(%ebp)	# m.a
 	flds	-924(%ebp)	# transform_to_eye$a$3$1
 	movl	%eax, -56(%ebp)	# light_location, c
-	movl	_ZZ12render_lightR13pFrame_BufferE14light_location+4, %eax	# light_location, light_location
+	movl	_ZZ10render_hw1R13pFrame_BufferE14light_location+4, %eax	# light_location, light_location
 	fstps	-748(%ebp)	# m.a
 	flds	-928(%ebp)	# transform_to_eye$a$3$0
 	fstps	-752(%ebp)	# m.a
 	flds	-932(%ebp)	# transform_to_eye$a$2$1
 	movl	%eax, -52(%ebp)	# light_location, c
-	movl	_ZZ12render_lightR13pFrame_BufferE14light_location+8, %eax	# light_location, light_location
+	movl	_ZZ10render_hw1R13pFrame_BufferE14light_location+8, %eax	# light_location, light_location
 	fstps	-764(%ebp)	# m.a
 	flds	-936(%ebp)	# transform_to_eye$a$2$0
 	fstps	-768(%ebp)	# m.a
 	flds	-940(%ebp)	# transform_to_eye$a$1$2
 	movl	%eax, -48(%ebp)	# light_location, c
-	movl	_ZZ12render_lightR13pFrame_BufferE14light_location+12, %eax	# light_location, light_location
+	movl	_ZZ10render_hw1R13pFrame_BufferE14light_location+12, %eax	# light_location, light_location
 	fstps	-776(%ebp)	# m.a
 	flds	-944(%ebp)	# transform_to_eye$a$1$0
 	fstps	-784(%ebp)	# m.a
@@ -8798,7 +8798,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4947:
 .LBE4946:
 .LBB4954:
-	.loc 2 359 0
+	.loc 2 396 0
 	fstps	-792(%ebp)	# m.a
 	flds	-952(%ebp)	# transform_to_eye$a$0$1
 	movl	$0x3f800000, -740(%ebp)	#, m.a
@@ -8866,10 +8866,10 @@ _Z12render_lightR13pFrame_Buffer:
 	.loc 1 258 0
 	flds	-48(%ebp)	# c.z
 	fstps	-876(%ebp)	# light_location_e$z
-	movzbl	_ZZ12render_lightR13pFrame_BufferE15opt_attenuation, %eax	# opt_attenuation,
+	movzbl	_ZZ10render_hw1R13pFrame_BufferE15opt_attenuation, %eax	# opt_attenuation,
 	flds	-52(%ebp)	# c.y
 	fstps	-880(%ebp)	# light_location_e$y
-	movzbl	_ZZ12render_lightR13pFrame_BufferE14opt_v_to_light, %edx	# opt_v_to_light,
+	movzbl	_ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light, %edx	# opt_v_to_light,
 	flds	-56(%ebp)	# c.x
 .LBE4963:
 .LBE4959:
@@ -8916,7 +8916,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL337:
 	movl	-1060(%ebp), %ebx	#, ci$_M_node
 .LVL338:
-	flds	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
+	flds	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
 	fstps	-1024(%ebp)	# opt_light_intensity.112
 	movb	%al, -1077(%ebp)	#,
 	movb	%dl, -1078(%ebp)	#,
@@ -8954,17 +8954,17 @@ _Z12render_lightR13pFrame_Buffer:
 	movzbl	%al, %eax	# tmp993, D.44420
 .LBE4990:
 .LBE4989:
-	.loc 2 375 0
+	.loc 2 412 0
 	testl	%eax, %eax	# D.44420
 	je	.L653	#,
 .L443:
 .LBB4991:
-	.loc 2 377 0
+	.loc 2 414 0
 	movl	(%ecx), %edx	#* ci$_M_cur, v
-	.loc 2 379 0
+	.loc 2 416 0
 	testb	$1, 31(%edx)	#, <variable>.color
 	jne	.L444	#,
-	.loc 2 383 0
+	.loc 2 420 0
 	flds	8(%edx)	# <variable>.D.32177.z
 .LBB4992:
 .LBB4993:
@@ -8975,7 +8975,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4994:
 .LBE4993:
 .LBE4992:
-	.loc 2 383 0
+	.loc 2 420 0
 	fsts	-832(%ebp)	# p$z
 	flds	4(%edx)	# <variable>.D.32177.y
 	fstps	-828(%ebp)	# p$y
@@ -8990,7 +8990,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE4997:
 .LBE4996:
 .LBE4995:
-	.loc 2 405 0
+	.loc 2 442 0
 	cmpb	$0, -1077(%ebp)	#
 .LBB4998:
 .LBB4999:
@@ -9055,7 +9055,7 @@ _Z12render_lightR13pFrame_Buffer:
 	faddp	%st, %st(3)	#,
 .LBE5011:
 .LBE5010:
-	.loc 2 405 0
+	.loc 2 442 0
 	fld1
 	je	.L676	#,
 	fstp	%st(0)	#
@@ -9071,7 +9071,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fstps	-804(%ebp)	#
 	flds	-804(%ebp)	#
 .L448:
-	.loc 2 410 0
+	.loc 2 447 0
 	fldz
 	fsubs	-824(%ebp)	# p$x
 	fmulp	%st, %st(2)	#,
@@ -9093,7 +9093,7 @@ _Z12render_lightR13pFrame_Buffer:
 	sahf
 	ja	.L659	#,
 .L451:
-	.loc 2 415 0
+	.loc 2 452 0
 	cmpb	$0, -1078(%ebp)	#
 	fld1
 	je	.L677	#,
@@ -9102,15 +9102,15 @@ _Z12render_lightR13pFrame_Buffer:
 	fmulp	%st, %st(1)	#,
 	fstps	-804(%ebp)	#
 	flds	-804(%ebp)	#
-	.loc 2 417 0
+	.loc 2 454 0
 	flds	16(%edx)	# <variable>.red
 	fmul	%st(1), %st	#,
 	fstps	16(%edx)	# <variable>.red
-	.loc 2 418 0
+	.loc 2 455 0
 	flds	20(%edx)	# <variable>.green
 	fmul	%st(1), %st	#,
 	fstps	20(%edx)	# <variable>.green
-	.loc 2 419 0
+	.loc 2 456 0
 	fmuls	24(%edx)	# <variable>.blue
 	fstps	24(%edx)	# <variable>.blue
 .LBE4991:
@@ -9171,7 +9171,7 @@ _Z12render_lightR13pFrame_Buffer:
 	seta	%al	#, D.44420
 .LBE5029:
 .LBE5028:
-	.loc 2 375 0
+	.loc 2 412 0
 	testl	%eax, %eax	# D.44420
 	jne	.L443	#,
 .L653:
@@ -9207,12 +9207,12 @@ _Z12render_lightR13pFrame_Buffer:
 	movzbl	%al, %eax	# tmp1045, D.44542
 .LBE5037:
 .LBE5036:
-	.loc 2 425 0
+	.loc 2 462 0
 	testl	%eax, %eax	# D.44542
 	je	.L656	#,
 .L461:
 .LBB5038:
-	.loc 2 428 0
+	.loc 2 465 0
 	movl	-608(%ebp), %eax	# transform_to_viewport, transform_to_viewport
 .LBB5039:
 .LBB5040:
@@ -9222,7 +9222,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5041:
 .LBE5040:
 .LBE5039:
-	.loc 2 428 0
+	.loc 2 465 0
 	movl	(%ebx), %edx	#* ci$_M_cur.2959, this
 	movl	%eax, -800(%ebp)	# transform_to_viewport, m
 	movl	-604(%ebp), %eax	# transform_to_viewport, transform_to_viewport
@@ -9428,7 +9428,7 @@ _Z12render_lightR13pFrame_Buffer:
 	seta	%al	#, D.44542
 .LBE5089:
 .LBE5088:
-	.loc 2 425 0
+	.loc 2 462 0
 	testl	%eax, %eax	# D.44542
 	jne	.L461	#,
 .L656:
@@ -9466,7 +9466,7 @@ _Z12render_lightR13pFrame_Buffer:
 	movzbl	%al, %eax	# tmp1316, D.45275
 .LBE5097:
 .LBE5096:
-	.loc 2 437 0
+	.loc 2 474 0
 	testl	%eax, %eax	# D.45275
 	je	.L531	#,
 .L660:
@@ -9502,7 +9502,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5100:
 .LBE5099:
 .LBE5098:
-	.loc 2 437 0
+	.loc 2 474 0
 	movl	%edx, -1044(%ebp)	#,
 .LBB5111:
 .LBB5112:
@@ -9534,7 +9534,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5118:
 .LBE5117:
 .LBE5116:
-	.loc 2 86 0
+	.loc 2 122 0
 	movl	(%eax), %eax	#* __tmp$_M_cur, tmp1324
 .LBB5124:
 .LBB5125:
@@ -9554,7 +9554,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5126:
 .LBE5125:
 .LBE5124:
-	.loc 2 86 0
+	.loc 2 122 0
 	movl	%eax, -40(%ebp)	# tmp1324, sort.v
 .LBB5132:
 .LBB5133:
@@ -9584,7 +9584,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5134:
 .LBE5133:
 .LBE5132:
-	.loc 2 86 0
+	.loc 2 122 0
 	movl	(%eax), %eax	#* __tmp$_M_cur.2965, tmp1330
 .LBB5140:
 .LBB5141:
@@ -9604,7 +9604,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5142:
 .LBE5141:
 .LBE5140:
-	.loc 2 86 0
+	.loc 2 122 0
 	movl	%eax, -36(%ebp)	# tmp1330, sort.v
 .LBB5148:
 .LBB5149:
@@ -9635,7 +9635,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5156:
 .LBB5157:
 .LBB5158:
-	.loc 2 93 0
+	.loc 2 129 0
 	movl	-40(%ebp), %edx	# sort.v, sort.v
 .LVL355:
 	movl	-36(%ebp), %ecx	# sort.v,
@@ -9644,13 +9644,13 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5157:
 .LBE5156:
 .LBB5159:
-	.loc 2 86 0
+	.loc 2 122 0
 	movl	(%eax), %eax	#* __tmp$_M_cur.2964,
 .LBE5159:
 .LBB5160:
 .LBB5161:
 .LBB5162:
-	.loc 2 93 0
+	.loc 2 129 0
 	flds	4(%edx)	# <variable>.D.32177.y
 	movl	%edx, %ebx	# sort.v, D.44571
 .LVL357:
@@ -9659,19 +9659,19 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5161:
 .LBE5160:
 .LBB5163:
-	.loc 2 86 0
+	.loc 2 122 0
 	movl	%eax, -32(%ebp)	#, sort.v
 .LBE5163:
 .LBB5164:
 .LBB5165:
 .LBB5166:
-	.loc 2 93 0
+	.loc 2 129 0
 	fucompp
 	fnstsw	%ax	#
 	movl	%ecx, -1068(%ebp)	#,
 	sahf
 	jae	.L477	#,
-	.loc 2 94 0
+	.loc 2 130 0
 	movl	%ecx, %edx	#, sort.v
 	movl	%ecx, -40(%ebp)	# sort.v, sort.v
 	movl	%ebx, -1068(%ebp)	# D.44571,
@@ -9683,7 +9683,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5167:
 .LBB5168:
 .LBB5169:
-	.loc 2 93 0
+	.loc 2 129 0
 	movl	-32(%ebp), %ecx	# sort.v,
 	movl	%edx, %ebx	# sort.v, D.44579
 	flds	4(%edx)	# <variable>.D.32177.y
@@ -9693,7 +9693,7 @@ _Z12render_lightR13pFrame_Buffer:
 	movl	%ecx, -1072(%ebp)	#,
 	sahf
 	jae	.L479	#,
-	.loc 2 94 0
+	.loc 2 130 0
 	movl	%ecx, %edx	#, sort.v
 	movl	%ecx, -40(%ebp)	# sort.v, sort.v
 	movl	%ebx, %ecx	# D.44579,
@@ -9706,7 +9706,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5170:
 .LBB5171:
 .LBB5172:
-	.loc 2 93 0
+	.loc 2 129 0
 	movl	-1068(%ebp), %ebx	#, D.44587
 	flds	4(%ebx)	# <variable>.D.32177.y
 	flds	4(%ecx)	# <variable>.D.32177.y
@@ -9714,7 +9714,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fnstsw	%ax	#
 	sahf
 	jae	.L481	#,
-	.loc 2 94 0
+	.loc 2 130 0
 	movl	%ecx, -1068(%ebp)	#,
 	movl	%ecx, -36(%ebp)	#, sort.v
 	movl	%ebx, -1072(%ebp)	# D.44587,
@@ -9732,7 +9732,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5176:
 .LBB5177:
 .LBB5178:
-	.loc 2 123 0
+	.loc 2 159 0
 	movl	-1072(%ebp), %eax	#,
 .LBE5178:
 .LBE5177:
@@ -9740,7 +9740,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5175:
 .LBE5174:
 .LBE5173:
-	.loc 2 453 0
+	.loc 2 490 0
 	movl	-1008(%ebp), %ecx	# win_height,
 .LBB5179:
 .LBB5180:
@@ -9748,7 +9748,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5182:
 .LBB5183:
 .LBB5184:
-	.loc 2 123 0
+	.loc 2 159 0
 	flds	4(%eax)	# <variable>.D.32177.y
 	flds	4(%edx)	# <variable>.D.32177.y
 .LBE5184:
@@ -9757,7 +9757,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5181:
 .LBE5180:
 .LBE5179:
-	.loc 2 453 0
+	.loc 2 490 0
 	subl	$1, %ecx	#,
 .LBB5185:
 .LBB5186:
@@ -9765,9 +9765,9 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5188:
 .LBB5189:
 .LBB5190:
-	.loc 2 124 0
+	.loc 2 160 0
 	fnstcw	-806(%ebp)	#
-	.loc 2 123 0
+	.loc 2 159 0
 	fsubr	%st(1), %st	#,
 	fxch	%st(1)	#
 .LBE5190:
@@ -9776,7 +9776,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5187:
 .LBE5186:
 .LBE5185:
-	.loc 2 453 0
+	.loc 2 490 0
 	movl	%ecx, -960(%ebp)	#, ymax
 .LBB5191:
 .LBB5192:
@@ -9784,7 +9784,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5194:
 .LBB5195:
 .LBB5196:
-	.loc 2 124 0
+	.loc 2 160 0
 	movzwl	-806(%ebp), %eax	#, tmp1462
 	movb	$12, %ah	#, tmp1462
 	movw	%ax, -808(%ebp)	# tmp1462,
@@ -9796,13 +9796,13 @@ _Z12render_lightR13pFrame_Buffer:
 	jle	.L483	#,
 	movl	%ecx, %eax	#, interp_02.yi_last
 .L483:
-	.loc 2 125 0
+	.loc 2 161 0
 	flds	4(%edx)	# <variable>.D.32177.y
 	fldz
 	fsub	%st(1), %st	#,
-	.loc 2 124 0
+	.loc 2 160 0
 	movl	%eax, -116(%ebp)	# interp_02.yi_last, interp_02.yi_last
-	.loc 2 127 0
+	.loc 2 163 0
 	fldz
 	fxch	%st(1)	#
 	fucom	%st(1)	#
@@ -9814,7 +9814,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fldcw	-808(%ebp)	#
 	fistpl	-120(%ebp)	# interp_02.yi
 	fldcw	-806(%ebp)	#
-	.loc 2 131 0
+	.loc 2 167 0
 	movl	-1072(%ebp), %eax	#,
 	flds	16(%eax)	# <variable>.red
 	fsubs	16(%edx)	# <variable>.red
@@ -9865,7 +9865,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5200:
 .LBB5201:
 .LBB5202:
-	.loc 2 123 0
+	.loc 2 159 0
 	movl	-1068(%ebp), %eax	#,
 .LBE5202:
 .LBE5201:
@@ -9879,7 +9879,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5206:
 .LBB5207:
 .LBB5208:
-	.loc 2 131 0
+	.loc 2 167 0
 	fstps	-132(%ebp)	# interp_02.z
 .LBE5208:
 .LBE5207:
@@ -9893,12 +9893,12 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5212:
 .LBB5213:
 .LBB5214:
-	.loc 2 123 0
+	.loc 2 159 0
 	flds	4(%eax)	# <variable>.D.32177.y
 	flds	4(%edx)	# <variable>.D.32177.y
 	fsubr	%st(1), %st	#,
 	fxch	%st(1)	#
-	.loc 2 124 0
+	.loc 2 160 0
 	fldcw	-808(%ebp)	#
 	fistpl	-172(%ebp)	# interp_012.yi_last
 	fldcw	-806(%ebp)	#
@@ -9907,13 +9907,13 @@ _Z12render_lightR13pFrame_Buffer:
 	jle	.L487	#,
 	movl	-960(%ebp), %eax	# ymax, interp_012.yi_last
 .L487:
-	.loc 2 125 0
+	.loc 2 161 0
 	flds	4(%edx)	# <variable>.D.32177.y
 	fldz
 	fsub	%st(1), %st	#,
-	.loc 2 124 0
+	.loc 2 160 0
 	movl	%eax, -172(%ebp)	# interp_012.yi_last, interp_012.yi_last
-	.loc 2 127 0
+	.loc 2 163 0
 	fldz
 	fxch	%st(1)	#
 	fucom	%st(1)	#
@@ -9925,7 +9925,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fldcw	-808(%ebp)	#
 	fistpl	-176(%ebp)	# interp_012.yi
 	fldcw	-806(%ebp)	#
-	.loc 2 131 0
+	.loc 2 167 0
 	movl	-1068(%ebp), %eax	#,
 	flds	16(%eax)	# <variable>.red
 	fsubs	16(%edx)	# <variable>.red
@@ -9969,7 +9969,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5211:
 .LBE5210:
 .LBE5209:
-	.loc 2 458 0
+	.loc 2 495 0
 	movl	-120(%ebp), %eax	# interp_02.yi, D.33784
 .LBB5215:
 .LBB5216:
@@ -9977,7 +9977,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5218:
 .LBB5219:
 .LBB5220:
-	.loc 2 131 0
+	.loc 2 167 0
 	faddp	%st, %st(1)	#,
 .LBE5220:
 .LBE5219:
@@ -9985,7 +9985,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5217:
 .LBE5216:
 .LBE5215:
-	.loc 2 462 0
+	.loc 2 499 0
 	cmpl	-116(%ebp), %eax	# interp_02.yi_last, D.33784
 .LBB5221:
 .LBB5222:
@@ -9993,7 +9993,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5224:
 .LBB5225:
 .LBB5226:
-	.loc 2 131 0
+	.loc 2 167 0
 	fstps	-188(%ebp)	# interp_012.z
 .LBE5226:
 .LBE5225:
@@ -10001,9 +10001,9 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5223:
 .LBE5222:
 .LBE5221:
-	.loc 2 462 0
+	.loc 2 499 0
 	jg	.L491	#,
-	.loc 2 458 0
+	.loc 2 495 0
 	imull	-1012(%ebp), %eax	# win_width, D.33784
 	movl	%eax, -980(%ebp)	# D.33784, fb_line_idx
 	movl	-1012(%ebp), %eax	# win_width,
@@ -10012,14 +10012,14 @@ _Z12render_lightR13pFrame_Buffer:
 .LVL358:
 .L493:
 .LBB5227:
-	.loc 2 468 0
+	.loc 2 505 0
 	movl	-176(%ebp), %eax	# interp_012.yi, interp_012.yi
 	cmpl	-172(%ebp), %eax	# interp_012.yi_last, interp_012.yi
 	jle	.L494	#,
 .LBB5228:
 .LBB5229:
 .LBB5230:
-	.loc 2 123 0
+	.loc 2 159 0
 	movl	-1072(%ebp), %edx	#,
 .LVL359:
 	movl	-1068(%ebp), %ecx	#,
@@ -10028,7 +10028,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fld	%st(0)	#
 	fsubs	4(%ecx)	# <variable>.D.32177.y
 	fxch	%st(1)	#
-	.loc 2 124 0
+	.loc 2 160 0
 	fldcw	-808(%ebp)	#
 	fistpl	-172(%ebp)	# interp_012.yi_last
 	fldcw	-806(%ebp)	#
@@ -10038,12 +10038,12 @@ _Z12render_lightR13pFrame_Buffer:
 	movl	-960(%ebp), %eax	# ymax, interp_012.yi_last
 .L496:
 	movl	%eax, -172(%ebp)	# interp_012.yi_last, interp_012.yi_last
-	.loc 2 125 0
+	.loc 2 161 0
 	movl	-1068(%ebp), %eax	#,
 	flds	4(%eax)	# <variable>.D.32177.y
 	fldz
 	fsub	%st(1), %st	#,
-	.loc 2 127 0
+	.loc 2 163 0
 	fldz
 	fxch	%st(1)	#
 	fucom	%st(1)	#
@@ -10055,7 +10055,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fldcw	-808(%ebp)	#
 	fistpl	-176(%ebp)	# interp_012.yi
 	fldcw	-806(%ebp)	#
-	.loc 2 131 0
+	.loc 2 167 0
 	movl	-1072(%ebp), %eax	#,
 	movl	-1068(%ebp), %edx	#,
 	flds	16(%eax)	# <variable>.red
@@ -10104,7 +10104,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5232:
 .LBB5233:
 .LBB5234:
-	.loc 2 137 0
+	.loc 2 173 0
 	flds	-136(%ebp)	# interp_02.x
 	fsts	-1048(%ebp)	#
 	flds	-192(%ebp)	# interp_012.x
@@ -10116,19 +10116,19 @@ _Z12render_lightR13pFrame_Buffer:
 	leal	-168(%ebp), %ecx	#, vmin
 .LVL362:
 .L503:
-	.loc 2 138 0
+	.loc 2 174 0
 	leal	-224(%ebp), %edx	#, vmax
 .L506:
-	.loc 2 139 0
+	.loc 2 175 0
 	flds	32(%edx)	# <variable>.x
 	flds	32(%ecx)	# <variable>.x
 	fld	%st(1)	#
-	.loc 2 140 0
+	.loc 2 176 0
 	movl	-820(%ebp), %eax	# pretmp.2514,
-	.loc 2 139 0
+	.loc 2 175 0
 	fsub	%st(1), %st	#,
 	fxch	%st(2)	#
-	.loc 2 140 0
+	.loc 2 176 0
 	fldcw	-808(%ebp)	#
 	fistpl	-840(%ebp)	# interp_line$xi_last
 	fldcw	-806(%ebp)	#
@@ -10136,11 +10136,11 @@ _Z12render_lightR13pFrame_Buffer:
 	jle	.L507	#,
 	movl	%eax, -840(%ebp)	#, interp_line$xi_last
 .L507:
-	.loc 2 141 0
+	.loc 2 177 0
 	fldz
 	fsub	%st(1), %st	#,
 	fsts	-956(%ebp)	# pre_x
-	.loc 2 143 0
+	.loc 2 179 0
 	fldz
 	fxch	%st(1)	#
 	fucompp
@@ -10150,7 +10150,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fldcw	-808(%ebp)	#
 	fistpl	-844(%ebp)	# interp_line$xi
 	fldcw	-806(%ebp)	#
-	.loc 2 147 0
+	.loc 2 183 0
 	flds	20(%ecx)	# <variable>.red
 	flds	20(%edx)	# <variable>.red
 	fsub	%st(1), %st	#,
@@ -10186,7 +10186,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5233:
 .LBE5232:
 .LBE5231:
-	.loc 2 480 0
+	.loc 2 517 0
 	movl	-840(%ebp), %eax	# interp_line$xi_last,
 	cmpl	%eax, -844(%ebp)	#, interp_line$xi
 	jg	.L672	#,
@@ -10194,7 +10194,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5236:
 .LBB5237:
 .LBB5238:
-	.loc 2 147 0
+	.loc 2 183 0
 	faddp	%st, %st(5)	#,
 	fxch	%st(4)	#
 	movl	-844(%ebp), %eax	# interp_line$xi, interp_line$xi.3003
@@ -10214,7 +10214,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5242:
 .LBB5243:
 .LBB5244:
-	.loc 2 102 0
+	.loc 2 138 0
 	movl	$255, %ebx	#, min
 .L517:
 .LBE5244:
@@ -10254,7 +10254,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5248:
 .LBE5241:
 .LBE5240:
-	.loc 2 489 0
+	.loc 2 526 0
 	movl	%ecx, %eax	# min.2740, tmp1277
 	sarl	$31, %eax	#, tmp1277
 	notl	%eax	# tmp1277
@@ -10274,25 +10274,25 @@ _Z12render_lightR13pFrame_Buffer:
 	movl	-1004(%ebp), %edx	# f_buffer,
 .LVL366:
 	orl	%ebx, %ecx	# min, min.2740
-	.loc 2 490 0
+	.loc 2 527 0
 	fsts	(%edi)	#* D.33802
 	fxch	%st(2)	#
 	fxch	%st(3)	#
 	fxch	%st(4)	#
 	fxch	%st(2)	#
-	.loc 2 489 0
+	.loc 2 526 0
 	movl	%ecx, (%edx,%eax)	# min.2740,
 .LVL367:
 .L514:
 .LBB5251:
 .LBB5252:
-	.loc 2 155 0
+	.loc 2 191 0
 	movl	-844(%ebp), %eax	# interp_line$xi, interp_line$xi.3003
 	addl	$1, %eax	#, interp_line$xi.3003
 .LBE5252:
 .LBE5251:
 .LBE5239:
-	.loc 2 480 0
+	.loc 2 517 0
 	cmpl	%eax, -840(%ebp)	# interp_line$xi.3003, interp_line$xi_last
 	jl	.L678	#,
 	fxch	%st(3)	#
@@ -10301,7 +10301,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5255:
 .LBB5256:
 .LBB5257:
-	.loc 2 159 0
+	.loc 2 195 0
 	fadds	-848(%ebp)	# interp_line$d_red
 	fxch	%st(2)	#
 	movl	%eax, -844(%ebp)	# interp_line$xi.3003, interp_line$xi
@@ -10319,7 +10319,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5256:
 .LBE5255:
 .LBE5254:
-	.loc 2 487 0
+	.loc 2 524 0
 	addl	-980(%ebp), %eax	# fb_line_idx, tmp1274
 	sall	$2, %eax	#,
 	movl	%eax, %edi	#, D.33802
@@ -10336,7 +10336,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5260:
 .LBB5261:
 .LBB5262:
-	.loc 2 102 0
+	.loc 2 138 0
 	fldcw	-808(%ebp)	#
 	fistl	-812(%ebp)	#
 	fldcw	-806(%ebp)	#
@@ -10386,34 +10386,34 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5264:
 .LBB5265:
 .LBB5266:
-	.loc 2 159 0
+	.loc 2 195 0
 	flds	-148(%ebp)	# interp_02.red
 	fadds	-168(%ebp)	# interp_02.d_red
 .LBE5266:
 .LBE5265:
-	.loc 2 154 0
+	.loc 2 190 0
 	addl	$1, -120(%ebp)	#, interp_02.yi
 .LBE5264:
 .LBE5263:
 .LBE5227:
-	.loc 2 462 0
+	.loc 2 499 0
 	movl	-120(%ebp), %eax	# interp_02.yi, interp_02.yi
 .LBB5267:
 .LBB5268:
 .LBB5269:
-	.loc 2 154 0
+	.loc 2 190 0
 	addl	$1, -176(%ebp)	#, interp_012.yi
 .LBE5269:
 .LBE5268:
 .LBE5267:
-	.loc 2 462 0
+	.loc 2 499 0
 	cmpl	-116(%ebp), %eax	# interp_02.yi_last, interp_02.yi
 .LBB5270:
 .LBB5271:
 .LBB5272:
 .LBB5273:
 .LBB5274:
-	.loc 2 159 0
+	.loc 2 195 0
 	fstps	-148(%ebp)	# interp_02.red
 	flds	-144(%ebp)	# interp_02.green
 	fadds	-164(%ebp)	# interp_02.d_green
@@ -10426,7 +10426,7 @@ _Z12render_lightR13pFrame_Buffer:
 	fstps	-132(%ebp)	# interp_02.z
 .LBE5274:
 .LBE5273:
-	.loc 2 154 0
+	.loc 2 190 0
 	flds	-1048(%ebp)	#
 	fadds	-156(%ebp)	# interp_02.d_x
 	fstps	-136(%ebp)	# interp_02.x
@@ -10436,7 +10436,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5276:
 .LBB5277:
 .LBB5278:
-	.loc 2 159 0
+	.loc 2 195 0
 	flds	-204(%ebp)	# interp_012.red
 	fadds	-224(%ebp)	# interp_012.d_red
 	fstps	-204(%ebp)	# interp_012.red
@@ -10451,14 +10451,14 @@ _Z12render_lightR13pFrame_Buffer:
 	fstps	-188(%ebp)	# interp_012.z
 .LBE5278:
 .LBE5277:
-	.loc 2 154 0
+	.loc 2 190 0
 	flds	-1076(%ebp)	#
 	fadds	-212(%ebp)	# interp_012.d_x
 	fstps	-192(%ebp)	# interp_012.x
 .LBE5276:
 .LBE5275:
 .LBE5270:
-	.loc 2 462 0
+	.loc 2 499 0
 	jg	.L491	#,
 	movl	-1012(%ebp), %eax	# win_width,
 	addl	%eax, -980(%ebp)	#, fb_line_idx
@@ -10471,7 +10471,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5281:
 .LBB5282:
 .LBB5283:
-	.loc 2 147 0
+	.loc 2 183 0
 	flds	20(%ecx)	# <variable>.red
 	flds	20(%edx)	# <variable>.red
 	fsub	%st(1), %st	#,
@@ -10517,7 +10517,7 @@ _Z12render_lightR13pFrame_Buffer:
 	jmp	.L510	#
 .LVL375:
 .L500:
-	.loc 2 138 0
+	.loc 2 174 0
 	flds	-1076(%ebp)	#
 	leal	-224(%ebp), %ecx	#, vmin
 .LVL376:
@@ -10539,12 +10539,12 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5284:
 .LBB5285:
 .LBB5286:
-	.loc 2 131 0
+	.loc 2 167 0
 	movl	-1072(%ebp), %ecx	#,
 	movl	-1068(%ebp), %eax	#,
-	.loc 2 127 0
+	.loc 2 163 0
 	movl	$0, -176(%ebp)	#, interp_012.yi
-	.loc 2 131 0
+	.loc 2 167 0
 	flds	16(%ecx)	# <variable>.red
 	fsubs	16(%eax)	# <variable>.red
 	fdiv	%st(2), %st	#,
@@ -10617,7 +10617,7 @@ _Z12render_lightR13pFrame_Buffer:
 	seta	%al	#, D.45275
 .LBE5291:
 .LBE5290:
-	.loc 2 437 0
+	.loc 2 474 0
 	testl	%eax, %eax	# D.45275
 	jne	.L660	#,
 .L531:
@@ -10651,11 +10651,11 @@ _Z12render_lightR13pFrame_Buffer:
 	movzbl	%al, %eax	# tmp1335, D.45342
 .LBE5299:
 .LBE5298:
-	.loc 2 510 0
+	.loc 2 547 0
 	testl	%eax, %eax	# D.45342
 	je	.L662	#,
 .L548:
-	.loc 2 511 0
+	.loc 2 548 0
 	movl	(%ebx), %eax	#* ci$_M_cur, tmp1331
 .LBB5300:
 .LBB5301:
@@ -10669,7 +10669,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5302:
 .LBE5301:
 .LBE5300:
-	.loc 2 511 0
+	.loc 2 548 0
 	movl	%eax, (%esp)	# tmp1331,
 	call	_ZdlPv	#
 .LVL382:
@@ -10701,12 +10701,12 @@ _Z12render_lightR13pFrame_Buffer:
 	seta	%al	#, D.45342
 .LBE5311:
 .LBE5310:
-	.loc 2 510 0
+	.loc 2 547 0
 	testl	%eax, %eax	# D.45342
 	jne	.L548	#,
 .L662:
 .LBE5292:
-	.loc 2 512 0
+	.loc 2 549 0
 	movl	-1036(%ebp), %edx	#,
 .LVL384:
 	movl	%edx, (%esp)	#,
@@ -10782,7 +10782,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5313:
 .LBE5312:
 .LBE4373:
-	.loc 2 513 0
+	.loc 2 550 0
 	leal	-12(%ebp), %esp	#,
 	popl	%ebx	#
 .LVL387:
@@ -10960,11 +10960,11 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5373:
 .LBB5374:
 .LBB5375:
-	.loc 2 131 0
+	.loc 2 167 0
 	movl	-1072(%ebp), %ecx	#,
-	.loc 2 127 0
+	.loc 2 163 0
 	movl	$0, -120(%ebp)	#, interp_02.yi
-	.loc 2 131 0
+	.loc 2 167 0
 	flds	16(%ecx)	# <variable>.red
 	fsubs	16(%edx)	# <variable>.red
 	fdiv	%st(2), %st	#,
@@ -11017,9 +11017,9 @@ _Z12render_lightR13pFrame_Buffer:
 .LBB5380:
 .LBB5381:
 	movl	-1068(%ebp), %ecx	#,
-	.loc 2 127 0
+	.loc 2 163 0
 	movl	$0, -176(%ebp)	#, interp_012.yi
-	.loc 2 131 0
+	.loc 2 167 0
 	flds	16(%ecx)	# <variable>.red
 	fsubs	16(%edx)	# <variable>.red
 	fdiv	%st(2), %st	#,
@@ -11193,31 +11193,31 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5390:
 .LBB5423:
 .LBB5424:
-	.loc 2 410 0
+	.loc 2 447 0
 	fchs
 	jmp	.L451	#
 .LVL414:
 .L649:
 .LBE5424:
 .LBE5423:
-	.loc 2 290 0
-	movl	$_ZGVZ12render_lightR13pFrame_BufferE14light_location, (%esp)	#,
+	.loc 2 326 0
+	movl	$_ZGVZ10render_hw1R13pFrame_BufferE14light_location, (%esp)	#,
 	call	__cxa_guard_acquire	#
 	testl	%eax, %eax	# D.33670
 	je	.L391	#,
-	movl	$_ZGVZ12render_lightR13pFrame_BufferE14light_location, (%esp)	#,
+	movl	$_ZGVZ10render_hw1R13pFrame_BufferE14light_location, (%esp)	#,
 .LBB5425:
 .LBB5426:
 .LBB5427:
 	.loc 1 169 0
-	movl	$0x40133333, _ZZ12render_lightR13pFrame_BufferE14light_location	#, light_location.x
-	movl	$0x00000000, _ZZ12render_lightR13pFrame_BufferE14light_location+4	#, light_location.y
-	movl	$0xc0400000, _ZZ12render_lightR13pFrame_BufferE14light_location+8	#, light_location.z
-	movl	$0x3f800000, _ZZ12render_lightR13pFrame_BufferE14light_location+12	#, light_location.w
+	movl	$0x40133333, _ZZ10render_hw1R13pFrame_BufferE14light_location	#, light_location.x
+	movl	$0x00000000, _ZZ10render_hw1R13pFrame_BufferE14light_location+4	#, light_location.y
+	movl	$0xc0400000, _ZZ10render_hw1R13pFrame_BufferE14light_location+8	#, light_location.z
+	movl	$0x3f800000, _ZZ10render_hw1R13pFrame_BufferE14light_location+12	#, light_location.w
 .LBE5427:
 .LBE5426:
 .LBE5425:
-	.loc 2 290 0
+	.loc 2 326 0
 	call	__cxa_guard_release	#
 	jmp	.L391	#
 .LVL415:
@@ -11244,7 +11244,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5430:
 .LBE5429:
 .LBE5428:
-	.loc 2 294 0
+	.loc 2 330 0
 	cmpl	$360, %eax	#, <variable>.keyboard_key
 	.p2align 4,,4
 	je	.L403	#,
@@ -11253,46 +11253,46 @@ _Z12render_lightR13pFrame_Buffer:
 	cmpl	$361, %eax	#, <variable>.keyboard_key
 	.p2align 4,,7
 	jne	.L394	#,
-	.loc 2 299 0
+	.loc 2 335 0
 	fldl	.LC41	#
-	fadds	_ZZ12render_lightR13pFrame_BufferE14light_location+8	# light_location.z
-	fstps	_ZZ12render_lightR13pFrame_BufferE14light_location+8	# light_location.z
+	fadds	_ZZ10render_hw1R13pFrame_BufferE14light_location+8	# light_location.z
+	fstps	_ZZ10render_hw1R13pFrame_BufferE14light_location+8	# light_location.z
 	jmp	.L394	#
 .L402:
-	.loc 2 298 0
+	.loc 2 334 0
 	fldl	.LC40	#
-	fsubrs	_ZZ12render_lightR13pFrame_BufferE14light_location+4	# light_location.y
-	fstps	_ZZ12render_lightR13pFrame_BufferE14light_location+4	# light_location.y
+	fsubrs	_ZZ10render_hw1R13pFrame_BufferE14light_location+4	# light_location.y
+	fstps	_ZZ10render_hw1R13pFrame_BufferE14light_location+4	# light_location.y
 	jmp	.L394	#
 .L403:
-	.loc 2 300 0
+	.loc 2 336 0
 	fldl	.LC41	#
-	fsubrs	_ZZ12render_lightR13pFrame_BufferE14light_location+8	# light_location.z
-	fstps	_ZZ12render_lightR13pFrame_BufferE14light_location+8	# light_location.z
+	fsubrs	_ZZ10render_hw1R13pFrame_BufferE14light_location+8	# light_location.z
+	fstps	_ZZ10render_hw1R13pFrame_BufferE14light_location+8	# light_location.z
 	jmp	.L394	#
 .L400:
-	.loc 2 297 0
+	.loc 2 333 0
 	fldl	.LC40	#
-	fadds	_ZZ12render_lightR13pFrame_BufferE14light_location+4	# light_location.y
-	fstps	_ZZ12render_lightR13pFrame_BufferE14light_location+4	# light_location.y
+	fadds	_ZZ10render_hw1R13pFrame_BufferE14light_location+4	# light_location.y
+	fstps	_ZZ10render_hw1R13pFrame_BufferE14light_location+4	# light_location.y
 	jmp	.L394	#
 .L399:
-	.loc 2 295 0
+	.loc 2 331 0
 	fldl	.LC40	#
-	fsubrs	_ZZ12render_lightR13pFrame_BufferE14light_location	# light_location.x
-	fstps	_ZZ12render_lightR13pFrame_BufferE14light_location	# light_location.x
+	fsubrs	_ZZ10render_hw1R13pFrame_BufferE14light_location	# light_location.x
+	fstps	_ZZ10render_hw1R13pFrame_BufferE14light_location	# light_location.x
 	jmp	.L394	#
 .L401:
-	.loc 2 296 0
+	.loc 2 332 0
 	fldl	.LC40	#
-	fadds	_ZZ12render_lightR13pFrame_BufferE14light_location	# light_location.x
-	fstps	_ZZ12render_lightR13pFrame_BufferE14light_location	# light_location.x
+	fadds	_ZZ10render_hw1R13pFrame_BufferE14light_location	# light_location.x
+	fstps	_ZZ10render_hw1R13pFrame_BufferE14light_location	# light_location.x
 	jmp	.L394	#
 .L395:
-	.loc 2 302 0
+	.loc 2 338 0
 	fldl	.LC43	#
-	fmuls	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
-	fstps	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
+	fmuls	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
+	fstps	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity	# opt_light_intensity
 	jmp	.L394	#
 .L382:
 .LBB5434:
@@ -11658,7 +11658,7 @@ _Z12render_lightR13pFrame_Buffer:
 .LBE5492:
 .LBE5332:
 .LFE1182:
-	.size	_Z12render_lightR13pFrame_Buffer, .-_Z12render_lightR13pFrame_Buffer
+	.size	_Z10render_hw1R13pFrame_Buffer, .-_Z10render_hw1R13pFrame_Buffer
 	.section	.gcc_except_table
 .LLSDA1182:
 	.byte	0xff
@@ -13103,7 +13103,7 @@ _ZN13pFrame_Buffer12cb_display_wEv:
 	.type	main, @function
 main:
 .LFB1183:
-	.loc 2 516 0
+	.loc 2 553 0
 .LVL502:
 	leal	4(%esp), %ecx	#,
 .LCFI101:
@@ -13125,7 +13125,7 @@ main:
 .LCFI108:
 	subl	$120, %esp	#,
 .LCFI109:
-	.loc 2 516 0
+	.loc 2 553 0
 	movl	4(%ecx), %esi	# argv, argv
 .LBB6853:
 .LBB6854:
@@ -13413,7 +13413,7 @@ main:
 .LBB6925:
 .LBB6926:
 	.loc 3 88 0
-	movl	$_Z12render_lightR13pFrame_Buffer, -72(%ebp)	#, frame_buffer.user_display_func
+	movl	$_Z10render_hw1R13pFrame_Buffer, -72(%ebp)	#, frame_buffer.user_display_func
 	.loc 3 89 0
 	movl	$_ZN13pFrame_Buffer12cb_display_wEv, (%esp)	#,
 .LEHB48:
@@ -13545,7 +13545,7 @@ main:
 .LBE6928:
 .LBE6927:
 .LBE6853:
-	.loc 2 521 0
+	.loc 2 558 0
 	leal	-16(%ebp), %esp	#,
 	xorl	%eax, %eax	# <result>
 	popl	%ecx	#
@@ -14129,26 +14129,26 @@ main:
 	.size	frame_buffer_self_, 4
 frame_buffer_self_:
 	.zero	4
-	.local	_ZGVZ12render_lightR13pFrame_BufferE14light_location
-	.comm	_ZGVZ12render_lightR13pFrame_BufferE14light_location,8,8
-	.local	_ZZ12render_lightR13pFrame_BufferE14light_location
-	.comm	_ZZ12render_lightR13pFrame_BufferE14light_location,16,4
+	.local	_ZGVZ10render_hw1R13pFrame_BufferE14light_location
+	.comm	_ZGVZ10render_hw1R13pFrame_BufferE14light_location,8,8
+	.local	_ZZ10render_hw1R13pFrame_BufferE14light_location
+	.comm	_ZZ10render_hw1R13pFrame_BufferE14light_location,16,4
 	.data
 	.align 4
-	.type	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity, @object
-	.size	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity, 4
-_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity:
+	.type	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity, @object
+	.size	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity, 4
+_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity:
 	.long	1073741824
-	.type	_ZZ12render_lightR13pFrame_BufferE14opt_v_to_light, @object
-	.size	_ZZ12render_lightR13pFrame_BufferE14opt_v_to_light, 1
-_ZZ12render_lightR13pFrame_BufferE14opt_v_to_light:
+	.type	_ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light, @object
+	.size	_ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light, 1
+_ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light:
 	.byte	1
-	.type	_ZZ12render_lightR13pFrame_BufferE15opt_attenuation, @object
-	.size	_ZZ12render_lightR13pFrame_BufferE15opt_attenuation, 1
-_ZZ12render_lightR13pFrame_BufferE15opt_attenuation:
+	.type	_ZZ10render_hw1R13pFrame_BufferE15opt_attenuation, @object
+	.size	_ZZ10render_hw1R13pFrame_BufferE15opt_attenuation, 1
+_ZZ10render_hw1R13pFrame_BufferE15opt_attenuation:
 	.byte	1
-	.local	_ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal
-	.comm	_ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal,1,1
+	.local	_ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal
+	.comm	_ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal,1,1
 	.weak	_ZZN7pMatrix8row_swapEiiE6buffer
 	.section	.bss._ZZN7pMatrix8row_swapEiiE6buffer,"awG",@nobits,_ZZN7pMatrix8row_swapEiiE6buffer,comdat
 	.align 4
@@ -18428,7 +18428,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x0
 	.long	0x0
 	.section	.debug_info
-	.long	0xd321
+	.long	0xd32e
 	.value	0x2
 	.long	.Ldebug_abbrev0
 	.byte	0x4
@@ -20288,7 +20288,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x26
 	.byte	0x41
 	.long	.LASF549
-	.long	0xd1c5
+	.long	0xd1d2
 	.byte	0x1
 	.byte	0x1
 	.byte	0x0
@@ -28217,7 +28217,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LASF805
 	.byte	0x2c
 	.byte	0x2
-	.byte	0x31
+	.byte	0x55
 	.uleb128 0x22
 	.long	0x4d36
 	.byte	0x2
@@ -28227,7 +28227,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"red"
 	.byte	0x2
-	.byte	0x40
+	.byte	0x64
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -28235,7 +28235,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF806
 	.byte	0x2
-	.byte	0x40
+	.byte	0x64
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -28243,7 +28243,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF807
 	.byte	0x2
-	.byte	0x40
+	.byte	0x64
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -28251,7 +28251,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF808
 	.byte	0x2
-	.byte	0x41
+	.byte	0x65
 	.long	0x20a4
 	.byte	0x2
 	.byte	0x23
@@ -28259,7 +28259,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF809
 	.byte	0x2
-	.byte	0x42
+	.byte	0x66
 	.long	0x4e3e
 	.byte	0x2
 	.byte	0x23
@@ -28269,7 +28269,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF805
 	.byte	0x2
-	.byte	0x33
+	.byte	0x57
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x50c4
@@ -28286,7 +28286,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF805
 	.byte	0x2
-	.byte	0x34
+	.byte	0x58
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x50c4
@@ -28305,7 +28305,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF805
 	.byte	0x2
-	.byte	0x36
+	.byte	0x5a
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x50c4
@@ -28322,7 +28322,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF805
 	.byte	0x2
-	.byte	0x38
+	.byte	0x5c
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x50c4
@@ -28332,7 +28332,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF810
 	.byte	0x2
-	.byte	0x39
+	.byte	0x5d
 	.long	.LASF811
 	.byte	0x1
 	.uleb128 0x24
@@ -28348,7 +28348,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x2
 	.long	.LASF812
 	.byte	0x2
-	.byte	0x4a
+	.byte	0x6e
 	.long	0xa91
 	.uleb128 0x36
 	.long	0x520a
@@ -29953,18 +29953,18 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x2
 	.long	.LASF895
 	.byte	0x2
-	.byte	0x4b
+	.byte	0x6f
 	.long	0x52a8
 	.uleb128 0x12
 	.long	0x5e7c
 	.long	.LASF896
 	.byte	0x10
 	.byte	0x2
-	.byte	0x51
+	.byte	0x75
 	.uleb128 0x4f
 	.string	"v"
 	.byte	0x2
-	.byte	0x60
+	.byte	0x84
 	.long	0x5e7c
 	.byte	0x2
 	.byte	0x23
@@ -29973,7 +29973,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x50
 	.long	.LASF897
 	.byte	0x2
-	.byte	0x61
+	.byte	0x85
 	.long	0x56
 	.byte	0x2
 	.byte	0x23
@@ -29984,7 +29984,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF896
 	.byte	0x2
-	.byte	0x53
+	.byte	0x77
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x5e8c
@@ -29997,7 +29997,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF898
 	.byte	0x2
-	.byte	0x59
+	.byte	0x7d
 	.long	.LASF899
 	.long	0x5e98
 	.byte	0x1
@@ -30009,7 +30009,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF499
 	.byte	0x2
-	.byte	0x5b
+	.byte	0x7f
 	.long	.LASF900
 	.byte	0x3
 	.byte	0x1
@@ -30043,11 +30043,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LASF901
 	.byte	0x38
 	.byte	0x2
-	.byte	0x73
+	.byte	0x97
 	.uleb128 0xd
 	.long	.LASF902
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30055,7 +30055,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF903
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30063,7 +30063,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF904
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30071,7 +30071,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"d_x"
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30079,7 +30079,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"d_z"
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30087,7 +30087,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"red"
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30095,7 +30095,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF806
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30103,7 +30103,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF807
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30111,7 +30111,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"x"
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30119,7 +30119,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"z"
 	.byte	0x2
-	.byte	0xa8
+	.byte	0xcc
 	.long	0x1228
 	.byte	0x2
 	.byte	0x23
@@ -30127,7 +30127,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"xi"
 	.byte	0x2
-	.byte	0xa9
+	.byte	0xcd
 	.long	0x56
 	.byte	0x2
 	.byte	0x23
@@ -30135,7 +30135,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF905
 	.byte	0x2
-	.byte	0xa9
+	.byte	0xcd
 	.long	0x56
 	.byte	0x2
 	.byte	0x23
@@ -30143,7 +30143,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.string	"yi"
 	.byte	0x2
-	.byte	0xa9
+	.byte	0xcd
 	.long	0x56
 	.byte	0x2
 	.byte	0x23
@@ -30151,7 +30151,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xd
 	.long	.LASF906
 	.byte	0x2
-	.byte	0xa9
+	.byte	0xcd
 	.long	0x56
 	.byte	0x2
 	.byte	0x23
@@ -30161,7 +30161,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF901
 	.byte	0x2
-	.byte	0x76
+	.byte	0x9a
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x607d
@@ -30180,7 +30180,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.string	"set"
 	.byte	0x2
-	.byte	0x79
+	.byte	0x9d
 	.long	.LASF907
 	.byte	0x1
 	.uleb128 0x24
@@ -30200,7 +30200,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF901
 	.byte	0x2
-	.byte	0x87
+	.byte	0xab
 	.byte	0x1
 	.uleb128 0x24
 	.long	0x607d
@@ -30219,7 +30219,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF908
 	.byte	0x2
-	.byte	0x97
+	.byte	0xbb
 	.long	.LASF909
 	.long	0x24e0
 	.byte	0x1
@@ -30232,7 +30232,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF910
 	.byte	0x2
-	.byte	0x98
+	.byte	0xbc
 	.long	.LASF911
 	.long	0x24e0
 	.byte	0x1
@@ -30245,7 +30245,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF912
 	.byte	0x2
-	.byte	0x9a
+	.byte	0xbe
 	.long	.LASF913
 	.byte	0x1
 	.uleb128 0x24
@@ -30257,7 +30257,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF914
 	.byte	0x2
-	.byte	0x9b
+	.byte	0xbf
 	.long	.LASF915
 	.byte	0x1
 	.uleb128 0x24
@@ -30269,7 +30269,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF916
 	.byte	0x2
-	.byte	0x9d
+	.byte	0xc1
 	.long	.LASF917
 	.byte	0x1
 	.uleb128 0x24
@@ -30280,7 +30280,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF808
 	.byte	0x2
-	.byte	0xa2
+	.byte	0xc6
 	.long	.LASF918
 	.long	0x20a4
 	.byte	0x1
@@ -31172,7 +31172,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x53
 	.long	.LASF944
 	.byte	0x2
-	.byte	0x39
+	.byte	0x5d
 	.long	0x20a4
 	.byte	0x0
 	.uleb128 0x51
@@ -31207,28 +31207,28 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF945
 	.byte	0x2
-	.byte	0x64
+	.byte	0x88
 	.long	0x56
 	.byte	0x1
 	.uleb128 0x53
 	.long	.LASF946
 	.byte	0x2
-	.byte	0x64
+	.byte	0x88
 	.long	0x1228
 	.uleb128 0x54
 	.string	"min"
 	.byte	0x2
-	.byte	0x64
+	.byte	0x88
 	.long	0x56
 	.uleb128 0x54
 	.string	"max"
 	.byte	0x2
-	.byte	0x64
+	.byte	0x88
 	.long	0x56
 	.uleb128 0x57
 	.string	"val"
 	.byte	0x2
-	.byte	0x66
+	.byte	0x8a
 	.long	0x44a
 	.byte	0x0
 	.uleb128 0x51
@@ -31505,17 +31505,17 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"a"
 	.byte	0x2
-	.byte	0x5b
+	.byte	0x7f
 	.long	0x56
 	.uleb128 0x54
 	.string	"b"
 	.byte	0x2
-	.byte	0x5b
+	.byte	0x7f
 	.long	0x56
 	.uleb128 0x57
 	.string	"t"
 	.byte	0x2
-	.byte	0x5e
+	.byte	0x82
 	.long	0x5216
 	.byte	0x0
 	.uleb128 0x10
@@ -32865,17 +32865,17 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"c"
 	.byte	0x2
-	.byte	0x36
+	.byte	0x5a
 	.long	0x4d36
 	.uleb128 0x54
 	.string	"n"
 	.byte	0x2
-	.byte	0x36
+	.byte	0x5a
 	.long	0x66c1
 	.uleb128 0x53
 	.long	.LASF808
 	.byte	0x2
-	.byte	0x36
+	.byte	0x5a
 	.long	0x20a4
 	.byte	0x0
 	.uleb128 0x51
@@ -35661,7 +35661,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.long	.LASF989
 	.byte	0x2
-	.byte	0xb0
+	.byte	0xd4
 	.long	.LASF990
 	.long	.LFB1181
 	.long	.LFE1181
@@ -35669,55 +35669,55 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x86
 	.long	.LASF991
 	.byte	0x2
-	.byte	0xb0
+	.byte	0xd4
 	.long	0x9efd
 	.long	.LLST101
 	.uleb128 0x6f
 	.string	"loc"
 	.byte	0x2
-	.byte	0xb0
+	.byte	0xd4
 	.long	0x9f08
 	.long	.LLST102
 	.uleb128 0x86
 	.long	.LASF429
 	.byte	0x2
-	.byte	0xb0
+	.byte	0xd4
 	.long	0x1228
 	.long	.LLST103
 	.uleb128 0x57
 	.string	"v0"
 	.byte	0x2
-	.byte	0xb2
+	.byte	0xd6
 	.long	0x4d36
 	.uleb128 0x57
 	.string	"v1"
 	.byte	0x2
-	.byte	0xb3
+	.byte	0xd7
 	.long	0x4d36
 	.uleb128 0x57
 	.string	"v2"
 	.byte	0x2
-	.byte	0xb4
+	.byte	0xd8
 	.long	0x4d36
 	.uleb128 0x57
 	.string	"v3"
 	.byte	0x2
-	.byte	0xb5
+	.byte	0xd9
 	.long	0x4d36
 	.uleb128 0x57
 	.string	"c1"
 	.byte	0x2
-	.byte	0xb6
+	.byte	0xda
 	.long	0x9f13
 	.uleb128 0x57
 	.string	"c2"
 	.byte	0x2
-	.byte	0xb6
+	.byte	0xda
 	.long	0x9f13
 	.uleb128 0x57
 	.string	"n"
 	.byte	0x2
-	.byte	0xb7
+	.byte	0xdb
 	.long	0x4e3e
 	.uleb128 0x67
 	.long	0x9165
@@ -35725,7 +35725,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LBB2744
 	.long	.LBE2744
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x7647
 	.uleb128 0x62
@@ -35773,7 +35773,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x7c0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -35784,7 +35784,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0x7f0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -35797,7 +35797,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0x818
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -35820,7 +35820,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0x858
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -35845,7 +35845,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x870
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -35856,7 +35856,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0x8a0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -35869,7 +35869,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0x8c8
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -35892,7 +35892,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0x908
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -35917,7 +35917,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x920
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -35928,7 +35928,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0x958
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -35941,7 +35941,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0x988
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -35964,7 +35964,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0x9c8
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -35990,7 +35990,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LBB2876
 	.long	.LBE2876
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x7647
 	.uleb128 0x62
@@ -36038,7 +36038,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x9e0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -36049,7 +36049,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0xa18
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -36062,7 +36062,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0xa48
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -36085,7 +36085,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0xa88
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -36110,7 +36110,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0xaa0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -36121,7 +36121,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0xad8
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -36134,7 +36134,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0xb08
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -36157,7 +36157,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0xb48
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -36182,7 +36182,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0xb60
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -36193,7 +36193,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0xb98
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -36206,7 +36206,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0xbc8
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -36229,7 +36229,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0xc08
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -36255,7 +36255,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LBB3018
 	.long	.LBE3018
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x7647
 	.uleb128 0x62
@@ -36291,7 +36291,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0xc20
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -36302,7 +36302,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0xc58
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -36315,7 +36315,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0xc88
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -36338,7 +36338,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0xcc8
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -36363,7 +36363,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0xce0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -36374,7 +36374,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0xd18
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -36387,7 +36387,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0xd48
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -36410,7 +36410,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0xd88
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -36435,7 +36435,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0xda0
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x8fe7
 	.uleb128 0x62
@@ -36446,7 +36446,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7656
 	.long	.Ldebug_ranges0+0xdd8
 	.byte	0x2
-	.byte	0xbd
+	.byte	0xe1
 	.uleb128 0x62
 	.long	0x767c
 	.uleb128 0x62
@@ -36459,7 +36459,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6789
 	.long	.Ldebug_ranges0+0xe08
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x62
@@ -36482,7 +36482,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6769
 	.long	.Ldebug_ranges0+0xe48
 	.byte	0x2
-	.byte	0x37
+	.byte	0x5b
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
@@ -37238,22 +37238,22 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"xp"
 	.byte	0x2
-	.byte	0x34
+	.byte	0x58
 	.long	0x1228
 	.uleb128 0x54
 	.string	"yp"
 	.byte	0x2
-	.byte	0x34
+	.byte	0x58
 	.long	0x1228
 	.uleb128 0x54
 	.string	"zp"
 	.byte	0x2
-	.byte	0x34
+	.byte	0x58
 	.long	0x1228
 	.uleb128 0x53
 	.long	.LASF808
 	.byte	0x2
-	.byte	0x34
+	.byte	0x58
 	.long	0x20a4
 	.byte	0x0
 	.uleb128 0x51
@@ -37679,7 +37679,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"ci"
 	.byte	0x2
-	.byte	0x53
+	.byte	0x77
 	.long	0xa357
 	.byte	0x0
 	.uleb128 0x10
@@ -37787,22 +37787,22 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"v0"
 	.byte	0x2
-	.byte	0x76
+	.byte	0x9a
 	.long	0xa457
 	.uleb128 0x54
 	.string	"v1"
 	.byte	0x2
-	.byte	0x76
+	.byte	0x9a
 	.long	0xa45c
 	.uleb128 0x53
 	.long	.LASF1001
 	.byte	0x2
-	.byte	0x76
+	.byte	0x9a
 	.long	0x56
 	.uleb128 0x53
 	.long	.LASF1002
 	.byte	0x2
-	.byte	0x76
+	.byte	0x9a
 	.long	0x56
 	.byte	0x0
 	.uleb128 0x10
@@ -37820,37 +37820,37 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"v0"
 	.byte	0x2
-	.byte	0x79
+	.byte	0x9d
 	.long	0xa4c1
 	.uleb128 0x54
 	.string	"v1"
 	.byte	0x2
-	.byte	0x79
+	.byte	0x9d
 	.long	0xa4c6
 	.uleb128 0x53
 	.long	.LASF1001
 	.byte	0x2
-	.byte	0x79
+	.byte	0x9d
 	.long	0x56
 	.uleb128 0x53
 	.long	.LASF1002
 	.byte	0x2
-	.byte	0x79
+	.byte	0x9d
 	.long	0x56
 	.uleb128 0x61
 	.long	.LASF1003
 	.byte	0x2
-	.byte	0x7b
+	.byte	0x9f
 	.long	0x8fc9
 	.uleb128 0x61
 	.long	.LASF1004
 	.byte	0x2
-	.byte	0x7d
+	.byte	0xa1
 	.long	0x8fc9
 	.uleb128 0x61
 	.long	.LASF1005
 	.byte	0x2
-	.byte	0x7e
+	.byte	0xa2
 	.long	0x24ed
 	.byte	0x0
 	.uleb128 0x10
@@ -37877,22 +37877,22 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x54
 	.string	"v0"
 	.byte	0x2
-	.byte	0x87
+	.byte	0xab
 	.long	0xa51f
 	.uleb128 0x54
 	.string	"v1"
 	.byte	0x2
-	.byte	0x87
+	.byte	0xab
 	.long	0xa524
 	.uleb128 0x53
 	.long	.LASF1006
 	.byte	0x2
-	.byte	0x87
+	.byte	0xab
 	.long	0x56
 	.uleb128 0x53
 	.long	.LASF1007
 	.byte	0x2
-	.byte	0x87
+	.byte	0xab
 	.long	0x56
 	.byte	0x0
 	.uleb128 0x10
@@ -38002,11 +38002,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0x0
 	.uleb128 0x85
-	.long	0xc0d5
+	.long	0xc0e2
 	.byte	0x1
 	.long	.LASF1008
 	.byte	0x2
-	.byte	0xc3
+	.byte	0xe7
 	.long	.LASF1009
 	.long	.LFB1182
 	.long	.LFE1182
@@ -38014,13 +38014,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x86
 	.long	.LASF1010
 	.byte	0x2
-	.byte	0xc3
-	.long	0xc0d5
+	.byte	0xe7
+	.long	0xc0e2
 	.long	.LLST132
 	.uleb128 0x7c
 	.long	.LASF991
 	.byte	0x2
-	.byte	0xc9
+	.byte	0xed
 	.long	0x50ca
 	.byte	0x3
 	.byte	0x91
@@ -38028,82 +38028,82 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x57
 	.string	"r"
 	.byte	0x2
-	.byte	0xd8
+	.byte	0xfc
 	.long	0x8fc9
 	.uleb128 0x61
 	.long	.LASF1011
 	.byte	0x2
-	.byte	0xd9
+	.byte	0xfd
 	.long	0x8fc9
 	.uleb128 0x61
 	.long	.LASF1012
 	.byte	0x2
-	.byte	0xda
+	.byte	0xfe
 	.long	0x44a
 	.uleb128 0x61
 	.long	.LASF1013
 	.byte	0x2
-	.byte	0xdb
+	.byte	0xff
 	.long	0x8fc9
-	.uleb128 0x61
+	.uleb128 0x5f
 	.long	.LASF1014
 	.byte	0x2
-	.byte	0xdc
+	.value	0x100
 	.long	0x8fc9
-	.uleb128 0x8a
+	.uleb128 0x82
 	.string	"z"
 	.byte	0x2
-	.byte	0xde
+	.value	0x102
 	.long	0x1228
 	.long	.LLST133
-	.uleb128 0x61
+	.uleb128 0x5f
 	.long	.LASF1015
 	.byte	0x2
-	.byte	0xdf
-	.long	0xc0da
-	.uleb128 0x61
+	.value	0x103
+	.long	0xc0e7
+	.uleb128 0x5f
 	.long	.LASF1016
 	.byte	0x2
-	.byte	0xe0
-	.long	0xc0da
-	.uleb128 0x61
+	.value	0x104
+	.long	0xc0e7
+	.uleb128 0x5f
 	.long	.LASF808
 	.byte	0x2
-	.byte	0xe1
-	.long	0xc0da
+	.value	0x105
+	.long	0xc0e7
 	.uleb128 0x75
 	.long	.LASF1017
 	.byte	0x2
-	.value	0x148
+	.value	0x16d
 	.long	0x44a
 	.long	.LLST134
 	.uleb128 0x75
 	.long	.LASF1018
 	.byte	0x2
-	.value	0x149
+	.value	0x16e
 	.long	0x44a
 	.long	.LLST135
 	.uleb128 0x75
 	.long	.LASF1019
 	.byte	0x2
-	.value	0x14a
+	.value	0x16f
 	.long	0x44a
 	.long	.LLST136
 	.uleb128 0x75
 	.long	.LASF1020
 	.byte	0x2
-	.value	0x14b
-	.long	0xc0df
+	.value	0x170
+	.long	0xc0ec
 	.long	.LLST137
 	.uleb128 0x5f
 	.long	.LASF1021
 	.byte	0x2
-	.value	0x150
+	.value	0x175
 	.long	0x671f
 	.uleb128 0x74
 	.long	.LASF1022
 	.byte	0x2
-	.value	0x153
+	.value	0x178
 	.long	0x4c89
 	.byte	0x3
 	.byte	0x91
@@ -38111,12 +38111,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5f
 	.long	.LASF1023
 	.byte	0x2
-	.value	0x156
+	.value	0x17b
 	.long	0x8fc9
 	.uleb128 0x74
 	.long	.LASF1024
 	.byte	0x2
-	.value	0x157
+	.value	0x17c
 	.long	0x4cc4
 	.byte	0x3
 	.byte	0x91
@@ -38124,7 +38124,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x74
 	.long	.LASF1025
 	.byte	0x2
-	.value	0x159
+	.value	0x17e
 	.long	0x4c89
 	.byte	0x3
 	.byte	0x91
@@ -38132,7 +38132,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x74
 	.long	.LASF1026
 	.byte	0x2
-	.value	0x15a
+	.value	0x17f
 	.long	0x4c3a
 	.byte	0x3
 	.byte	0x91
@@ -38140,12 +38140,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5f
 	.long	.LASF1027
 	.byte	0x2
-	.value	0x15c
+	.value	0x181
 	.long	0x4a1a
 	.uleb128 0x74
 	.long	.LASF1028
 	.byte	0x2
-	.value	0x15d
+	.value	0x182
 	.long	0x4a1a
 	.byte	0x3
 	.byte	0x91
@@ -38153,7 +38153,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x74
 	.long	.LASF1029
 	.byte	0x2
-	.value	0x161
+	.value	0x186
 	.long	0x4a1a
 	.byte	0x3
 	.byte	0x91
@@ -38161,14 +38161,14 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5f
 	.long	.LASF1030
 	.byte	0x2
-	.value	0x172
+	.value	0x197
 	.long	0x4d36
 	.uleb128 0x87
-	.long	0xa7f4
+	.long	0xa7f9
 	.long	0x9f2d
 	.long	.Ldebug_ranges0+0x1018
 	.byte	0x2
-	.byte	0xc9
+	.byte	0xed
 	.uleb128 0x62
 	.long	0x9f41
 	.uleb128 0x76
@@ -38193,7 +38193,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x713d
 	.uleb128 0x78
-	.long	0xa7db
+	.long	0xa7e0
 	.long	0x6d39
 	.long	.LBB4383
 	.long	.LBE4383
@@ -38215,72 +38215,72 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xaca0
+	.long	0xacad
 	.long	.Ldebug_ranges0+0x1048
-	.uleb128 0x8a
+	.uleb128 0x82
 	.string	"i"
 	.byte	0x2
-	.byte	0xe5
+	.value	0x109
 	.long	0x56
 	.long	.LLST138
 	.uleb128 0x81
 	.long	.Ldebug_ranges0+0x1060
-	.uleb128 0x7b
+	.uleb128 0x75
 	.long	.LASF1031
 	.byte	0x2
-	.byte	0xe7
+	.value	0x10b
 	.long	0x8fc9
 	.long	.LLST139
-	.uleb128 0x7b
+	.uleb128 0x75
 	.long	.LASF1032
 	.byte	0x2
-	.byte	0xe8
+	.value	0x10c
 	.long	0x8fc9
 	.long	.LLST140
-	.uleb128 0x61
+	.uleb128 0x5f
 	.long	.LASF1033
 	.byte	0x2
-	.byte	0xe9
+	.value	0x10d
 	.long	0x8fc9
-	.uleb128 0x7b
+	.uleb128 0x75
 	.long	.LASF1034
 	.byte	0x2
-	.byte	0xea
+	.value	0x10e
 	.long	0x1228
 	.long	.LLST141
 	.uleb128 0x77
-	.long	0xaabf
+	.long	0xaacc
 	.long	.Ldebug_ranges0+0x1078
-	.uleb128 0x8a
+	.uleb128 0x82
 	.string	"z1"
 	.byte	0x2
-	.byte	0xf0
+	.value	0x114
 	.long	0x8fc9
 	.long	.LLST142
-	.uleb128 0x8a
+	.uleb128 0x82
 	.string	"v0"
 	.byte	0x2
-	.byte	0xf4
+	.value	0x118
 	.long	0x5216
 	.long	.LLST143
-	.uleb128 0x8a
+	.uleb128 0x82
 	.string	"v1"
 	.byte	0x2
-	.byte	0xfa
+	.value	0x11e
 	.long	0x5216
 	.long	.LLST144
 	.uleb128 0x82
 	.string	"v2"
 	.byte	0x2
-	.value	0x100
+	.value	0x124
 	.long	0x5216
 	.long	.LLST145
-	.uleb128 0x87
-	.long	0xa8dd
+	.uleb128 0x69
+	.long	0xa8ea
 	.long	0x9f85
 	.long	.Ldebug_ranges0+0x1090
 	.byte	0x2
-	.byte	0xf5
+	.value	0x119
 	.uleb128 0x62
 	.long	0x9fb7
 	.uleb128 0x62
@@ -38295,7 +38295,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6724
 	.long	.Ldebug_ranges0+0x10a8
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x6c
@@ -38308,23 +38308,23 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xa8fb
+	.long	0xa908
 	.long	0x6769
 	.long	.LBB4404
 	.long	.LBE4404
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
 	.long	0x6773
 	.byte	0x0
-	.uleb128 0x87
-	.long	0xa949
+	.uleb128 0x69
+	.long	0xa956
 	.long	0x9f85
 	.long	.Ldebug_ranges0+0x10c0
 	.byte	0x2
-	.byte	0xfb
+	.value	0x11f
 	.uleb128 0x62
 	.long	0x9fb7
 	.uleb128 0x62
@@ -38339,7 +38339,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6724
 	.long	.Ldebug_ranges0+0x10d8
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x6c
@@ -38352,23 +38352,23 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xa967
+	.long	0xa974
 	.long	0x6769
 	.long	.LBB4418
 	.long	.LBE4418
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
 	.long	0x6773
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xa9b5
+	.long	0xa9c2
 	.long	0x9f85
 	.long	.Ldebug_ranges0+0x10f0
 	.byte	0x2
-	.value	0x101
+	.value	0x125
 	.uleb128 0x62
 	.long	0x9fb7
 	.uleb128 0x62
@@ -38383,7 +38383,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6724
 	.long	.Ldebug_ranges0+0x1108
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x6c
@@ -38396,24 +38396,24 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xa9d3
+	.long	0xa9e0
 	.long	0x6769
 	.long	.LBB4432
 	.long	.LBE4432
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
 	.long	0x6773
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xaa2f
+	.long	0xaa3c
 	.long	0x7624
 	.long	.LBB4434
 	.long	.LBE4434
 	.byte	0x2
-	.value	0x106
+	.value	0x12a
 	.uleb128 0x62
 	.long	0x7647
 	.uleb128 0x62
@@ -38421,7 +38421,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x7635
 	.uleb128 0x67
-	.long	0xaa14
+	.long	0xaa21
 	.long	0x6675
 	.long	.LBB4436
 	.long	.LBE4436
@@ -38444,13 +38444,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6689
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8b
+	.uleb128 0x8a
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x1120
 	.byte	0x2
-	.value	0x108
+	.value	0x12c
 	.uleb128 0x78
-	.long	0xaa60
+	.long	0xaa6d
 	.long	0x75f3
 	.long	.LBB4446
 	.long	.LBE4446
@@ -38463,13 +38463,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x75fd
 	.byte	0x0
-	.uleb128 0x8b
+	.uleb128 0x8a
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x1158
 	.byte	0x2
-	.value	0x109
+	.value	0x12d
 	.uleb128 0x78
-	.long	0xaa91
+	.long	0xaa9e
 	.long	0x75f3
 	.long	.LBB4454
 	.long	.LBE4454
@@ -38482,11 +38482,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x75fd
 	.byte	0x0
-	.uleb128 0x8b
+	.uleb128 0x8a
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x1188
 	.byte	0x2
-	.value	0x10a
+	.value	0x12e
 	.uleb128 0x79
 	.long	0x75f3
 	.long	.LBB4462
@@ -38502,7 +38502,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xab60
+	.long	0xab6d
 	.long	0x8ffc
 	.long	.Ldebug_ranges0+0x11b0
 	.byte	0x7
@@ -38510,7 +38510,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0x901c
 	.uleb128 0x69
-	.long	0xaaea
+	.long	0xaaf7
 	.long	0x903a
 	.long	.Ldebug_ranges0+0x11c8
 	.byte	0x4
@@ -38519,7 +38519,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x904e
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xab1c
+	.long	0xab29
 	.long	0x88fd
 	.long	.Ldebug_ranges0+0x11e0
 	.byte	0x4
@@ -38540,7 +38540,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xab40
+	.long	0xab4d
 	.long	0x75f3
 	.long	.LBB4480
 	.long	.LBE4480
@@ -38567,7 +38567,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xac01
+	.long	0xac0e
 	.long	0x8ffc
 	.long	.Ldebug_ranges0+0x1210
 	.byte	0x7
@@ -38575,7 +38575,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0x901c
 	.uleb128 0x69
-	.long	0xab8b
+	.long	0xab98
 	.long	0x903a
 	.long	.Ldebug_ranges0+0x1228
 	.byte	0x4
@@ -38584,7 +38584,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x904e
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xabbd
+	.long	0xabca
 	.long	0x88fd
 	.long	.Ldebug_ranges0+0x1240
 	.byte	0x4
@@ -38605,7 +38605,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xabe1
+	.long	0xabee
 	.long	0x75f3
 	.long	.LBB4497
 	.long	.LBE4497
@@ -38639,7 +38639,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0x901c
 	.uleb128 0x69
-	.long	0xac28
+	.long	0xac35
 	.long	0x903a
 	.long	.Ldebug_ranges0+0x1288
 	.byte	0x4
@@ -38648,7 +38648,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x904e
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xac5a
+	.long	0xac67
 	.long	0x88fd
 	.long	.Ldebug_ranges0+0x12a0
 	.byte	0x4
@@ -38669,7 +38669,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xac7e
+	.long	0xac8b
 	.long	0x75f3
 	.long	.LBB4514
 	.long	.LBE4514
@@ -38698,32 +38698,32 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xaef2
+	.long	0xaeff
 	.long	.Ldebug_ranges0+0x12d0
 	.uleb128 0x82
 	.string	"v0"
 	.byte	0x2
-	.value	0x112
+	.value	0x136
 	.long	0x5216
 	.long	.LLST152
 	.uleb128 0x82
 	.string	"v1"
 	.byte	0x2
-	.value	0x113
+	.value	0x137
 	.long	0x5216
 	.long	.LLST153
 	.uleb128 0x82
 	.string	"v2"
 	.byte	0x2
-	.value	0x114
+	.value	0x138
 	.long	0x5216
 	.long	.LLST154
 	.uleb128 0x69
-	.long	0xad23
+	.long	0xad30
 	.long	0x9f85
 	.long	.Ldebug_ranges0+0x12e8
 	.byte	0x2
-	.value	0x112
+	.value	0x136
 	.uleb128 0x62
 	.long	0x9fb7
 	.uleb128 0x62
@@ -38738,7 +38738,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6724
 	.long	.Ldebug_ranges0+0x1300
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x62
@@ -38750,23 +38750,23 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xad41
+	.long	0xad4e
 	.long	0x6769
 	.long	.LBB4552
 	.long	.LBE4552
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
 	.long	0x6773
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xad8b
+	.long	0xad98
 	.long	0x9f85
 	.long	.Ldebug_ranges0+0x1318
 	.byte	0x2
-	.value	0x113
+	.value	0x137
 	.uleb128 0x62
 	.long	0x9fb7
 	.uleb128 0x62
@@ -38781,7 +38781,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6724
 	.long	.Ldebug_ranges0+0x1330
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x62
@@ -38793,23 +38793,23 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xada9
+	.long	0xadb6
 	.long	0x6769
 	.long	.LBB4566
 	.long	.LBE4566
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
 	.long	0x6773
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xadf3
+	.long	0xae00
 	.long	0x9f85
 	.long	.Ldebug_ranges0+0x1348
 	.byte	0x2
-	.value	0x114
+	.value	0x138
 	.uleb128 0x62
 	.long	0x9fb7
 	.uleb128 0x62
@@ -38824,7 +38824,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6724
 	.long	.Ldebug_ranges0+0x1370
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x62
@@ -38836,22 +38836,22 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xae0e
+	.long	0xae1b
 	.long	0x6769
 	.long	.Ldebug_ranges0+0x1390
 	.byte	0x2
-	.byte	0x35
+	.byte	0x59
 	.uleb128 0x62
 	.long	0x677d
 	.uleb128 0x62
 	.long	0x6773
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xae44
+	.long	0xae51
 	.long	0x7624
 	.long	.Ldebug_ranges0+0x13b0
 	.byte	0x2
-	.value	0x115
+	.value	0x139
 	.uleb128 0x62
 	.long	0x7647
 	.uleb128 0x62
@@ -38870,7 +38870,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xae62
+	.long	0xae6f
 	.long	0x6675
 	.long	.LBB4612
 	.long	.LBE4612
@@ -38881,13 +38881,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x6689
 	.byte	0x0
-	.uleb128 0x8b
+	.uleb128 0x8a
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x13f8
 	.byte	0x2
-	.value	0x116
+	.value	0x13a
 	.uleb128 0x78
-	.long	0xae93
+	.long	0xaea0
 	.long	0x75f3
 	.long	.LBB4619
 	.long	.LBE4619
@@ -38901,11 +38901,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x75fd
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xaec4
+	.long	0xaed1
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x1418
 	.byte	0x2
-	.value	0x117
+	.value	0x13b
 	.uleb128 0x79
 	.long	0x75f3
 	.long	.LBB4623
@@ -38924,7 +38924,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fd3
 	.long	.Ldebug_ranges0+0x1430
 	.byte	0x2
-	.value	0x118
+	.value	0x13c
 	.uleb128 0x79
 	.long	0x75f3
 	.long	.LBB4627
@@ -38941,11 +38941,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xaf20
+	.long	0xaf2d
 	.long	0x9fc3
 	.long	.Ldebug_ranges0+0x1448
 	.byte	0x2
-	.value	0x146
+	.value	0x16b
 	.uleb128 0x62
 	.long	0x9fcd
 	.uleb128 0x68
@@ -38962,49 +38962,49 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xaf36
+	.long	0xaf43
 	.long	0x9fed
 	.long	.Ldebug_ranges0+0x1468
 	.byte	0x2
-	.value	0x149
+	.value	0x16e
 	.uleb128 0x62
 	.long	0x9ff7
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xaf4c
+	.long	0xaf59
 	.long	0x9fd8
 	.long	.Ldebug_ranges0+0x1480
 	.byte	0x2
-	.value	0x148
+	.value	0x16d
 	.uleb128 0x62
 	.long	0x9fe2
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xaf66
+	.long	0xaf73
 	.long	0xa002
 	.long	.LBB4648
 	.long	.LBE4648
 	.byte	0x2
-	.value	0x14b
+	.value	0x170
 	.uleb128 0x62
 	.long	0xa00c
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xaf7f
+	.long	0xaf8c
 	.long	.Ldebug_ranges0+0x1498
 	.uleb128 0x82
 	.string	"i"
 	.byte	0x2
-	.value	0x151
+	.value	0x176
 	.long	0x56
 	.long	.LLST155
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xaffb
+	.long	0xb008
 	.long	0xa017
 	.long	.Ldebug_ranges0+0x14b0
 	.byte	0x2
-	.value	0x153
+	.value	0x178
 	.uleb128 0x62
 	.long	0xa03f
 	.uleb128 0x62
@@ -39054,11 +39054,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb05a
+	.long	0xb067
 	.long	0xa04f
 	.long	.Ldebug_ranges0+0x1540
 	.byte	0x2
-	.value	0x157
+	.value	0x17c
 	.uleb128 0x62
 	.long	0xa084
 	.uleb128 0x62
@@ -39094,11 +39094,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb0d2
+	.long	0xb0df
 	.long	0xa017
 	.long	.Ldebug_ranges0+0x1590
 	.byte	0x2
-	.value	0x159
+	.value	0x17e
 	.uleb128 0x62
 	.long	0xa03f
 	.uleb128 0x62
@@ -39147,11 +39147,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb105
+	.long	0xb112
 	.long	0x7776
 	.long	.Ldebug_ranges0+0x1678
 	.byte	0x2
-	.value	0x15d
+	.value	0x182
 	.uleb128 0x65
 	.long	0x7c2d
 	.byte	0x3
@@ -39171,11 +39171,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0xf7
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb150
+	.long	0xb15d
 	.long	0xa0d6
 	.long	.Ldebug_ranges0+0x16e8
 	.byte	0x2
-	.value	0x15a
+	.value	0x17f
 	.uleb128 0x62
 	.long	0xa0f5
 	.uleb128 0x62
@@ -39203,7 +39203,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb181
+	.long	0xb18e
 	.long	.Ldebug_ranges0+0x1738
 	.uleb128 0x6d
 	.long	0x77ac
@@ -39222,11 +39222,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb1b4
+	.long	0xb1c1
 	.long	0x7776
 	.long	.Ldebug_ranges0+0x1768
 	.byte	0x2
-	.value	0x15d
+	.value	0x182
 	.uleb128 0x65
 	.long	0x7c2d
 	.byte	0x3
@@ -39246,7 +39246,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0xf7
 	.byte	0x0
 	.uleb128 0x83
-	.long	0xb1ea
+	.long	0xb1f7
 	.long	.LBB4846
 	.long	.LBE4846
 	.uleb128 0x6d
@@ -39266,12 +39266,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xb231
+	.long	0xb23e
 	.long	0xa131
 	.long	.LBB4849
 	.long	.LBE4849
 	.byte	0x2
-	.value	0x162
+	.value	0x187
 	.uleb128 0x6b
 	.long	.LBB4852
 	.long	.LBE4852
@@ -39293,12 +39293,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xb24f
+	.long	0xb25c
 	.long	0xa16b
 	.long	.LBB4857
 	.long	.LBE4857
 	.byte	0x2
-	.value	0x162
+	.value	0x187
 	.uleb128 0x66
 	.long	0xa17f
 	.byte	0x3
@@ -39306,20 +39306,20 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.sleb128 -808
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb453
+	.long	0xb460
 	.long	.Ldebug_ranges0+0x17e0
 	.uleb128 0x7d
 	.string	"ci"
 	.byte	0x2
-	.value	0x167
+	.value	0x18c
 	.long	0x5df4
 	.uleb128 0x78
-	.long	0xb293
+	.long	0xb2a0
 	.long	0xa18b
 	.long	.LBB4861
 	.long	.LBE4861
 	.byte	0x2
-	.value	0x167
+	.value	0x18c
 	.uleb128 0x79
 	.long	0x6804
 	.long	.LBB4863
@@ -39333,30 +39333,30 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb2ae
+	.long	0xb2bb
 	.long	0xa2e6
 	.long	.Ldebug_ranges0+0x1800
 	.byte	0x2
-	.value	0x167
+	.value	0x18c
 	.uleb128 0x62
 	.long	0xa2fc
 	.uleb128 0x62
 	.long	0xa2f0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb3ae
+	.long	0xb3bb
 	.long	.Ldebug_ranges0+0x1820
 	.uleb128 0x7d
 	.string	"v"
 	.byte	0x2
-	.value	0x169
-	.long	0xc0e4
+	.value	0x18e
+	.long	0xc0f1
 	.uleb128 0x69
-	.long	0xb2f3
+	.long	0xb300
 	.long	0x66c7
 	.long	.Ldebug_ranges0+0x1840
 	.byte	0x2
-	.value	0x16a
+	.value	0x18f
 	.uleb128 0x65
 	.long	0x66db
 	.byte	0x3
@@ -39375,7 +39375,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x66f8
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xb30c
+	.long	0xb319
 	.long	0x6597
 	.long	.LBB4875
 	.long	.LBE4875
@@ -39385,7 +39385,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x65ab
 	.byte	0x0
 	.uleb128 0x83
-	.long	0xb32f
+	.long	0xb33c
 	.long	.LBB4878
 	.long	.LBE4878
 	.uleb128 0x5a
@@ -39401,7 +39401,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa1a1
 	.long	.Ldebug_ranges0+0x1858
 	.byte	0x2
-	.value	0x16b
+	.value	0x190
 	.uleb128 0x62
 	.long	0xa1b5
 	.uleb128 0x6c
@@ -39422,7 +39422,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0xa1dd
 	.uleb128 0x87
-	.long	0xb391
+	.long	0xb39e
 	.long	0x65f7
 	.long	.Ldebug_ranges0+0x1870
 	.byte	0x1
@@ -39452,11 +39452,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb3d4
+	.long	0xb3e1
 	.long	0xa283
 	.long	.Ldebug_ranges0+0x18a0
 	.byte	0x2
-	.value	0x167
+	.value	0x18c
 	.uleb128 0x62
 	.long	0xa297
 	.uleb128 0x5a
@@ -39468,11 +39468,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x9d
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb407
+	.long	0xb414
 	.long	0xa20a
 	.long	.Ldebug_ranges0+0x18f0
 	.byte	0x2
-	.value	0x16c
+	.value	0x191
 	.uleb128 0x62
 	.long	0xa214
 	.uleb128 0x5a
@@ -39491,12 +39491,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xb43c
+	.long	0xb449
 	.long	0xa24a
 	.long	.LBB4915
 	.long	.LBE4915
 	.byte	0x2
-	.value	0x16d
+	.value	0x192
 	.uleb128 0x62
 	.long	0xa254
 	.uleb128 0x66
@@ -39524,11 +39524,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb4ab
+	.long	0xb4b8
 	.long	0x79a5
 	.long	.Ldebug_ranges0+0x1938
 	.byte	0x2
-	.value	0x172
+	.value	0x197
 	.uleb128 0x65
 	.long	0x7a25
 	.byte	0x2
@@ -39566,7 +39566,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb4c6
+	.long	0xb4d3
 	.long	.Ldebug_ranges0+0x19a8
 	.uleb128 0x5a
 	.long	0x6706
@@ -39577,18 +39577,18 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb4ff
+	.long	0xb50c
 	.long	.Ldebug_ranges0+0x19d8
 	.uleb128 0x7d
 	.string	"ci"
 	.byte	0x2
-	.value	0x177
+	.value	0x19c
 	.long	0x5df4
 	.uleb128 0x76
 	.long	0xa18b
 	.long	.Ldebug_ranges0+0x19f8
 	.byte	0x2
-	.value	0x177
+	.value	0x19c
 	.uleb128 0x76
 	.long	0x6804
 	.long	.Ldebug_ranges0+0x1a10
@@ -39602,11 +39602,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb525
+	.long	0xb532
 	.long	0xa283
 	.long	.Ldebug_ranges0+0x1a28
 	.byte	0x2
-	.value	0x177
+	.value	0x19c
 	.uleb128 0x62
 	.long	0xa297
 	.uleb128 0x5a
@@ -39618,84 +39618,84 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x9d
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb540
+	.long	0xb54d
 	.long	0xa2e6
 	.long	.Ldebug_ranges0+0x1a68
 	.byte	0x2
-	.value	0x177
+	.value	0x19c
 	.uleb128 0x62
 	.long	0xa2fc
 	.uleb128 0x62
 	.long	0xa2f0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb668
+	.long	0xb675
 	.long	.Ldebug_ranges0+0x1a88
 	.uleb128 0x82
 	.string	"v"
 	.byte	0x2
-	.value	0x179
-	.long	0xc0e9
+	.value	0x19e
+	.long	0xc0f6
 	.long	.LLST163
 	.uleb128 0x5f
 	.long	.LASF1035
 	.byte	0x2
-	.value	0x17a
+	.value	0x19f
 	.long	0x24ed
 	.uleb128 0x5f
 	.long	.LASF1036
 	.byte	0x2
-	.value	0x17f
+	.value	0x1a4
 	.long	0x4e3e
 	.uleb128 0x5f
 	.long	.LASF1037
 	.byte	0x2
-	.value	0x180
+	.value	0x1a5
 	.long	0x4e3e
 	.uleb128 0x74
 	.long	.LASF353
 	.byte	0x2
-	.value	0x184
+	.value	0x1a9
 	.long	0x8fc9
 	.byte	0x1
 	.byte	0x5f
 	.uleb128 0x74
 	.long	.LASF1038
 	.byte	0x2
-	.value	0x18b
+	.value	0x1b0
 	.long	0x8fc9
 	.byte	0x1
 	.byte	0x5e
 	.uleb128 0x5f
 	.long	.LASF1039
 	.byte	0x2
-	.value	0x18c
+	.value	0x1b1
 	.long	0x8fc9
 	.uleb128 0x5f
 	.long	.LASF1040
 	.byte	0x2
-	.value	0x192
+	.value	0x1b7
 	.long	0x8fc9
 	.uleb128 0x74
 	.long	.LASF1041
 	.byte	0x2
-	.value	0x199
+	.value	0x1be
 	.long	0x8fc9
 	.byte	0x1
 	.byte	0x5c
 	.uleb128 0x74
 	.long	.LASF1026
 	.byte	0x2
-	.value	0x19e
+	.value	0x1c3
 	.long	0x8fc9
 	.byte	0x1
 	.byte	0x5b
 	.uleb128 0x69
-	.long	0xb5e9
+	.long	0xb5f6
 	.long	0xa20a
 	.long	.Ldebug_ranges0+0x1aa0
 	.byte	0x2
-	.value	0x184
+	.value	0x1a9
 	.uleb128 0x5a
 	.long	0xa21e
 	.uleb128 0x66
@@ -39704,11 +39704,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x5b
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb604
+	.long	0xb611
 	.long	0x6675
 	.long	.Ldebug_ranges0+0x1ab8
 	.byte	0x2
-	.value	0x17f
+	.value	0x1a4
 	.uleb128 0x62
 	.long	0x6692
 	.uleb128 0x62
@@ -39721,12 +39721,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0xcc
 	.uleb128 0x78
-	.long	0xb64c
+	.long	0xb659
 	.long	0x6789
 	.long	.LBB5005
 	.long	.LBE5005
 	.byte	0x2
-	.value	0x18b
+	.value	0x1b0
 	.uleb128 0x62
 	.long	0x679d
 	.uleb128 0x68
@@ -39747,7 +39747,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LBB5010
 	.long	.LBE5010
 	.byte	0x2
-	.value	0x18b
+	.value	0x1b0
 	.uleb128 0x62
 	.long	0xa32e
 	.uleb128 0x62
@@ -39755,7 +39755,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xb683
+	.long	0xb690
 	.long	0x6a24
 	.long	.Ldebug_ranges0+0x1ad0
 	.byte	0x7
@@ -39766,21 +39766,21 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6a2e
 	.byte	0x0
 	.uleb128 0x83
-	.long	0xb7d7
+	.long	0xb7e4
 	.long	.LBB5030
 	.long	.LBE5030
 	.uleb128 0x7d
 	.string	"ci"
 	.byte	0x2
-	.value	0x1a9
+	.value	0x1ce
 	.long	0x5df4
 	.uleb128 0x78
-	.long	0xb6cc
+	.long	0xb6d9
 	.long	0xa18b
 	.long	.LBB5031
 	.long	.LBE5031
 	.byte	0x2
-	.value	0x1a9
+	.value	0x1ce
 	.uleb128 0x79
 	.long	0x6804
 	.long	.LBB5033
@@ -39794,30 +39794,30 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb6e7
+	.long	0xb6f4
 	.long	0xa2e6
 	.long	.Ldebug_ranges0+0x1ae8
 	.byte	0x2
-	.value	0x1a9
+	.value	0x1ce
 	.uleb128 0x62
 	.long	0xa2fc
 	.uleb128 0x62
 	.long	0xa2f0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb786
+	.long	0xb793
 	.long	.Ldebug_ranges0+0x1b08
 	.uleb128 0x7d
 	.string	"v"
 	.byte	0x2
-	.value	0x1ab
-	.long	0xc0ee
+	.value	0x1d0
+	.long	0xc0fb
 	.uleb128 0x69
-	.long	0xb72b
+	.long	0xb738
 	.long	0x66c7
 	.long	.Ldebug_ranges0+0x1b28
 	.byte	0x2
-	.value	0x1ac
+	.value	0x1d1
 	.uleb128 0x65
 	.long	0x66db
 	.byte	0x3
@@ -39836,7 +39836,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x66f8
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xb744
+	.long	0xb751
 	.long	0x6597
 	.long	.LBB5045
 	.long	.LBE5045
@@ -39846,7 +39846,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x65ab
 	.byte	0x0
 	.uleb128 0x83
-	.long	0xb767
+	.long	0xb774
 	.long	.LBB5048
 	.long	.LBE5048
 	.uleb128 0x5a
@@ -39862,7 +39862,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa24a
 	.long	.Ldebug_ranges0+0x1b40
 	.byte	0x2
-	.value	0x1ad
+	.value	0x1d2
 	.uleb128 0x62
 	.long	0xa254
 	.uleb128 0x66
@@ -39874,11 +39874,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb7ac
+	.long	0xb7b9
 	.long	0xa283
 	.long	.Ldebug_ranges0+0x1b60
 	.byte	0x2
-	.value	0x1a9
+	.value	0x1ce
 	.uleb128 0x62
 	.long	0xa297
 	.uleb128 0x5a
@@ -39890,7 +39890,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x9d
 	.byte	0x0
 	.uleb128 0x83
-	.long	0xb7c0
+	.long	0xb7cd
 	.long	.LBB5071
 	.long	.LBE5071
 	.uleb128 0x5a
@@ -39908,20 +39908,20 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xbbde
+	.long	0xbbeb
 	.long	.Ldebug_ranges0+0x1bc8
 	.uleb128 0x7d
 	.string	"ci"
 	.byte	0x2
-	.value	0x1b5
+	.value	0x1da
 	.long	0x5df4
 	.uleb128 0x78
-	.long	0xb81b
+	.long	0xb828
 	.long	0xa18b
 	.long	.LBB5091
 	.long	.LBE5091
 	.byte	0x2
-	.value	0x1b5
+	.value	0x1da
 	.uleb128 0x79
 	.long	0x6804
 	.long	.LBB5093
@@ -39935,23 +39935,23 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb836
+	.long	0xb843
 	.long	0xa2e6
 	.long	.Ldebug_ranges0+0x1be8
 	.byte	0x2
-	.value	0x1b5
+	.value	0x1da
 	.uleb128 0x62
 	.long	0xa2fc
 	.uleb128 0x62
 	.long	0xa2f0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xb904
+	.long	0xb911
 	.long	.Ldebug_ranges0+0x1c00
 	.uleb128 0x74
 	.long	.LASF1042
 	.byte	0x2
-	.value	0x1b7
+	.value	0x1dc
 	.long	0x5dff
 	.byte	0x2
 	.byte	0x91
@@ -39959,22 +39959,22 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x7d
 	.string	"c0w"
 	.byte	0x2
-	.value	0x1b8
-	.long	0xc0f3
+	.value	0x1dd
+	.long	0xc100
 	.uleb128 0x7d
 	.string	"c1w"
 	.byte	0x2
-	.value	0x1b9
-	.long	0xc0f8
+	.value	0x1de
+	.long	0xc105
 	.uleb128 0x7d
 	.string	"c2w"
 	.byte	0x2
-	.value	0x1ba
-	.long	0xc0fd
+	.value	0x1df
+	.long	0xc10a
 	.uleb128 0x74
 	.long	.LASF1043
 	.byte	0x2
-	.value	0x1c5
+	.value	0x1ea
 	.long	0x5e9e
 	.byte	0x3
 	.byte	0x91
@@ -39982,7 +39982,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x74
 	.long	.LASF1044
 	.byte	0x2
-	.value	0x1c6
+	.value	0x1eb
 	.long	0x5e9e
 	.byte	0x3
 	.byte	0x91
@@ -39990,22 +39990,22 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x75
 	.long	.LASF1045
 	.byte	0x2
-	.value	0x1ca
+	.value	0x1ef
 	.long	0x56
 	.long	.LLST165
 	.uleb128 0x76
 	.long	0xa338
 	.long	.Ldebug_ranges0+0x1c38
 	.byte	0x2
-	.value	0x1b7
+	.value	0x1dc
 	.uleb128 0x81
 	.long	.Ldebug_ranges0+0x1c70
-	.uleb128 0x8c
+	.uleb128 0x8b
 	.uleb128 0x6a
 	.long	0xa35c
 	.long	.Ldebug_ranges0+0x1cb8
 	.byte	0x2
-	.byte	0x56
+	.byte	0x7a
 	.uleb128 0x62
 	.long	0xa370
 	.uleb128 0x62
@@ -40038,11 +40038,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xb929
+	.long	0xb936
 	.long	0x6a61
 	.long	.Ldebug_ranges0+0x1dc0
 	.byte	0x2
-	.byte	0x57
+	.byte	0x7b
 	.uleb128 0x62
 	.long	0x6a7e
 	.uleb128 0x62
@@ -40053,12 +40053,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6a87
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xb951
+	.long	0xb95e
 	.long	0x6a61
 	.long	.LBB5167
 	.long	.LBE5167
 	.byte	0x2
-	.byte	0x57
+	.byte	0x7b
 	.uleb128 0x62
 	.long	0x6a7e
 	.uleb128 0x62
@@ -40069,12 +40069,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6a87
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xb979
+	.long	0xb986
 	.long	0x6a61
 	.long	.LBB5170
 	.long	.LBE5170
 	.byte	0x2
-	.byte	0x57
+	.byte	0x7b
 	.uleb128 0x62
 	.long	0x6a7e
 	.uleb128 0x62
@@ -40085,11 +40085,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6a87
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xb9d5
+	.long	0xb9e2
 	.long	0xa418
 	.long	.Ldebug_ranges0+0x1de0
 	.byte	0x2
-	.value	0x1c5
+	.value	0x1ea
 	.uleb128 0x62
 	.long	0xa44b
 	.uleb128 0x62
@@ -40102,7 +40102,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa461
 	.long	.Ldebug_ranges0+0x1e18
 	.byte	0x2
-	.byte	0x77
+	.byte	0x9b
 	.uleb128 0x6c
 	.long	0xa494
 	.long	.LLST167
@@ -40125,11 +40125,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xba2d
+	.long	0xba3a
 	.long	0xa418
 	.long	.Ldebug_ranges0+0x1e50
 	.byte	0x2
-	.value	0x1c6
+	.value	0x1eb
 	.uleb128 0x62
 	.long	0xa44b
 	.uleb128 0x62
@@ -40142,7 +40142,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa461
 	.long	.Ldebug_ranges0+0x1e80
 	.byte	0x2
-	.byte	0x77
+	.byte	0x9b
 	.uleb128 0x62
 	.long	0xa494
 	.uleb128 0x62
@@ -40164,19 +40164,19 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xbb9c
+	.long	0xbba9
 	.long	.Ldebug_ranges0+0x1eb0
 	.uleb128 0x5f
 	.long	.LASF1046
 	.byte	0x2
-	.value	0x1dc
+	.value	0x201
 	.long	0x5e9e
 	.uleb128 0x69
-	.long	0xba7a
+	.long	0xba87
 	.long	0xa461
 	.long	.Ldebug_ranges0+0x1ed8
 	.byte	0x2
-	.value	0x1d5
+	.value	0x1fa
 	.uleb128 0x62
 	.long	0xa494
 	.uleb128 0x62
@@ -40197,49 +40197,49 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa4b5
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xbab3
+	.long	0xbac0
 	.long	0xa4e0
 	.long	.Ldebug_ranges0+0x1ef0
 	.byte	0x2
-	.value	0x1dc
+	.value	0x201
 	.uleb128 0x62
 	.long	0xa513
 	.uleb128 0x62
 	.long	0xa508
 	.uleb128 0x81
 	.long	.Ldebug_ranges0+0x1f10
-	.uleb128 0x8d
+	.uleb128 0x8c
 	.long	.LLST168
-	.uleb128 0x8d
+	.uleb128 0x8c
 	.long	.LLST169
 	.uleb128 0x63
 	.byte	0x1
 	.byte	0x5d
-	.uleb128 0x8d
-	.long	.LLST170
 	.uleb128 0x8c
+	.long	.LLST170
+	.uleb128 0x8b
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xbb64
+	.long	0xbb71
 	.long	.Ldebug_ranges0+0x1f30
 	.uleb128 0x5f
 	.long	.LASF1047
 	.byte	0x2
-	.value	0x1e2
+	.value	0x207
 	.long	0x44a
 	.uleb128 0x69
-	.long	0xbb56
+	.long	0xbb63
 	.long	0xa529
 	.long	.Ldebug_ranges0+0x1f48
 	.byte	0x2
-	.value	0x1e9
+	.value	0x20e
 	.uleb128 0x87
-	.long	0xbb01
+	.long	0xbb0e
 	.long	0x67c6
 	.long	.Ldebug_ranges0+0x1f60
 	.byte	0x2
-	.byte	0xa6
+	.byte	0xca
 	.uleb128 0x62
 	.long	0x7ab1
 	.uleb128 0x6c
@@ -40251,12 +40251,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x67f8
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xbb2d
+	.long	0xbb3a
 	.long	0x67c6
 	.long	.LBB5245
 	.long	.LBE5245
 	.byte	0x2
-	.byte	0xa6
+	.byte	0xca
 	.uleb128 0x62
 	.long	0x7ab1
 	.uleb128 0x6c
@@ -40272,7 +40272,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LBB5248
 	.long	.LBE5248
 	.byte	0x2
-	.byte	0xa6
+	.byte	0xca
 	.uleb128 0x62
 	.long	0x7ab1
 	.uleb128 0x6c
@@ -40284,19 +40284,19 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x67f8
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8b
+	.uleb128 0x8a
 	.long	0xa55b
 	.long	.Ldebug_ranges0+0x1f78
 	.byte	0x2
-	.value	0x1ef
+	.value	0x214
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xbb7d
+	.long	0xbb8a
 	.long	0x67ac
 	.long	.LBB5256
 	.long	.LBE5256
 	.byte	0x2
-	.byte	0x9b
+	.byte	0xbf
 	.uleb128 0x62
 	.long	0x67b6
 	.byte	0x0
@@ -40304,29 +40304,29 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa586
 	.long	.Ldebug_ranges0+0x1f90
 	.byte	0x2
-	.value	0x1f4
+	.value	0x219
 	.uleb128 0x6a
 	.long	0x67ac
 	.long	.Ldebug_ranges0+0x1fa8
 	.byte	0x2
-	.byte	0x9a
+	.byte	0xbe
 	.uleb128 0x62
 	.long	0x67b6
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8b
+	.uleb128 0x8a
 	.long	0xa586
 	.long	.Ldebug_ranges0+0x1fc0
 	.byte	0x2
-	.value	0x1f4
+	.value	0x219
 	.uleb128 0x67
-	.long	0xbbc2
+	.long	0xbbcf
 	.long	0x67ac
 	.long	.LBB5277
 	.long	.LBE5277
 	.byte	0x2
-	.byte	0x9a
+	.byte	0xbe
 	.uleb128 0x62
 	.long	0x67b6
 	.byte	0x0
@@ -40334,7 +40334,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa3aa
 	.long	.Ldebug_ranges0+0x1fd8
 	.byte	0x2
-	.value	0x1b5
+	.value	0x1da
 	.uleb128 0x62
 	.long	0xa3be
 	.uleb128 0x6d
@@ -40343,20 +40343,20 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xbc60
+	.long	0xbc6d
 	.long	.Ldebug_ranges0+0x1ff8
 	.uleb128 0x7d
 	.string	"ci"
 	.byte	0x2
-	.value	0x1fe
+	.value	0x223
 	.long	0x5df4
 	.uleb128 0x78
-	.long	0xbc22
+	.long	0xbc2f
 	.long	0xa18b
 	.long	.LBB5293
 	.long	.LBE5293
 	.byte	0x2
-	.value	0x1fe
+	.value	0x223
 	.uleb128 0x79
 	.long	0x6804
 	.long	.LBB5295
@@ -40370,11 +40370,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xbc3d
+	.long	0xbc4a
 	.long	0xa2e6
 	.long	.Ldebug_ranges0+0x2010
 	.byte	0x2
-	.value	0x1fe
+	.value	0x223
 	.uleb128 0x62
 	.long	0xa2fc
 	.uleb128 0x62
@@ -40384,7 +40384,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0xa283
 	.long	.Ldebug_ranges0+0x2028
 	.byte	0x2
-	.value	0x1fe
+	.value	0x223
 	.uleb128 0x62
 	.long	0xa297
 	.uleb128 0x5a
@@ -40397,12 +40397,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbd39
+	.long	0xbd46
 	.long	0xa59c
 	.long	.LBB5312
 	.long	.LBE5312
 	.byte	0x2
-	.value	0x200
+	.value	0x225
 	.uleb128 0x79
 	.long	0xa5e8
 	.long	.LBB5314
@@ -40412,7 +40412,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0xa5f2
 	.uleb128 0x78
-	.long	0xbcf7
+	.long	0xbd04
 	.long	0x8939
 	.long	.LBB5316
 	.long	.LBE5316
@@ -40484,14 +40484,14 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xbd4c
+	.long	0xbd59
 	.long	.Ldebug_ranges0+0x2098
 	.uleb128 0x6d
 	.long	0xa3d9
 	.long	.LLST177
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xbd75
+	.long	0xbd82
 	.long	.Ldebug_ranges0+0x20c0
 	.uleb128 0x6d
 	.long	0xa3d9
@@ -40508,7 +40508,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xbd93
+	.long	0xbda0
 	.long	0x6a24
 	.long	.LBB5388
 	.long	.LBE5388
@@ -40520,12 +40520,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6a2e
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbdb7
+	.long	0xbdc4
 	.long	0x6724
 	.long	.LBB5425
 	.long	.LBE5425
 	.byte	0x2
-	.value	0x122
+	.value	0x146
 	.uleb128 0x62
 	.long	0x674a
 	.uleb128 0x62
@@ -40534,7 +40534,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6738
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbe5c
+	.long	0xbe69
 	.long	0x8ffc
 	.long	.LBB5437
 	.long	.LBE5437
@@ -40543,7 +40543,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0x901c
 	.uleb128 0x69
-	.long	0xbde6
+	.long	0xbdf3
 	.long	0x903a
 	.long	.Ldebug_ranges0+0x20f0
 	.byte	0x4
@@ -40552,7 +40552,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x904e
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xbe18
+	.long	0xbe25
 	.long	0x88fd
 	.long	.Ldebug_ranges0+0x2108
 	.byte	0x4
@@ -40573,7 +40573,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbe3c
+	.long	0xbe49
 	.long	0x75f3
 	.long	.LBB5448
 	.long	.LBE5448
@@ -40600,7 +40600,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbf01
+	.long	0xbf0e
 	.long	0x8ffc
 	.long	.LBB5456
 	.long	.LBE5456
@@ -40609,7 +40609,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0x901c
 	.uleb128 0x69
-	.long	0xbe8b
+	.long	0xbe98
 	.long	0x903a
 	.long	.Ldebug_ranges0+0x2138
 	.byte	0x4
@@ -40618,7 +40618,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x904e
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xbebd
+	.long	0xbeca
 	.long	0x88fd
 	.long	.Ldebug_ranges0+0x2150
 	.byte	0x4
@@ -40639,7 +40639,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbee1
+	.long	0xbeee
 	.long	0x75f3
 	.long	.LBB5467
 	.long	.LBE5467
@@ -40666,7 +40666,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbfa6
+	.long	0xbfb3
 	.long	0x8ffc
 	.long	.LBB5475
 	.long	.LBE5475
@@ -40675,7 +40675,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5a
 	.long	0x901c
 	.uleb128 0x69
-	.long	0xbf30
+	.long	0xbf3d
 	.long	0x903a
 	.long	.Ldebug_ranges0+0x2180
 	.byte	0x4
@@ -40684,7 +40684,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x904e
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xbf62
+	.long	0xbf6f
 	.long	0x88fd
 	.long	.Ldebug_ranges0+0x2198
 	.byte	0x4
@@ -40705,7 +40705,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xbf86
+	.long	0xbf93
 	.long	0x75f3
 	.long	.LBB5486
 	.long	.LBE5486
@@ -40732,12 +40732,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xc07b
+	.long	0xc088
 	.long	0xa59c
 	.long	.LBB5492
 	.long	.LBE5492
 	.byte	0x2
-	.value	0x200
+	.value	0x225
 	.uleb128 0x79
 	.long	0xa5e8
 	.long	.LBB5494
@@ -40747,7 +40747,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0xa5f2
 	.uleb128 0x78
-	.long	0xc039
+	.long	0xc046
 	.long	0x8939
 	.long	.LBB5496
 	.long	.LBE5496
@@ -40823,43 +40823,43 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x7c
 	.long	.LASF1048
 	.byte	0x2
-	.byte	0xd1
+	.byte	0xf5
 	.long	0x24e0
 	.byte	0x5
 	.byte	0x3
-	.long	_ZZ12render_lightR13pFrame_BufferE19opt_triangle_normal
+	.long	_ZZ10render_hw1R13pFrame_BufferE19opt_triangle_normal
 	.uleb128 0x74
 	.long	.LASF1049
 	.byte	0x2
-	.value	0x11f
+	.value	0x143
 	.long	0x24e0
 	.byte	0x5
 	.byte	0x3
-	.long	_ZZ12render_lightR13pFrame_BufferE15opt_attenuation
+	.long	_ZZ10render_hw1R13pFrame_BufferE15opt_attenuation
 	.uleb128 0x74
 	.long	.LASF1050
 	.byte	0x2
-	.value	0x120
+	.value	0x144
 	.long	0x24e0
 	.byte	0x5
 	.byte	0x3
-	.long	_ZZ12render_lightR13pFrame_BufferE14opt_v_to_light
+	.long	_ZZ10render_hw1R13pFrame_BufferE14opt_v_to_light
 	.uleb128 0x74
 	.long	.LASF1051
 	.byte	0x2
-	.value	0x121
+	.value	0x145
 	.long	0x1228
 	.byte	0x5
 	.byte	0x3
-	.long	_ZZ12render_lightR13pFrame_BufferE19opt_light_intensity
+	.long	_ZZ10render_hw1R13pFrame_BufferE19opt_light_intensity
 	.uleb128 0x74
 	.long	.LASF1052
 	.byte	0x2
-	.value	0x122
+	.value	0x146
 	.long	0x4d36
 	.byte	0x5
 	.byte	0x3
-	.long	_ZZ12render_lightR13pFrame_BufferE14light_location
+	.long	_ZZ10render_hw1R13pFrame_BufferE14light_location
 	.byte	0x0
 	.uleb128 0x10
 	.long	0x4a02
@@ -40880,7 +40880,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x5e98
 	.uleb128 0x51
-	.long	0xc121
+	.long	0xc12e
 	.long	0x28d4
 	.byte	0x2
 	.uleb128 0x52
@@ -40893,7 +40893,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc148
+	.long	0xc155
 	.long	0x3992
 	.byte	0x3
 	.uleb128 0x52
@@ -40904,7 +40904,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"__a"
 	.byte	0xa
 	.byte	0xe3
-	.long	0xc148
+	.long	0xc155
 	.uleb128 0x59
 	.uleb128 0x5a
 	.long	0x6aa0
@@ -40913,7 +40913,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x2312
 	.uleb128 0x6e
-	.long	0xc240
+	.long	0xc24d
 	.long	0xd7b
 	.long	.LFB1212
 	.long	.LFE1212
@@ -40928,9 +40928,9 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LASF1054
 	.byte	0x8
 	.value	0x2a2
-	.long	0xc240
+	.long	0xc24d
 	.long	.LLST184
-	.uleb128 0x8e
+	.uleb128 0x8d
 	.long	.LASF1055
 	.byte	0x8
 	.value	0x2a8
@@ -40949,7 +40949,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.value	0x2a8
 	.long	0x2508
 	.uleb128 0x69
-	.long	0xc1c0
+	.long	0xc1cd
 	.long	0x7212
 	.long	.Ldebug_ranges0+0x21f8
 	.byte	0x8
@@ -40958,7 +40958,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x721c
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xc1fa
+	.long	0xc207
 	.long	0x7229
 	.long	.LBB5589
 	.long	.LBE5589
@@ -40981,15 +40981,15 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x79
-	.long	0xc102
+	.long	0xc10f
 	.long	.LBB5597
 	.long	.LBE5597
 	.byte	0x8
 	.value	0x2ac
 	.uleb128 0x62
-	.long	0xc10c
+	.long	0xc119
 	.uleb128 0x69
-	.long	0xc225
+	.long	0xc232
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x2210
 	.byte	0xa
@@ -40998,14 +40998,14 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2228
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x65
-	.long	0xc12b
+	.long	0xc138
 	.byte	0x1
 	.byte	0x53
 	.byte	0x0
@@ -41014,7 +41014,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x3809
 	.uleb128 0x51
-	.long	0xc2ba
+	.long	0xc2c7
 	.long	0x49e1
 	.byte	0x3
 	.uleb128 0x52
@@ -41030,7 +41030,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"fp"
 	.byte	0x3
 	.byte	0xe5
-	.long	0xc2ba
+	.long	0xc2c7
 	.uleb128 0x61
 	.long	.LASF1058
 	.byte	0x3
@@ -41047,7 +41047,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0xef
 	.long	0x3b63
 	.uleb128 0x58
-	.long	0xc2b6
+	.long	0xc2c3
 	.uleb128 0x57
 	.string	"y"
 	.byte	0x3
@@ -41075,20 +41075,20 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x1293
 	.uleb128 0x51
-	.long	0xc2fc
+	.long	0xc309
 	.long	0xd9c
 	.byte	0x3
 	.uleb128 0x5b
 	.long	.LASF1053
 	.byte	0xa
 	.value	0x838
-	.long	0xc2fc
+	.long	0xc309
 	.uleb128 0x5b
 	.long	.LASF1054
 	.byte	0xa
 	.value	0x838
 	.long	0x327
-	.uleb128 0x8f
+	.uleb128 0x8e
 	.long	.LASF1055
 	.byte	0xa
 	.value	0x83a
@@ -41103,7 +41103,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x3809
 	.uleb128 0x51
-	.long	0xc323
+	.long	0xc330
 	.long	0x2ca7
 	.byte	0x3
 	.uleb128 0x52
@@ -41118,7 +41118,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc359
+	.long	0xc366
 	.long	0x493e
 	.byte	0x3
 	.uleb128 0x52
@@ -41142,7 +41142,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x44a
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc382
+	.long	0xc38f
 	.long	0x43a0
 	.byte	0x3
 	.uleb128 0x52
@@ -41155,13 +41155,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.value	0x3db
 	.long	0x3bf5
 	.uleb128 0x58
-	.long	0xc380
+	.long	0xc38d
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc39c
+	.long	0xc3a9
 	.long	0x3d0a
 	.byte	0x3
 	.uleb128 0x52
@@ -41175,7 +41175,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc3b2
+	.long	0xc3bf
 	.long	0x442f
 	.byte	0x3
 	.uleb128 0x52
@@ -41185,7 +41185,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc3d1
+	.long	0xc3de
 	.long	0x4594
 	.byte	0x1
 	.uleb128 0x52
@@ -41193,7 +41193,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6967
 	.byte	0x1
 	.uleb128 0x58
-	.long	0xc3cf
+	.long	0xc3dc
 	.uleb128 0x59
 	.uleb128 0x56
 	.byte	0x0
@@ -41201,7 +41201,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc3e7
+	.long	0xc3f4
 	.long	0x4416
 	.byte	0x3
 	.uleb128 0x52
@@ -41211,7 +41211,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xc402
+	.long	0xc40f
 	.long	0x45ae
 	.byte	0x1
 	.uleb128 0x52
@@ -41226,7 +41226,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x6e
-	.long	0xc94f
+	.long	0xc95c
 	.long	0x4925
 	.long	.LFB1043
 	.long	.LFE1043
@@ -41263,67 +41263,67 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x8fce
 	.byte	0x1
 	.byte	0x5d
-	.uleb128 0x8a
+	.uleb128 0x8f
 	.string	"str"
 	.byte	0x3
 	.byte	0xad
 	.long	0x3b63
 	.long	.LLST188
 	.uleb128 0x87
-	.long	0xc59e
-	.long	0xc245
+	.long	0xc5ab
+	.long	0xc252
 	.long	.Ldebug_ranges0+0x2240
 	.byte	0x3
 	.byte	0x9e
 	.uleb128 0x62
-	.long	0xc24f
+	.long	0xc25c
 	.uleb128 0x66
-	.long	0xc259
+	.long	0xc266
 	.byte	0x2
 	.byte	0x91
 	.sleb128 -48
 	.uleb128 0x6d
-	.long	0xc264
+	.long	0xc271
 	.long	.LLST189
 	.uleb128 0x6d
-	.long	0xc26e
+	.long	0xc27b
 	.long	.LLST190
 	.uleb128 0x5a
-	.long	0xc279
+	.long	0xc286
 	.uleb128 0x5a
-	.long	0xc284
+	.long	0xc291
 	.uleb128 0x87
-	.long	0xc4df
-	.long	0xc2bf
+	.long	0xc4ec
+	.long	0xc2cc
 	.long	.Ldebug_ranges0+0x2260
 	.byte	0x3
 	.byte	0xe4
 	.uleb128 0x62
-	.long	0xc2d5
+	.long	0xc2e2
 	.uleb128 0x62
-	.long	0xc2c9
+	.long	0xc2d6
 	.uleb128 0x5a
-	.long	0xc2ef
+	.long	0xc2fc
 	.uleb128 0x79
-	.long	0xc301
+	.long	0xc30e
 	.long	.LBB5949
 	.long	.LBE5949
 	.byte	0xa
 	.value	0x83b
 	.uleb128 0x62
-	.long	0xc315
+	.long	0xc322
 	.uleb128 0x62
-	.long	0xc30b
+	.long	0xc318
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc525
-	.long	0xc102
+	.long	0xc532
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x2278
 	.byte	0x3
 	.byte	0xe4
 	.uleb128 0x78
-	.long	0xc509
+	.long	0xc516
 	.long	0x68e6
 	.long	.LBB5952
 	.long	.LBE5952
@@ -41333,45 +41333,45 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2290
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST191
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x83
-	.long	0xc560
+	.long	0xc56d
 	.long	.LBB5964
 	.long	.LBE5964
 	.uleb128 0x6d
-	.long	0xc294
+	.long	0xc2a1
 	.long	.LLST192
 	.uleb128 0x6b
 	.long	.LBB5965
 	.long	.LBE5965
 	.uleb128 0x6d
-	.long	0xc29e
+	.long	0xc2ab
 	.long	.LLST193
 	.uleb128 0x81
 	.long	.Ldebug_ranges0+0x22a8
 	.uleb128 0x6d
-	.long	0xc2aa
+	.long	0xc2b7
 	.long	.LLST194
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x6a
-	.long	0xc102
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x22c0
 	.byte	0x3
 	.byte	0xfb
 	.uleb128 0x69
-	.long	0xc581
+	.long	0xc58e
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x22d8
 	.byte	0xa
@@ -41380,37 +41380,37 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x22f0
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST195
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc5cb
-	.long	0xc323
+	.long	0xc5d8
+	.long	0xc330
 	.long	.Ldebug_ranges0+0x2310
 	.byte	0x3
 	.byte	0x9f
 	.uleb128 0x62
-	.long	0xc32d
+	.long	0xc33a
 	.uleb128 0x6d
-	.long	0xc337
+	.long	0xc344
 	.long	.LLST196
 	.uleb128 0x6d
-	.long	0xc342
+	.long	0xc34f
 	.long	.LLST197
 	.uleb128 0x5a
-	.long	0xc34d
+	.long	0xc35a
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xc605
+	.long	0xc612
 	.long	0x77ec
 	.long	.LBB5983
 	.long	.LBE5983
@@ -41432,7 +41432,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc61e
+	.long	0xc62b
 	.long	0x7ac4
 	.long	.Ldebug_ranges0+0x2328
 	.byte	0x3
@@ -41444,7 +41444,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.sleb128 -56
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc648
+	.long	0xc655
 	.long	0x9fc3
 	.long	.Ldebug_ranges0+0x2348
 	.byte	0x3
@@ -41464,7 +41464,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc661
+	.long	0xc66e
 	.long	0x7ac4
 	.long	.Ldebug_ranges0+0x2378
 	.byte	0x3
@@ -41476,17 +41476,17 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.sleb128 -56
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc6be
-	.long	0xc359
+	.long	0xc6cb
+	.long	0xc366
 	.long	.Ldebug_ranges0+0x2398
 	.byte	0x3
 	.byte	0xad
 	.uleb128 0x62
-	.long	0xc363
+	.long	0xc370
 	.uleb128 0x5a
-	.long	0xc36d
+	.long	0xc37a
 	.uleb128 0x69
-	.long	0xc6b0
+	.long	0xc6bd
 	.long	0x6c6c
 	.long	.Ldebug_ranges0+0x23b0
 	.byte	0x7
@@ -41506,33 +41506,33 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6906
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8b
-	.long	0xc382
+	.uleb128 0x8a
+	.long	0xc38f
 	.long	.Ldebug_ranges0+0x23e0
 	.byte	0x7
 	.value	0x3dc
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc6e6
-	.long	0xc39c
+	.long	0xc6f3
+	.long	0xc3a9
 	.long	.Ldebug_ranges0+0x2400
 	.byte	0x3
 	.byte	0xb0
 	.uleb128 0x62
-	.long	0xc3a6
+	.long	0xc3b3
 	.uleb128 0x76
-	.long	0xc3b2
+	.long	0xc3bf
 	.long	.Ldebug_ranges0+0x2418
 	.byte	0x7
 	.value	0x43f
 	.uleb128 0x62
-	.long	0xc3bc
+	.long	0xc3c9
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xc700
+	.long	0xc70d
 	.long	.Ldebug_ranges0+0x2430
-	.uleb128 0x8a
+	.uleb128 0x8f
 	.string	"str"
 	.byte	0x3
 	.byte	0xb9
@@ -41540,16 +41540,16 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LLST202
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc716
-	.long	0xc3d1
+	.long	0xc723
+	.long	0xc3de
 	.long	.Ldebug_ranges0+0x2448
 	.byte	0x3
 	.byte	0xb7
 	.uleb128 0x62
-	.long	0xc3db
+	.long	0xc3e8
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xc73e
+	.long	0xc74b
 	.long	0x7aff
 	.long	.LBB6040
 	.long	.LBE6040
@@ -41565,16 +41565,16 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7b09
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xc7b6
-	.long	0xc3e7
+	.long	0xc7c3
+	.long	0xc3f4
 	.long	.LBB6045
 	.long	.LBE6045
 	.byte	0x7
 	.value	0x42a
 	.uleb128 0x62
-	.long	0xc3f1
+	.long	0xc3fe
 	.uleb128 0x78
-	.long	0xc796
+	.long	0xc7a3
 	.long	0x86a7
 	.long	.LBB6047
 	.long	.LBE6047
@@ -41612,7 +41612,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xc7d4
+	.long	0xc7e1
 	.long	0x6c49
 	.long	.LBB6061
 	.long	.LBE6061
@@ -41624,13 +41624,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6c53
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc816
-	.long	0xc102
+	.long	0xc823
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x2460
 	.byte	0x3
 	.byte	0xfb
 	.uleb128 0x69
-	.long	0xc7fa
+	.long	0xc807
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x2478
 	.byte	0xa
@@ -41639,19 +41639,19 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2490
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST204
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xc855
+	.long	0xc862
 	.long	0x86a7
 	.long	.LBB6081
 	.long	.LBE6081
@@ -41676,7 +41676,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xc878
+	.long	0xc885
 	.long	0x6c49
 	.long	.LBB6085
 	.long	.LBE6085
@@ -41689,13 +41689,13 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x6c53
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xc8be
-	.long	0xc102
+	.long	0xc8cb
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x24b0
 	.byte	0x3
 	.byte	0xe4
 	.uleb128 0x78
-	.long	0xc8a2
+	.long	0xc8af
 	.long	0x68e6
 	.long	.LBB6092
 	.long	.LBE6092
@@ -41705,28 +41705,28 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x24c8
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST206
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xc911
-	.long	0xc102
+	.long	0xc91e
+	.long	0xc10f
 	.long	.LBB6107
 	.long	.LBE6107
 	.byte	0xa
 	.value	0x83c
 	.uleb128 0x62
-	.long	0xc10c
+	.long	0xc119
 	.uleb128 0x78
-	.long	0xc8f1
+	.long	0xc8fe
 	.long	0x68e6
 	.long	.LBB6109
 	.long	.LBE6109
@@ -41736,25 +41736,25 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x79
-	.long	0xc121
+	.long	0xc12e
 	.long	.LBB6111
 	.long	.LBE6111
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST207
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x6a
-	.long	0xc102
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x24e0
 	.byte	0x3
 	.byte	0xfb
 	.uleb128 0x69
-	.long	0xc932
+	.long	0xc93f
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x24f8
 	.byte	0xa
@@ -41763,14 +41763,14 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2510
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST208
 	.byte	0x0
 	.byte	0x0
@@ -41781,7 +41781,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LFE1042
 	.long	.LLST209
 	.uleb128 0x51
-	.long	0xc98c
+	.long	0xc999
 	.long	0x4815
 	.byte	0x2
 	.uleb128 0x52
@@ -41792,7 +41792,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LASF1067
 	.byte	0x3
 	.byte	0x4a
-	.long	0xc98c
+	.long	0xc999
 	.uleb128 0x53
 	.long	.LASF1068
 	.byte	0x3
@@ -41802,7 +41802,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x4a14
 	.uleb128 0x51
-	.long	0xc9b2
+	.long	0xc9bf
 	.long	0x408b
 	.byte	0x2
 	.uleb128 0x52
@@ -41813,12 +41813,12 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"__a"
 	.byte	0x7
 	.value	0x29a
-	.long	0xc9b2
+	.long	0xc9bf
 	.byte	0x0
 	.uleb128 0x10
 	.long	0x3bea
 	.uleb128 0x51
-	.long	0xc9e4
+	.long	0xc9f1
 	.long	0x3e69
 	.byte	0x2
 	.uleb128 0x52
@@ -41829,7 +41829,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"__a"
 	.byte	0x7
 	.value	0x16e
-	.long	0xc9e4
+	.long	0xc9f1
 	.uleb128 0x5b
 	.long	.LASF983
 	.byte	0x7
@@ -41839,7 +41839,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x3bea
 	.uleb128 0x51
-	.long	0xca56
+	.long	0xca63
 	.long	0x48f4
 	.byte	0x3
 	.uleb128 0x52
@@ -41850,7 +41850,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	.LASF1067
 	.byte	0x3
 	.byte	0x8a
-	.long	0xca56
+	.long	0xca63
 	.uleb128 0x53
 	.long	.LASF1068
 	.byte	0x3
@@ -41862,7 +41862,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x92
 	.long	0x478a
 	.uleb128 0x58
-	.long	0xca2f
+	.long	0xca3c
 	.uleb128 0x57
 	.string	"str"
 	.byte	0x3
@@ -41870,7 +41870,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x62c0
 	.byte	0x0
 	.uleb128 0x58
-	.long	0xca40
+	.long	0xca4d
 	.uleb128 0x57
 	.string	"str"
 	.byte	0x3
@@ -41878,7 +41878,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x62c0
 	.byte	0x0
 	.uleb128 0x58
-	.long	0xca51
+	.long	0xca5e
 	.uleb128 0x57
 	.string	"str"
 	.byte	0x3
@@ -41893,7 +41893,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x10
 	.long	0x4a14
 	.uleb128 0x51
-	.long	0xca7d
+	.long	0xca8a
 	.long	0x2d82
 	.byte	0x3
 	.uleb128 0x52
@@ -41908,7 +41908,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x56
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xca9c
+	.long	0xcaa9
 	.long	0x40e3
 	.byte	0x2
 	.uleb128 0x52
@@ -41921,7 +41921,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xcac9
+	.long	0xcad6
 	.long	0xdb9
 	.byte	0x3
 	.uleb128 0x53
@@ -41945,7 +41945,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xcae8
+	.long	0xcaf5
 	.long	0x3ea2
 	.byte	0x0
 	.uleb128 0x52
@@ -41958,7 +41958,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xcb08
+	.long	0xcb15
 	.long	0x484d
 	.byte	0x3
 	.uleb128 0x52
@@ -41972,7 +41972,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x4a08
 	.byte	0x0
 	.uleb128 0x51
-	.long	0xcb27
+	.long	0xcb34
 	.long	0x4833
 	.byte	0x2
 	.uleb128 0x52
@@ -41985,11 +41985,11 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0x0
 	.uleb128 0x91
-	.long	0xd130
+	.long	0xd13d
 	.byte	0x1
 	.long	.LASF1071
 	.byte	0x2
-	.value	0x204
+	.value	0x229
 	.long	0x56
 	.long	.LFB1183
 	.long	.LFE1183
@@ -41997,7 +41997,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x92
 	.long	.LASF1067
 	.byte	0x2
-	.value	0x204
+	.value	0x229
 	.long	0x56
 	.byte	0x2
 	.byte	0x77
@@ -42005,50 +42005,50 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x73
 	.long	.LASF1068
 	.byte	0x2
-	.value	0x204
+	.value	0x229
 	.long	0x1075
 	.long	.LLST211
 	.uleb128 0x74
 	.long	.LASF1010
 	.byte	0x2
-	.value	0x206
+	.value	0x22b
 	.long	0x4741
 	.byte	0x3
 	.byte	0x91
 	.sleb128 -120
 	.uleb128 0x69
-	.long	0xcd4c
-	.long	0xc961
+	.long	0xcd59
+	.long	0xc96e
 	.long	.Ldebug_ranges0+0x2530
 	.byte	0x2
-	.value	0x206
+	.value	0x22b
 	.uleb128 0x62
-	.long	0xc980
+	.long	0xc98d
 	.uleb128 0x87
-	.long	0xcbc1
-	.long	0xc991
+	.long	0xcbce
+	.long	0xc99e
 	.long	.Ldebug_ranges0+0x2568
 	.byte	0x3
 	.byte	0x4b
 	.uleb128 0x62
-	.long	0xc9a5
+	.long	0xc9b2
 	.uleb128 0x62
-	.long	0xc99b
+	.long	0xc9a8
 	.uleb128 0x76
-	.long	0xc9b7
+	.long	0xc9c4
 	.long	.Ldebug_ranges0+0x2580
 	.byte	0x7
 	.value	0x29b
 	.uleb128 0x62
-	.long	0xc9d7
+	.long	0xc9e4
 	.uleb128 0x62
-	.long	0xc9cb
+	.long	0xc9d8
 	.uleb128 0x62
-	.long	0xc9c1
+	.long	0xc9ce
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xcbfa
+	.long	0xcc07
 	.long	0x7229
 	.long	.LBB6863
 	.long	.LBE6863
@@ -42071,7 +42071,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xcc49
+	.long	0xcc56
 	.long	0x7047
 	.long	.LBB6875
 	.long	.LBE6875
@@ -42082,7 +42082,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x7051
 	.uleb128 0x78
-	.long	0xcc32
+	.long	0xcc3f
 	.long	0x6bea
 	.long	.LBB6878
 	.long	.LBE6878
@@ -42102,21 +42102,21 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xcc67
-	.long	0xc9e9
+	.long	0xcc74
+	.long	0xc9f6
 	.long	.Ldebug_ranges0+0x2598
 	.byte	0x3
 	.byte	0x50
 	.uleb128 0x62
-	.long	0xca08
+	.long	0xca15
 	.uleb128 0x66
-	.long	0xca13
+	.long	0xca20
 	.byte	0x2
 	.byte	0x91
 	.sleb128 -36
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xcc8a
+	.long	0xcc97
 	.long	0x7aff
 	.long	.LBB6889
 	.long	.LBE6889
@@ -42130,7 +42130,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x7b13
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xccdd
+	.long	0xccea
 	.long	0x7272
 	.long	.LBB6894
 	.long	.LBE6894
@@ -42141,15 +42141,15 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x62
 	.long	0x727c
 	.uleb128 0x79
-	.long	0xca5b
+	.long	0xca68
 	.long	.LBB6896
 	.long	.LBE6896
 	.byte	0xa
 	.value	0x1ee
 	.uleb128 0x62
-	.long	0xca6f
+	.long	0xca7c
 	.uleb128 0x62
-	.long	0xca65
+	.long	0xca72
 	.uleb128 0x79
 	.long	0x7212
 	.long	.LBB6898
@@ -42163,30 +42163,30 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xccec
+	.long	0xccf9
 	.long	.Ldebug_ranges0+0x25c8
 	.uleb128 0x5a
-	.long	0xca23
+	.long	0xca30
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xccfb
+	.long	0xcd08
 	.long	.Ldebug_ranges0+0x25e8
 	.uleb128 0x5a
-	.long	0xca34
+	.long	0xca41
 	.byte	0x0
 	.uleb128 0x77
-	.long	0xcd0a
+	.long	0xcd17
 	.long	.Ldebug_ranges0+0x2608
 	.uleb128 0x5a
-	.long	0xca45
+	.long	0xca52
 	.byte	0x0
 	.uleb128 0x6a
-	.long	0xc102
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x2628
 	.byte	0x3
 	.byte	0x98
 	.uleb128 0x78
-	.long	0xcd2f
+	.long	0xcd3c
 	.long	0x68e6
 	.long	.LBB6921
 	.long	.LBE6921
@@ -42196,53 +42196,53 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2640
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST213
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x78
-	.long	0xcd66
-	.long	0xcae8
+	.long	0xcd73
+	.long	0xcaf5
 	.long	.LBB6925
 	.long	.LBE6925
 	.byte	0x2
-	.value	0x207
+	.value	0x22c
 	.uleb128 0x62
-	.long	0xcafc
+	.long	0xcb09
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xce96
-	.long	0xcb08
+	.long	0xcea3
+	.long	0xcb15
 	.long	.Ldebug_ranges0+0x2658
 	.byte	0x2
-	.value	0x208
+	.value	0x22d
 	.uleb128 0x67
-	.long	0xce53
-	.long	0xca7d
+	.long	0xce60
+	.long	0xca8a
 	.long	.LBB6929
 	.long	.LBE6929
 	.byte	0x3
 	.byte	0x52
 	.uleb128 0x62
-	.long	0xca87
+	.long	0xca94
 	.uleb128 0x79
-	.long	0xcac9
+	.long	0xcad6
 	.long	.LBB6931
 	.long	.LBE6931
 	.byte	0x7
 	.value	0x2d5
 	.uleb128 0x62
-	.long	0xcad3
+	.long	0xcae0
 	.uleb128 0x78
-	.long	0xce11
+	.long	0xce1e
 	.long	0x866c
 	.long	.LBB6933
 	.long	.LBE6933
@@ -42314,14 +42314,14 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x6a
-	.long	0xc102
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x26a0
 	.byte	0x3
 	.byte	0x52
 	.uleb128 0x62
-	.long	0xc10c
+	.long	0xc119
 	.uleb128 0x69
-	.long	0xce79
+	.long	0xce86
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x26b8
 	.byte	0xa
@@ -42330,28 +42330,28 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x26d0
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST216
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x87
-	.long	0xcedd
-	.long	0xc102
+	.long	0xceea
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x26f0
 	.byte	0x3
 	.byte	0x51
 	.uleb128 0x62
-	.long	0xc10c
+	.long	0xc119
 	.uleb128 0x69
-	.long	0xcec1
+	.long	0xcece
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x2708
 	.byte	0xa
@@ -42360,62 +42360,62 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2720
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST217
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xcf1a
-	.long	0xcb08
+	.long	0xcf27
+	.long	0xcb15
 	.long	.Ldebug_ranges0+0x2740
 	.byte	0x2
-	.value	0x208
+	.value	0x22d
 	.uleb128 0x6a
-	.long	0xc102
+	.long	0xc10f
 	.long	.Ldebug_ranges0+0x2760
 	.byte	0x3
 	.byte	0x52
 	.uleb128 0x62
-	.long	0xc10c
+	.long	0xc119
 	.uleb128 0x76
-	.long	0xc121
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2780
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST218
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xcff7
-	.long	0xca7d
+	.long	0xd004
+	.long	0xca8a
 	.long	.LBB7005
 	.long	.LBE7005
 	.byte	0x3
 	.byte	0x51
 	.uleb128 0x62
-	.long	0xca87
+	.long	0xca94
 	.uleb128 0x79
-	.long	0xcac9
+	.long	0xcad6
 	.long	.LBB7007
 	.long	.LBE7007
 	.byte	0x7
 	.value	0x2d5
 	.uleb128 0x62
-	.long	0xcad3
+	.long	0xcae0
 	.uleb128 0x78
-	.long	0xcfb5
+	.long	0xcfc2
 	.long	0x866c
 	.long	.LBB7009
 	.long	.LBE7009
@@ -42487,24 +42487,24 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x67
-	.long	0xd0d4
-	.long	0xca7d
+	.long	0xd0e1
+	.long	0xca8a
 	.long	.LBB7027
 	.long	.LBE7027
 	.byte	0x3
 	.byte	0x52
 	.uleb128 0x62
-	.long	0xca87
+	.long	0xca94
 	.uleb128 0x79
-	.long	0xcac9
+	.long	0xcad6
 	.long	.LBB7029
 	.long	.LBE7029
 	.byte	0x7
 	.value	0x2d5
 	.uleb128 0x62
-	.long	0xcad3
+	.long	0xcae0
 	.uleb128 0x78
-	.long	0xd092
+	.long	0xd09f
 	.long	0x866c
 	.long	.LBB7031
 	.long	.LBE7031
@@ -42576,7 +42576,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x69
-	.long	0xd0ea
+	.long	0xd0f7
 	.long	0x68e6
 	.long	.Ldebug_ranges0+0x2808
 	.byte	0xa
@@ -42585,21 +42585,21 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x68f0
 	.byte	0x0
 	.uleb128 0x68
-	.long	0xc102
+	.long	0xc10f
 	.long	.LBB7078
 	.long	.LBE7078
 	.byte	0x3
 	.byte	0x98
 	.uleb128 0x69
-	.long	0xd118
-	.long	0xc121
+	.long	0xd125
+	.long	0xc12e
 	.long	.Ldebug_ranges0+0x2820
 	.byte	0xa
 	.value	0x1de
 	.uleb128 0x62
-	.long	0xc135
+	.long	0xc142
 	.uleb128 0x6c
-	.long	0xc12b
+	.long	0xc138
 	.long	.LLST223
 	.byte	0x0
 	.uleb128 0x79
@@ -42614,7 +42614,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x1a
-	.long	0xd181
+	.long	0xd18e
 	.string	"::"
 	.byte	0xc
 	.byte	0x0
@@ -42683,7 +42683,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0x94
-	.long	0xd172
+	.long	0xd17f
 	.byte	0x5
 	.byte	0x3
 	.long	frame_buffer_self_
@@ -42694,7 +42694,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x26
 	.byte	0x41
 	.long	.LASF549
-	.long	0xd1c5
+	.long	0xd1d2
 	.byte	0x1
 	.byte	0x1
 	.uleb128 0x95
@@ -44785,21 +44785,6 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x8a
-	.uleb128 0x34
-	.byte	0x0
-	.uleb128 0x3
-	.uleb128 0x8
-	.uleb128 0x3a
-	.uleb128 0xb
-	.uleb128 0x3b
-	.uleb128 0xb
-	.uleb128 0x49
-	.uleb128 0x13
-	.uleb128 0x2
-	.uleb128 0x6
-	.byte	0x0
-	.byte	0x0
-	.uleb128 0x8b
 	.uleb128 0x1d
 	.byte	0x0
 	.uleb128 0x31
@@ -44812,19 +44797,19 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x5
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8c
+	.uleb128 0x8b
 	.uleb128 0x34
 	.byte	0x0
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8d
+	.uleb128 0x8c
 	.uleb128 0x34
 	.byte	0x0
 	.uleb128 0x2
 	.uleb128 0x6
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8e
+	.uleb128 0x8d
 	.uleb128 0x34
 	.byte	0x0
 	.uleb128 0x3
@@ -44841,7 +44826,7 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0xa
 	.byte	0x0
 	.byte	0x0
-	.uleb128 0x8f
+	.uleb128 0x8e
 	.uleb128 0x34
 	.byte	0x0
 	.uleb128 0x3
@@ -44854,6 +44839,21 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.uleb128 0x13
 	.uleb128 0x32
 	.uleb128 0xb
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x8f
+	.uleb128 0x34
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0x3a
+	.uleb128 0xb
+	.uleb128 0x3b
+	.uleb128 0xb
+	.uleb128 0x49
+	.uleb128 0x13
+	.uleb128 0x2
+	.uleb128 0x6
 	.byte	0x0
 	.byte	0x0
 	.uleb128 0x90
@@ -45019,10 +45019,10 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.byte	0x0
 	.byte	0x0
 	.section	.debug_pubnames,"",@progbits
-	.long	0x390
+	.long	0x38e
 	.value	0x2
 	.long	.Ldebug_info0
-	.long	0xd325
+	.long	0xd332
 	.long	0x7904
 	.string	"pMatrix::row_swap"
 	.long	0x7a08
@@ -45058,18 +45058,18 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.long	0x905b
 	.string	"insert_tetrahedron"
 	.long	0xa607
-	.string	"render_light"
-	.long	0xc14d
+	.string	"render_hw1"
+	.long	0xc15a
 	.string	"operator+<char, std::char_traits<char>, std::allocator<char> >"
-	.long	0xc402
+	.long	0xc40f
 	.string	"pFrame_Buffer::cb_display"
-	.long	0xc94f
+	.long	0xc95c
 	.string	"pFrame_Buffer::cb_display_w"
-	.long	0xcb27
+	.long	0xcb34
 	.string	"main"
 	.long	0x78fc
 	.string	"buffer"
-	.long	0xd1b9
+	.long	0xd1c6
 	.string	"frame_buffer_self_"
 	.long	0x0
 	.section	.debug_aranges,"",@progbits
@@ -47813,6 +47813,8 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"ymin"
 .LASF218:
 	.string	"lconv"
+.LASF1008:
+	.string	"render_hw1"
 .LASF133:
 	.string	"_Destroy<std::_Deque_iterator<pVertex*, pVertex*&, pVertex**>, pVertex*>"
 .LASF422:
@@ -47831,8 +47833,6 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"_ZNKSs13find_first_ofEPKcj"
 .LASF876:
 	.string	"_ZNSt5dequeIP7pVertexSaIS1_EE5eraseESt15_Deque_iteratorIS1_RS1_PS1_ES7_"
-.LASF1009:
-	.string	"_Z12render_lightR13pFrame_Buffer"
 .LASF248:
 	.string	"tm_mday"
 .LASF1096:
@@ -48703,6 +48703,8 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"_ZNSt5dequeIP7pVertexSaIS1_EE6assignEjRKS1_"
 .LASF333:
 	.string	"address"
+.LASF1009:
+	.string	"_Z10render_hw1R13pFrame_Buffer"
 .LASF46:
 	.string	"__FILE"
 .LASF351:
@@ -49219,8 +49221,6 @@ _ZZN7pMatrix8row_swapEiiE6buffer:
 	.string	"_ZNK9__gnu_cxx13new_allocatorIcE8max_sizeEv"
 .LASF713:
 	.string	"pFrame_Buffer"
-.LASF1008:
-	.string	"render_light"
 .LASF532:
 	.string	"_ZNKSs16find_last_not_ofERKSsj"
 .LASF356:
