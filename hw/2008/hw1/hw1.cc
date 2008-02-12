@@ -9,23 +9,23 @@
 /// Instructions
 
 // Follow the class account setup instructions linked to the
-// class Procedures page, http://www.ece.lsu.edu/koppel/gp/proc.html
+// class procedures page, http://www.ece.lsu.edu/koppel/gp/proc.html
 
-// Checkout this assignment package:
-//  cd ~
-//  svn co https://svn.ece.lsu.edu/svn/gp/hw/2008/hw1
-
-// This file is named hw1/hw1.cc. Load it into Emacs (or your favorite
-//  text editor).
+// For instructions on how to check out edit, compile, and debug, see
+// the "Programming Homework Work Flow" entry on the procedures page,
+// http://www.ece.lsu.edu/koppel/gp/proc.html.
+//
+// For those instructions you need to know that:
+//
+//  This assignment is at SVN URI https://svn.ece.lsu.edu/svn/gp/hw/2008/hw1
+//
+//  The assignment instructions are in file hw1.cc. (This file.)
 
 // For the solutions to the problems below edit this file, even if
 // it makes more sense to edit others (namely, coord.h). If it seems
 // that coord.h must be edited, contact me.
 
 // The main code is in routine render_hw1.
-
-// The make will create two executable, hw1 and hw1-debug. Use
-// hw1-debug for debugging, it is not optimized. Use hw1 for timing.
 
 
 /// Problem 0
@@ -40,7 +40,13 @@
 /// Problem 1
 
 // The large triangle has a flaw: There is a line extending out of
-// the right side of the bottom of the triangle.  Fix the flaw.
+// the right side of the bottom of the triangle.  
+
+//  [ ] Fix the flaw.
+
+// Note: The part of the code containing the flaw is the most
+// time-critical in the rendering pipeline, which is why your attention
+// is being focused there.
 
 
 /// Problem 2
@@ -48,6 +54,9 @@
 // Modify the code so that pressing "R" will rotate the tube by 15
 // degrees in the y direction though the center of tube. Each R should
 // rotate by another 15 degrees.
+
+//  [ ] Modify to rotate by 15 degrees.
+
 
 
 /// Problem 3
@@ -65,7 +74,13 @@
 
 // Be sure to base this formula on the optimized version of the code.
 
-// Provide suggestions on how the code may be sped up.
+//  [ ] Prepare a solution on paper (or pdf).
+
+//  [ ] Show how well the solution works with the code with varying
+//      values of pattern_width and pattern_levels.
+
+//  [ ] Provide suggestions on where and how the rendering pipeline
+//      code may be sped up.
 
 
 #include <stdio.h>
