@@ -19,7 +19,7 @@ CXXFLAGS = $(CFLAGS)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
 
 hw1: hw1.cc frame_buffer.h coord.h Makefile
-	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
 	$(CXX) $(CFLAGS) $(OPTFLAGS) -fverbose-asm -S $@.cc
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.s $(LIBRARIES) -o $@
+	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
 
