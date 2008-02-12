@@ -230,8 +230,6 @@ insert_tetrahedron(pVertex_List& vtx_list, pCoor& loc, float size)
 void
 render_hw1(pFrame_Buffer &frame_buffer)
 {
-
-
   // Instantiate list of vertices.
   //
   pVertex_List vtx_list;
@@ -259,6 +257,14 @@ render_hw1(pFrame_Buffer &frame_buffer)
   const uint32_t color_gold = 0xf9b237;    // LSU Spirit Gold
   const uint32_t color_purple = 0x580da6;  // LSU Spirit Purple
   const uint32_t color = color_gold;
+
+  // Get current time, intended for measuring performance of code.
+  // Time is in seconds since some arbitrary start time. (Today that
+  // start time might be New Years Day 1970 UTC, tomorrow it could be
+  // the time the program started running. So, it's only useful to take
+  // the difference between two values.  See pattern_loop_end below.)
+  //
+  const double pattern_loop_start = time_wall_fp();
 
   // Outer Loop: z axis (down axis of tube).
   //
@@ -303,6 +309,10 @@ render_hw1(pFrame_Buffer &frame_buffer)
         }
       z = next_z;
     }
+
+  const double pattern_loop_end = time_wall_fp();
+  frame_buffer.fbprintf("The pattern loop took %.3f ms.\n",
+                        ( pattern_loop_end - pattern_loop_start ) * 1000 );
 
   // Insert additional triangle.
   //
