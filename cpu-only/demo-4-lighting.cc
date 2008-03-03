@@ -436,9 +436,7 @@ render_light(pFrame_Buffer &frame_buffer)
       // "Real" light dims with square of distance.
       //
       const float attenuation =
-        !opt_attenuation ? 1.0
-        : ( 0.5 * opt_light_intensity / ( length*length )
-            + opt_light_intensity / length );
+        !opt_attenuation ? 1.0 : 1.0 / ( 0.25 * length * length + length );
 
       // Assume back side (-normal direction) is same color as front.
       //
@@ -447,7 +445,7 @@ render_light(pFrame_Buffer &frame_buffer)
 
       // Determine color adjustment.
       //
-      const float scale = attenuation
+      const float scale = opt_light_intensity * attenuation
         * ( !opt_v_to_light ? 1.0 : v_to_light_scale );
 
       v.red *= scale;
