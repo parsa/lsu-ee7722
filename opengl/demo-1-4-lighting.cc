@@ -15,7 +15,7 @@
  /// To compile and run:
 //
 //     make
-//     
+//
 
  /// More Information
 //
@@ -30,7 +30,7 @@
 #include "frame_buffer.h"
 #include "coord.h"
 
-
+#if 0
  /// Vertex Object
 //
 // Holds coordinates plus color. In later examples will hold more
@@ -55,27 +55,39 @@ public:
   uint32_t color;
   pVect normal;
 };
+#endif
 
 // Add an unlighted tetrahedron to VTX_LIST at LOC of size SIZE.
 //
 void
 insert_tetrahedron(pCoor& loc, float size)
 {
-#if 0
   pCoor v0(loc.x,loc.y,loc.z);
   pCoor v1(loc.x,loc.y-size,loc.z+size);
   pCoor v2(loc.x-.866*size,loc.y-size,loc.z-0.5*size);
   pCoor v3(loc.x+.866*size,loc.y-size,loc.z-0.5*size);
-  const int32_t c1 = 0x1ffffff, c2 = 0x100ff00;
-  pVect n;
-# define TRI(va,vb,vc) \
-  n = cross(va,vb,vc); \
-  vtx_list.push_back( new pVertex(va,n,c1) ); \
-  vtx_list.push_back( new pVertex(vb,n,c2) ); \
-  vtx_list.push_back( new pVertex(vc,n,c2) );
+  //  const int32_t c1 = 0x1ffffff, c2 = 0x100ff00;
+  static pColor c1(0xffffff);
+  static pColor c2(0xff00);
+
+  glDisable(GL_LIGHTING);
+
+#define TRI(va,vb,vc)                                                         \
+  {                                                                           \
+    pVect n = cross(va,vb,vc);                                                \
+    glNormal3fv(n);                                                           \
+    glColor3fv(c1);  glVertex3fv(va);                                         \
+    glColor3fv(c2);  glVertex3fv(vb);                                         \
+    glVertex3fv(vc);                                                          \
+  }
+
+  glBegin(GL_TRIANGLES);
   TRI(v0,v1,v2); TRI(v0,v2,v3); TRI(v0,v3,v1);
+  glEnd();
+
 # undef TRI
-#endif
+
+  glEnable(GL_LIGHTING);
 }
 
 
@@ -91,37 +103,32 @@ render_light(pFrame_Buffer &frame_buffer)
   const float pattern_width = 20;     // Triangle size (circumferential).
   const float pattern_pitch_z = 0.25; // Triangle size (z axis).
 
-  //  glEnable(GL_DEPTH_TEST);
-  glDisable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LESS);
-  glClearDepth(1.0);
+  ///
+  /// Transformation Matrix Setup
+  ///
 
   glMatrixMode(GL_MODELVIEW);
-
   pMatrix_Translate transform_to_eye(-1,-0.5,-3);
   glLoadTransposeMatrixf(transform_to_eye);
 
-  glMatrixMode(GL_PROJECTION);
-  pError_Check();
 
   const int win_width = frame_buffer.get_width();
   const int win_height = frame_buffer.get_height();
-
-  // Preserve aspect ratio when setting projection window height in frustrum.
   const float aspect = float(win_width) / win_height;
-  pMatrix_Frustrum frustrum(1.6,1.6/aspect,1,5000);
+  //  pMatrix_Frustrum frustrum(1.6,1.6/aspect,1,5000);
 
-  pMatrix_Translate center_window(1,1,0);
-  pMatrix_Scale scale(win_width/2,win_height/2);
-
-  pMatrix transform_to_viewport = scale * center_window * frustrum;
-
+  glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  // gluPerspective: Field of view in y, aspect ratio, near, far.
-  gluPerspective(45.0f,aspect,0.1f,100.0f);
+  glFrustum(-0.8,+0.8,-0.8/aspect,0.8/aspect,1,5000);
+
+
+  // pMatrix_Translate center_window(1,1,0);
+  // pMatrix_Scale scale(win_width/2,win_height/2);
+  // pMatrix transform_to_viewport = scale * center_window * frustrum;
 
   glViewport(0, 0, win_width, win_height);
   pError_Check();
+
 
   ///
   /// Light Location and Lighting Options
@@ -148,19 +155,43 @@ render_light(pFrame_Buffer &frame_buffer)
   default: break;
   }
 
-  float diffuse_intensity[4] =
-    {opt_light_intensity, opt_light_intensity,
-     opt_light_intensity, 1.0};
+  glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
-  glShadeModel(GL_SMOOTH);
-  glLightfv(GL_LIGHT1, GL_POSITION, light_location);
-  glLightfv(GL_LIGHT1, GL_DIFFUSE, &diffuse_intensity[0]);
-  glEnable(GL_LIGHT1);
+  const float light_intensity[4] =
+    {opt_light_intensity, opt_light_intensity, opt_light_intensity, 1.0};
+  const float light_off[4] = {0,0,0,0};
+
+  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, &light_off[0]);
+
+  if ( opt_v_to_light )
+    {
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, &light_intensity[0]);
+      glLightfv(GL_LIGHT0, GL_AMBIENT, &light_off[0]);
+    }
+  else
+    {
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, &light_off[0]);
+      glLightfv(GL_LIGHT0, GL_AMBIENT, &light_intensity[0]);
+    }
+
+  if ( opt_attenuation )
+    {
+      glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0);
+      glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
+      glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.25);
+    }
+  else
+    {
+      glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1);
+      glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0);
+      glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
+    }
+
+  glEnable(GL_LIGHT0);
+  glEnable(GL_LIGHTING);
 
   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
-  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,0);
-  pError_Check();
 
   // User Messages  (Magically inserted into frame buffer.)
   //
@@ -169,11 +200,16 @@ render_light(pFrame_Buffer &frame_buffer)
      opt_attenuation ? "On" : "Off", opt_v_to_light ? "On" : "Off");
   frame_buffer.fbprintf("Arrows, page up/down move light.\n");
 
+
+  /// Z Buffer Setup
+  //
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+
+
   // Insert marker (green tetrahedron) to show light location.
   //
   insert_tetrahedron(light_location,0.05);
-
-
 
   //
   // Insert a tessellated tube in the vertex list.
@@ -189,11 +225,12 @@ render_light(pFrame_Buffer &frame_buffer)
 
 
   float z = -1;
-  const uint32_t color_gold = 0xf9b237;    // LSU Spirit Gold
-  const uint32_t color_purple = 0x580da6;  // LSU Spirit Purple
-  const uint32_t color = color_gold;
+  //  const uint32_t color_gold = 0xf9b237;    // LSU Spirit Gold
+  //  const uint32_t color_purple = 0x580da6;  // LSU Spirit Purple
+  pColor color_purple(0x580da6);  // LSU Spirit Purple
+  pColor color_gold(0xf9b237);    // LSU Spirit Gold
 
-  glColor3f( 0xf9/255., 0xb2/255., 0x37/255.);
+  glColor3fv( color_gold );
 
   // Outer Loop: z axis (down axis of tube).
   //
@@ -208,34 +245,42 @@ render_light(pFrame_Buffer &frame_buffer)
       //
       while ( theta < 4 * M_PI )
         {
-          const float z1 = theta < 2 * M_PI ? next_z : last_z;
+	  const bool first_round = theta < 2 * M_PI;
+	  const float z1 = first_round ? next_z : last_z;
 
-          // For improved performance the tri functions would be pre-computed.
+	  // For improved performance the tri functions would be pre-computed.
 
-          pVertex v0(x_shift + r * cos(theta), r * sin(theta), z, color );
-          if ( !opt_triangle_normal )
-            v0.normal = pVect(-cos(theta),-sin(theta),0);
+	  //  pVertex v0(x_shift + r * cos(theta), r * sin(theta), z, color );
+	  pCoor v0(x_shift + r * cos(theta), r * sin(theta), z);
+	  pVect v0_normal;
+	  if ( !opt_triangle_normal )
+	    v0_normal = pVect(-cos(theta),-sin(theta),0);
 
-          theta += delta_theta;
-          pVertex v1(x_shift + r * cos(theta), r * sin(theta), z1, color);
-          if ( !opt_triangle_normal )
-            v1.normal = pVect(-cos(theta),-sin(theta),0);
+	  theta += delta_theta;
+	  pCoor v1(x_shift + r * cos(theta), r * sin(theta), z1);
+	  pVect v1_normal;
+	  if ( !opt_triangle_normal )
+	    v1_normal = pVect(-cos(theta),-sin(theta),0);
 
-          theta += delta_theta;
-          pVertex v2(x_shift + r * cos(theta), r * sin(theta), z, color );
-          if ( !opt_triangle_normal )
-            v2.normal = pVect(-cos(theta),-sin(theta),0);
+	  theta += delta_theta;
+	  pCoor v2(x_shift + r * cos(theta), r * sin(theta), z);
+	  pVect v2_normal;
+	  if ( !opt_triangle_normal )
+	    v2_normal = pVect(-cos(theta),-sin(theta),0);
 
-          if ( opt_triangle_normal )
-            v0.normal = v1.normal = v2.normal = cross(v0,v1,v2);
+	  if ( opt_triangle_normal )
+	    v0_normal = v1_normal = v2_normal =
+	      first_round ? cross(v0,v1,v2) : cross(v2,v1,v0);
 
-          glBegin(GL_TRIANGLES);
+	  glBegin(GL_TRIANGLES);
 
-          glNormal3fv(v0.normal);  glVertex3fv(v0); 
-          glNormal3fv(v1.normal);  glVertex3fv(v1); 
-          glNormal3fv(v2.normal);  glVertex3fv(v2); 
+	  //  vtx_list.push_back( v0 );
 
-          glEnd();
+	  glNormal3fv(v0_normal);  glVertex3fv(v0);
+	  glNormal3fv(v1_normal);  glVertex3fv(v1);
+	  glNormal3fv(v2_normal);  glVertex3fv(v2);
+
+	  glEnd();
         }
       z = next_z;
     }
@@ -243,16 +288,19 @@ render_light(pFrame_Buffer &frame_buffer)
   // Insert additional triangle.
   //
   {
-    pVertex v0( 1.5, 0, -3.2, color_purple );
-    pVertex v1( 0, 5, -5, 0xff00 );
-    pVertex v2( 9, 6, -9, 0xff );
-    v0.normal = v1.normal = v2.normal = cross(v0,v1,v2);
+    pCoor v0( 1.5, 0, -3.2 );
+    pCoor v1( 0, 5, -5 );
+    pCoor v2( 9, 6, -9 );
+    //  v0.normal = v1.normal = v2.normal = cross(v0,v1,v2);
+    pVect normal(cross(v0,v1,v2));
+
+    glColor3fv( color_purple );
 
     glBegin(GL_TRIANGLES);
 
-    glNormal3fv(v0.normal);  glVertex3fv(v0); 
-    glNormal3fv(v1.normal);  glVertex3fv(v1); 
-    glNormal3fv(v2.normal);  glVertex3fv(v2); 
+    glNormal3fv(normal);  glVertex3fv(v0);
+    glNormal3fv(normal);  glVertex3fv(v1);
+    glNormal3fv(normal);  glVertex3fv(v2);
 
     glEnd();
 
@@ -260,6 +308,13 @@ render_light(pFrame_Buffer &frame_buffer)
 
   pError_Check();
 
+  return;
+
+  // Note: Code past this point performed operations that are now
+  // performed by the OpenGL implementation, using CPU and GPU
+  // resources.
+
+#if 0
   ///
   /// Rendering Pipeline Starts Here
   ///
@@ -269,7 +324,6 @@ render_light(pFrame_Buffer &frame_buffer)
   //
   frame_buffer.render_timing_start();
 
-#if 0
   const int fb_size = win_width * win_height;
   int32_t* const f_buffer = frame_buffer.get_buffer();
 
@@ -278,13 +332,6 @@ render_light(pFrame_Buffer &frame_buffer)
   //
   float* const z_buffer = (float*) malloc( fb_size * sizeof(*z_buffer) );
   for ( int i=0; i<fb_size; i++ ) z_buffer[i] = 1;
-
-#endif
-
-
-#if 0
-
-
 
   ///
   /// Transform Coordinates and Normals from Object Space to Eye Space
@@ -333,9 +380,7 @@ render_light(pFrame_Buffer &frame_buffer)
       // "Real" light dims with square of distance.
       //
       const float attenuation =
-        !opt_attenuation ? 1.0
-        : ( 0.5 * opt_light_intensity / ( length*length )
-            + opt_light_intensity / length );
+        !opt_attenuation ? 1.0 : 1.0 / ( 0.25 * length * length + length );
 
       // Assume back side (-normal direction) is same color as front.
       //
@@ -344,8 +389,8 @@ render_light(pFrame_Buffer &frame_buffer)
 
       // Determine color adjustment.
       //
-      const float scale = attenuation
-        * ( !opt_v_to_light ? 1.0 : v_to_light_scale );
+      const float scale = opt_light_intensity * attenuation
+        *( !opt_v_to_light ? 1.0 : v_to_light_scale );
 
       v.red *= scale;
       v.green *= scale;
@@ -361,8 +406,6 @@ render_light(pFrame_Buffer &frame_buffer)
       v *= transform_to_viewport;
       v.homogenize();
     }
-
-  /// Note: Code past this point should be identical to Demo 3.
 
   ///
   /// Rasterize Primitives
@@ -395,46 +438,46 @@ render_light(pFrame_Buffer &frame_buffer)
       while ( interp_02.keep_going_y() )
         {
 
-          // If point c1w reached then switch interp_012 to line
-          // connecting c1w and c2w.
-          //
-          if ( ! interp_012.keep_going_y() )
-            interp_012.set(c1w,c2w,0,win_height-1);
+	  // If point c1w reached then switch interp_012 to line
+	  // connecting c1w and c2w.
+	  //
+	  if ( ! interp_012.keep_going_y() )
+	    interp_012.set(c1w,c2w,0,win_height-1);
 
-          // Instantiate x-axis interpolation object using the two
-          // y-axis interpolation objects, interp_02 and interp_012.
-          // The new object will compute points on the line connecting
-          // the current position of interp_02 and interp_012.
-          //
-          pInterpolate interp_line(interp_02,interp_012,0,win_width-1);
+	  // Instantiate x-axis interpolation object using the two
+	  // y-axis interpolation objects, interp_02 and interp_012.
+	  // The new object will compute points on the line connecting
+	  // the current position of interp_02 and interp_012.
+	  //
+	  pInterpolate interp_line(interp_02,interp_012,0,win_width-1);
 
-          // Inner Loop: Iterate along x axis.
-          //
-          while ( interp_line.keep_going_x() )
-            {
-              const int fb_idx = fb_line_idx + interp_line.xi;
+	  // Inner Loop: Iterate along x axis.
+	  //
+	  while ( interp_line.keep_going_x() )
+	    {
+	      const int fb_idx = fb_line_idx + interp_line.xi;
 
-              // If z value to be written is smaller (in front of) z value
-              // already there then go ahead and write frame buffer.
-              //
-              if ( z_buffer[ fb_idx ] > interp_line.z )
+	      // If z value to be written is smaller (in front of) z value
+	      // already there then go ahead and write frame buffer.
+	      //
+	      if ( z_buffer[ fb_idx ] > interp_line.z )
                 {
-                  f_buffer[ fb_idx ] = interp_line.color();
-                  z_buffer[ fb_idx ] = interp_line.z;
+		  f_buffer[ fb_idx ] = interp_line.color();
+		  z_buffer[ fb_idx ] = interp_line.z;
                 }
 
-              // Tell interpolation object to advance in x direction.
-              //
-              interp_line.advance_x();
-            }
+	      // Tell interpolation object to advance in x direction.
+	      //
+	      interp_line.advance_x();
+	    }
 
-          // Tell interpolation objects to advance in y direction.
-          //
-          interp_02.advance_y();  interp_012.advance_y();
+	  // Tell interpolation objects to advance in y direction.
+	  //
+	  interp_02.advance_y();  interp_012.advance_y();
 
-          // Advance the frame buffer index.
-          //
-          fb_line_idx += win_width;
+	  // Advance the frame buffer index.
+	  //
+	  fb_line_idx += win_width;
         }
     }
 

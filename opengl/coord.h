@@ -18,6 +18,7 @@
 #include <math.h>
 
 class pCoor;
+class pColor;
 class pVect;
 class pMatrix;
 
@@ -162,8 +163,19 @@ public:
 };
 
 //
-// Coordinate and Vector Classes
+// Color, Coordinate, and Vector Classes
 //
+
+class pColor {
+public:
+  pColor(int rgb):
+    r( ( rgb >> 16 ) / 255.0 ),
+    g( ( ( rgb >> 8 ) & 0xff ) / 255.0 ),
+    b( ( ( rgb ) & 0xff ) / 255.0 ),a(1){}
+  float *v() { return &r; }
+  operator float*() { return v(); }
+  float r, g, b, a;
+};
 
 class pCoor {
 public:

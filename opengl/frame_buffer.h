@@ -175,8 +175,10 @@ private:
   {
     shape_update();
     if ( keyboard_key == FB_KEY_F12 ) write_img();
-    glClearColor(0.5,0.5,0.5,1);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0.0,0.0,0.0,1);
+    glClearDepth(1.0);
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glEnable(GL_NORMALIZE);
     const double frame_start = time_wall_fp();
     render_timing_start(); // User may call this in display func.
     user_display_func(*this);
@@ -184,7 +186,7 @@ private:
     const double elapsed_time = end_time - frame_start;
     const double render_elapsed_time = end_time - render_start;
     glDisable(GL_DEPTH_TEST);
-    glColor3f(0,0,0);
+    glColor3f(1,1,1);
     glWindowPos2i(10,height+status_height-20);
     fbprintf
       ("Render Time %.3f ms,  Frame Time %.3f ms,  Potential Frame Rate %.1f\n",
