@@ -288,6 +288,7 @@ render_light(pFrame_Buffer &frame_buffer)
   // Insert additional triangle.
   //
   {
+    //  pVertex* const v0 = new pVertex( 1.5, 0, -3.2, color_purple );
     pCoor v0( 1.5, 0, -3.2 );
     pCoor v1( 0, 5, -5 );
     pCoor v2( 9, 6, -9 );
@@ -297,6 +298,8 @@ render_light(pFrame_Buffer &frame_buffer)
     glColor3fv( color_purple );
 
     glBegin(GL_TRIANGLES);
+
+    //  vtx_list.push_back( v0 );
 
     glNormal3fv(normal);  glVertex3fv(v0);
     glNormal3fv(normal);  glVertex3fv(v1);
