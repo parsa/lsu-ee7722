@@ -7,7 +7,7 @@
 INCLUDE =
 LIBDIR  =
 
-PROG_NAMES = demo-1-4-lighting
+PROG_NAMES = demo-2-transfer demo-0-hello
 
 default: $(PROG_NAMES)
 
@@ -20,7 +20,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 
-$(OBJ_NAMES): frame_buffer.h coord.h Makefile
+$(OBJ_NAMES): util.h coord.h Makefile
 
 $(PROG_NAMES): %: %.o Makefile
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
