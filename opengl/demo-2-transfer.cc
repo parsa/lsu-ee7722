@@ -62,6 +62,16 @@
 //      Change any modified state (lighting, transform, etc.)
 
 
+/// GL Arrays
+
+// Refers to arrays of particular objects.
+//   Such as: GL_NORMAL_ARRAY, GL_VERTEX_ARRAY.
+
+//  "Load" array type with data.
+//  Indicate that array will be used.
+//  Emit vertices.
+
+
 
 // Buffering Methods
 //  Common: Array of vertices.
