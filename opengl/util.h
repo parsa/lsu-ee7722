@@ -104,24 +104,25 @@ lprint_attribute(int token, const char *name)
     printf("Attribute %s: %d\n",name,val);
 }
 
-class pFrame_Buffer;
-pFrame_Buffer* frame_buffer_self_ = NULL;
+class pOpenGL_Helper;
+pOpenGL_Helper* opengl_helper_self_ = NULL;
 
 class pFrame_Timer {
 public:
-  pFrame_Timer():inited(false),work_count(NULL),work_description(NULL)
+  pFrame_Timer():inited(false),work_description(NULL)
   {
     query_timer_id = 0;
     frame_group_size = 10;
     frame_rate = 0;
     cpu_frac = 0;
   }
-  void work_unit_set(int *count, char *description)
+  void work_unit_set(char *description, double multiplier = 1)
   {
-    work_count = count;
-    work_count_last = *work_count;
+    work_multiplier = multiplier;
+    work_accum = 0;
     work_description = strdup(description);
   }
+  void work_amt_set(int amt){ work_accum += amt; }
   void init();
   void frame_start();
   void frame_end();
@@ -133,12 +134,14 @@ private:
   {
     frame_group_count = 0;
     cpu_tsum = tsum = 0;
+    work_accum = 0;
   }
   bool inited;
   double frame_group_start_time;
   int frame_group_count;
   double tsum, tlast, cpu_tsum, cpu_tlast;
-  int *work_count;
+  double work_accum;
+  double work_multiplier;
   int work_count_last;
   char *work_description;
   double work_rate;
@@ -175,10 +178,9 @@ pFrame_Timer::frame_rate_group_start()
   cpu_tlast = cpu_tsum * last_frame_count_inv;
   frame_rate = last_frame_count / group_duration;
   cpu_frac = cpu_tsum / group_duration;
-  if ( work_count )
+  if ( work_description )
     {
-      work_rate = ( *work_count - work_count_last ) / group_duration;
-      work_count_last = *work_count;
+      work_rate = work_multiplier * work_accum / group_duration;      
     }
   var_reset();
 }
@@ -225,22 +227,53 @@ pFrame_Timer::frame_end()
   frame_rate_text.sprintf
     ("  CPU %.2f ms (%.1f%%)", 1000 * cpu_tlast, 100 * cpu_frac);
 
-  if ( work_count )
-    frame_rate_text.sprintf("%s %.1f /s", work_description, work_rate);
+  if ( work_description )
+    frame_rate_text.sprintf("  %s %.3f", work_description, work_rate);
 }
 
-class pFrame_Buffer {
+struct pVariable_Control_Elt {float *var; char *name;};
+
+class pVariable_Control {
 public:
-  pFrame_Buffer(int& argc, char** argv)
+  pVariable_Control()
   {
-    frame_buffer_self_ = this;
+    size = 0;  storage = (pVariable_Control_Elt*)malloc(0); current = NULL;
+  }
+  void insert(float &var, char *name)
+  {
+    size++;
+    const int cidx = current - storage;
+    storage = (pVariable_Control_Elt*)realloc(storage,size*sizeof(*storage));
+    pVariable_Control_Elt* const elt = &storage[size-1];
+    elt->var = &var;
+    elt->name = strdup(name);
+    current = &storage[ size == 1 ? 0 : cidx ];
+  }
+  void adjust_higher() {if ( current ) current->var[0] *= 1.05;}
+  void adjust_lower() {if ( current ) current->var[0] *= 0.95;}
+  void switch_var_right()
+  {
+    if ( !current ) return;
+    current++;
+    if ( current == &storage[size] ) current = storage;
+  }
+  int size;
+  pVariable_Control_Elt *storage, *current;
+};
+
+
+class pOpenGL_Helper {
+public:
+  pOpenGL_Helper(int& argc, char** argv)
+  {
+    opengl_helper_self_ = this;
     width = height = 0;
     frame_period = -1; // No timer callback.
     next_frame_time = 0;
     cb_keyboard();
     init_gl(argc, argv);
   }
-  ~pFrame_Buffer(){}
+  ~pOpenGL_Helper(){}
 
   void rate_set(double frames_per_second)
   {
@@ -248,7 +281,7 @@ public:
   }
 
   double next_frame_time, frame_period;
-  static void cb_timer_w(int data){ frame_buffer_self_->cbTimer(data); }
+  static void cb_timer_w(int data){ opengl_helper_self_->cbTimer(data); }
   void cbTimer(int data)
   {
     glutPostRedisplay();
@@ -264,7 +297,7 @@ public:
   // Use DISPLAY_FUNC to write frame buffer.
   //
   void display_cb_set
-  (void (*display_func)(pFrame_Buffer& fb, void *), void *data)
+  (void (*display_func)(void *), void *data)
   {
     user_display_func = display_func;
     user_display_data = data;
@@ -297,13 +330,8 @@ public:
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
-    glDisable(GL_LIGHTING);
-    glColor3f(1,1,1);
     glutBitmapString(GLUT_BITMAP_HELVETICA_12,(unsigned char*)str.s);
-    glEnable(GL_LIGHTING);
   }
-
-  pFrame_Timer frame_timer;
 
 private:
   void init_gl(int& argc, char** argv)
@@ -326,12 +354,12 @@ private:
 
   }
 
-  static void cb_display_w(void){ frame_buffer_self_->cb_display(); }
+  static void cb_display_w(void){ opengl_helper_self_->cb_display(); }
   void cb_display(void)
   {
     shape_update();
     glWindowPos2i(10,height-20);
-    user_display_func(*this,user_display_data);
+    user_display_func(user_display_data);
     cb_keyboard();
   }
 
@@ -344,9 +372,9 @@ private:
   }
 
   static void cb_keyboard_w(unsigned char key, int x, int y)
-  {frame_buffer_self_->cb_keyboard(key,x,y);}
+  {opengl_helper_self_->cb_keyboard(key,x,y);}
   static void cb_keyboard_special_w(int key, int x, int y)
-  {frame_buffer_self_->cb_keyboard(key+0x100,x,y);}
+  {opengl_helper_self_->cb_keyboard(key+0x100,x,y);}
   void cb_keyboard(int key=0, int x=0, int y=0)
   {
     keyboard_key = key;
@@ -390,7 +418,7 @@ private:
   int width;
   int height;  // Height of simulated frame buffer, not displayed window.
   int glut_window_id;
-  void (*user_display_func)(pFrame_Buffer& frame_buffer, void *data);
+  void (*user_display_func)(void *data);
   void *user_display_data;
 
 };

@@ -11,7 +11,7 @@ PROG_NAMES = demo-2-transfer demo-0-hello
 
 default: $(PROG_NAMES)
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -O3
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g 
 COMPILERFLAGS = -Wall
 CC = gcc
 CXX = g++

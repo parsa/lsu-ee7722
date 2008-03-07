@@ -183,6 +183,7 @@ public:
   pCoor(float x, float y, float z):x(x), y(y), z(z), w(1){}
   pCoor(float x, float y, float z, float w):x(x), y(y), z(z), w(w){}
   pCoor(pCoor *c):x(c->x), y(c->y), z(c->z), w(c->w){}
+  void set(float xp, float yp, float zp){x=xp; y=yp; z=zp; w=1;}
   float *v() { return &x; }
   operator float*() { return v(); }
   void homogenize()
