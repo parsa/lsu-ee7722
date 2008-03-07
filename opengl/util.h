@@ -111,7 +111,10 @@ class pFrame_Timer {
 public:
   pFrame_Timer():inited(false),work_count(NULL),work_description(NULL)
   {
+    query_timer_id = 0;
     frame_group_size = 10;
+    frame_rate = 0;
+    cpu_frac = 0;
   }
   void work_unit_set(int *count, char *description)
   {
@@ -126,20 +129,24 @@ public:
   int frame_group_size;
 private:
   void frame_rate_group_start();
+  void var_reset()
+  {
+    frame_group_count = 0;
+    cpu_tsum = tsum = 0;
+  }
   bool inited;
   double frame_group_start_time;
   int frame_group_count;
   double tsum, tlast, cpu_tsum, cpu_tlast;
-  int tamt;
   int *work_count;
   int work_count_last;
   char *work_description;
   double work_rate;
 
   double frame_rate;
-  double cpu_percent;
+  double cpu_frac;
   double time_render_start;
-  uint query_timer_id;
+  GLuint query_timer_id;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
 };
@@ -148,11 +155,10 @@ void
 pFrame_Timer::init()
 {
   inited = true;
-  glGenQueries(1,&query_timer_id);
-  tsum = 0; tlast = 0;
-  cpu_tsum = 0; cpu_tlast = 0;
-  tamt = 0;
+  if ( glutExtensionSupported("GL_EXT_timer_query") )
+    glGenQueries(1,&query_timer_id);
   frame_group_start_time = time_wall_fp();
+  var_reset();
   frame_rate_group_start();
 }
 
@@ -166,16 +172,15 @@ pFrame_Timer::frame_rate_group_start()
   const double group_duration = frame_group_start_time - last_wall_time;
 
   tlast = 1e-6 * tsum * last_frame_count_inv;
-  cpu_tlast = 1e6 * cpu_tsum * last_frame_count_inv;
+  cpu_tlast = cpu_tsum * last_frame_count_inv;
   frame_rate = last_frame_count / group_duration;
-  cpu_percent = 100 * cpu_tsum / group_duration;
+  cpu_frac = cpu_tsum / group_duration;
   if ( work_count )
     {
       work_rate = ( *work_count - work_count_last ) / group_duration;
       work_count_last = *work_count;
     }
-  frame_group_count = 0;
-  cpu_tsum = tsum = 0;
+  var_reset();
 }
 
 void
@@ -183,7 +188,7 @@ pFrame_Timer::frame_start()
 {
   if ( !inited ) init();
   pError_Check();
-  glBeginQuery(GL_TIME_ELAPSED_EXT,query_timer_id);
+  if ( query_timer_id ) glBeginQuery(GL_TIME_ELAPSED_EXT,query_timer_id);
   pError_Check();
   time_render_start = time_process_fp();
   if ( frame_group_count++ >= frame_group_size ) frame_rate_group_start();
@@ -193,17 +198,33 @@ void
 pFrame_Timer::frame_end()
 {
   const double time_render_elapsed = time_process_fp() - time_render_start;
-  glEndQuery(GL_TIME_ELAPSED_EXT);
-  int timer_val;
-  glGetQueryObjectiv(query_timer_id,GL_QUERY_RESULT,&timer_val);
-  tsum += timer_val;
+  if ( query_timer_id )
+    {
+      glEndQuery(GL_TIME_ELAPSED_EXT);
+      int timer_val = 0;
+      glGetQueryObjectiv(query_timer_id,GL_QUERY_RESULT,&timer_val);
+      tsum += timer_val;
+    }
   cpu_tsum += time_render_elapsed;
   const uint xfcount_prev = xfcount;
   if ( ptr_glXGetVideoSyncSGI ) ptr_glXGetVideoSyncSGI(&xfcount);
   frame_rate_text = "";
+
+  frame_rate_text.sprintf("FPS: %.2f XF ", frame_rate);
+  if ( ptr_glXGetVideoSyncSGI )
+    frame_rate_text.sprintf("%2d", xfcount - xfcount_prev );
+  else
+    frame_rate_text += "--";
+
+  frame_rate_text += "  GPU ";
+  if ( query_timer_id )
+    frame_rate_text.sprintf("%.3f us",tlast);
+  else
+    frame_rate_text += "---";
+
   frame_rate_text.sprintf
-    ( "FPS: %.2f XF %2d  GPU %.3f us  CPU %.1f us %.1f%%",
-      frame_rate, xfcount-xfcount_prev, tlast,cpu_tlast,cpu_percent);
+    ("  CPU %.2f ms (%.1f%%)", 1000 * cpu_tlast, 100 * cpu_frac);
+
   if ( work_count )
     frame_rate_text.sprintf("%s %.1f /s", work_description, work_rate);
 }
@@ -289,6 +310,7 @@ private:
   {
     exe_file_name = argv && argv[0] ? argv[0] : "unknown name";
     glutInit(&argc, argv);
+
     glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
     glutInitWindowSize(640,480);
 
@@ -296,9 +318,12 @@ private:
 
     glut_window_id = glutCreateWindow(title);
 
+    // Note: These functions don't work before a window is created.
+    //
     P_GL_PRINT_STRING(GL_VENDOR);
     P_GL_PRINT_STRING(GL_RENDERER);
     P_GL_PRINT_STRING(GL_VERSION);
+
   }
 
   static void cb_display_w(void){ frame_buffer_self_->cb_display(); }

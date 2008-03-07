@@ -6,7 +6,7 @@
 
  /// Purpose
 //
-//   Demonstrate simple lighting techniques.
+//   Demonstrate vertex transfer overhead.
 
 //   The routine draws a gold tube pierced by a triangle. There is a
 //   bright light in the tube that can dimmed, brightened, and moved
@@ -20,6 +20,38 @@
  /// More Information
 //
 //   File coord.h on coordinate and matrix objects and operations.
+
+
+// Points. (The pedagogical kind.)
+
+// Individually specifying vertices risks high overhead, ymmv.
+//  Each vtx call could trigger communication with GPU.
+//  Better to buffer large numbers of vertices.
+
+// Buffering Methods
+//  Common: Array of vertices.
+
+//  Copy info from client memory for each draw.
+//   + Save function call overhead.
+//   + GL can better plan logistics.
+
+//  Put "arrays" under GL control.
+
+
+// From Client Memory
+//  Indicate for each attribute..
+//  Draw Array
+//  Disconnect.
+
+// Buffer Objects
+//  Blocks of memory..
+//  ..can be read and written by CPU..
+//  ..or by GPU.
+//  
+
+// From GPU Memory
+//  
+
 
 
 #include <stdio.h>
@@ -48,7 +80,6 @@ insert_tetrahedron(pCoor& loc, float size)
   pCoor v1(loc.x,loc.y-size,loc.z+size);
   pCoor v2(loc.x-.866*size,loc.y-size,loc.z-0.5*size);
   pCoor v3(loc.x+.866*size,loc.y-size,loc.z-0.5*size);
-  //  const int32_t c1 = 0x1ffffff, c2 = 0x100ff00;
   static pColor c1(0xffffff);
   static pColor c2(0xff00);
 
@@ -72,13 +103,31 @@ insert_tetrahedron(pCoor& loc, float size)
   glEnable(GL_LIGHTING);
 }
 
+class MTrig {
+public:
+  MTrig(int size):size(size),storage(new float[size]),idx(0),full(false){}
+  float sin(float theta){ return trig(theta,::sin); }
+  float cos(float theta){ return trig(theta,::cos); }
+private:
+  float trig(float theta,double (*func)(double))
+  {
+    if ( !full ) { storage[idx] = func(theta);  full = idx == size - 1; }
+    if ( idx == size ) idx = 0;
+    return storage[idx++];
+  }
+  const int size;
+  float* const storage;
+  int idx;
+  bool full;
+};
+
 
 void
 render_tube(pFrame_Buffer &frame_buffer, void *data)
 {
   frame_buffer.frame_timer.frame_start();
-
-  glClearColor(0,0,0.1,0.5);
+  glClearColor(0,0,0.0,0.5);
+  glClearDepth(1.0);
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
   frame_buffer.fbprintf("%s\n",frame_buffer.frame_timer.frame_rate_text_get());
@@ -88,10 +137,9 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
 
   const float r0 = 2;                  // Tube radius.
   const float x_shift = 0.4;          // Tube x offset.
-  const int pattern_levels = 500;      // Tube depth (z direction.)
-  const float pattern_width = 20;     // Triangle size (circumferential).
+  const int pattern_levels = 250;      // Tube depth (z direction.)
+  const float pattern_width = 200;     // Triangle size (circumferential).
   const float pattern_pitch_z = 0.25; // Triangle size (z axis).
-  const float pattern_depth_z = pattern_pitch_z * pattern_levels;
 
   ///
   /// Transformation Matrix Setup
@@ -118,10 +166,9 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
   /// Light Location and Lighting Options
   ///
 
-  static bool opt_attenuation = true;
-  static bool opt_v_to_light = true;
   static float opt_light_intensity = 2;
-  static bool opt_v_buffering = false;
+  static int opt_v_buffering = 0;
+  static bool opt_recompute = true;
   static pCoor light_location(( r0 - 0.1 ), 0, -3 );
 
   // Adjust options based on user input.
@@ -135,11 +182,15 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
   case FB_KEY_PAGE_UP: light_location.z -= 0.2; break;
   case '-':case '_': opt_light_intensity *= 0.9; break;
   case '+':case '=': opt_light_intensity *= 1.1; break;
-  case 'd': case 'D': opt_attenuation = !opt_attenuation; break;
-  case 'a': case 'A': opt_v_to_light = !opt_v_to_light; break;
-  case 'v': case 'V': opt_v_buffering = !opt_v_buffering; break;
+  case 'r':case 'R': opt_recompute = !opt_recompute; break;
+  case 'v': case 'V':
+    opt_v_buffering++;
+    if ( opt_v_buffering == 3 ) opt_v_buffering = 0;
+    break;
   default: break;
   }
+
+  static bool buffer_data_0 = false;
 
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
@@ -150,29 +201,12 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, &light_dim[0]);
 
-  if ( opt_v_to_light )
-    {
-      glLightfv(GL_LIGHT0, GL_DIFFUSE, &light_intensity[0]);
-      glLightfv(GL_LIGHT0, GL_AMBIENT, &light_off[0]);
-    }
-  else
-    {
-      glLightfv(GL_LIGHT0, GL_DIFFUSE, &light_off[0]);
-      glLightfv(GL_LIGHT0, GL_AMBIENT, &light_intensity[0]);
-    }
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, &light_intensity[0]);
+  glLightfv(GL_LIGHT0, GL_AMBIENT, &light_off[0]);
 
-  if ( opt_attenuation )
-    {
-      glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0);
-      glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
-      glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.25);
-    }
-  else
-    {
-      glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1);
-      glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0);
-      glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
-    }
+  glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0);
+  glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
+  glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.25);
 
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
@@ -182,16 +216,11 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
 
   // User Messages 
   //
-  frame_buffer.fbprintf
-    ("Lighting: Distance - %s,  Angle - %s  ('d' or 'a' to change).\n",
-     opt_attenuation ? "On" : "Off", opt_v_to_light ? "On" : "Off");
   frame_buffer.fbprintf("Arrows, page up/down move light.\n");
-  frame_buffer.fbprintf("Vertex buffering: %d (v to change)",opt_v_buffering);
-
+  frame_buffer.fbprintf("Vertex buffering: %d (v to change)\n",opt_v_buffering);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
-
 
   // Insert marker (green tetrahedron) to show light location.
   //
@@ -201,23 +230,36 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
   // Insert a tessellated tube in the vertex list.
   //
 
-  // User Option: Use triangle normal or vertex normal.
-  //
-  static bool opt_triangle_normal = false;
-  if ( frame_buffer.keyboard_key == 'n' )
-    opt_triangle_normal = !opt_triangle_normal;
-  frame_buffer.fbprintf("Normals based on %s (use 'n' to change).\n",
-                        opt_triangle_normal ? "triangle" : "vertex");
-
-
   float z = -1;
   pColor color_purple(0x580da6);  // LSU Spirit Purple
   pColor color_gold(0xf9b237);    // LSU Spirit Gold
 
+  const int vertices_per_ring = 3 * int(pattern_width) * 2;
+  const int num_coor = pattern_levels * vertices_per_ring;
+
   static double time_app_start = -1;
   if ( time_app_start < 0 ) time_app_start = time_wall_fp();
-  const double radians_per_second = 1;
-  const double phase = ( time_wall_fp() - time_app_start ) * radians_per_second;
+  const double cycles_per_second = 0.2;
+  const double phase_n =
+    ( time_wall_fp() - time_app_start ) * cycles_per_second;
+  const double phase = phase_n * 2.0 * M_PI;
+  const double phase_01 = 1.0 - ( phase_n - floor(phase_n) );
+
+  const float wavelength_z = 4.8;
+  const float wavelength_rings = wavelength_z / pattern_pitch_z;
+  const float radians_per_z = 2.0 * M_PI / wavelength_z;
+  const int wavelength_v = int(wavelength_rings * vertices_per_ring + 0.5);
+
+  const int phase_rings = int( phase_01 * wavelength_rings + 0.5 );
+
+  const float phase_z = opt_recompute ? 0 : wavelength_z * phase_01;
+  const int phase_v = opt_recompute ? 0 : phase_rings * vertices_per_ring;
+
+  if ( phase_v > wavelength_v || phase_v < 0 ) pError_Exit();
+
+  const int num_v = num_coor - wavelength_v;
+
+  const float ampl = 0.4;
 
   glEnable(GL_NORMALIZE);
   
@@ -225,7 +267,6 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
 
   static pCoor* coor_buffer = NULL;
   static pVect* norm_buffer = NULL;
-  const int num_coor = int(pattern_levels * pattern_width * 2 * 3);
 
   if ( !coor_buffer )
     {
@@ -233,101 +274,153 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
       norm_buffer = new pVect[num_coor];
     }
 
+  static MTrig tarray( int(pattern_width) * 2 * 2 * 6 );
   pCoor* cptr = coor_buffer;
   pVect* nptr = norm_buffer;
+  static bool buffer_initialized = false;
+  static GLuint gpu_coor_buffer = 0;
+  static GLuint gpu_norm_buffer = 0;
 
   // Outer Loop: z axis (down axis of tube).
   //
-  for ( int i = 0; i < pattern_levels; i++ )
+  if ( opt_recompute || !buffer_data_0 )
     {
-      const float next_z = z - pattern_pitch_z;
-      const float last_z = z + pattern_pitch_z;
-      const float delta_theta = M_PI / pattern_width;
-      float theta = i & 1 ? delta_theta : 0;
-      const float ampl = 0.25;
-      const float per = 0.5 * M_PI;
-      const float angle_z = phase + per * z;
-      const float angle_nz = phase + per * next_z;
-      const float angle_lz = phase + per * last_z;
-      const float r = r0 * ( 1 + ampl * sin( angle_z ) );
-      const float rnz = r0 * ( 1 + ampl * sin( angle_nz ) );
-      const float rlz = r0 * ( 1 + ampl * sin( angle_lz ) );
-      const float cos_z = cos(angle_z);
-      const float cos_lz = cos(angle_lz);
-      const float cos_nz = cos(angle_nz);
+      const float phase_use = opt_recompute ? phase : 0;
 
-
-      // Inner Loop: around circumference of tube.
-      //
-      while ( theta < 4 * M_PI )
+      for ( int i = 0; i < pattern_levels; i++ )
         {
-	  const bool first_round = theta < 2 * M_PI;
-	  const float z1 = first_round ? next_z : last_z;
-	  const float rz1 = first_round ? rnz : rlz;
-	  const float cos_z1 = first_round ? cos_nz : cos_lz;
+          const float next_z = z - pattern_pitch_z;
+          const float last_z = z + pattern_pitch_z;
+          const float delta_theta = M_PI / pattern_width;
+          float theta = i & 1 ? delta_theta : 0;
+          const float angle_z = phase_use + radians_per_z * z;
+          const float angle_nz = phase_use + radians_per_z * next_z;
+          const float angle_lz = phase_use + radians_per_z * last_z;
+          const float r = r0 * ( 1 + ampl * sin( angle_z ) );
+          const float rnz = r0 * ( 1 + ampl * sin( angle_nz ) );
+          const float rlz = r0 * ( 1 + ampl * sin( angle_lz ) );
+          const float cos_z = cos(angle_z);
+          const float cos_lz = cos(angle_lz);
+          const float cos_nz = cos(angle_nz);
 
-	  pCoor v0(x_shift + r * cos(theta), r * sin(theta), z);
-	  pVect v0_normal;
-	  if ( !opt_triangle_normal )
-	    v0_normal = pVect(-cos(theta),-sin(theta),cos_z);
+          // Inner Loop: around circumference of tube.
+          //
+          while ( theta < 4 * M_PI )
+            {
+              const bool first_round = theta < 2 * M_PI;
+              const float z1 = first_round ? next_z : last_z;
+              const float rz1 = first_round ? rnz : rlz;
+              const float cos_z1 = first_round ? cos_nz : cos_lz;
 
-	  theta += delta_theta;
-	  pCoor v1(x_shift + rz1 * cos(theta), rz1 * sin(theta), z1);
-	  pVect v1_normal;
-	  if ( !opt_triangle_normal )
-	    v1_normal = pVect(-cos(theta),-sin(theta),cos_z1);
+              float cos_theta = tarray.cos(theta);  // Reassigned
+              float sin_theta = tarray.sin(theta);  // Reassigned
 
-	  theta += delta_theta;
-	  pCoor v2(x_shift + r * cos(theta), r * sin(theta), z);
-	  pVect v2_normal;
-	  if ( !opt_triangle_normal )
-	    v2_normal = pVect(-cos(theta),-sin(theta),cos_z);
+              pCoor v0(x_shift + r * cos_theta, r * sin_theta, z);
+              pVect v0_normal(-cos_theta,-sin_theta,cos_z);
 
-	  if ( opt_triangle_normal )
-	    v0_normal = v1_normal = v2_normal =
-	      first_round ? cross(v0,v1,v2) : cross(v2,v1,v0);
+              theta += delta_theta;
 
-          *nptr++ = v0_normal;
-          *nptr++ = v1_normal;
-          *nptr++ = v2_normal;
+              cos_theta = tarray.cos(theta);
+              sin_theta = tarray.sin(theta);
 
-          *cptr++ = v0;
-          *cptr++ = v1;
-          *cptr++ = v2;
+              pCoor v1(x_shift + rz1 * cos_theta, rz1 * sin_theta, z1);
+              pVect v1_normal(-cos_theta,-sin_theta,cos_z1);
+
+              theta += delta_theta;
+
+              cos_theta = tarray.cos(theta);
+              sin_theta = tarray.sin(theta);
+
+              pCoor v2(x_shift + r * cos_theta, r * sin_theta, z);
+              pVect v2_normal(-cos_theta,-sin_theta,cos_z);
+
+              *nptr++ = v0_normal;
+              *nptr++ = v1_normal;
+              *nptr++ = v2_normal;
+
+              *cptr++ = v0;
+              *cptr++ = v1;
+              *cptr++ = v2;
 
 #if 0
-	  glBegin(GL_TRIANGLES);
+              glBegin(GL_TRIANGLES);
 
-	  glNormal3fv(v0_normal);  glVertex3fv(v0);
-	  glNormal3fv(v1_normal);  glVertex3fv(v1);
-	  glNormal3fv(v2_normal);  glVertex3fv(v2);
+              glNormal3fv(v0_normal);  glVertex3fv(v0);
+              glNormal3fv(v1_normal);  glVertex3fv(v1);
+              glNormal3fv(v2_normal);  glVertex3fv(v2);
 
-	  glEnd();
+              glEnd();
 #endif
+            }
+          z = next_z;
         }
-      z = next_z;
+
+      if ( !gpu_norm_buffer )
+        {
+          glGenBuffers(1,&gpu_norm_buffer);
+          glGenBuffers(1,&gpu_coor_buffer);
+        }
+
+
+      if ( !opt_recompute || opt_v_buffering == 2 )
+        {
+          glBindBuffer(GL_ARRAY_BUFFER, gpu_norm_buffer);
+          glBufferData(GL_ARRAY_BUFFER, num_coor * sizeof(pVect),
+                       norm_buffer, GL_STATIC_DRAW);
+          glBindBuffer(GL_ARRAY_BUFFER, gpu_coor_buffer);
+          glBufferData(GL_ARRAY_BUFFER, num_coor * sizeof(pCoor),
+                       coor_buffer, GL_STATIC_DRAW);
+          glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+
+      buffer_data_0 = !opt_recompute;
     }
 
-  if ( !opt_v_buffering )
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glTranslatef(0,0,phase_z);
+  
+  switch ( opt_v_buffering ) {
+  case 0:
     {
       glBegin(GL_TRIANGLES);
-      for ( int i=0; i<num_coor; i++ )
+      const int end_v = phase_v + num_v;
+      for ( int i=phase_v; i<end_v; i++ )
         {
           glNormal3fv(norm_buffer[i]);
           glVertex3fv(coor_buffer[i]);
         }
       glEnd();
     }
-  else
+    break;
+  case 1:
     {
       glNormalPointer(GL_FLOAT,0,norm_buffer);
-      glVertexPointer(4,GL_FLOAT,0,coor_buffer);
+      glVertexPointer(3,GL_FLOAT,sizeof(pCoor),coor_buffer);
       glEnableClientState(GL_NORMAL_ARRAY);
       glEnableClientState(GL_VERTEX_ARRAY);
-      glDrawArrays(GL_TRIANGLES,0,num_coor);
+      glDrawArrays(GL_TRIANGLES,phase_v,num_v);
       glDisableClientState(GL_NORMAL_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);
     }
+    break;
+  case 2:
+    {
+      glBindBuffer(GL_ARRAY_BUFFER,gpu_coor_buffer);
+      glVertexPointer(3,GL_FLOAT,sizeof(pCoor),NULL);
+      glBindBuffer(GL_ARRAY_BUFFER,gpu_norm_buffer);
+      glNormalPointer(GL_FLOAT,0,NULL);
+      glBindBuffer(GL_ARRAY_BUFFER,0);
+      glEnableClientState(GL_NORMAL_ARRAY);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glDrawArrays(GL_TRIANGLES,phase_v,num_v);
+      glDisableClientState(GL_NORMAL_ARRAY);
+      glDisableClientState(GL_VERTEX_ARRAY);
+    }
+    break;
+  }
+
+  glPopMatrix();
 
   // Insert additional triangle.
   //
@@ -351,8 +444,10 @@ render_tube(pFrame_Buffer &frame_buffer, void *data)
 
   pError_Check();
 
-  glutSwapBuffers();
   frame_buffer.frame_timer.frame_end();
+
+  glutSwapBuffers();
+
 }
 
 int

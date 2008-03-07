@@ -6,8 +6,9 @@
 // i, int; u, unsigned int; v, void; s, sizei; e, enum.
 // C, char*; K, const char*
 
-typedef int (*lfunc_u_e)(GLenum);
-typedef int (*lfunc_i_U)(unsigned int*);
+typedef GLuint (*lfunc_u_uU)(GLuint,GLuint*);
+typedef GLuint (*lfunc_u_e)(GLenum);
+typedef GLint (*lfunc_i_U)(unsigned int*);
 typedef int (*lfunc_i_iiU)(int, int, unsigned int*);
 typedef int (*lfunc_i_uK)(unsigned int, const char*);
 typedef void (*lfunc_v_uusSSEC)(uint,uint,
