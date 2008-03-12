@@ -126,26 +126,25 @@ pTexture_From_PNM(char *name, bool invert = false, int transp = 256 )
   if ( !image.image_loaded ) return 0;
   if ( invert ) image.color_invert();
   GLuint texture_id;
+
   glGenTextures(1,&texture_id);
   glBindTexture(GL_TEXTURE_2D,texture_id);
-  if ( ( gluerr =
-         gluBuild2DMipmaps
-         (GL_TEXTURE_2D,
-          GL_RGBA,
-          //  GL_DEPTH_COMPONENT,
-          image.width, image.height,
-          GL_RGBA, GL_UNSIGNED_BYTE, (void *)image.data))) {
 
-      fprintf(stderr,"GLULib%s\n",gluErrorString(gluerr));
-      exit(-1);
-   }
+  glTexParameteri(GL_TEXTURE_2D,GL_GENERATE_MIPMAP,1);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
-   // Some pretty standard settings for wrapping and filtering.
-   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
-   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
-   pError_Check();
+  glTexImage2D(GL_TEXTURE_2D,
+               0, // Level (0 is base).
+               GL_RGBA,
+               image.width, image.height,
+               0, // Border
+               GL_RGBA,
+               GL_UNSIGNED_BYTE,
+               (void*)image.data);
+  pError_Check();
 
-   return texture_id;
+  return texture_id;
 }
 
 
