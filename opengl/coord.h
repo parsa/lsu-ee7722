@@ -14,99 +14,116 @@
 #ifndef COORD_H
 #define COORD_H
 
-#include <stdlib.h>
 #include <math.h>
 
+class pMatrix;
 class pCoor;
 class pColor;
 class pVect;
-class pMatrix;
+inline pCoor mult_MC(pMatrix& m, pCoor c);
+float dot(pVect a, pVect b);
 
-pCoor operator * (pMatrix a, pCoor c);
-pMatrix invert3x3(pMatrix& original);
-inline pVect cross(pCoor a, pCoor b, pCoor c);
+class pCoor {
+public:
+  pCoor(){};
+  pCoor(pVect v);
+  pCoor(float x, float y):x(x),y(y),z(0),w(1){};
+  pCoor(float x, float y, float z):x(x),y(y),z(z),w(1){};
+  pCoor(float x, float y, float z, float w):x(x),y(y),z(z),w(w){};
+  float *v() { return &x; }
+  operator float*() { return v(); }
+
+  void set(pCoor c){ x = c.x; y = c.y; z = c.z; w = c.w; }
+  void set(float xp, float yp, float zp){ x=xp; y=yp; z=zp; w=1; };
+  void set(float xp, float yp, float zp, float wp){ x=xp; y=yp; z=zp; w=wp; };
+  void homogenize()
+  {
+    const float winv = 1.0 / w;
+    x *= winv;
+    y *= winv;
+    z *= winv;
+    w = 1;
+  }
+
+  void apply(pMatrix& m){ set(mult_MC(m,*this)); }
+  inline void operator *= (pMatrix& m){apply(m);}
+  inline void add_vector(pVect v);
+  inline void operator += (pVect v);
+  inline pCoor operator + (pVect v);
+
+  float x, y, z, w;
+};
 
 class pMatrix {
 public:
-  float a[4][4];
-  float *v() { return &a[0][0]; }
-  operator float*() { return v(); }
+  float a[16];
 
-  //
-  // Initialization Functions
-  //
+  pMatrix(){set_identity();}
 
-  void set_zero(){ bzero(a,sizeof(a)); }
+  pMatrix(pMatrix& m1, pMatrix& m2)
+  {
+    set_zero();
+    for ( int row=0; row<4; row++ )
+      for ( int col=0; col<4; col++ )
+        for ( int i=0; i<4; i++ )
+          rc(row,col) += m1.rc(row,i) * m2.rc(i,col);
+  }
+  void copy(pMatrix& m){ memcpy(a,m.a,sizeof(a)); }
+
+  void set_zero(){memset(a,0,sizeof(a));}
+
+  void set_identity()
+  {
+    set_zero();
+    for ( int i=0; i<4; i++ ) rc(i,i) = 1;
+  };
+  void set_rotation(pVect u, double theta);
+  void set_translation(pVect pos);
+  void set_translation(float x, float y, float z);
 
   void set_scale(float factor)
   {
     set_zero();
-    a[0][0] = a[1][1] = a[2][2] = factor;
-    a[3][3] = 1;
-  }
-  void set_scale(float xfactor, float yfactor)
-  {
-    set_zero();
-    a[0][0] = xfactor;
-    a[1][1] = yfactor;
-    a[2][2] = a[3][3] = 1;
-  }
-  void set_identity(){ set_scale(1); }
-
-  void set_translate(float dx, float dy, float dz)
-  {
-    set_identity();
-    a[0][3] = dx;
-    a[1][3] = dy;
-    a[2][3] = dz;
-  }
-
-  void set_frustrum
-  (float width, float height, float near, float far)
-  {
-    set_zero();
-    a[0][0] = 2 * near / width;
-    a[1][1] = 2 * near / height;
-    a[2][2] = - ( far + near ) / ( far - near );
-    a[2][3] = - 2 * far * near / ( far - near );
-    a[3][2] = -1;
+    for ( int i=0; i<3; i++ ) rc(i,i) = factor;
+    rc(3,3) = 1;
   }
 
   void set_frustrum
   (float left, float right, float bottom, float top, float near, float far)
   {
     set_zero();
-    a[0][0] = 2 * near / ( right - left );
-    a[0][2] = ( right + left ) / ( right - left );
-    a[1][1] = 2 * near / ( top - bottom );
-    a[1][2] = ( top + bottom ) / ( top - bottom );
-    a[2][2] = - ( far + near ) / ( far - near );
-    a[2][3] = - 2 * far * near / ( far - near );
-    a[3][2] = -1;
+    rc(0,0) = 2 * near / ( right - left );
+    rc(0,2) = ( right + left ) / ( right - left );
+    rc(1,1) = 2 * near / ( top - bottom );
+    rc(1,2) = ( top + bottom ) / ( top - bottom );
+    rc(2,2) = - ( far + near ) / ( far - near );
+    rc(2,3) = - 2 * far * near / ( far - near );
+    rc(3,2) = -1;
   }
 
-  void transpose()
+#if 0
+  void apply_translation(pVect displ);
+
+  void apply_scale(float factor)
   {
-    for ( int row=0; row<4; row++ )
-      for ( int col=row+1; col<4; col++ )
-        {
-          const float t = a[row][col];
-          a[row][col] = a[col][row]; a[col][row] = t;
-        }
+    pMatrix mt; mt.set_scale(factor);
+    apply(mt);
   }
 
-  // Invert submatrix in first three rows and columns.
-  void invert3x3()
-  {
-    pMatrix result = ::invert3x3(*this);
-    bcopy(result.a,a,sizeof(a));
+  void apply_rotation(pVect u, float theta);
+#endif
+  void local_rotation(pVect u, float theta);
+
+  void pre_multiply(pMatrix m) {pMatrix mprod(m,*this); copy(mprod);}
+  void local(pMatrix& m) {pMatrix mprod(*this,m); copy(mprod);}
+
+  float* row_get(int row_num) { return &a[row_num<<2]; }
+  float& rc(int row, int col) {return a[ ( row << 2 ) + col ];}
+  pCoor r(int row_num){
+    float* const row = row_get(row_num);
+    return pCoor(row[0],row[1],row[2],row[3]);
   }
 
-  //
-  // Member functions used for matrix inversion.
-  //
-
-  float* row_get(int row_num) { return &a[row_num][0]; }
   void row_swap(int r1, int r2)
   {
     static float buffer[4];
@@ -130,41 +147,61 @@ public:
 
   void row_ssub(int row_dest, int row_src, double mult)
   {
-    a[row_dest][0] -= a[row_src][0] * mult;
-    a[row_dest][1] -= a[row_src][1] * mult;
-    a[row_dest][2] -= a[row_src][2] * mult;
-    a[row_dest][3] -= a[row_src][3] * mult;
+    rc(row_dest,0) -= rc(row_src,0) * mult;
+    rc(row_dest,1) -= rc(row_src,1) * mult;
+    rc(row_dest,2) -= rc(row_src,2) * mult;
+    rc(row_dest,3) -= rc(row_src,3) * mult;
   }
+
+  inline void column_set(int col, pVect v);
 };
 
-//
-// Pre-Initialized Matrices
-//
+pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
 
-class pMatrix_Scale : public pMatrix {
+class pVect {
 public:
-  pMatrix_Scale(float factor){set_scale(factor);}
-  pMatrix_Scale(float xfactor, float yfactor){set_scale(xfactor,yfactor);}
-};
+  pVect(){};
+  pVect(pCoor c):x(c.x),y(c.y),z(c.z){};
+  pVect(float x, float y, float z):x(x),y(y),z(z){};
+  pVect(pCoor from, pCoor to)
+  {
+    x = to.x - from.x;
+    y = to.y - from.y;
+    z = to.z - from.z;
+  }
+  pVect(float s, pVect v):x(s*v.x),y(s*v.y),z(s*v.z){};
 
-class pMatrix_Translate : public pMatrix {
-public:
-  pMatrix_Translate(float dx, float dy, float dz){set_translate(dx,dy,dz);}
-};
+  // Use with caution.
+  /*  float *v() {return &x;}  */
+  //  operator float*() const { return v(); }
+  operator const float*() const { return &x; }
 
-class pMatrix_Frustrum : public pMatrix {
-public:
-  pMatrix_Frustrum
-  (float left, float right, float bottom, float top, float near, float far)
-  { set_frustrum(left,right,bottom,top,near,far); }
-  pMatrix_Frustrum
-  (float width, float height, float near, float far)
-  { set_frustrum(width,height,near,far); }
-};
 
-//
-// Color, Coordinate, and Vector Classes
-//
+  void normalize()
+  {
+    pVect n = normal();
+    x = n.x;
+    y = n.y;
+    z = n.z;
+  };
+
+  pVect normal()
+  {
+    const float minv = 1.0/mag();
+    return pVect(x*minv,y*minv,z*minv);
+  }
+  void flip() {x = -x;  y = -y;  z = -z;}
+  inline void operator += (pVect v){ x+=v.x; y+=v.y; z+=v.z; }
+  void set(const pVect& v){ x=v.x; y=v.y; z=v.z; }
+  void set(float xp, float yp, float zp){ x=xp; y=yp; z=zp; }
+
+#if 0
+  inline pVect operator - (void){ return pVect(-x,-y,-z); }
+  inline pVect operator - (pVect v){ return pVect(x-v.x,y-v.y,z-v.z); }
+#endif
+  float mag() { return sqrt( dot(*this,*this) ); }
+  float x, y, z;
+};
 
 class pColor {
 public:
@@ -177,128 +214,201 @@ public:
   float r, g, b, a;
 };
 
-class pCoor {
-public:
-  pCoor(){}
-  pCoor(float x, float y, float z):x(x), y(y), z(z), w(1){}
-  pCoor(float x, float y, float z, float w):x(x), y(y), z(z), w(w){}
-  pCoor(pCoor *c):x(c->x), y(c->y), z(c->z), w(c->w){}
-  void set(float xp, float yp, float zp){x=xp; y=yp; z=zp; w=1;}
-  float *v() { return &x; }
-  operator float*() { return v(); }
-  void homogenize()
-  {
-    const float winv = 1 / w;
-    float* const a = array();
-    for( int i=0; i<3; i++ ) a[i] *= winv;
-    w = 1;
-  }
-  inline void operator *= (pMatrix m)
-  {
-    pCoor cpy(this);
-    float* const a = array();
-    float* const c = cpy.array();
-    for ( int i = 0; i < 4; i++ )
-      {
-        a[i] = 0;
-        for ( int j = 0; j < 4; j++ ) a[i] += m.a[i][j] * c[j];
-      }
-  }
-  float x,y,z,w;
-  float* array(){ return &x; }
-};
+inline float dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
 
-class pVect {
-public:
-  pVect(){};
-  pVect(float x, float y, float z):x(x), y(y), z(z){}
-  pVect(pCoor p, pCoor q):x(q.x-p.x), y(q.y-p.y), z(q.z-p.z){}
-  pVect(pCoor a, pCoor b, pCoor c){set(cross(a,b,c));}
-  pVect(const pVect& v){ set(v); }
-  float *v() { return &x; }
-  operator float*() { return v(); }
-  void set(const pVect& v){ x=v.x; y=v.y; z=v.z; }
-  void set(float xp, float yp, float zp){ x=xp; y=yp; z=zp; }
-  float normalize() {
-    const float mag = magnitude();
-    const float mag_inv = 1.0 / mag;
-    x *= mag_inv;  y *= mag_inv;  z *= mag_inv;
-    return mag;
-  }
-  float magnitude() { return sqrt( x*x + y*y + z*z ); }
-  float* array(){ return &x; }
-  inline void operator *= (const pMatrix& m)
-  {
-    pCoor cpy(x,y,z,0);
-    pCoor prd;
-    float* const a = prd.array();
-    float* const c = cpy.array();
-    for ( int i = 0; i < 4; i++ )
-      {
-        a[i] = 0;
-        for ( int j = 0; j < 4; j++ ) a[i] += m.a[i][j] * c[j];
-      }
-    x=prd.x; y=prd.y; z=prd.z;
-  }
+float dot(pCoor a, pCoor b)
+{return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;}
 
-  float x,y,z;
-};
-
-//
-// Vector, Coordinate, and Matrix Operations
-//
-
-inline pVect cross(pVect a, pVect b)
+pVect cross(pVect a, pVect b)
 {
   return pVect
     ( a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x );
 }
 
-inline pVect cross(pCoor a, pCoor b, pCoor c)
+pVect cross(pCoor a, pCoor b, pCoor c)
 {
   return cross(pVect(b,a),pVect(b,c));
 }
 
-inline float dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
-
-pMatrix operator * (pMatrix a, pMatrix b)
+pCoor mult_MC(pMatrix& m, pCoor c)
 {
-  pMatrix p;  p.set_zero();
-  for ( int i = 0; i < 4; i++ )
-    for ( int j = 0; j < 4; j++ )
-      for ( int k = 0; k < 4; k++ )
-        p.a[i][j] += a.a[i][k] * b.a[k][j];
-  return p;
+  return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
 }
 
-pCoor operator * (pMatrix a, pCoor c)
+inline void
+pCoor::add_vector(pVect v)
 {
-  c *= a;
-  return c;
+  x += v.x;
+  y += v.y;
+  z += v.z;
 }
+
+inline void pCoor::operator += (pVect v) { add_vector(v); }
+inline pCoor pCoor::operator + (pVect v)
+{return pCoor(x + v.x, y + v.y, z + v.z);}
+inline pCoor::pCoor(pVect v):x(v.x),y(v.y),z(v.z),w(1){}
+inline pVect operator + (pVect v, pVect q)
+{return pVect(v.x+q.x,v.y+q.y,v.z+q.z); }
+inline pVect operator - (pVect v, pVect q)
+{return pVect(v.x-q.x,v.y-q.y,v.z-q.z); }
+inline pVect operator - (pVect q){return pVect(-q.x,-q.y,-q.z); }
+inline pVect operator - (pCoor c1, pCoor c2){return pVect(c2,c1);}
+inline pVect operator + (pVect v, float s){return pVect(v.x+s,v.y+s,v.z+s); }
+inline pVect operator * (pVect v, float s){return pVect(s,v); }
+inline pVect operator * (float s,pVect v){return pVect(s,v); }
+inline pVect operator * (pVect v,pVect q)
+{return pVect(v.x*q.x,v.y*q.y,v.z*q.z);}
+inline pVect operator * (double s,pVect v){return pVect(s,v); }
+inline pVect operator / (pVect v, float f)
+{
+  const float finv = 1.0 / f;
+  return pVect(v.x*finv,v.y*finv,v.z*finv);
+}
+inline pMatrix operator * (pMatrix m1, pMatrix m2){ return pMatrix(m1,m2); }
+
+class pNorm : public pVect {
+public:
+  pNorm(){}
+  pNorm(pVect v){set(v);}
+  void set(pVect v)
+  {
+    magnitude = v.mag();
+    pVect v2 = magnitude == 0 ? pVect(0,0,0) : v / magnitude;
+    pVect::set(v2);
+  }
+  void operator = (pVect v) { set(v); }
+  float magnitude;
+};
+
+inline void
+pMatrix::column_set(int col, pVect v)
+{
+  rc(0,col) = v.x;
+  rc(1,col) = v.y;
+  rc(2,col) = v.z;
+  rc(3,col) = 0;
+}
+
+
+void
+pMatrix::set_rotation(pVect u, double theta)
+{
+  const float rpd = 2.0 * M_PI / 360.0;
+  set_zero();
+  const double cos_theta = cos(theta*rpd);
+  const double sin_theta = sin(theta*rpd);
+  rc(0,0) = u.x * u.x + cos_theta * ( 1.0 - u.x * u.x );
+  rc(0,1) = u.x * u.y * ( 1.0 - cos_theta ) - u.z * sin_theta;
+  rc(0,2) = u.z * u.x * ( 1.0 - cos_theta ) + u.y * sin_theta;
+  rc(1,0) = u.x * u.y * ( 1.0 - cos_theta ) + u.z * sin_theta;
+  rc(1,1) = u.y * u.y + cos_theta * ( 1 - u.y * u.y );
+  rc(1,2) = u.y * u.z * ( 1.0 - cos_theta ) - u.x * sin_theta;
+  rc(2,0) = u.z * u.x * ( 1.0 - cos_theta ) - u.y * sin_theta;
+  rc(2,1) = u.y * u.z * ( 1.0 - cos_theta ) + u.x * sin_theta;
+  rc(2,2) = u.z * u.z + cos_theta * ( 1 - u.z * u.z );
+  rc(3,3) = 1.0;
+}
+
+void
+pMatrix::set_translation(pVect pos)
+{ set_translation(pos.x,pos.y,pos.z); }
+
+void
+pMatrix::set_translation(float x, float y, float z)
+{
+  set_identity();
+  rc(0,3) = x;
+  rc(1,3) = y;
+  rc(2,3) = z;
+  rc(3,3) = 1;
+}
+
+#if 0
+void
+pMatrix::apply_translation(pVect pos)
+{
+  pMatrix mt; mt.set_translation(pos);
+  apply(mt);
+}
+
+
+void
+pMatrix::apply_rotation(pVect u, float theta)
+{
+    pMatrix mt; mt.set_rotation(u,theta);
+    apply(mt);
+}
+#endif
+void
+pMatrix::local_rotation(pVect u, float theta)
+{
+  pMatrix mt; mt.set_rotation(u,theta);
+  local(mt);
+}
+
+float distance(pCoor a, pCoor b)
+{
+  pVect diff(a,b); return diff.mag();
+}
+
+float distance_sq(pCoor a, pCoor b)
+{
+  pVect diff(a,b); return dot(diff,diff);
+}
+
+//
+// Pre-Initialized Matrices
+//
+
+class pMatrix_Scale : public pMatrix {
+public:
+  pMatrix_Scale(float factor){set_scale(factor);}
+};
+
+class pMatrix_Translate : public pMatrix {
+public:
+  pMatrix_Translate(float dx, float dy, float dz){set_translation(dx,dy,dz);}
+  pMatrix_Translate(pVect d){set_translation(d);}
+};
+
+class pMatrix_Rotation : public pMatrix {
+public:
+  pMatrix_Rotation(pVect dir, double theta){set_rotation(dir,theta);}
+};
+
+#if 0
+class pMatrix_Frustrum : public pMatrix {
+public:
+  pMatrix_Frustrum
+  (float left, float right, float bottom, float top, float near, float far)
+  { set_frustrum(left,right,bottom,top,near,far); }
+  pMatrix_Frustrum
+  (float width, float height, float near, float far)
+  { set_frustrum(width,height,near,far); }
+};
+#endif
 
 pMatrix
-invert3x3(pMatrix& original)
+invert(pMatrix& original)
 {
   const bool check = true;
   pMatrix a = original;
   pMatrix b; b.set_identity();
-  const int size = 3;
 
-  for ( int dia = 0; dia < size; dia++ )
+  for ( int dia = 0; dia < 4; dia++ )
     {
-      if ( a.a[dia][dia] == 0 )
-        for ( int row = dia + 1; row < size; row++ )
-          if ( a.a[row][dia] != 0 )
+      if ( a.rc(dia,dia) == 0 )
+        for ( int row = dia + 1; row < 4; row++ )
+          if ( a.rc(row,dia) != 0 )
             { a.row_swap(row,dia);  b.row_swap(row,dia);  break;}
-      const float a00 = a.a[dia][dia];
-      //  if ( a00 == 0 ) pError_Exit();
+      const float a00 = a.rc(dia,dia);
+      if ( a00 == 0 ) pError_Exit();
       const double mult = 1.0 / a00;
       a.row_mult(dia,mult);  b.row_mult(dia,mult);
-      for ( int row = 0; row < size; row++ )
+      for ( int row = 0; row < 4; row++ )
         {
           if ( row == dia ) continue;
-          const float adc = a.a[row][dia];
+          const float adc = a.rc(row,dia);
           if ( adc == 0 ) continue;
           a.row_ssub(row,dia,adc);  b.row_ssub(row,dia,adc);
         }
@@ -309,17 +419,20 @@ invert3x3(pMatrix& original)
       pMatrix ihope = original * b;
       pMatrix iis; iis.set_identity();
       float sum = 0;
-      for ( int r=0; r<size; r++ )
-        for ( int c=0; c<size; c++ )
-          sum += fabs(ihope.a[r][c]-iis.a[r][c]);
+      for ( int r=0; r<4; r++ )
+        for ( int c=0; c<4; c++ )
+          sum += fabs(ihope.rc(r,c)-iis.rc(r,c));
       if ( sum > 1e-5 )
         {
           printf("Can't invert, sum: %f\n",sum);
-          exit(1);
-          //  pError_Exit();
+          pError_Exit();
         }
     }
   return b;
 }
 
+
+
+
 #endif
+

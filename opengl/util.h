@@ -116,7 +116,7 @@ public:
     frame_rate = 0;
     cpu_frac = 0;
   }
-  void work_unit_set(char *description, double multiplier = 1)
+  void work_unit_set(const char *description, double multiplier = 1)
   {
     work_multiplier = multiplier;
     work_accum = 0;
@@ -239,7 +239,7 @@ public:
   {
     size = 0;  storage = (pVariable_Control_Elt*)malloc(0); current = NULL;
   }
-  void insert(float &var, char *name)
+  void insert(float &var, const char *name)
   {
     size++;
     const int cidx = current - storage;
