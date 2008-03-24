@@ -6,17 +6,7 @@
 
  /// Purpose
 //
-//   Demonstrate vertex transfer overhead.
-
-//   The routine draws an undulating gold tube pierced by a
-//   triangle. The methods used to specify the vertices can be varied,
-//   as can the length of the tube. There is a bright light in the
-//   tube that can dimmed, brightened, and moved around.
-
- /// To compile and run:
-//
-//     make
-//     demo-2-transfer
+//   Demonstrate texturing techniques.
 
  /// More Information
 //
@@ -28,74 +18,7 @@
 
 /// Motivation:
 
-//   Scenes can contain a very large number of primitives and these
-//   can contribute to frame time in two ways:
 
-//     Latency: Setup time for one item.
-//       GL API facilitates avoiding latency.
-//       To avoid: process /arrays/ of items. Latency suffered once.
-
-//     CPU/GPU Bandwidth: Amount of data per unit time.
-//       To avoid: Minimize amount of data.
-//       To avoid: Pre-store unchanging items on CPU. (Buffer objects.)
-//       To avoid: Use GPU for computation. (Later demo program.)
-
-
-/// Latency Contributors
-
- ///  Client Side
-
-//    Validating Arguments
-//      GL minimizes this by not requiring validation on high-volume calls.
-
-//    Packaging data.
-//      Write vertex argument to buffer area of client memory..
-//      ..along with command and other info.
-
-//    Initiating transfer.
-//      Signal GPU to read data.
-
- ///  GPU Side
-
-//    Parsing commands.
-//    Pipeline setup.
-//      Change any modified state (lighting, transform, etc.)
-
-
-/// GL Arrays
-
-// Refers to arrays of particular objects.
-//   Such as: GL_NORMAL_ARRAY, GL_VERTEX_ARRAY.
-
-//  "Load" array type with data.
-//  Indicate that array will be used.
-//  Emit vertices.
-
-
-
-// Buffering Methods
-//  Common: Array of vertices.
-
-//  Copy info from client memory for each draw.
-//   + Save function call overhead.
-//   + GL can better plan logistics.
-
-//  Put "arrays" under GL control.
-
-
-// From Client Memory
-//  Indicate for each attribute..
-//  Draw Array
-//  Disconnect.
-
-// Buffer Objects
-//  Blocks of memory..
-//  ..can be read and written by CPU..
-//  ..or by GPU.
-//  
-
-// From GPU Memory
-//  
 
 
 
@@ -209,6 +132,32 @@ private:
 };
 
 
+#define ENUM_LABEL(c) { #c, c }
+struct pEnum_Label { const char *label; int value; };
+pEnum_Label texture_env_modes[] = {
+  ENUM_LABEL(GL_REPLACE),
+  ENUM_LABEL(GL_MODULATE),
+  ENUM_LABEL(GL_DECAL),   // Blend using alpha value of texture.
+  ENUM_LABEL(GL_BLEND),   // Blend using separate alpha.
+  ENUM_LABEL(GL_ADD),     // Sum of colors, product of alphas.
+  ENUM_LABEL(GL_COMBINE), // Use separate combine function.
+  {NULL,0}
+};
+
+pEnum_Label texture_min_filters[] = {
+  ENUM_LABEL( GL_NEAREST_MIPMAP_NEAREST ),
+  ENUM_LABEL( GL_LINEAR_MIPMAP_NEAREST ),
+  ENUM_LABEL( GL_NEAREST_MIPMAP_LINEAR ),
+  ENUM_LABEL( GL_LINEAR_MIPMAP_LINEAR ),
+  {NULL,0}
+};
+
+pEnum_Label texture_mag_filters[] = {
+  ENUM_LABEL( GL_NEAREST ),
+  ENUM_LABEL( GL_LINEAR ),
+  {NULL,0}
+};
+
 //
  /// Tube Object
 //
@@ -249,6 +198,10 @@ private:
 
   GLuint gpu_coor_buffer;
   GLuint gpu_norm_buffer;
+
+  int texture_env_mode;
+  int texture_min_filter;
+  int texture_mag_filter;
 
   GLuint texture_id_syllabus;
 
@@ -294,6 +247,10 @@ Tube::init()
   glGenBuffers(1,&gpu_coor_buffer);
 
   texture_id_syllabus = pTexture_From_PNM("gp.ppm",true,255);
+
+  texture_env_mode = 0;
+  texture_min_filter = 0;
+  texture_mag_filter = 0;
 
 }
 
@@ -345,6 +302,18 @@ Tube::render()
   case FB_KEY_DOWN: opt_light_location.y -= 0.1; break;
   case FB_KEY_PAGE_DOWN: opt_light_location.z += 0.2; break;
   case FB_KEY_PAGE_UP: opt_light_location.z -= 0.2; break;
+  case 'm': texture_env_mode++;
+    if ( !texture_env_modes[texture_env_mode].label )
+      texture_env_mode = 0;
+    break;
+  case 'i': texture_min_filter++;
+    if ( !texture_min_filters[texture_min_filter].label )
+      texture_min_filter = 0;
+    break;
+  case 'a': texture_mag_filter++;
+    if ( !texture_mag_filters[texture_mag_filter].label )
+      texture_mag_filter = 0;
+    break;
   case 9: variable_control.switch_var_right(); break;
   case '-':case '_': variable_control.adjust_lower(); break;
   case '+':case '=': variable_control.adjust_higher(); break;
@@ -381,12 +350,14 @@ Tube::render()
   const char* const t_mode_str[] =
     { "Individual", "Client Array", "Buffer Object" };
 
-  ogl_helper.fbprintf
-    ("Vertex specification:  %s  (v to change)\n",
-     t_mode_str[opt_t_mode]);
-  ogl_helper.fbprintf("Tube recomputation: %d\n", opt_recompute);
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.3f\n",cvar->name,cvar->var[0]);
+  ogl_helper.fbprintf("Texture Mode: %s\n",
+                      texture_env_modes[texture_env_mode].label);
+  ogl_helper.fbprintf("Min Filter: %s\n",
+                      texture_min_filters[texture_min_filter].label);
+  ogl_helper.fbprintf("Mag Filter: %s\n",
+                      texture_mag_filters[texture_mag_filter].label);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
@@ -415,8 +386,8 @@ Tube::render()
   const int num_coor = pattern_levels * vertices_per_ring;
 
   const double cycles_per_second = 0.2;
-  const double phase_n =
-    ( time_wall_fp() - time_app_start ) * cycles_per_second;
+  const double now = 0; // time_fall_fp();
+  const double phase_n = ( now - time_app_start ) * cycles_per_second;
   const double phase = phase_n * 2.0 * M_PI;
   const double phase_01 = 1.0 - ( phase_n - floor(phase_n) );
 
@@ -519,15 +490,6 @@ Tube::render()
               *cptr++ = v1;
               *cptr++ = v2;
 
-#if 0
-              glBegin(GL_TRIANGLES);
-
-              glNormal3fv(v0_normal);  glVertex3fv(v0);
-              glNormal3fv(v1_normal);  glVertex3fv(v1);
-              glNormal3fv(v2_normal);  glVertex3fv(v2);
-
-              glEnd();
-#endif
             }
           z = next_z;
         }
@@ -558,15 +520,19 @@ Tube::render()
     pVect normal(cross(v0,v1,v2));
 
     glColor3fv( color_purple );
-    glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_DECAL);
+    glTexEnvi(GL_TEXTURE_ENV,
+              GL_TEXTURE_ENV_MODE,
+              texture_env_modes[texture_env_mode].value);
 
     // GL_REPLACE, GL_MODULATE, GL_DECAL, GL_BLEND, GL_ADD, GL_COMBINE
 
     glTexParameterf
-      (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+      (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, 
+       texture_min_filters[texture_min_filter].value);
       //  (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                    texture_mag_filters[texture_mag_filter].value);
 
     glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
     glEnable(GL_TEXTURE_2D);
@@ -602,7 +568,7 @@ main(int argc, char **argv)
   pOpenGL_Helper popengl_helper(argc,argv);
   Tube tube(popengl_helper);
 
-  popengl_helper.rate_set(30);
+  //  popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(tube.render_w,&tube);
   
 

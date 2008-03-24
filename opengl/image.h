@@ -39,7 +39,7 @@ public:
     for ( int i = 0; i < num; i++ )
       {
         fread(dp,1,3,in);
-        dp[3] = dp[0] & dp[1] & dp[2] == transp ? 0 : 255;
+        dp[3] = ( ( dp[0] == dp[1] ) && dp[2] == transp ) ? 0 : 255;
         dp += 4;
       }
     fclose(in);
