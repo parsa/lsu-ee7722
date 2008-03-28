@@ -82,8 +82,10 @@
 //  o  A modification to the value of vertices_per_ring (it will depend
 //     on opt_use_triangle_strips).
 //     Just one line here.
+//     UPDATE: Now included in this file.
 
 //  o  A single added line to the loop nest (after comment "Outer Loop").
+//     UPDATE: Now included in this file.
 
 //  o  Most code needs to be added to the switch statement.
 
@@ -393,9 +395,11 @@ Tube::render()
   const int pattern_width = 3 * int( opt_pattern_width * 0.33333333 );
   const int pattern_levels = int( opt_pattern_levels + 0.5 );
 
-  // HINT: Solution requires change to line below.
+  //  const int vertices_per_ring = 3 * 2 * pattern_width;
+  // SOLUTION
   // Number of vertices passed to OpenGL.
-  const int vertices_per_ring = 3 * 2 * pattern_width;
+  const int vertices_per_ring =
+    ( opt_use_triangle_strips ? 2 : 3 * 2 ) * pattern_width;
 
   const int num_coor = pattern_levels * vertices_per_ring;
 
@@ -499,6 +503,9 @@ Tube::render()
 	      *nptr++ = pVect(-cos_theta,-sin_theta,cos_z1);
 
 	      theta += delta_theta;
+
+	      // SOLUTION
+	      if ( opt_use_triangle_strips ) continue;
 
 	      cos_theta = tarray.cos(theta);
 	      sin_theta = tarray.sin(theta);
