@@ -1,0 +1,60 @@
+
+// void
+// vs_ff_clip()
+// {
+//   for ( int i = 0; i < gl_MaxClipPlanes; i++ )
+//     {
+//       vec4 clip_plane = gl_ClipPlane[i];
+      
+//     }
+
+// }
+
+void
+main_lighting
+( in float4 gl_Vertex : POSITION,
+  in float3 gl_Normal : NORMAL,
+  out float4 colorO : COLOR0
+
+)
+{
+  // Input: gl_Vertex, gl_Normal
+  // Output: gl_Position, gl_PointSize, gl_ClipVertex
+  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
+  vec3 norm_e = gl_NormalMatrix * gl_Normal;
+  vec4 light_pos = gl_LightSource[1].position;
+  float phase = abs(dot(norm_e, normalize(light_pos - vertex_e).xyz));
+
+  const vec3 ambient = gl_LightSource[1].ambient.rgb;
+  const vec3 diffuse = gl_LightSource[1].diffuse.rgb;
+  vec4 new_color;
+  new_color.rgb = gl_Color.rgb * ( phase * diffuse + ambient );
+  new_color.a = gl_Color.a;
+  gl_BackColor = gl_FrontColor = new_color;
+}
+
+// uniform vec4 circle_center;
+// uniform vec3 circle_a_vector;
+// uniform vec3 circle_b_vector;
+// uniform vec2 tex_center;
+// uniform vec2 tex_a_vector;
+// uniform vec2 tex_b_vector;
+
+// void
+// vs_main_circle()
+// {
+//   const float theta = gl_Vertex.x;
+//   vec4 c_point = circle_center;
+//   c_point.xyz +=
+//     circle_a_vector * cos(theta) + circle_b_vector * sin(theta);
+//   gl_Position = gl_ModelViewProjectionMatrix * c_point;
+//   vec4 t_point;
+//   t_point.z = 0.0;
+//   t_point.w = 1.0;
+//   t_point.xy = tex_center;
+//   t_point.xy += tex_a_vector * cos(theta) + tex_b_vector * sin(theta);
+//   gl_TexCoord[0] = t_point;
+//   //  gl_ClipVertex = gl_ModelViewMatrix * c_point;
+
+//   vs_lighting();
+// }
