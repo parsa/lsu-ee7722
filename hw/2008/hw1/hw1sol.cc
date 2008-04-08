@@ -1,52 +1,46 @@
 /// LSU EE 7700-2 (Sp 08), Graphics Processors
 //
-/// Homework 1
+/// Homework 1  -- SOLUTION
 
- /// Name:
+ /// Solutions described after problem descriptions.
+
+ /// Name:  David Koppelman
 
 // $Id:$
 
-/// Instructions
-
-// Follow the class account setup instructions linked to the
-// class procedures page, http://www.ece.lsu.edu/koppel/gp/proc.html
-
-// For instructions on how to check out edit, compile, and debug, see
-// the "Programming Homework Work Flow" entry on the procedures page,
-// http://www.ece.lsu.edu/koppel/gp/proc.html.
-//
-// For those instructions you need to know that:
-//
-//  This assignment is at SVN URI https://svn.ece.lsu.edu/svn/gp/hw/2008/hw1
-//
-//  The assignment instructions are in file hw1.cc. (This file.)
-
-// For the solutions to the problems below edit this file, even if
-// it makes more sense to edit others (namely, coord.h). If it seems
-// that coord.h must be edited, contact me.
-
-// The main code is in routine render_hw1.
-
-
-/// Problem 0
-
-// Fill in your name in the comment above. Then build and test the
-// program. It should display a tube similar to
-// demo-4-lighting. Promptly resolve any problems, feel free to ask
-// for help from Dr. Koppelman or others, especially on issues of
-// missing libraries, and other setup problems.
-
-
+#if 0
 /// Problem 1
 
 // The large triangle has a flaw: There is a line extending out of
 // the right side of the bottom of the triangle.  
 
-//  [ ] Fix the flaw.
+//  [x] Fix the flaw.
 
-// Note: The part of the code containing the flaw is the most
-// time-critical in the rendering pipeline, which is why your attention
-// is being focused there.
+ /// Solution:
+
+ // Search for PROBLEM 1 SOLUTION
+
+ // The problem is in the interpolation objects used for the triangle
+ // edges. They compute a delta x (d_x) which is too large because it
+ // uses the wrong y_range (delta y). Specifically, it uses the y
+ // distance between the two vertices but it should use the y distance
+ // between the start and end pixels. When the vertices are on the
+ // order of one pixel apart the delta x calculated results in x
+ // values that are too small or, in this case, too large. The
+ // solution is to base the y range on the first and last pixel. The
+ // problem observed was due to rounding.
+
+@@ -177,8 +174,9 @@ public:
+     const bool scissor = pre_y > 0.0;
+     yi = scissor ? ymin : int(v0.y);
+ #define DELTA(item) \
+-    d_##item = (float(v1.item) - v0.item) / y_range;            \
+-    item = v0.item + ( scissor ? pre_y * d_##item : 0.0 );
++    const float dtrue_##item = (float(v1.item) - v0.item) / y_range;          \
++    item = v0.item + ( scissor ? pre_y * dtrue_##item : 0.0 );                \
++    d_##item = (float(v1.item) - item) / ( yi_last - yi );
+     DELTA(red); DELTA(green); DELTA(blue); DELTA(x); DELTA(z);
+
 
 
 /// Problem 2
@@ -55,7 +49,17 @@
 // degrees in the y direction though the center of tube. Each R should
 // rotate by another 15 degrees.
 
-//  [ ] Modify to rotate by 15 degrees.
+//  [x] Modify to rotate by 15 degrees.
+
+ /// Solution:
+
+ // Search for PROBLEM 2 SOLUTION
+
+ // The modified code maintains a rotation angle variable, angle,
+ // updated when r or R is pressed. Using that variable a rotation
+ // matrix is constructed as well as two transformation matrices to
+ // center and uncenter the tube. A transpose-inverse matrix is used
+ // to transform the normals.
 
 
 
@@ -78,13 +82,141 @@
 
 // Be sure to base this formula on the optimized version of the code.
 
-//  [ ] Prepare a solution on paper (or pdf).
+//  [~] Prepare a solution on paper (or pdf).
 
-//  [ ] Show how well the solution works with the code with varying
+//  [x] Show how well the solution works with the code with varying
 //      values of pattern_width and pattern_levels.
 
-//  [ ] Provide suggestions on where and how the rendering pipeline
+//  [x] Provide suggestions on where and how the rendering pipeline
 //      code may be sped up.
+
+ /// SOLUTION
+
+// First, the following interpretation is used:
+
+//  n_tri:
+//   Should be related to the perimeter. For that use the number
+//   of times an interpolation object is constructed.
+
+//  n_p:
+//   Two interpretations were used. First, a count of the number of
+//   fragments (candidate pixels) generated (but not necessarily passing
+//   the Z test), second, the number of fragments written to the frame
+//   buffer.
+
+//  n_v:
+//   The number of vertices.
+
+// In the solution the variable p3_vertex_count collects n_v,
+// p3_perimeter_px_count collects n_tri, and p3_area_px_count collects
+// n_a.
+
+// To determine t_tri, t_p, and t_v one could measure the time in the
+// code spent on the respective activities: for t_tri the time in the
+// parts of the code responsible for constructing interpolation objects,
+// for t_v the time for processing vertices, and for t_p the time writing
+// the frame buffer (or at least testing the z buffer). 
+
+// One would also have to count n_tri, n_v, and n_p.
+
+// Call the total total time for vertices collected in this way T_v. Then
+// t_v = T_v / n_v and t_p and t_tri can be found similarly.
+
+// A disadvantage of this approach is the need to separately measure
+// vertex, perimeter, and pixel timing.
+
+// The approach used in this solution is to collect n_tri, n_v, n_p,
+// and the total render time for multiple runs and then solve:
+
+//  n_v1 t_v + n_tri1 t_tri + n_p1 t_p  = T_1
+
+//  n_v2 t_v + n_tri2 t_tri + n_p2 t_p  = T_2
+
+//  n_v3 t_v + n_tri3 t_tri + n_p3 t_p  = T_3
+
+// where n_v1 is the value of n_v for the first run, etc.
+
+// Data was collected for three scenes. The first is the default, the
+// second is the default but with a zoomed window (increasing the area
+// and perimeter but not changing the vertex count). The last was
+// rendered with a smaller value of pattern_width.
+
+// The commented Mathematica transcript below shows the solution, note
+// the annoying problem:
+
+//     In[99]:= M = {{ 6012,  79000, 209110 }, { 6012,  129274, 526375 }, { 3012,  75490,  247562 }};
+
+//     In[100]:= M // MatrixForm
+
+//                           n_v      n_tri    n_p
+//     Out[100]//MatrixForm= 6012     79000    209110
+//                           6012     129274   526375
+//                           3012     75490    247562
+
+//     In[101]:= T = {15.3, 30.3,12.9};
+
+//     In[102]:= Inverse[M] . T
+
+//                t_v         t_tri         t_p
+//     Out[102]= {0.00177148, -0.000114177, 0.0000653717}
+
+//     In[103]:= M[[1]] . %102       (* Check the result.*)
+//     Out[103]= 15.3
+
+// The value of t_tri is negative, meaning that timing does not
+// neatly factor into those three components.  The problem is
+// that the code computing the color:
+
+                    f_buffer[ fb_idx ] = interp_line.color();
+
+// is time consuming, so its not a good idea to ignore whether a pixel is
+// written as was done when collecting n_p. The code in this file counts
+// the number of pixels passing the z test (and so written to the frame
+// buffer). With that change (and using different configurations):
+
+
+//     In[91]:= M = {{ 1212, 14837, 111728}, { 6012, 70858, 440983}, { 3012, 40716, 167498}};
+//     In[92]:= T= {7.4, 31.1, 13.1};
+
+//     In[93]:= M // MatrixForm
+
+//     Out[93]//MatrixForm= 1212     14837    111728
+//                          6012     70858    440983
+//                          3012     40716    167498
+
+//     In[94]:= Inverse[M] . T
+
+//                t_v         t_tri         t_p
+//     Out[94]= {0.00128734, 0.0000253251, 0.0000489045}
+
+// So we can say the code, on my system, takes 1.29 microsecond per
+// vertex, 25 ns per interpolation setup, and 48.9 ns per written
+// pixel. Those numbers are used to print a timing estimate. (That
+// estimate will only be accurate on my machine.)
+
+// The estimate is within one 1 ms when zooming and rotating the tube.
+
+// Suggestions for Improvement:
+
+// Any search for code improvement should start with the
+// most frequently executed code. That would be the code
+// updating the frame buffer:
+
+               if ( z_buffer[ fb_idx ] > interp_line.z )
+                 {
+                   p3_area_px_count++;
+                   f_buffer[ fb_idx ] = interp_line.color();
+                   z_buffer[ fb_idx ] = interp_line.z;
+                 }
+
+// The function computing the color is fairly complex, requiring range
+// comparisons and shifts and masks. One possibility is to streamline
+// this by checking in advance if any color component will overflow, and
+// if not skipping the comparisons. If might also be possible to use
+// scaled integer arithmetic when interpolating values.
+
+
+#endif
 
 
 #include <stdio.h>
@@ -94,6 +226,18 @@
 
 #include "frame_buffer.h"
 #include "coord.h"
+
+
+class pMatrix_RotateXY : public pMatrix {
+public:
+  pMatrix_RotateXY(float theta)
+  {
+    set_identity();
+    a[2][2] = a[0][0] = cos(theta);
+    a[0][2] = -sin(theta);
+    a[2][0] = sin(theta);
+  }
+};
 
 
  /// Vertex Object
@@ -180,9 +324,11 @@ public:
     const float pre_y = float(ymin) - v0.y;
     const bool scissor = pre_y > 0.0;
     yi = scissor ? ymin : int(v0.y);
+    /// PROBLEM 1 SOLUTION
 #define DELTA(item) \
-    d_##item = (float(v1.item) - v0.item) / y_range;            \
-    item = v0.item + ( scissor ? pre_y * d_##item : 0.0 );
+    const float dtrue_##item = (float(v1.item) - v0.item) / y_range;          \
+    item = v0.item + ( scissor ? pre_y * dtrue_##item : 0.0 );                \
+    d_##item = (float(v1.item) - item) / ( yi_last - yi );
     DELTA(red); DELTA(green); DELTA(blue); DELTA(x); DELTA(z);
 #undef DELTA
   }
@@ -269,7 +415,7 @@ render_hw1(pFrame_Buffer &frame_buffer)
   const float r = 2;                  // Tube radius.
   const float x_shift = 0.4;          // Tube x offset.
   const int pattern_levels = 50;      // Tube depth (z direction.)
-  const float pattern_width = 20;     // Triangle size (circumferential).
+  const float pattern_width = 10;     // Triangle size (circumferential).
   const float pattern_pitch_z = 0.25; // Triangle size (z axis).
 
   float z = -1;
@@ -329,6 +475,33 @@ render_hw1(pFrame_Buffer &frame_buffer)
       z = next_z;
     }
 
+
+  ///
+  /// PROBLEM 2 SOLUTION
+  ///
+  {
+    const float delta_theta = 2. * M_PI * 15. / 360.;
+    static float angle = 0;
+    if ( frame_buffer.keyboard_key == 'R' ) angle += delta_theta;
+    if ( frame_buffer.keyboard_key == 'r' ) angle -= delta_theta;
+    const float z_adj = ( pattern_levels * pattern_pitch_z ) / 2.0 + 1;
+  
+    pMatrix_Translate tube_center(x_shift,0,z_adj);
+    pMatrix_RotateXY centered_rotate(angle);
+    pMatrix_Translate tube_uncenter(-x_shift,0,-z_adj);
+    pMatrix rotate = tube_uncenter * centered_rotate * tube_center;
+
+    pMatrix rotate_normal = rotate;
+    rotate_normal.transpose(); rotate_normal.invert3x3();
+
+    for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+      {
+        **ci *= rotate;
+        ci[0]->normal *= rotate_normal;
+        ci[0]->normal.normalize();
+      }
+  }
+  
   const double pattern_loop_end = time_wall_fp();
   frame_buffer.fbprintf("The pattern loop took %.3f ms.\n",
                         ( pattern_loop_end - pattern_loop_start ) * 1000 );
@@ -497,11 +670,17 @@ render_hw1(pFrame_Buffer &frame_buffer)
 
   /// Note: Code past this point should be identical to Demo 3.
 
+  int p3_vertex_count = 0;
+  int p3_perimeter_px_count = 0;
+  int p3_area_px_count = 0;
+
   ///
   /// Rasterize Primitives
   ///
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci += 3 )
     {
+      p3_vertex_count += 3;
+
       pSortVertices sort(ci); // Sort next 3 items in list.
       pVertex& c0w = sort;    // Coordinate with smallest y.
       pVertex& c1w = sort;
@@ -518,6 +697,7 @@ render_hw1(pFrame_Buffer &frame_buffer)
       //
       pInterpolate interp_02(c0w,c2w,0,win_height-1);
       pInterpolate interp_012(c0w,c1w,0,win_height-1);
+      p3_perimeter_px_count += 2;
 
       // Compute position (index) in frame buffer of first row to be written.
       //
@@ -532,7 +712,10 @@ render_hw1(pFrame_Buffer &frame_buffer)
           // connecting c1w and c2w.
           //
           if ( ! interp_012.keep_going_y() )
-            interp_012.set(c1w,c2w,0,win_height-1);
+            {
+              interp_012.set(c1w,c2w,0,win_height-1);
+              p3_perimeter_px_count++;
+            }
 
           // Instantiate x-axis interpolation object using the two
           // y-axis interpolation objects, interp_02 and interp_012.
@@ -540,11 +723,13 @@ render_hw1(pFrame_Buffer &frame_buffer)
           // the current position of interp_02 and interp_012.
           //
           pInterpolate interp_line(interp_02,interp_012,0,win_width-1);
+          p3_perimeter_px_count++;
 
           // Inner Loop: Iterate along x axis.
           //
           while ( interp_line.keep_going_x() )
             {
+
               const int fb_idx = fb_line_idx + interp_line.xi;
 
               // If z value to be written is smaller (in front of) z value
@@ -552,6 +737,7 @@ render_hw1(pFrame_Buffer &frame_buffer)
               //
               if ( z_buffer[ fb_idx ] > interp_line.z )
                 {
+                  p3_area_px_count++;
                   f_buffer[ fb_idx ] = interp_line.color();
                   z_buffer[ fb_idx ] = interp_line.z;
                 }
@@ -570,6 +756,24 @@ render_hw1(pFrame_Buffer &frame_buffer)
           fb_line_idx += win_width;
         }
     }
+
+  frame_buffer.fbprintf
+    ("Vtx count: %d, scan line endpoints: %d, pixels: %d\n",
+     p3_vertex_count, p3_perimeter_px_count, p3_area_px_count);
+
+  const double tv = 0.00128734;
+  const double tpri = 0.0000253251;
+  const double tp = 0.0000489045;
+
+  frame_buffer.fbprintf
+    ("Estimated frame time: %.1f vtx + %.1f per + %.f px = %.1f ms\n",
+     tv * p3_vertex_count, tpri * p3_perimeter_px_count, tp * p3_area_px_count,
+     tv * p3_vertex_count + tpri * p3_perimeter_px_count
+     + tp * p3_area_px_count);
+
+  printf
+    ("{ 1, %d, %d, %d},\n",
+     p3_vertex_count, p3_perimeter_px_count, p3_area_px_count);
 
   // A paint routine is no place for a memory leak!
   //

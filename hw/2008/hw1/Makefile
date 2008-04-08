@@ -7,7 +7,7 @@
 INCLUDE =
 LIBDIR  =
 
-default: hw1
+default: hw1sol
 
 OPTFLAGS = -O3
 
@@ -19,6 +19,11 @@ CXXFLAGS = $(CFLAGS)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
 
 hw1: hw1.cc frame_buffer.h coord.h Makefile
+	$(CXX) $(CFLAGS) $(OPTFLAGS) -fverbose-asm -S $@.cc
+	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.s $(LIBRARIES) -o $@
+	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
+
+hw1sol: hw1sol.cc frame_buffer.h coord.h Makefile
 	$(CXX) $(CFLAGS) $(OPTFLAGS) -fverbose-asm -S $@.cc
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.s $(LIBRARIES) -o $@
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)

@@ -122,6 +122,7 @@ public:
     va_start(ap,fmt);
     vsprintf(buffer,fmt,ap);
     va_end(ap);
+    printf("fb output: %s",buffer);
     print_list.push_back(buffer);
   }
 
