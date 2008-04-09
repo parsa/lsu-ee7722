@@ -32,8 +32,38 @@
 #include "coord.h"
 #include "shader.h"
 
-#define TUNE
+#undef TUNE
 #define TUNE_AMT 20
+
+void
+write_img()
+{
+  const int width = glutGet(GLUT_WINDOW_WIDTH);
+  const int height = glutGet(GLUT_WINDOW_HEIGHT);
+  std::string pipe_name ( "pnmtopng > " __FILE__ ".png");
+  FILE* const fp = popen(pipe_name.c_str(), "w");
+  if ( !fp )
+    {
+      fprintf(stderr, "Could not open pipe for screenshot.\n");
+      return;
+    }
+  fprintf(fp,"P6\n%d %d 255\n",width,height);
+  glReadBuffer(GL_FRONT);
+  const int size = width * height;
+  char* const pbuffer = (char*) malloc(size * 3);
+  glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
+  for ( int y=height-1; y>=0; y-- )
+    {
+      char* row = &pbuffer[ y * width * 3 ];
+      for ( int x=0; x<width; x++ )
+        {
+	  putc(row[0],fp); putc(row[1],fp); putc(row[2],fp);
+	  row += 3;
+        }
+    }
+  pclose(fp);
+  free(pbuffer);
+}
 
 inline void glutBitmapString(void *font, const char *str)
 { glutBitmapString(font,(unsigned char*)str);
@@ -1392,6 +1422,8 @@ void cbSpecialKeyPressed(
    case GLUT_KEY_RIGHT: // increase y rotation speed;
       Y_Speed += 0.01f;
       break;
+
+   case GLUT_KEY_F12: write_img(); break;
 
    default:
       printf ("SKP: No action for %d.\n", key);
