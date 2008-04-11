@@ -91,7 +91,7 @@ int Light_On = 1;
 int Blend_On = 1;
 int Texture_On = 1;
 int Filtering_On = 1;
-int Alpha_Add = 1;
+int Use_GPU = 1;
 
 int Curr_TexMode = 1;
 char *TexModesStr[] = {"GL_DECAL","GL_MODULATE","GL_BLEND","GL_REPLACE"};
@@ -673,7 +673,7 @@ circle_render_vs(pContact_List::iterator ci, int face)
 void
 circle_render(pContact_List::iterator ci, int face)
 {
-  if ( Alpha_Add ) { circle_render_vs(ci,face); return; }
+  if ( Use_GPU ) { circle_render_vs(ci,face); return; }
 
   static const double pi2 = M_PI + M_PI;
   const int slices = 20;
@@ -774,7 +774,7 @@ bump_render_vs(pPlane& plane, pContact_List::iterator ci, int face)
 void
 bump_render(pPlane& plane, pContact_List::iterator ci, int face)
 {
-  if ( Alpha_Add ) { bump_render_vs(plane,ci,face); return; }
+  if ( Use_GPU ) { bump_render_vs(plane,ci,face); return; }
 
   vs_lighting->use();
 
@@ -785,7 +785,7 @@ bump_render(pPlane& plane, pContact_List::iterator ci, int face)
   const double speed_scaled = 0.05 * ci->speed;
   const double scale = max( speed_scaled, 0.01);
   static const double pi2 = M_PI + M_PI;
-  const double elev_end = M_PI_2;
+  const double elev_end = M_PI_2;  // pi/2
   const float agem13 = (1-age)*(1-age)*(1-age);
   const float h = scale * agem13;
   glColor4f(1, 0.1 + (1-agem13) * .9,
@@ -1230,7 +1230,7 @@ void cbRenderScene(
    glRasterPos2i(2,2);
    glutBitmapString(GLUT_BITMAP_HELVETICA_12,buf);
 
-   sprintf(buf,"GPU Code: %d", Alpha_Add);
+   sprintf(buf,"GPU Code: %d", Use_GPU);
    glRasterPos2i(2,14); glutBitmapString(GLUT_BITMAP_HELVETICA_12,buf);
 
    sprintf(buf,"Blend: %d", Blend_On);
@@ -1356,8 +1356,8 @@ void cbKeyPressed(
       Texture_On = Texture_On ? 0 : 1;
       break;
 
-   case 97: case 65:  // A - Alpha-blending hack.
-      Alpha_Add = Alpha_Add ? 0 : 1;
+   case 97: case 65:  // Toggle use of GPU.
+      Use_GPU = Use_GPU ? 0 : 1;
       break;
 
    case 102: case 70:  // F - Filtering.
