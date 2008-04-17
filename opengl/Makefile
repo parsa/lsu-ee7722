@@ -7,7 +7,7 @@
 INCLUDE =
 LIBDIR  =
 
-PROG_NAMES = demo-4-cube demo-3-textures demo-2-transfer demo-0-hello \
+PROG_NAMES = demo-3-textures demo-2-transfer demo-0-hello \
 	demo-5-fshader
 
 default: $(PROG_NAMES)
