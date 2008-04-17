@@ -338,6 +338,7 @@ private:
   {
     exe_file_name = argv && argv[0] ? argv[0] : "unknown name";
     glutInit(&argc, argv);
+    lglext_ptr_init();
 
     glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
     glutInitWindowSize(640,480);

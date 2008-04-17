@@ -46,7 +46,20 @@ public:
     image_loaded = true;
   };
   ~P_Image_Read() {if ( data ) free(data);  data = NULL;}
+
   void color_invert()
+  {
+    const int num = width * height * 4;
+    for ( int i = 0; i < num; i+=4 )
+      {
+        unsigned char* const dp = &data[i];
+        dp[0] = 255 - dp[0];
+        dp[1] = 255 - dp[1];
+        dp[2] = 255 - dp[2];
+      }
+  }
+
+  void gray_to_alpha()
   {
     const int num = width * height * 4;
     for ( int i = 0; i < num; i+=4 )
@@ -54,9 +67,10 @@ public:
         unsigned char* const dp = &data[i];
         const int sum = dp[0] + dp[1] + dp[2];
         dp[3] = (unsigned char)(255 - sum * 0.3333333);
-        dp[0] = dp[1] = dp[2] = 255;
+        //  dp[0] = dp[1] = dp[2] = 255;
       }
   }
+
   bool image_loaded;
   int width, height, maxval;
   unsigned char *data;

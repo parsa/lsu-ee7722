@@ -7,6 +7,9 @@
 // C, char*; K, const char*
 
 typedef GLuint (*lfunc_u_uU)(GLuint,GLuint*);
+typedef void (*lfunc_v_u)(GLuint);
+typedef void (*lfunc_v_iff)(GLint,float,float);
+typedef void (*lfunc_v_ifff)(GLint,float,float,float);
 typedef GLuint (*lfunc_u_e)(GLenum);
 typedef GLint (*lfunc_i_U)(unsigned int*);
 typedef int (*lfunc_i_iiU)(int, int, unsigned int*);
@@ -32,6 +35,11 @@ lglext_ptr_init()
 #ifdef PTR_INIT
 
 PTR_INIT(lfunc_u_e,glCreateShader);
+
+PTR_INIT(lfunc_v_u,glUseProgram);
+PTR_INIT(lfunc_i_uK,glGetUniformLocation);
+PTR_INIT(lfunc_v_iff, glUniform2f);
+PTR_INIT(lfunc_v_ifff, glUniform3f);
 
 PTR_INIT(lfunc_i_iiU,glXWaitVideoSyncSGI);
 PTR_INIT(lfunc_i_U,glXGetVideoSyncSGI);
