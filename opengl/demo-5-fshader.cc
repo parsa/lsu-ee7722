@@ -12,7 +12,9 @@
 //
 //   OpenGL documentation.
 //     http://www.ece.lsu.edu/koppel/gp/refs/glspec21.pdf
-
+//
+//   OpenGL Shading Language
+//     http://www.ece.lsu.edu/koppel/gp/refs/GLSLangSpec.Full.1.20.8.pdf
 
  /// What Code Does
 
