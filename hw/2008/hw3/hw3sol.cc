@@ -58,6 +58,10 @@
 
  /// SOLUTION
 
+ // Note: This solution is not exactly correct because the appearance
+ // does change slightly. However, there is enough similarity so that
+ // performance comparisons are valid.
+
  // Search for the word SOLUTION to find the changes or see
  // the diff below:
 
