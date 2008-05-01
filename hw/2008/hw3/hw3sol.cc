@@ -1,41 +1,10 @@
 /// LSU EE 7700-2 (Sp 08), Graphics Processors
 //
-/// Homework 3
+/// Homework 3 -- SOLUTION
 
- /// Name:
+ /// Name:  David Koppelman
 
 // $Id:$
-
-/// Instructions
-
-// If necessary, follow the class account setup instructions linked
-// to the class procedures page,
-// http://www.ece.lsu.edu/koppel/gp/proc.html
-
-// For instructions on how to check out edit, compile, and debug, see
-// the "Programming Homework Work Flow" entry on the procedures page,
-// http://www.ece.lsu.edu/koppel/gp/proc.html.
-//
-// For those instructions you need to know that:
-//
-//  This assignment is at SVN URI https://svn.ece.lsu.edu/svn/gp/hw/2008/hw3
-//
-//  The assignment instructions are in file hw3.cc. (This file.)
-
-// For the solutions to the problems below edit this file, even if it
-// makes more sense to edit others. If it seems that coord.h must be
-// edited, contact me.
-
-// The main code is in routine render.
-
-
-/// Problem 0
-
-// Fill in your name in the comment above. Then build and test the
-// program. It should display a tube similar to
-// demo-2-textures. Promptly resolve any problems, feel free to ask
-// for help from Dr. Koppelman or others, especially on issues of
-// missing libraries, and other setup problems.
 
 /// Problem 1
 
@@ -87,12 +56,104 @@
 
 //  o  Most code needs to be added to the switch statement.
 
+ /// SOLUTION
+
+ // Search for the word SOLUTION to find the changes or see
+ // the diff below:
+
+#if 0
+ 
+@@ -395,7 +396,6 @@ Tube::render()
+   const int pattern_width = 3 * int( opt_pattern_width * 0.33333333 );
+   const int pattern_levels = int( opt_pattern_levels + 0.5 );
+ 
+-  //  const int vertices_per_ring = 3 * 2 * pattern_width;
+   // SOLUTION
+   // Number of vertices passed to OpenGL.
+   const int vertices_per_ring =
+@@ -554,8 +554,27 @@ Tube::render()
+     // Individual Vertex Specification (Buffering)
+     //
+     {
++      int idx_v = phase_v;
+       const int end_v = phase_v + num_v;
+ 
++      // SOLUTION
++      if ( opt_use_triangle_strips )
++	{
++	  while ( idx_v < end_v )
++	    {
++	      glBegin(GL_TRIANGLE_STRIP);
++	      for ( int c=0; c<vertices_per_ring; c++ )
++		{
++		  glNormal3fv(norm_buffer[idx_v]);
++		  glVertex3fv(coor_buffer[idx_v]);
++		  num_bytes += sizeof(float) * 6;
++		  idx_v++;
++		}
++	      glEnd();
++	    }
++	  break;
++	}
++
+       glBegin(GL_TRIANGLES);
+       for ( int i=phase_v; i<end_v; i++ )
+ 	{
+@@ -577,7 +596,19 @@ Tube::render()
+       glVertexPointer(3,GL_FLOAT,sizeof(pCoor),coor_buffer);
+       glEnableClientState(GL_NORMAL_ARRAY);
+       glEnableClientState(GL_VERTEX_ARRAY);
+-      glDrawArrays(GL_TRIANGLES,phase_v,num_v);
++
++      // SOLUTION
++      if ( opt_use_triangle_strips )
++	{
++	  const int end_v = phase_v + num_v;
++	  for( int idx_v = phase_v; idx_v < end_v; idx_v += vertices_per_ring )
++	    glDrawArrays(GL_TRIANGLE_STRIP,idx_v,vertices_per_ring);
++	}
++      else
++	{
++	  glDrawArrays(GL_TRIANGLES,phase_v,num_v);
++	}
++
+       glDisableClientState(GL_NORMAL_ARRAY);
+       glDisableClientState(GL_VERTEX_ARRAY);
+       num_bytes += sizeof(float) * 6 * num_v;
+@@ -599,7 +630,21 @@ Tube::render()
+       glBindBuffer(GL_ARRAY_BUFFER,0);
+       glEnableClientState(GL_NORMAL_ARRAY);
+       glEnableClientState(GL_VERTEX_ARRAY);
+-      glDrawArrays(GL_TRIANGLES,phase_v,num_v);
++
++      // SOLUTION
++      if ( opt_use_triangle_strips )
++	{
++	  const int end_v = phase_v + num_v;
++	  for( int idx_v = phase_v; idx_v < end_v; idx_v += vertices_per_ring )
++	    glDrawArrays(GL_TRIANGLE_STRIP,idx_v,vertices_per_ring);
++	}
++      else
++	{
++	  glDrawArrays(GL_TRIANGLES,phase_v,num_v);
++	}
++
+       glDisableClientState(GL_NORMAL_ARRAY);
+       glDisableClientState(GL_VERTEX_ARRAY);
+     }
+
+#endif
+
+
 
 
 /// Problem 2,...
 
 // See assignment for Problems 2, ...
 //  http://www.ece.lsu.edu/koppel/gp/2008/hw03.pdf
+// See solution for solutions of Problems 2, ...
+//  http://www.ece.lsu.edu/koppel/gp/2008/hw03_sol.pdf
+
 
 
 
@@ -639,8 +700,6 @@ Tube::render()
 	{
 	  glDrawArrays(GL_TRIANGLES,phase_v,num_v);
 	}
-
-      //  glDrawArrays(GL_TRIANGLES,phase_v,num_v);
 
       glDisableClientState(GL_NORMAL_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);

@@ -10,7 +10,9 @@ LIBDIR  =
 HW_NAME = hw3
 OPTFLAGS = -O3
 
-default: $(HW_NAME)
+PROG_NAMES = $(HW_NAME) $(HW_NAME)sol
+
+default: $(PROG_NAMES)
 
 COMPILERFLAGS = -Wall
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g 
@@ -22,7 +24,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
 DEPENDENCIES = util.h coord.h pstring.h glextfuncs.h Makefile
 
 
-$(HW_NAME): $(HW_NAME).cc $(DEPENDENCIES)
+$(PROG_NAMES): %: %.cc $(DEPENDENCIES)
 	$(CXX) $(CFLAGS) $(OPTFLAGS) -fverbose-asm -S $@.cc
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.s $(LIBRARIES) -o $@
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
