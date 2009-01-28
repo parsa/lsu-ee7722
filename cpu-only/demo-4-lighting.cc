@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 09), Graphics Processors
 //
  /// CPU-Only Demo 4: Lighting
 
@@ -423,6 +423,18 @@ render_light(pFrame_Buffer &frame_buffer)
       //
       const float length = v_to_light.normalize();
 
+      const float k0 = 0.3;
+      const float k1 = 0.3;
+      const float k2 = 0.3;
+
+      // Dimming of light with distance.
+      //
+      // "Real" light dims with square of distance.
+      //
+      const float attenuation =
+        !opt_attenuation ? 1.0
+        : 1.0 / ( k0 + k1 * length + k2 * length * length );
+
       // Projections:
       //   1: vertex (normal) is facing light (or viewer).
       //   0: vertex (normal) is orthogonal (90 degrees) from light.
@@ -430,13 +442,6 @@ render_light(pFrame_Buffer &frame_buffer)
       //
       const float dot_v_to_light = dot(v.normal,v_to_light);
       const float dot_v_to_viewer = dot(v.normal,v_to_viewer);
-
-      // Dimming of light with distance.
-      //
-      // "Real" light dims with square of distance.
-      //
-      const float attenuation =
-        !opt_attenuation ? 1.0 : 1.0 / ( 0.25 * length * length + length );
 
       // Assume back side (-normal direction) is same color as front.
       //
