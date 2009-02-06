@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors  -*- c++ -*-
+/// LSU EE 7700-1 (Sp 09), Graphics Processors  -*- c++ -*-
 //
  ///  CPU-Only Demos' Include File
 
@@ -58,6 +58,8 @@ public:
     a[2][3] = dz;
   }
 
+  void set_rotation(pVect u, double theta);
+  
   void set_frustrum
   (float width, float height, float near, float far)
   {
@@ -228,6 +230,31 @@ public:
 //
 // Vector, Coordinate, and Matrix Operations
 //
+
+void 
+pMatrix::set_rotation(pVect u, double theta)
+{
+  const double rpd = 2.0 * M_PI / 360.0;
+  set_zero();
+  const double cos_theta = cos(theta*rpd);
+  const double sin_theta = sin(theta*rpd);
+  a[0][0] = u.x * u.x + cos_theta * ( 1.0 - u.x * u.x );
+  a[0][1] = u.x * u.y * ( 1.0 - cos_theta ) - u.z * sin_theta;
+  a[0][2] = u.z * u.x * ( 1.0 - cos_theta ) + u.y * sin_theta;
+  a[1][0] = u.x * u.y * ( 1.0 - cos_theta ) + u.z * sin_theta;
+  a[1][1] = u.y * u.y + cos_theta * ( 1 - u.y * u.y );
+  a[1][2] = u.y * u.z * ( 1.0 - cos_theta ) - u.x * sin_theta;
+  a[2][0] = u.z * u.x * ( 1.0 - cos_theta ) - u.y * sin_theta;
+  a[2][1] = u.y * u.z * ( 1.0 - cos_theta ) + u.x * sin_theta;
+  a[2][2] = u.z * u.z + cos_theta * ( 1 - u.z * u.z );
+  a[3][3] = 1.0;
+}
+
+class pMatrix_Rotation : public pMatrix {
+public:
+  pMatrix_Rotation(pVect& axis, double angle)
+  { set_rotation(axis,angle); }
+};
 
 inline pVect cross(pVect a, pVect b)
 {
