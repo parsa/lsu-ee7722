@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors  -*- c++ -*-
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors  -*- c++ -*-
 //
  ///  CPU-Only Demos' Include File
 
@@ -6,11 +6,12 @@
 
  /// Purpose
 
-//  Frame buffer simulation class and support functions. 
+//  Frame buffer simulation class and support functions.
 
 
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
+
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -18,6 +19,9 @@
 #include <stdarg.h>
 #include <deque>
 #include <string>
+#ifdef MAGICK
+#include <Magick++.h>
+#endif
 
 // Rename keys so a single namespace can be used for regular (ASCII)
 // keys and "special" ones.
@@ -43,6 +47,7 @@
 #define FB_KEY_HOME       ( GLUT_KEY_HOME        + 0x100 )
 #define FB_KEY_END        ( GLUT_KEY_END         + 0x100 )
 #define FB_KEY_INSERT     ( GLUT_KEY_INSERT      + 0x100 )
+#define FB_KEY_DELETE     127
 
 typedef int int32_t;
 
@@ -139,7 +144,6 @@ private:
   {
     exe_file_name = argv && argv[0] ? argv[0] : "unknown name";
     glutInit(&argc, argv);
-    /*  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );  */
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE );
     glutInitWindowSize(640,480+status_height);
 
@@ -147,9 +151,6 @@ private:
 
     glut_window_id = glutCreateWindow(title.c_str());
 
-    FB_GL_PRINT_STRING(GL_VENDOR);
-    FB_GL_PRINT_STRING(GL_RENDERER);
-    FB_GL_PRINT_STRING(GL_VERSION);
   }
 
   static void cb_display_w(void){ frame_buffer_self_->cb_display(); }
@@ -168,7 +169,9 @@ private:
     const double render_elapsed_time = end_time - render_start;
     glWindowPos2i(10,height+status_height-20);
     fbprintf
-      ("Render Time %.3f ms,  Frame Time %.3f ms,  Potential Frame Rate %.1f\n",
+      ("Size %dx%d,  Render Time %.3f ms,  Frame Time %.3f ms,  "
+       "Potential Frame Rate %.1f\n",
+       width, height,
        render_elapsed_time * 1000, elapsed_time * 1000, 1.0 / elapsed_time);
     char* const str = print_list.back();
     glutBitmapString(GLUT_BITMAP_HELVETICA_12,(unsigned char*)str);
@@ -225,30 +228,23 @@ private:
   void write_img()
   {
     if ( !buffer ) return;
-    std::string pipe_name ( "pnmtopng > " + exe_file_name + ".png");
-    FILE* const fp = popen(pipe_name.c_str(), "w");
-    if ( !fp )
-      {
-        fprintf(stderr, "Could not open pipe for screenshot.\n");
-        return;
-      }
-    const int full_height = height + status_height;
-    fprintf(fp,"P6\n%d %d 255\n",width,full_height);
-    glReadBuffer(GL_FRONT_LEFT);
-    const int size = width * full_height;
+#ifndef MAGICK
+    fbprintf("Cannot write image without ImageMagick library.\n");
+#else
+    std::string image_file_name(exe_file_name + ".png");
+    const int width_raw = glutGet(GLUT_WINDOW_WIDTH);
+    const int width = width_raw & ~0x3;  // Don't want to deal with padding.
+    const int height = glutGet(GLUT_WINDOW_HEIGHT);
+    glReadBuffer(GL_FRONT);
+    const int size = width_raw * height;  // Note: width might work too.
     char* const pbuffer = (char*) malloc(size * 3);
-    glReadPixels(0,0,width,full_height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
-    for ( int y=full_height-1; y>=0; y-- )
-      {
-        char* row = &pbuffer[ y * width * 3 ];
-        for ( int x=0; x<width; x++ )
-          {
-            putc(row[0],fp); putc(row[1],fp); putc(row[2],fp);
-            row += 3;
-          }
-      }
-    pclose(fp);
+    glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
+    Magick::Image image(width,height,"RGB",Magick::CharPixel,pbuffer);
+    image.flip();
+    image.write(image_file_name);
     free(pbuffer);
+    fbprintf("***  Wrote screenshot to %s  ***\n",image_file_name.c_str());
+#endif
   }
 
 private:

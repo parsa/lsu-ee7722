@@ -1,4 +1,4 @@
-### LSU EE 7700-2 (Sp 08), Graphics Processors
+### LSU EE 7700-1 (Sp 2009), Graphics Processors
 ##
 ##  Makefile for cpu-only demo programs.
 ##
@@ -10,14 +10,25 @@ LIBDIR  =
 PROG_NAMES = simple demo-1-one-triangle demo-2-many-triangles \
  demo-3-color-and-z-buffering demo-4-lighting
 
+CFLAGSMAGIK_MAYBE := $(shell Magick++-config --cppflags --cxxflags)
+LDFLAGSMAGIK := $(shell Magick++-config  --ldflags --libs)
+ifeq ($(CFLAGSMAGIK_MAYBE),)
+CFLAGSMAGIK :=
+else
+CFLAGSMAGIK := $(CFLAGSMAGIK_MAYBE) -DMAGICK
+endif
+
+#demo-2-many-t-reorg
+
+#default: demo-2-many-t-reorg
 default: $(PROG_NAMES)
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -O3
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3 -O3 $(CFLAGSMAGIK)
 COMPILERFLAGS = -Wall
 CC = gcc
 CXX = g++
 CXXFLAGS = $(CFLAGS)
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
+LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt $(LDFLAGSMAGIK)
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 

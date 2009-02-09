@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
  /// Combined demos. Used for development.
 
@@ -66,7 +66,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
   // Transform eye coordinates to clip coordinates: each visible
   // coordinate in [-1,1].
 
-  pMatrix_Frustrum frustrum(12,20,1,20);
+  pMatrix_Frustum frustum(12,20,1,20);
 
   // Transform to window coordinates.
   //
@@ -77,7 +77,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
   pMatrix_Scale scale(win_width/2);
 
 
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   pCoor c0w = transform * c0;  // 4 m + 3 a
   c0w.homogenize(); // 3 d
@@ -265,10 +265,10 @@ render_triangles(pFrame_Buffer &frame_buffer)
   // Specify Transformation
 
   pMatrix_Translate center_eye(-5,-6,-2);
-  pMatrix_Frustrum frustrum(4,5,1,20);
+  pMatrix_Frustum frustum(4,5,1,20);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2,win_height/2);
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     {
@@ -354,10 +354,10 @@ render_z_color(pFrame_Buffer &frame_buffer)
   // Specify Transformation
 
   pMatrix_Translate center_eye(-5,-6,-2);
-  pMatrix_Frustrum frustrum(4,5,1,20);
+  pMatrix_Frustum frustum(4,5,1,20);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2,win_height/2);
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     {
@@ -540,11 +540,11 @@ render_light(pFrame_Buffer &frame_buffer)
 
   const float aspect = float(win_width) / win_height;
   pMatrix_Translate center_eye(-1,-0.5,-3);
-  pMatrix_Frustrum frustrum(1.6,1.6/aspect,1,5000);
+  pMatrix_Frustum frustum(1.6,1.6/aspect,1,5000);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2,win_height/2);
   pMatrix transform_to_eye = center_eye;
-  pMatrix transform_to_viewport = scale * center_window * frustrum;
+  pMatrix transform_to_viewport = scale * center_window * frustum;
   pMatrix normal_to_eye(transform_to_eye);
   normal_to_eye.transpose(); normal_to_eye.invert3x3();
 
@@ -676,10 +676,10 @@ everything3(pFrame_Buffer &frame_buffer)
   int32_t* const fb_memory_start = frame_buffer.get_buffer();
 
   pMatrix_Translate center_eye(-6,-10,0);
-  pMatrix_Frustrum frustrum(12,20,1,20);
+  pMatrix_Frustum frustum(12,20,1,20);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2);
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   for ( pVertex_List::iterator ci = vertex_list.begin();
         ci < vertex_list.end();

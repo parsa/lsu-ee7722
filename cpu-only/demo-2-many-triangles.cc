@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 09), Graphics Processors
 //
  /// CPU-Only Demo 2: Many Triangles
 
@@ -180,8 +180,20 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
   const float pattern_width = 10;
   const float pattern_pitch_x = 1;
   const float pattern_half_pitch_x = pattern_pitch_x / 2;
-  const float pattern_pitch_y = 0;
+  static float pattern_pitch_y = 0;
   const float pattern_pitch_z = 0.3;
+
+  // Adjust y pitch in response to user input.
+  //
+  switch ( frame_buffer.keyboard_key ){
+  case FB_KEY_UP: pattern_pitch_y += 0.01; break;
+  case FB_KEY_DOWN: pattern_pitch_y -= 0.01; break;
+  default: break;
+  }
+
+  // Message for user. (Magically inserted into frame buffer.)
+  //
+  frame_buffer.fbprintf("Use arrow keys to tilt road.\n");
 
   const int32_t color_red = 0xff0000;
   const int32_t color_green = 0xff00;
@@ -227,10 +239,10 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
   // Specify Transformation
 
   pMatrix_Translate center_eye(-5,-6,-2);
-  pMatrix_Frustrum frustrum(4,5,1,20);
+  pMatrix_Frustum frustum(4,5,1,20);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2,win_height/2);
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   ///
   /// Transform Coordinates

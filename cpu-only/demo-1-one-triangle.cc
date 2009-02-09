@@ -80,7 +80,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
   // Transform eye coordinates to clip coordinates: each visible
   // coordinate in [-1,1].
 
-  pMatrix_Frustrum frustrum(12,20,1,20);
+  pMatrix_Frustum frustum(12,20,1,20);
 
   // Transform to window coordinates.
   //
@@ -90,7 +90,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2);
 
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   //
   // Apply transformation to transform triangle coordinates from

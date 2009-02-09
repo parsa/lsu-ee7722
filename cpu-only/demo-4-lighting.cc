@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 09), Graphics Processors
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
  /// CPU-Only Demo 4: Lighting
 
@@ -22,6 +22,38 @@
 //   File coord.h on coordinate and matrix objects and operations.
 
 
+/// Keyboard Commands
+
+ /// Eye and Light Location
+ /// Eye location won't work until 2009 hw1 solution posted.
+//   Arrows, Page Up, Page Down
+//   Move either the light or the eye.
+//   After pressing 'l' the keys move the light, after pressing 'e'
+//   they move the eye (viewer location). The eye and light location
+//   coordinates are displayed in the upper left. 
+
+ /// Eye Direction
+ /// Eye direction won't work until 2009 hw1 solution posted.
+//   Home, End, Delete, Insert
+//   Turn the eye direction (after Problem 1 solved).
+//   Home should rotate eye direction up, End should rotate eye
+//   down, Delete should rotate eye left, Insert should rotate eye
+//   right.  The eye direction vector is displayed in the upper left.
+
+ /// Lighting Options
+//   d, a, n, +, -
+//   d: Toggle use of distance in computing vertex lighting.
+//   a: Toggle use of normal in computing vertex lighting.
+//   n: Switch between using triangle normal and tube normal.
+//   +,-: Change intensity of light.
+
+ /// Screenshot
+//   F12
+//   Pressing F12 will write a png image. The file name base will
+//   match the executable name, for example, "demo-4-lighting.png".
+
+
+
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
@@ -33,9 +65,9 @@
 
  /// Vertex Object
 //
-// Holds coordinates plus color. In later examples will hold more
-// information.
+// Holds coordinates, color, and normal.
 //
+
 class pVertex : public pCoor {
 public:
   pVertex(float xp, float yp, float zp):pCoor(xp,yp,zp){};
@@ -44,6 +76,7 @@ public:
   pVertex(pCoor c, pVect n, uint32_t color)
     :pCoor(c),normal(n){set_color(color);}
   pVertex():pCoor(){};
+  pVertex(pVertex *v){ *this = *v; }
   void set_color(uint32_t colorp)
   {
     color = colorp;
@@ -55,6 +88,8 @@ public:
   uint32_t color;
   pVect normal;
 };
+
+
 
  /// Vertex List
 //
@@ -110,14 +145,16 @@ public:
 
   void set(pVertex& v0, pVertex& v1, int ymin, int ymax)
   {
-    const float y_range = v1.y - v0.y;
+    const float y_range_inv = 1.0 / ( v1.y - v0.y );
     yi_last = ymax < int(v1.y) ? ymax : int(v1.y);
     const float pre_y = float(ymin) - v0.y;
     const bool scissor = pre_y > 0.0;
     yi = scissor ? ymin : int(v0.y);
+    const float y_range_part_inv = 1.0 / ( v1.y - yi );
 #define DELTA(item) \
-    d_##item = (float(v1.item) - v0.item) / y_range;            \
-    item = v0.item + ( scissor ? pre_y * d_##item : 0.0 );
+    const float dtrue_##item = (v1.item - v0.item) * y_range_inv; \
+    item = v0.item + ( scissor ? pre_y * dtrue_##item : 0.0 ); \
+    d_##item = (v1.item - item) * y_range_part_inv;
     DELTA(red); DELTA(green); DELTA(blue); DELTA(x); DELTA(z);
 #undef DELTA
   }
@@ -126,14 +163,16 @@ public:
   {
     pInterpolate& vmin = v0.x < v1.x ? v0 : v1;
     pInterpolate& vmax = v0.x < v1.x ? v1 : v0;
-    const float x_range = vmax.x - vmin.x;
+    const float x_range_inv = 1.0 / ( vmax.x - vmin.x );
     xi_last = xmax < int(vmax.x) ? xmax : int(vmax.x);
     const float pre_x = float(xmin) - vmin.x;
     const bool scissor = pre_x > 0.0;
     xi = scissor ? xmin : int(vmin.x);
+    const float x_range_part_inv = 1.0 / ( vmax.x - xi );
 #define DELTA(item) \
-    d_##item = (float(vmax.item) - vmin.item) / x_range;        \
-    item = vmin.item + ( scissor ? pre_x * d_##item : 0.0 );
+    const float dtrue_##item = (vmax.item - vmin.item) * x_range_inv; \
+    item = vmin.item + ( scissor ? pre_x * dtrue_##item : 0.0 ); \
+    d_##item = (vmax.item - item) * x_range_part_inv;
     DELTA(red); DELTA(green); DELTA(blue); DELTA(z);
 #undef DELTA
   }
@@ -217,7 +256,7 @@ render_light(pFrame_Buffer &frame_buffer)
   //  positions (which is considered part of the application and
   //  anyway here wastefully re-calls trigonometric functions).
 
-  // The projection window specified in the frustrum transformation
+  // The projection window specified in the frustum transformation
   //  is chosen to preserve aspect ratio so that the tube won't
   //  look crushed.
 
@@ -231,23 +270,119 @@ render_light(pFrame_Buffer &frame_buffer)
   //  opt_attenuation is true) and by how closely it faces the light
   //  source (if opt_v_to_light is true).
 
+  ///
+  /// User and Light Locations
+  ///
+
+  static pCoor eye_location(1,0.5,3);
+  static pVect eye_direction(0,0,-1);
+  static pCoor light_location(1.4, 0, -2.5 );
+  static bool opt_move_light = true;
+
+  ///
+  /// Light Location and Lighting Options
+  ///
+
+  static bool opt_attenuation = true;
+  static bool opt_v_to_light = true;
+  static bool opt_triangle_normal = false;
+  static float opt_light_intensity = 2;
+
+
+  ///
+  /// Adjust options based on user input.
+  ///
+
+  pVect adjustment(0,0,0);
+  pVect user_rot_axis(0,0,0);
+
+  switch ( frame_buffer.keyboard_key ) {
+  case FB_KEY_LEFT: adjustment.x = -0.1; break;
+  case FB_KEY_RIGHT: adjustment.x = 0.1; break;
+  case FB_KEY_UP: adjustment.y = 0.1; break;
+  case FB_KEY_DOWN: adjustment.y = -0.1; break;
+  case FB_KEY_PAGE_DOWN: adjustment.z = 0.1; break;
+  case FB_KEY_PAGE_UP: adjustment.z = -0.1; break;
+  case FB_KEY_DELETE: user_rot_axis.y = 1; break;
+  case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
+  case FB_KEY_HOME: user_rot_axis.x = 1; break;
+  case FB_KEY_END: user_rot_axis.x = -1; break;
+  case '-':case '_': opt_light_intensity *= 0.9; break;
+  case '+':case '=': opt_light_intensity *= 1.1; break;
+  case 'd': case 'D': opt_attenuation = !opt_attenuation; break;
+  case 'a': case 'A': opt_v_to_light = !opt_v_to_light; break;
+  case 'l': case 'L': opt_move_light = true; break;
+  case 'n': case 'N': opt_triangle_normal = !opt_triangle_normal; break;
+  case 'e': case 'E': opt_move_light = false; break;
+  default: break;
+  }
+
+  // Update eye_direction based on keyboard command.
+  //
+  if ( user_rot_axis.x || user_rot_axis.y )
+      eye_direction *= pMatrix_Rotation(user_rot_axis, M_PI * 0.03);
+
+  // Update eye_location based on keyboard command.
+  //
+  if ( adjustment.x || adjustment.y || adjustment.z )
+    {
+      if ( opt_move_light ) light_location += adjustment;
+      else                  eye_location += adjustment;
+    }
+
+  //
+  // User Messages  (Magically inserted into frame buffer.)
+  //
+
+  frame_buffer.fbprintf
+    ("Lighting : distance - %s,  angle - %s,  normals - %s  "
+     "('d', 'a', 'n', '+', '-' to change)\n",
+     opt_attenuation ? "ON" : "OFF", opt_v_to_light ? "ON" : "OFF",
+     opt_triangle_normal ? "TRIANGLE" : "VERTEX");
+
+#if 0
+  frame_buffer.fbprintf
+    ("Eye location: [%.1f, %.1f, %.1f]  "
+     "(%suse arrow and page keys to move).\n",
+     eye_location.x, eye_location.y, eye_location.z,
+     opt_move_light ? "press 'e' then " : "" );
+#endif
+
+  frame_buffer.fbprintf
+    ("Light location: [%.1f, %.1f, %.1f]  "
+     "(%suse arrow and page keys to move).\n",
+     light_location.x, light_location.y, light_location.z,
+     opt_move_light ? "" : "press 'l' then ");
+
+#if 0
+  frame_buffer.fbprintf
+    ("Eye direction: [%.2f, %.2f, %.2f]  "
+     "(use 'Home', 'End', 'Del', 'Insert' keys to turn).\n",
+     eye_direction.x, eye_direction.y, eye_direction.z);
+#endif
 
   // Instantiate list of vertices.
   //
   pVertex_List vtx_list;
 
-  //
-  // Insert a tessellated tube in the vertex list.
-  //
+  const uint32_t color_gold = 0xf9b237;    // LSU Spirit Gold
+  const uint32_t color_purple = 0x580da6;  // LSU Spirit Purple
 
-  // User Option: Use triangle normal or vertex normal.
+  // Insert big purple triangle into the vertex list.
   //
-  static bool opt_triangle_normal = false;
-  if ( frame_buffer.keyboard_key == 'n' )
-    opt_triangle_normal = !opt_triangle_normal;
-  frame_buffer.fbprintf("Normals based on %s (use 'n' to change).\n",
-                        opt_triangle_normal ? "triangle" : "vertex");
+  {
+    pVertex* const v0 = new pVertex( 1.5, 0, -3.2, color_purple );
+    pVertex* const v1 = new pVertex( 0, 5, -5, color_purple );
+    pVertex* const v2 = new pVertex( 9, 6, -9, color_purple );
+    v0->normal = v1->normal = v2->normal = cross(*v0,*v1,*v2);
+    vtx_list.push_back( v0 );
+    vtx_list.push_back( v1 );
+    vtx_list.push_back( v2 );
+  }
 
+  //
+  // Insert a tessellated tube into the vertex list.
+  //
 
   const float r = 2;                  // Tube radius.
   const float x_shift = 0.4;          // Tube x offset.
@@ -256,8 +391,6 @@ render_light(pFrame_Buffer &frame_buffer)
   const float pattern_pitch_z = 0.25; // Triangle size (z axis).
 
   float z = -1;
-  const uint32_t color_gold = 0xf9b237;    // LSU Spirit Gold
-  const uint32_t color_purple = 0x580da6;  // LSU Spirit Purple
   const uint32_t color = color_gold;
 
   // Outer Loop: z axis (down axis of tube).
@@ -274,8 +407,6 @@ render_light(pFrame_Buffer &frame_buffer)
       while ( theta < 4 * M_PI )
         {
           const float z1 = theta < 2 * M_PI ? next_z : last_z;
-
-          // For improved performance the tri functions would be pre-computed.
 
           pVertex* const v0 =
             new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
@@ -304,60 +435,20 @@ render_light(pFrame_Buffer &frame_buffer)
       z = next_z;
     }
 
-  // Insert additional triangle.
-  //
-  {
-    pVertex* const v0 = new pVertex( 1.5, 0, -3.2, color_purple );
-    pVertex* const v1 = new pVertex( 0, 5, -5, 0xff00 );
-    pVertex* const v2 = new pVertex( 9, 6, -9, 0xff );
-    v0->normal = v1->normal = v2->normal = cross(*v0,*v1,*v2);
-    vtx_list.push_back( v0 );
-    vtx_list.push_back( v1 );
-    vtx_list.push_back( v2 );
-  }
 
-  ///
-  /// Light Location and Lighting Options
-  ///
-
-  static bool opt_attenuation = true;
-  static bool opt_v_to_light = true;
-  static float opt_light_intensity = 2;
-  static pCoor light_location(x_shift + ( r - 0.1 ), 0, -3 );
-
-  // Adjust lighting options based on user input.
-  //
-  switch ( frame_buffer.keyboard_key ) {
-  case FB_KEY_LEFT: light_location.x -= 0.1; break;
-  case FB_KEY_RIGHT: light_location.x += 0.1; break;
-  case FB_KEY_UP: light_location.y += 0.1; break;
-  case FB_KEY_DOWN: light_location.y -= 0.1; break;
-  case FB_KEY_PAGE_DOWN: light_location.z += 0.2; break;
-  case FB_KEY_PAGE_UP: light_location.z -= 0.2; break;
-  case '-':case '_': opt_light_intensity *= 0.9; break;
-  case '+':case '=': opt_light_intensity *= 1.1; break;
-  case 'd': case 'D': opt_attenuation = !opt_attenuation; break;
-  case 'a': case 'A': opt_v_to_light = !opt_v_to_light; break;
-  default: break;
-  }
-
-  // User Messages  (Magically inserted into frame buffer.)
-  //
-  frame_buffer.fbprintf
-    ("Lighting: Distance - %s,  Angle - %s  ('d' or 'a' to change).\n",
-     opt_attenuation ? "On" : "Off", opt_v_to_light ? "On" : "Off");
-  frame_buffer.fbprintf("Arrows, page up/down move light.\n");
-
-  // Insert marker (green tetrahedron) to show light location.
+  // Insert light position marker (green tetrahedron) into vertex list.
   //
   insert_tetrahedron(vtx_list,light_location,0.05);
+
 
   ///
   /// Rendering Pipeline Starts Here
   ///
 
-  // Indicate to frame buffer simulator that code above is part of
-  // application and that code below is part of rendering pipeline.
+  // Indicate to frame buffer simulator that for purposes of showing
+  // timing, code above is part of application (included in frame time
+  // but not render time) and that code below is part of rendering
+  // pipeline.
   //
   frame_buffer.render_timing_start();
 
@@ -367,26 +458,32 @@ render_light(pFrame_Buffer &frame_buffer)
   int32_t* const f_buffer = frame_buffer.get_buffer();
 
   // Allocate and initialize a z buffer.
-  // (Note: Allocation only need be performed when size changes.)
+  // (Note: Allocation only needs be performed when size changes.)
   //
   float* const z_buffer = (float*) malloc( fb_size * sizeof(*z_buffer) );
   for ( int i=0; i<fb_size; i++ ) z_buffer[i] = 1;
 
+
+  ///
+  /// Compute Coordinate Transformations
+  ///
+
+  // Compute transformation from object space to eye space.
+  //
   pMatrix_Translate center_eye(-1,-0.5,-3);
+  pMatrix object_to_eye = center_eye;
 
-  // Preserve aspect ratio when setting projection window height in frustrum.
+  // Compute transformation from eye space to window space.
+  //
   const float aspect = float(win_width) / win_height;
-  pMatrix_Frustrum frustrum(1.6,1.6/aspect,1,5000);
-
+  pMatrix_Frustum frustum(1.6,1.6/aspect,1,5000);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2,win_height/2);
-
-  pMatrix transform_to_eye = center_eye;
-  pMatrix transform_to_viewport = scale * center_window * frustrum;
+  pMatrix eye_to_window = scale * center_window * frustum;
 
   // Compute matrix needed to transform normals.
   //
-  pMatrix normal_to_eye(transform_to_eye);
+  pMatrix normal_to_eye(object_to_eye);
   normal_to_eye.transpose(); normal_to_eye.invert3x3();
 
   ///
@@ -395,15 +492,16 @@ render_light(pFrame_Buffer &frame_buffer)
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     {
       pVertex& v = **ci;
-      v *= transform_to_eye;
+      v *= object_to_eye;
       v.normal *= normal_to_eye;
       v.normal.normalize();
       v.homogenize();
     }
 
-  // Convert light location to object space.
+  // Convert light location to eye space.
   //
-  pCoor light_location_e = transform_to_eye * light_location;
+  pCoor light_location_e = object_to_eye * light_location;
+
 
   ///
   /// Apply Lighting to Vertices
@@ -411,8 +509,8 @@ render_light(pFrame_Buffer &frame_buffer)
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     {
       pVertex& v = **ci;
-      const bool opt_no_lighting = v.color & 0x1000000;
-      if ( opt_no_lighting ) continue;
+      const bool vertex_no_lighting = v.color & 0x1000000;
+      if ( vertex_no_lighting ) continue;
 
       // Compute vectors from vertex to light and to viewer.
       //
@@ -423,14 +521,11 @@ render_light(pFrame_Buffer &frame_buffer)
       //
       const float length = v_to_light.normalize();
 
-      const float k0 = 0.3;
-      const float k1 = 0.3;
+      // Lighting coefficients and attenuation with distance.
+      //
+      const float k0 = 0.9;
+      const float k1 = 0.0;
       const float k2 = 0.3;
-
-      // Dimming of light with distance.
-      //
-      // "Real" light dims with square of distance.
-      //
       const float attenuation =
         !opt_attenuation ? 1.0
         : 1.0 / ( k0 + k1 * length + k2 * length * length );
@@ -448,27 +543,28 @@ render_light(pFrame_Buffer &frame_buffer)
       const float v_to_light_scale =
         dot_v_to_viewer < 0 ? -dot_v_to_light : dot_v_to_light;
 
-      // Determine color adjustment.
+      // Combine effect of distance (attenuation) and surface normal
+      // (v_to_light_scale).
       //
       const float scale = opt_light_intensity * attenuation
         * ( !opt_v_to_light ? 1.0 : v_to_light_scale );
 
-      v.red *= scale;
-      v.green *= scale;
-      v.blue *= scale;
+      // Convert material property color to lighted color.
+      //
+      v.red *= scale;  v.green *= scale;  v.blue *= scale;
     }
+
 
   ///
   /// Transform Coordinates from Eye Space to Window Space
   ///
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     {
-      pVertex& v = **ci;  // Get reference to current vertex
-      v *= transform_to_viewport;
-      v.homogenize();
+      pVertex& v = **ci;
+      v *= eye_to_window;
+      v.homogenize_keep_w();
     }
 
-  /// Note: Code past this point should be identical to Demo 3.
 
   ///
   /// Rasterize Primitives
@@ -480,11 +576,16 @@ render_light(pFrame_Buffer &frame_buffer)
       pVertex& c1w = sort;
       pVertex& c2w = sort;    // Coordinate with largest y.
 
+      // Reject primitive if at least one vertex behind eye.
+      // (It would have been better to clip them earlier.)
+      //
+      if ( c0w.w <= 0 || c1w.w <= 0 || c2w.w <= 0 ) continue;
+
       // Instantiate interpolation objects.
       //
-      // Each object instantiated with two coordinates and a valid
+      // Each object instantiated with two vertices and a valid
       // range of y values.  The object will compute x and y along the
-      // line connecting those coordinates, skipping y values < 0 or
+      // line connecting the vertices, skipping y values < 0 or
       // >= win_width.
       //
       // Interpolation objects also interpolate z and color components.
@@ -523,7 +624,7 @@ render_light(pFrame_Buffer &frame_buffer)
               // If z value to be written is smaller (in front of) z value
               // already there then go ahead and write frame buffer.
               //
-              if ( z_buffer[ fb_idx ] > interp_line.z )
+              if ( interp_line.z < z_buffer[ fb_idx ] )
                 {
                   f_buffer[ fb_idx ] = interp_line.color();
                   z_buffer[ fb_idx ] = interp_line.z;
@@ -545,6 +646,7 @@ render_light(pFrame_Buffer &frame_buffer)
     }
 
   // A paint routine is no place for a memory leak!
+  // (And excessive dynamic memory allocation, but this is only a demo.)
   //
   for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
     delete *ci;
@@ -555,6 +657,11 @@ int
 main(int argc, char **argv)
 {
   pFrame_Buffer frame_buffer(argc,argv);
+
+  // Frame buffer object will call render_light routine, where
+  // most of our work is done, whenever the window needs to be updated,
+  // including after keyboard key presses.
+  //
   frame_buffer.show(render_light);
   return 0;
 }

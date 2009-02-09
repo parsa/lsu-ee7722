@@ -244,10 +244,10 @@ render_z_color(pFrame_Buffer &frame_buffer)
   // Specify Transformation
 
   pMatrix_Translate center_eye(-5,-6,-2);
-  pMatrix_Frustrum frustrum(4,5,1,20);
+  pMatrix_Frustum frustum(4,5,1,20);
   pMatrix_Translate center_window(1,1,0);
   pMatrix_Scale scale(win_width/2,win_height/2);
-  pMatrix transform = scale * center_window * frustrum * center_eye;
+  pMatrix transform = scale * center_window * frustum * center_eye;
 
   ///
   /// Transform Coordinates
