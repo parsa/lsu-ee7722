@@ -2,6 +2,9 @@
 //
 /// Homework 1
 
+ /// Due: Friday, 13 February 2009.
+ //  E-mail this file (with solution).
+
  /// Name:
 
 // $Id:$
