@@ -348,16 +348,22 @@ inline pVect operator + (pVect a, pVect v)
 {
   return pVect(a.x+v.x, a.y+v.y, a.z+v.z);
 }
+inline pVect operator - (pVect a, pVect v)
+{
+  return pVect(a.x-v.x, a.y-v.y, a.z-v.z);
+}
 
 inline pVect operator - (pCoor a, pCoor b)
 {
   return pVect(a,b);
 }
 
-void rot_check(pMatrix r, pVect f, pVect t)
+void rot_check(pMatrix r, pVect f_raw, pVect t_raw)
 {
-  pVect check1 =  r * f;
-  pVect check = check1 + -1 * t;
+  pVect f(f_raw);
+  pVect t(t_raw);
+  pVect t2 = r * f;
+  pVect check = t2 - t;
   const double err = dot(check,check);
   if ( err > 0.0001 )
     abort();
@@ -369,14 +375,12 @@ public:
   { set_rotation(axis,angle); }
   pMatrix_Rotation(pVect dir_from, pVect dir_to)
   {
-    pMatrix_Rotation rot_zx
-      ( pVect(0,1,0),
-        atan2(dir_from.z, dir_from.x) - atan2(dir_to.z, dir_to.x));
-    pVect dir_part = rot_zx * dir_from;  dir_part.normalize();
-    pMatrix_Rotation rot_yz
-      ( pVect(1,0,0),
-        atan2(dir_part.y, dir_part.z) - atan2(dir_to.y, dir_to.z));
-    pMMultiply(*this, rot_yz, rot_zx);
+    dir_from.normalize(); dir_to.normalize();
+    const double theta = pangle(dir_from,dir_to);
+    if ( theta < 0.00001 ) { set_identity(); return; }
+    pVect norm(dir_from,dir_to);  norm.normalize();
+    pMatrix_Rotation rot1(norm,theta);
+    *this = rot1;
     rot_check(*this,dir_from,dir_to);
   }
 };
