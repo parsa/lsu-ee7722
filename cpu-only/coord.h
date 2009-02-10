@@ -235,6 +235,9 @@ public:
     return mag;
   }
   float magnitude() { return sqrt( x*x + y*y + z*z ); }
+  float mag_xy() { return sqrt( x*x + y*y ); }
+  float mag_xz() { return sqrt( x*x + z*z ); }
+  float mag_yz() { return sqrt( y*y + z*z ); }
   float* array(){ return &x; }
   inline void operator *= (const pMatrix m)
   {
@@ -376,11 +379,14 @@ public:
   pMatrix_Rotation(pVect dir_from, pVect dir_to)
   {
     dir_from.normalize(); dir_to.normalize();
-    const double theta = pangle(dir_from,dir_to);
-    if ( theta < 0.00001 ) { set_identity(); return; }
-    pVect norm(dir_from,dir_to);  norm.normalize();
-    pMatrix_Rotation rot1(norm,theta);
-    *this = rot1;
+    if ( pangle(dir_from,dir_to) < 0.0001 ) { set_identity(); return; }
+    const double a1 = atan2(dir_from.z,dir_from.x) - atan2(dir_to.z,dir_to.x);
+    pMatrix_Rotation rot1(pVect(0,1,0),a1);
+    pVect norm(dir_to,pVect(0,1,0));  norm.normalize();
+    const double a2 =
+      atan2(dir_from.mag_xz(),dir_from.y) - atan2(dir_to.mag_xz(),dir_to.y);
+    pMatrix_Rotation rot2(norm,a2);
+    pMMultiply(*this,rot2,rot1);
     rot_check(*this,dir_from,dir_to);
   }
 };
