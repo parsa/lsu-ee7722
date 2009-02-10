@@ -500,7 +500,6 @@ render_light(pFrame_Buffer &frame_buffer)
   const float pattern_pitch_z = 0.25; // Triangle size (z axis).
 
   float z = -1;
-  const uint32_t color = color_gold;
 
   // Outer Loop: z axis (down axis of tube).
   //
@@ -510,12 +509,26 @@ render_light(pFrame_Buffer &frame_buffer)
       const float last_z = z + pattern_pitch_z;
       const float delta_theta = M_PI / pattern_width;
       float theta = i & 1 ? delta_theta : 0;
+      const uint32_t marker_color[] =
+        {0xaa, 0xaa0000, 0x111111, 0xaa00,};
+      // -x        +y        -y        +x  
+      // Left      Up        Down      Right
+      // Red       Blue      Gray      Green
+      float marker_target = i & 1 ? M_PI_2 - delta_theta - 0.00001 : 10000;
+      int marker_idx = 0;
 
       // Inner Loop: around circumference of tube.
       //
       while ( theta < 4 * M_PI )
         {
           const float z1 = theta < 2 * M_PI ? next_z : last_z;
+
+          uint32_t color = color_gold;
+          if ( theta >= marker_target && marker_idx < 4 )
+            {
+              color = marker_color[marker_idx++];
+              marker_target += M_PI_2;
+            }
 
           pVertex* const v0 =
             new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
