@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
  /// Minimal OpenGL Program
 
@@ -161,7 +161,7 @@ main(int argc, char **argv)
   /// Specify Display Callback Function
   //
   //  Tell glut to call specified callback function each time our
-  //  window needs to be painted (updated). (E.g., after re-size and
+  //  window needs to be painted (updated). (E.g., after re-size or
   //  after window is damaged by overlapping windows.)
   //
   //  Note that glut won't call this function unless it is "spinning"

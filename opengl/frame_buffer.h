@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors  -*- c++ -*-
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors  -*- c++ -*-
 //
  ///  CPU-Only Demos' Include File
 
