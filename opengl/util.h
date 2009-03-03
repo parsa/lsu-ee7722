@@ -53,6 +53,7 @@ time_process_fp()
 #define FB_KEY_HOME       ( GLUT_KEY_HOME        + 0x100 )
 #define FB_KEY_END        ( GLUT_KEY_END         + 0x100 )
 #define FB_KEY_INSERT     ( GLUT_KEY_INSERT      + 0x100 )
+#define FB_KEY_DELETE     127
 
 inline void
 pError_Exit()
@@ -304,9 +305,39 @@ public:
     glutDisplayFunc(&cb_display_w);
     glutKeyboardFunc(&cb_keyboard_w);
     glutSpecialFunc(&cb_keyboard_special_w);
+# ifdef GLX_SGI_video_sync
+    glutIdleFunc(cb_idle_w);
+# else
+    glutTimerFunc(10,cb_timer,0);
     cbTimer(0);
+# endif
     glutMainLoop();
   }
+
+  void use_timer()
+  {
+    glutIdleFunc(NULL);
+    glutTimerFunc(10,cb_timer_w,0);
+    printf("Switching from idle callback to timer callback.\n");
+  }
+
+  static void cb_idle_w(){ opengl_helper_self_->cb_idle(); }
+  void cb_idle()
+  {
+    if ( !ptr_glXGetVideoSyncSGI ) { use_timer(); return; }
+#   ifdef GLX_SGI_video_sync
+    unsigned int count;
+    ptr_glXGetVideoSyncSGI(&count);
+    unsigned int count_after;
+    if ( ptr_glXWaitVideoSyncSGI(1,0,&count_after) )
+      {
+        use_timer();
+        return;
+      }
+    glutPostRedisplay();
+# endif
+  }
+
 
   // Return width and height of frame buffer.
   //
@@ -330,6 +361,9 @@ public:
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
+    if ( !frame_print_calls ) glWindowPos2i(10,height-20);
+    frame_print_calls++;
+
     glutBitmapString(GLUT_BITMAP_HELVETICA_12,(unsigned char*)str.s);
   }
 
@@ -340,7 +374,7 @@ private:
     glutInit(&argc, argv);
     lglext_ptr_init();
 
-    glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
+    glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL );
     glutInitWindowSize(640,480);
 
     pStringF title("OpenGL Demo - %s",exe_file_name);
@@ -359,7 +393,7 @@ private:
   void cb_display(void)
   {
     shape_update();
-    glWindowPos2i(10,height-20);
+    frame_print_calls = 0;
     user_display_func(user_display_data);
     cb_keyboard();
   }
@@ -417,7 +451,8 @@ private:
   const char* exe_file_name;
   double render_start;
   int width;
-  int height;  // Height of simulated frame buffer, not displayed window.
+  int height;
+  int frame_print_calls;
   int glut_window_id;
   void (*user_display_func)(void *data);
   void *user_display_data;
