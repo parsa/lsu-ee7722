@@ -25,7 +25,6 @@
 /// Keyboard Commands
 
  /// Eye and Light Location
- /// Eye location won't work until 2009 hw1 solution posted.
 //   Arrows, Page Up, Page Down
 //   Move either the light or the eye.
 //   After pressing 'l' the keys move the light, after pressing 'e'
@@ -33,7 +32,6 @@
 //   coordinates are displayed in the upper left. 
 
  /// Eye Direction
- /// Eye direction won't work until 2009 hw1 solution posted.
 //   Home, End, Delete, Insert
 //   Turn the eye direction (after Problem 1 solved).
 //   Home should rotate eye direction up, End should rotate eye
@@ -299,10 +297,10 @@ render_light(pFrame_Buffer &frame_buffer)
   switch ( frame_buffer.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -0.1; break;
   case FB_KEY_RIGHT: adjustment.x = 0.1; break;
-  case FB_KEY_UP: adjustment.y = 0.1; break;
-  case FB_KEY_DOWN: adjustment.y = -0.1; break;
-  case FB_KEY_PAGE_DOWN: adjustment.z = 0.1; break;
-  case FB_KEY_PAGE_UP: adjustment.z = -0.1; break;
+  case FB_KEY_UP: adjustment.z = -0.1; break;
+  case FB_KEY_DOWN: adjustment.z = 0.1; break;
+  case FB_KEY_PAGE_DOWN: adjustment.y = -0.1; break;
+  case FB_KEY_PAGE_UP: adjustment.y = 0.1; break;
   case FB_KEY_DELETE: user_rot_axis.y = 1; break;
   case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
@@ -320,12 +318,23 @@ render_light(pFrame_Buffer &frame_buffer)
   // Update eye_direction based on keyboard command.
   //
   if ( user_rot_axis.x || user_rot_axis.y )
+    {
+      pMatrix_Rotation rotall(pVect(0,0,-1),eye_direction);
+      user_rot_axis *= rotall;
       eye_direction *= pMatrix_Rotation(user_rot_axis, M_PI * 0.03);
+    }
+
+  pMatrix_Rotation rotall(eye_direction,pVect(0,0,-1));
 
   // Update eye_location based on keyboard command.
   //
   if ( adjustment.x || adjustment.y || adjustment.z )
     {
+      const double angle =
+        fabs(eye_direction.y) > 0.99
+        ? 0 : atan2(eye_direction.x,-eye_direction.z);
+      pMatrix_Rotation rotall(pVect(0,1,0),-angle);
+      adjustment *= rotall;
       if ( opt_move_light ) light_location += adjustment;
       else                  eye_location += adjustment;
     }
@@ -340,13 +349,11 @@ render_light(pFrame_Buffer &frame_buffer)
      opt_attenuation ? "ON" : "OFF", opt_v_to_light ? "ON" : "OFF",
      opt_triangle_normal ? "TRIANGLE" : "VERTEX");
 
-#if 0
   frame_buffer.fbprintf
     ("Eye location: [%.1f, %.1f, %.1f]  "
      "(%suse arrow and page keys to move).\n",
      eye_location.x, eye_location.y, eye_location.z,
      opt_move_light ? "press 'e' then " : "" );
-#endif
 
   frame_buffer.fbprintf
     ("Light location: [%.1f, %.1f, %.1f]  "
@@ -354,12 +361,10 @@ render_light(pFrame_Buffer &frame_buffer)
      light_location.x, light_location.y, light_location.z,
      opt_move_light ? "" : "press 'l' then ");
 
-#if 0
   frame_buffer.fbprintf
     ("Eye direction: [%.2f, %.2f, %.2f]  "
      "(use 'Home', 'End', 'Del', 'Insert' keys to turn).\n",
      eye_direction.x, eye_direction.y, eye_direction.z);
-#endif
 
   // Instantiate list of vertices.
   //
@@ -391,7 +396,6 @@ render_light(pFrame_Buffer &frame_buffer)
   const float pattern_pitch_z = 0.25; // Triangle size (z axis).
 
   float z = -1;
-  const uint32_t color = color_gold;
 
   // Outer Loop: z axis (down axis of tube).
   //
@@ -402,11 +406,26 @@ render_light(pFrame_Buffer &frame_buffer)
       const float delta_theta = M_PI / pattern_width;
       float theta = i & 1 ? delta_theta : 0;
 
+      const uint32_t marker_color[] =
+        {0xaa, 0xaa0000, 0x111111, 0xaa00,};
+      // Port      Zenith    Nadir     Starboard
+      // Left      Up        Down      Right
+      // Red       Blue      Gray      Green
+      float marker_target = i & 1 ? M_PI_2 - delta_theta - 0.00001 : 10000;
+      int marker_idx = 0;
+
       // Inner Loop: around circumference of tube.
       //
       while ( theta < 4 * M_PI )
         {
           const float z1 = theta < 2 * M_PI ? next_z : last_z;
+          uint32_t color = color_gold;
+
+          if ( theta >= marker_target && marker_idx < 4 )
+            {
+              color = marker_color[marker_idx++];
+              marker_target += M_PI_2;
+            }
 
           pVertex* const v0 =
             new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
@@ -470,8 +489,8 @@ render_light(pFrame_Buffer &frame_buffer)
 
   // Compute transformation from object space to eye space.
   //
-  pMatrix_Translate center_eye(-1,-0.5,-3);
-  pMatrix object_to_eye = center_eye;
+  pMatrix_Translate ctr(-eye_location.x,-eye_location.y,-eye_location.z);
+  pMatrix object_to_eye = rotall * ctr;
 
   // Compute transformation from eye space to window space.
   //
