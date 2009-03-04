@@ -380,13 +380,23 @@ public:
   {
     dir_from.normalize(); dir_to.normalize();
     if ( pangle(dir_from,dir_to) < 0.0001 ) { set_identity(); return; }
-    const double a1 = atan2(dir_from.z,dir_from.x) - atan2(dir_to.z,dir_to.x);
-    pMatrix_Rotation rot1(pVect(0,1,0),a1);
-    pVect norm(dir_to,pVect(0,1,0));  norm.normalize();
-    const double a2 =
-      atan2(dir_from.mag_xz(),dir_from.y) - atan2(dir_to.mag_xz(),dir_to.y);
-    pMatrix_Rotation rot2(norm,a2);
-    pMMultiply(*this,rot2,rot1);
+    if ( fabs(dot(dir_to,pVect(0,1,0))) > 0.9999 )
+      {
+        pVect axis(dir_from, dir_to);
+        const int len = axis.normalize();
+        set_rotation(axis,asin(len));
+      }
+    else
+      {
+        const double
+          a1 = atan2(dir_from.z,dir_from.x) - atan2(dir_to.z,dir_to.x);
+        pMatrix_Rotation rot1(pVect(0,1,0),a1);
+        pVect norm(dir_to,pVect(0,1,0));  norm.normalize();
+        const double a2 =
+          atan2(dir_from.mag_xz(),dir_from.y) - atan2(dir_to.mag_xz(),dir_to.y);
+        pMatrix_Rotation rot2(norm,a2);
+        pMMultiply(*this,rot2,rot1);
+      }
     rot_check(*this,dir_from,dir_to);
   }
 };
@@ -427,7 +437,7 @@ invert3x3(pMatrix& original)
       for ( int r=0; r<size; r++ )
         for ( int c=0; c<size; c++ )
           sum += fabs(ihope.a[r][c]-iis.a[r][c]);
-      if ( sum > 1e-5 )
+      if ( sum > 1e-4 )
         {
           printf("Can't invert, sum: %f\n",sum);
           //  exit(1);
