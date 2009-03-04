@@ -107,7 +107,7 @@ plan_c_pass_2_vertices()
   float temp_ratio = constants_sc.w;
 
   float gas_amount = constants_gas.x;
-  float gas_m_over_temp = constants_gas.y;
+  float particle_mass = constants_gas.y;
   float air_particle_mass = constants_gas.z;
   float gravity_mag = constants_gas.w;
 
@@ -157,6 +157,7 @@ plan_c_pass_2_vertices()
   float eff_volume = abs( volume );
   float volume_ratio = nom_volume / eff_volume;
   float pressure_factor = 1.0/6.0 * gas_amount * volume_ratio * temp_ratio;
+  float gas_m_over_temp = particle_mass / temp_ratio;
     
   float pressure =
     opt_gravity
