@@ -308,32 +308,6 @@ Tube::render()
 
 
   ///
-  /// Light Location and Lighting Options
-  ///
-
-#if 0
-  // Adjust options based on user input.
-  //
-  switch ( ogl_helper.keyboard_key ) {
-  case FB_KEY_LEFT: opt_light_location.x -= 0.1; break;
-  case FB_KEY_RIGHT: opt_light_location.x += 0.1; break;
-  case FB_KEY_UP: opt_light_location.y += 0.1; break;
-  case FB_KEY_DOWN: opt_light_location.y -= 0.1; break;
-  case FB_KEY_PAGE_DOWN: opt_light_location.z += 0.2; break;
-  case FB_KEY_PAGE_UP: opt_light_location.z -= 0.2; break;
-  case 9: variable_control.switch_var_right(); break;
-  case '-':case '_': variable_control.adjust_lower(); break;
-  case '+':case '=': variable_control.adjust_higher(); break;
-  case 'r':case 'R': opt_recompute = !opt_recompute; break;
-  case 'v': case 'V':
-    opt_v_buffering++;
-    if ( opt_v_buffering == 3 ) opt_v_buffering = 0;
-    break;
-  default: break;
-  }
-#endif
-
-  ///
   /// Adjust options based on user input.
   ///
 
