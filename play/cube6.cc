@@ -352,13 +352,13 @@ void
 World::init()
 {
   const double radius = 5;
-  pCoor center(0,12,-12);
+  pCoor center(13.7,12,-15.4);
   frame_timer.work_unit_set("Steps / s");
   world_time = time_wall_fp();
   delta_t = 1.0 / ( 32 * 30 );
   balloon.gpu_data_updated = false;
-  eye_location = pCoor(27.0,9.6,-9.8);
-  eye_direction = pVect(-1,0,0);
+  eye_location = pCoor(24.2,11.6,-38.7);
+  eye_direction = pVect(-0.42,-0.09,0.9);
   opt_move_item = MI_Eye;
   opt_light_intensity = 100.2;
   opt_gpu = true;
@@ -801,9 +801,9 @@ Balloon::time_step_cpu_once()
       gas_amount = 6 * pf_sum * volume / ( nom_volume * point_count );
     }
 
-  const float pressure_factor = 1.0/6 * pressure;
-
   update_for_volume();
+
+  const float pressure_factor = 1.0/6 * pressure;
 
   if ( first_iteration )
     {
@@ -854,7 +854,7 @@ Balloon::time_step_cpu_once()
 
       p->pos_prev = p->pos;
       p->pos += ( p->vel +  0.5 * delta_v ) * delta_t;
-      p->vel += 0.25 * delta_vng + delta_vg;
+      p->vel += damping_v * delta_vng + delta_vg;
 
     }
 
@@ -1066,7 +1066,7 @@ Balloon::time_step_gpu(int steps)
 
   glUniform4f
     (sun_constants_gas,
-     gas_amount, gas_m_over_temp,
+     gas_amount, particle_mass,
      air_particle_mass, opt_gravity ? opt_gravity_accel : 0.0 );
 
   glUniform4f
@@ -1664,8 +1664,8 @@ World::cb_keyboard()
       const double angle =
         fabs(eye_direction.y) > 0.99
         ? 0 : atan2(eye_direction.x,-eye_direction.z);
-      pMatrix_Rotation rotall(pVect(0,1,0),angle);
-      adjustment *= invert(rotall);
+      pMatrix_Rotation rotall(pVect(0,1,0),-angle);
+      adjustment *= rotall;
 
       switch ( opt_move_item ){
       case MI_Balloon: balloon.translate(adjustment); break;
