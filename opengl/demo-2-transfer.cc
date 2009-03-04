@@ -1,6 +1,6 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
- /// Simple OpenGL
+ /// Data Transfer Options
 
 // $Id:$
 
@@ -186,13 +186,17 @@ public:
   Tube(pOpenGL_Helper &fb):ogl_helper(fb){ init(); }
   static void render_w(void *moi){ ((Tube*)moi)->render(); }
   void init();
+  void modelview_update();
   void render();
 private:
   pOpenGL_Helper &ogl_helper;
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
 
-  pVect to_eye_vector;
+  pCoor eye_location;
+  pVect eye_direction;
+  pMatrix modelview;
+  bool opt_move_light;
 
   float r0;
   float x_shift;
@@ -241,13 +245,14 @@ Tube::init()
   opt_recompute = true;
   opt_light_location.set(( r0 - 0.1 ), 0, -3 );
 
-  to_eye_vector.set(-1,-0.5,-3);
+  eye_location.set(0,0,2.5);
+  eye_direction.set(0,0,-1);
+  modelview_update();
 
   // Arrange that variables below can be modified from the keyboard.
   //
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(opt_pattern_levels,"Pattern Levels");
-  variable_control.insert(to_eye_vector.x,"Viewer X");
 
   buffer_data_0 = false;
   coor_buffer = NULL;
@@ -261,6 +266,13 @@ Tube::init()
 
 }
 
+void
+Tube::modelview_update()
+{
+  pMatrix_Translate center_eye(-eye_location);
+  pMatrix_Rotation rotate_eye(eye_direction,pVect(0,0,-1));
+  modelview = rotate_eye * center_eye;
+}
 
 void
 Tube::render()
@@ -281,8 +293,7 @@ Tube::render()
   ///
 
   glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  glTranslatef(to_eye_vector.x,to_eye_vector.y,to_eye_vector.z);
+  glLoadTransposeMatrixf(modelview);
 
   const int win_width = ogl_helper.get_width();
   const int win_height = ogl_helper.get_height();
@@ -300,6 +311,7 @@ Tube::render()
   /// Light Location and Lighting Options
   ///
 
+#if 0
   // Adjust options based on user input.
   //
   switch ( ogl_helper.keyboard_key ) {
@@ -319,7 +331,88 @@ Tube::render()
     break;
   default: break;
   }
+#endif
 
+  ///
+  /// Adjust options based on user input.
+  ///
+
+  pVect adjustment(0,0,0);
+  pVect user_rot_axis(0,0,0);
+
+  switch ( ogl_helper.keyboard_key ) {
+  case FB_KEY_LEFT: adjustment.x = -0.1; break;
+  case FB_KEY_RIGHT: adjustment.x = 0.1; break;
+  case FB_KEY_UP: adjustment.z = -0.1; break;
+  case FB_KEY_DOWN: adjustment.z = 0.1; break;
+  case FB_KEY_PAGE_DOWN: adjustment.y = -0.1; break;
+  case FB_KEY_PAGE_UP: adjustment.y = 0.1; break;
+  case FB_KEY_DELETE: user_rot_axis.y = 1; break;
+  case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
+  case FB_KEY_HOME: user_rot_axis.x = 1; break;
+  case FB_KEY_END: user_rot_axis.x = -1; break;
+  case 'l': case 'L': opt_move_light = true; break;
+  case 'e': case 'E': opt_move_light = false; break;
+  case 'r':case 'R': opt_recompute = !opt_recompute; break;
+  case 'v': case 'V':
+    opt_v_buffering++;
+    if ( opt_v_buffering == 3 ) opt_v_buffering = 0;
+    break;
+
+  case 9: variable_control.switch_var_right(); break;
+  case '-':case '_': variable_control.adjust_lower(); break;
+  case '+':case '=': variable_control.adjust_higher(); break;
+
+  default: break;
+  }
+
+  // Update eye_direction based on keyboard command.
+  //
+  if ( user_rot_axis.x || user_rot_axis.y )
+    {
+      pMatrix_Rotation rotall(pVect(0,0,-1),eye_direction);
+      user_rot_axis *= rotall;
+      eye_direction *= pMatrix_Rotation(user_rot_axis, M_PI * 0.03);
+      modelview_update();
+    }
+
+  // Update eye_location based on keyboard command.
+  //
+  if ( adjustment.x || adjustment.y || adjustment.z )
+    {
+      const double angle =
+        fabs(eye_direction.y) > 0.99
+        ? 0 : atan2(eye_direction.x,-eye_direction.z);
+      pMatrix_Rotation rotall(pVect(0,1,0),-angle);
+      adjustment *= rotall;
+      if ( opt_move_light ) opt_light_location += adjustment;
+      else                  eye_location += adjustment;
+      modelview_update();
+    }
+
+  //
+  // User Messages  (Magically inserted into frame buffer.)
+  //
+
+  ogl_helper.fbprintf
+    ("Eye location: [%.1f, %.1f, %.1f]  "
+     "(%suse arrow and page keys to move).\n",
+     eye_location.x, eye_location.y, eye_location.z,
+     opt_move_light ? "press 'e' then " : "" );
+
+  ogl_helper.fbprintf
+    ("Light location: [%.1f, %.1f, %.1f]  "
+     "(%suse arrow and page keys to move).\n",
+     opt_light_location.x, opt_light_location.y, opt_light_location.z,
+     opt_move_light ? "" : "press 'l' then ");
+
+  ogl_helper.fbprintf
+    ("Eye direction: [%.2f, %.2f, %.2f]  "
+     "(use 'Home', 'End', 'Del', 'Insert' keys to turn).\n",
+     eye_direction.x, eye_direction.y, eye_direction.z);
+
+
+  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,0);
   glLightfv(GL_LIGHT0, GL_POSITION, opt_light_location);
 
   const float light_intensity[4] =
@@ -402,6 +495,7 @@ Tube::render()
   const float ampl = 0.4;
 
   glEnable(GL_NORMALIZE);
+  glEnable(GL_RESCALE_NORMAL);
   
   glColor3fv( color_gold );
 
@@ -462,7 +556,7 @@ Tube::render()
 
               theta += delta_theta;
 
-              cos_theta = tarray.cos(theta);
+              cos_theta = tarray.cos(theta); // Use pre-computed values.
               sin_theta = tarray.sin(theta);
 
               pCoor v1(x_shift + rz1 * cos_theta, rz1 * sin_theta, z1);
