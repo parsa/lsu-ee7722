@@ -314,7 +314,7 @@ public:
 
   World& world;
 
-  GLuint image_tid;
+  GLuint texid_pse, texid_syl;
 
   PStack<Balloon_Vertex> points;
   PStack<Balloon_Triangle> triangles;
@@ -405,6 +405,8 @@ public:
   double delta_t;
 
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
+  pBuffer_Object<pVect> platform_tile_coords;
+  pBuffer_Object<float> platform_tex_coords;
 
   Balloon balloon;
   pCoor light_location;
@@ -429,7 +431,7 @@ World::init()
   const double radius = 5;
   pCoor center(13.7,12,-15.4);
   frame_timer.work_unit_set("Steps / s");
-  world_time = time_wall_fp();
+  world_time = 0;
   delta_t = 1.0 / ( 32 * 30 );
   balloon.gpu_data_updated = false;
   eye_location = pCoor(24.2,11.6,-38.7);
@@ -437,7 +439,7 @@ World::init()
   opt_move_item = MI_Eye;
   opt_light_intensity = 100.2;
   opt_gpu = true;
-  opt_surface_smooth = false;
+  opt_surface_smooth = true;
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
   light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
@@ -470,6 +472,44 @@ World::init()
   balloon.init(center,radius);
 
   modelview_update();
+
+  const float tile_count = 19;
+  const float ep = 1.00001;
+  const float xdelta = ( platform_xmax - platform_xmin ) / tile_count * ep;
+  const float zdelta = ( platform_zmax - platform_zmin ) / tile_count * ep;
+
+  const float trmin = 0.05;
+  const float trmax = 0.7;
+  const float tsmin = 0;
+  const float tsmax = 0.4;
+
+  PStack<pVect> p_tile_coords;
+  PStack<pVect> p1_tile_coords;
+  PStack<float> p_tex_coords;
+  bool even = true;
+
+  for ( float x = platform_xmin; x < platform_xmax; x += xdelta )
+    for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
+      {
+        PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
+        p_tex_coords += trmax; p_tex_coords += tsmax;
+        t_coords += pVect(x,-0.01,z);
+        p_tex_coords += trmax; p_tex_coords += tsmin;
+        t_coords += pVect(x,-0.01,z+zdelta);
+        p_tex_coords += trmin; p_tex_coords += tsmin;
+        t_coords += pVect(x+xdelta,-0.01,z+zdelta);
+        p_tex_coords += trmin; p_tex_coords += tsmax;
+        t_coords += pVect(x+xdelta,-0.01,z);
+        even = !even;
+      }
+
+  while ( pVect* const v = p1_tile_coords.iterate() ) p_tile_coords += *v;
+  
+  platform_tile_coords.take(p_tile_coords);
+  platform_tile_coords.to_gpu();
+  platform_tex_coords.take(p_tex_coords);
+  platform_tex_coords.to_gpu();
+
 }
 
 
@@ -608,8 +648,8 @@ Balloon::init(pCoor center, double r)
       Balloon_Vertex* const p = &points[idx];
       pColor color;
 
-      p->tex_coor.x = ( p->theta - tex_theta_min ) * theta_to_s;
-      p->tex_coor.y = ( p->eta - tex_eta_min ) * eta_to_s;
+      p->tex_coor.x = 1 - ( p->theta - tex_theta_min ) * theta_to_s;
+      p->tex_coor.y = 1 - ( p->eta - tex_eta_min ) * eta_to_s;
       gpu_tex_coords += p->tex_coor.x;
       gpu_tex_coords += p->tex_coor.y;
 
@@ -656,10 +696,11 @@ Balloon::init(pCoor center, double r)
       points[tri->ri].triangles += idx;
     }
 
-  //  image_tid = pBuild_Texture_File("avatar2.png");
-  image_tid = pBuild_Texture_File("mult.png",false,255);
+  // texid_pse = pBuild_Texture_File("avatar2.png");
+  texid_pse = pBuild_Texture_File("mult.png",false,255);
   tex_coords.take(gpu_tex_coords,GL_STATIC_DRAW);
   tex_coords.to_gpu();
+  texid_syl = pBuild_Texture_File("gp.png",false,255);
 
   point_indices.take(p_indices,GL_STATIC_DRAW,GL_ELEMENT_ARRAY_BUFFER);
   point_indices.to_gpu();
@@ -948,6 +989,8 @@ Balloon::time_step_cpu_once()
       pVect delta_vg = delta_t * gravity;
       pVect delta_v = delta_vng + delta_vg;
 
+      //  pVect pos_verlet = p->pos - pos_prev + delta_t * delta_v;
+
       p->pos_prev = p->pos;
       p->pos += ( p->vel +  0.5 * delta_v ) * delta_t;
       p->vel += damping_v * delta_vng + delta_vg;
@@ -1180,7 +1223,6 @@ Balloon::time_step_gpu(int steps)
   pError_Check();
 
   BV_GPU_Data_Vtx before = gpu_data_vtx.data[0];
-  const float volume_before = volume;
 
   if ( steps ) cpu_data_stale = true;
 
@@ -1408,6 +1450,8 @@ World::render()
 
   if ( !opt_gpu ) balloon.gpu_data_to_cpu();
 
+  if ( world_time == 0 ) world_time = time_wall_fp();
+
   if ( opt_pause )
     {
       world_time = time_wall_fp();
@@ -1423,7 +1467,6 @@ World::render()
       if ( opt_gpu && balloon.need_cpu_iteration ) balloon.time_step_cpu_once();
       if ( opt_gpu ) balloon.time_step_gpu(time_steps);
       else balloon.time_step_cpu(time_steps);
-      const double time_after = time_wall_fp();
       frame_timer.work_amt_set(time_steps);
       world_time += delta_t * time_steps;
     }
@@ -1553,12 +1596,17 @@ World::render()
     glBindBuffer(GL_ARRAY_BUFFER,0);
   }
 
+  glActiveTexture(GL_TEXTURE0);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D,balloon.texid_syl);
+  glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+
   for ( int pass = 0;  pass < 2;  pass++ )
     {
-      const float tile_count = 20;
-      const float xdelta = ( platform_xmax - platform_xmin ) / tile_count;
-      const float zdelta = ( platform_zmax - platform_zmin ) / tile_count;
-
       if ( pass == 0 )
         {
           glStencilFunc(GL_NOTEQUAL,1,-1); // ref, mask
@@ -1570,34 +1618,41 @@ World::render()
           glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 4.0);
         }
 
-      glBegin(GL_QUADS);
       glNormal3f(0,1,0);
-      bool darkx = true;
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
-      for ( float x = platform_xmin; x < platform_xmax; x += xdelta )
+
+      if ( opt_surface_smooth )
         {
-          bool darkz = darkx;
-          darkx = !darkx;
-          for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
-            {
-              if ( darkz ) glColor3f(0.4,0.4,0.4);
-              else glColor3f(0.5,0.5,0.5);
-              darkz = !darkz;
-              glVertex3f(x,-0.01,z);
-              glVertex3f(x,-0.01,z+zdelta);
-              glVertex3f(x+xdelta,-0.01,z+zdelta);
-              glVertex3f(x+xdelta,-0.01,z);
-            }
+          glEnable(GL_TEXTURE_2D);
+          platform_tex_coords.bind();
+          glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
+          glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         }
-      glEnd();
+
+      platform_tile_coords.bind();
+      glVertexPointer
+        (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glColor3f(0.5,0.5,0.5);
+      const int half_elements = platform_tile_coords.elements >> 3 << 2;
+      glDrawArrays(GL_QUADS,0,half_elements+4);
+      glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+      glDisable(GL_TEXTURE_2D);
+
+      glColor3f(0.4,0.4,0.4);
+      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+      glDisableClientState(GL_VERTEX_ARRAY);
+      glBindBuffer(GL_ARRAY_BUFFER,0);
     }
+
+  glDisable(GL_TEXTURE_2D);
   glDisable(GL_STENCIL_TEST);
   glEnable(GL_LIGHT0);
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
 
   glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,10);
 
-  if ( opt_surface_smooth || false && opt_gpu )
+  if ( opt_surface_smooth )
     {
       const int vstride = sizeof(Balloon_Vertex);
 
@@ -1606,20 +1661,14 @@ World::render()
       glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
                       GL_LINEAR_MIPMAP_LINEAR);
       glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-      glBindTexture(GL_TEXTURE_2D,balloon.image_tid);
+      glBindTexture(GL_TEXTURE_2D,balloon.texid_pse);
       glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
       glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
       glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
-      pColor color(0.5,0.1,0.9);
+      pColor color(0.9,0.9,0.9);
       glColor3fv(color);
-      glColor3f(0.9,0.9,0.9);
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color);
-
-#if 0
-      glColorPointer(3,GL_FLOAT,vstride,&balloon.points[0].color);
-      glEnableClientState(GL_COLOR_ARRAY);
-#endif
 
       balloon.tex_coords.bind();
       glTexCoordPointer(2,GL_FLOAT,0,NULL);
@@ -1647,11 +1696,11 @@ World::render()
       glDrawElements
         (GL_TRIANGLES,balloon.point_indices.elements,GL_UNSIGNED_INT, NULL);
 
-      //  glDisableClientState(GL_COLOR_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);
       glDisableClientState(GL_NORMAL_ARRAY);
       glDisableClientState(GL_TEXTURE_COORD_ARRAY);
       glDisable(GL_TEXTURE_2D);
+      glBindBuffer(GL_ARRAY_BUFFER,0);
     }
   else
     {
