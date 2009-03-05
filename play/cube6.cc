@@ -19,11 +19,12 @@
 #include <GL/glxext.h>
 #include <GL/glu.h>
 #include <GL/freeglut.h>
+#include <Magick++.h>
 
 #include "../opengl/util.h"
 #include "glextfuncs.h"
 #include "../opengl/coord.h"
-#include "shader.h"
+#include "../opengl/shader.h"
 #include "../opengl/pstring.h"
 #include "../opengl/misc.h"
 
@@ -141,6 +142,75 @@ public:
   int elements, chars;
 };
 
+using namespace Magick;
+
+class P_Image_Read
+{
+public:
+  P_Image_Read(const char *path, int transp):
+    image(path),image_loaded(false),data(NULL)
+  {
+    width = image.columns();
+    height = image.rows();
+    size = width * height;
+    if ( !width || !height ) return;
+    if ( transp == 255 )
+      image.transparent(Color("White"));
+    pp = image.getPixels(0,0,width,height);
+    for ( int i = 0; i < size; i++ ) pp[i].opacity = MaxRGB - pp[i].opacity;
+    gl_fmt = GL_BGRA;
+    gl_type = sizeof(PixelPacket) == 8 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE;
+    data = (unsigned char*) pp;
+    image_loaded = true;
+  };
+  void color_invert()
+  {
+    for ( int i = 0; i < size; i++ )
+      {
+        PixelPacket& p = pp[i];
+        const int sum = p.red + p.blue + p.green;
+        p.opacity = (typeof p.opacity)( MaxRGB - sum * 0.3333333 );
+        p.red = p.blue = p.green = MaxRGB;
+      }
+  }
+  Image image;
+  PixelPacket *pp;
+  bool image_loaded;
+  int width, height, maxval, size;
+  unsigned char *data;
+  int gl_fmt;
+  int gl_type;
+private:
+};
+
+int
+pBuild_Texture_File
+(const char *name, bool invert = false, int transp = 256 )
+{
+  GLenum gluerr;
+  P_Image_Read image(name,transp);
+  if ( !image.image_loaded ) return 0;
+  if ( invert ) image.color_invert();
+  GLuint tid;
+  glGenTextures(1,&tid);
+  glBindTexture(GL_TEXTURE_2D,tid);
+  if ( ( gluerr =
+	 gluBuild2DMipmaps
+	 (GL_TEXTURE_2D,
+	  GL_RGBA,
+	  //  GL_DEPTH_COMPONENT,
+	  image.width, image.height,
+          image.gl_fmt, image.gl_type,
+          (void *)image.data))) {
+
+      pStringF msg("GLULib%s\n",gluErrorString(gluerr));
+      pError_Msg(msg.s);
+   }
+
+   return tid;
+}
+
+
 class World;
 
 struct Balloon_Spring {
@@ -164,6 +234,7 @@ struct Balloon_Vertex {
   int edge_out[7];
   int edge_out_count;
   PStack<int> triangles;
+  pCoor tex_coor;
 
   // Data changed each time step.
 
@@ -181,6 +252,7 @@ struct Balloon_Vertex {
   // Only used during initialization.
   int edge_in_count;
   int edge_in[6];
+  double eta;
   double theta;
   int ring;
 };
@@ -242,9 +314,12 @@ public:
 
   World& world;
 
+  GLuint image_tid;
+
   PStack<Balloon_Vertex> points;
   PStack<Balloon_Triangle> triangles;
   pBuffer_Object<GLuint> point_indices;
+  pBuffer_Object<float> tex_coords;
   int point_count;
   int tri_count;
   float radius;
@@ -416,6 +491,7 @@ Balloon::init(pCoor center, double r)
   pole_south->pos = center + pVect(0,0,r);
   pole_south->vel = pVect(0,0,0);
   pole_south->ring = 0;
+  pole_south->eta = 0;
   point_count++;
 
   const double first_circum = equator_interpoint * 6 + epsilon;
@@ -453,6 +529,7 @@ Balloon::init(pCoor center, double r)
           Balloon_Vertex* const point = points.pushi();
           point->mass_inv = 1;
           point->ring = ring_count;
+          point->eta = eta;
           point->theta = theta;
           point->pos = center +
             pVect(slice_r * cos(theta), slice_r * sin(theta), z );
@@ -489,6 +566,7 @@ Balloon::init(pCoor center, double r)
     pole_north->pos = center + pVect(0,0,-r);
     pole_north->vel = pVect(0,0,0);
     pole_north->ring = ++ring_count;
+    pole_north->eta = M_PI;
     const int lower_ring_first_idx = rings_first_idx.peek();
     for ( int lower_ring_idx = lower_ring_first_idx;
           lower_ring_idx != point_count; lower_ring_idx++ )
@@ -516,11 +594,24 @@ Balloon::init(pCoor center, double r)
     }
 
   PStack<GLuint> p_indices;
+  const double tex_eta_min = 0.25 * M_PI;
+  const double tex_eta_max = 0.75 * M_PI;
+  const double tex_theta_min = 0;
+  const double tex_theta_max = two_pi;
+  const double eta_to_s = 1.0 / ( tex_eta_max - tex_eta_min );
+  const double theta_to_s = 1.0 / ( tex_theta_max - tex_theta_min );
+
+  PStack<float> gpu_tex_coords;
 
   for ( int idx = 0;  idx < point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
       pColor color;
+
+      p->tex_coor.x = ( p->theta - tex_theta_min ) * theta_to_s;
+      p->tex_coor.y = ( p->eta - tex_eta_min ) * eta_to_s;
+      gpu_tex_coords += p->tex_coor.x;
+      gpu_tex_coords += p->tex_coor.y;
 
       switch ( p->ring & 0x3 ) {
       case 0: color = pColor(0.9,.1,.1); break;
@@ -564,6 +655,11 @@ Balloon::init(pCoor center, double r)
       points[tri->qi].triangles += idx;
       points[tri->ri].triangles += idx;
     }
+
+  //  image_tid = pBuild_Texture_File("avatar2.png");
+  image_tid = pBuild_Texture_File("mult.png",false,255);
+  tex_coords.take(gpu_tex_coords,GL_STATIC_DRAW);
+  tex_coords.to_gpu();
 
   point_indices.take(p_indices,GL_STATIC_DRAW,GL_ELEMENT_ARRAY_BUFFER);
   point_indices.to_gpu();
@@ -1505,14 +1601,29 @@ World::render()
     {
       const int vstride = sizeof(Balloon_Vertex);
 
+      glActiveTexture(GL_TEXTURE0);
+      glEnable(GL_TEXTURE_2D);
+      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
+                      GL_LINEAR_MIPMAP_LINEAR);
+      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+      glBindTexture(GL_TEXTURE_2D,balloon.image_tid);
+      glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+
       pColor color(0.5,0.1,0.9);
       glColor3fv(color);
+      glColor3f(0.9,0.9,0.9);
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color);
 
 #if 0
       glColorPointer(3,GL_FLOAT,vstride,&balloon.points[0].color);
       glEnableClientState(GL_COLOR_ARRAY);
 #endif
+
+      balloon.tex_coords.bind();
+      glTexCoordPointer(2,GL_FLOAT,0,NULL);
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
       if ( opt_gpu )
         {
@@ -1539,6 +1650,8 @@ World::render()
       //  glDisableClientState(GL_COLOR_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);
       glDisableClientState(GL_NORMAL_ARRAY);
+      glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+      glDisable(GL_TEXTURE_2D);
     }
   else
     {
