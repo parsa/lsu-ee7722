@@ -293,6 +293,7 @@ public:
   void time_step_cpu_once();
   void time_step_gpu(int steps);
   void gpu_data_to_cpu();
+  void cpu_data_to_gpu();
   void translate(pVect amt);
   void push(pVect amt);
   pVect velocity_avg()
@@ -368,7 +369,7 @@ public:
   double oversample;
   double tightness;
 
-  bool gpu_data_updated;
+  bool gpu_data_stale;
   bool cpu_data_stale;
   pBuffer_Object<BV_GPU_Data_Vtx> gpu_data_vtx;
   pBuffer_Object<BV_GPU_Data_Tri> gpu_data_tri;
@@ -433,7 +434,8 @@ World::init()
   frame_timer.work_unit_set("Steps / s");
   world_time = 0;
   delta_t = 1.0 / ( 32 * 30 );
-  balloon.gpu_data_updated = false;
+  balloon.gpu_data_stale = true;
+  balloon.cpu_data_stale = false;
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
   opt_move_item = MI_Eye;
@@ -446,7 +448,6 @@ World::init()
   balloon.need_cpu_iteration = true;
   balloon.length_relaxed_update = true;
   balloon.damping_v = 0.1;
-  balloon.cpu_data_stale = false;
   balloon.cpu_iteration = 0;
   balloon.opt_gravity = true;
   balloon.opt_damping = false;
@@ -736,14 +737,6 @@ Balloon::init(pCoor center, double r)
       td->ri = float(tri->ri * 3);
       td->length_relaxed = tri->length_relaxed;
     }
-
-#if 0
-  for ( int idx = 0;  idx < point_count;  idx++ )
-    {
-      Balloon_Vertex* const p = &points[idx];
-      p->pos.y = p->pos.y > center.y ? 0.1 : 0.0;
-    }
-#endif
 }
 
 void
@@ -751,7 +744,7 @@ Balloon::update_for_config()
 {
   if ( !world.opt_gpu )
     {
-      gpu_data_updated = false;
+      gpu_data_stale = true;
     }
   temp_ratio = temperature / 300;
   point_mass = surface_mass / point_count;
@@ -819,7 +812,7 @@ Balloon::translate(pVect amt)
   gpu_data_to_cpu();
   for ( int idx = 0;  idx < point_count; idx++ )
     points[idx].pos += amt;
-  gpu_data_updated = false;
+  gpu_data_stale = true;
 }
 
 void
@@ -828,7 +821,7 @@ Balloon::push(pVect amt)
   gpu_data_to_cpu();
   for ( int idx = 0;  idx < point_count; idx++ )
     points[idx].vel += amt;
-  gpu_data_updated = false;
+  gpu_data_stale = true;
 }
 
 void
@@ -1154,31 +1147,7 @@ Balloon::time_step_gpu(int steps)
       vs_plan_c.validate_once();
     }
 
-  if ( !gpu_data_updated )
-    {
-      gpu_data_updated = true;
-
-      for ( int idx=0; idx<point_count; idx++ )
-        {
-          Balloon_Vertex* const p = &points[idx];
-          BV_GPU_Data_Vtx* const g = &gpu_data_vtx[idx];
-          g->pos = p->pos;
-          g->vel = p->vel;
-        }
-
-      for ( int idx=0; idx<tri_count; idx++ )
-        {
-          Balloon_Triangle* const tri = &triangles[idx];
-          BV_GPU_Plan_C_Triangle_Data* const td =
-            &gpu_plan_c_triangle_data[idx];
-          td->length_relaxed = tri->length_relaxed;
-        }
-
-      gpu_data_vtx.to_gpu();
-      gpu_plan_c_vertex_data.to_gpu();
-      gpu_plan_c_triangle_data.to_gpu();
-      glBindBuffer(GL_ARRAY_BUFFER,0);
-    }
+  cpu_data_to_gpu();
 
   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer_id);
 
@@ -1372,6 +1341,35 @@ Balloon::gpu_data_to_cpu()
       p->vel = g->vel;
       p->surface_normal = g->surface_normal;
     }
+}
+
+void
+Balloon::cpu_data_to_gpu()
+{
+  if ( !gpu_data_stale ) return;
+
+  gpu_data_stale = false;
+
+  for ( int idx=0; idx<point_count; idx++ )
+    {
+      Balloon_Vertex* const p = &points[idx];
+      BV_GPU_Data_Vtx* const g = &gpu_data_vtx[idx];
+      g->pos = p->pos;
+      g->vel = p->vel;
+    }
+
+  for ( int idx=0; idx<tri_count; idx++ )
+    {
+      Balloon_Triangle* const tri = &triangles[idx];
+      BV_GPU_Plan_C_Triangle_Data* const td =
+        &gpu_plan_c_triangle_data[idx];
+      td->length_relaxed = tri->length_relaxed;
+    }
+
+  gpu_data_vtx.to_gpu();
+  gpu_plan_c_vertex_data.to_gpu();
+  gpu_plan_c_triangle_data.to_gpu();
+  glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
 // Display a tetrahedron, used to indicate light position.
@@ -1576,7 +1574,7 @@ World::render()
     glPushMatrix();
     glLoadTransposeMatrixf(modelview_shadow);
     const int vstride = sizeof(Balloon_Vertex);
-    if ( opt_gpu && balloon.gpu_data_updated )
+    if ( opt_gpu && !balloon.gpu_data_stale )
       {
         balloon.gpu_data_vtx.bind();
         glVertexPointer
@@ -1674,7 +1672,7 @@ World::render()
       glTexCoordPointer(2,GL_FLOAT,0,NULL);
       glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
-      if ( opt_gpu )
+      if ( opt_gpu && !balloon.gpu_data_stale )
         {
           balloon.gpu_data_vtx.bind();
           glVertexPointer
@@ -1685,6 +1683,7 @@ World::render()
         }
       else
         {
+          glBindBuffer(GL_ARRAY_BUFFER,0);
           glVertexPointer(4, GL_FLOAT, vstride, &balloon.points[0].pos);
           glNormalPointer(GL_FLOAT, vstride, &balloon.points[0].surface_normal);
         }
@@ -1774,7 +1773,7 @@ World::cb_keyboard()
   pVect user_rot_axis(0,0,0);
   const float move_amt = 0.4;
 
-  balloon.gpu_data_updated = false;
+  balloon.gpu_data_stale = true;
   balloon.gpu_data_to_cpu();
 
   switch ( ogl_helper.keyboard_key ) {
