@@ -2,28 +2,33 @@ INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include
 LIBDIR  = -L/usr/X11R6/lib
 LIBDIR  =
 
-COMPILERFLAGS = -Wall
+COMPILERFLAGS = -Wall -O3
 CC = gcc
 CXX = g++
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -fverbose-asm -O3
-CXXFLAGS = $(CFLAGS)
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -fverbose-asm 
+CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lXmu  -lglut -lGL -lGLU -lm -lpthread  -lXxf86vm -lrt
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
+LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
+  $(shell Magick++-config --ldflags --libs)
 
 
-default:cube5
+default:cube6
 
 .cc.o:
 	$(CXX) $(CFLAGS) -S $*.cc
 	$(CXX) $(CFLAGS) -c $*.s
 
+cube6.o: Makefile ../opengl/coord.h ../opengl/util.h shader.h 
 cube5.o: Makefile coord.h util.h shader.h 
 
 cube5_shader.s: cube5_shader.cc
-	cgc -profile vp40 -oglsl -entry main_physics -o cube5_shader-physics.s \
+	echo -profile vp40 -oglsl -entry main_physics -o cube5_shader-physics.s \
 	 cube5_shader.cc
-	cgc -profile vp40 -oglsl -entry main_faces -o cube5_shader-faces.s \
+	echo -profile vp40 -oglsl -entry main_faces -o cube5_shader-faces.s \
 	 cube5_shader.cc
+
+cube6: cube6.o
+	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 cube5: cube5.o cube5_shader.s
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
