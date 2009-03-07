@@ -27,6 +27,11 @@
 //
 //  The assignment instructions are in file hw4.cc. (This file.)
 
+// The OpenGL spec, needed for this assignment, is at
+//   http://www.ece.lsu.edu/koppel/gp/refs/glspec21.pdf
+//   The relevant sections are 2.7, 2.8, and 2.9. (Vertex specification,
+//   vertex arrays, and buffer objects.)
+
 // For the solutions to the problems below edit this file, even if
 // it makes more sense to edit others (namely, coord.h). If it seems
 // that coord.h must be edited, contact me.
