@@ -794,16 +794,13 @@ World::shadow_update()
   pMatrix_Translate un_center_light(light_location);
   pMatrix from_platform = un_center_light * un_rotate_platform;
   pMatrix project = from_platform * to_platform;
+  modelview_shadow = modelview * from_platform * to_platform;
   pCoor test_pt(1.1,0,2.2);
   pCoor test_pt2(1.1,1,2.2);
-  modelview_shadow = modelview * from_platform * to_platform;
   pCoor test_pt_a = step1 * test_pt;
   pCoor test_pt_b = to_platform * test_pt;  test_pt_b.homogenize();
   pCoor test_pt_pr = project * test_pt;  test_pt_pr.homogenize();
   pCoor test_pt2_pr = project * test_pt2;  test_pt2_pr.homogenize();
-  pCoor test_pt_cs = modelview_shadow * test_pt; test_pt_cs.homogenize();
-  pCoor test_pt2_cs = modelview_shadow * test_pt2; test_pt2_cs.homogenize();
-
 }
 
 void
@@ -1061,43 +1058,6 @@ Balloon::time_step_cpu_once()
 void
 Balloon::time_step_gpu(int steps)
 {
-  // Plan A
-  //
-  //  Pass 1:
-  //    Geometry shader, all triangles.
-  //    Use frame buffer to sum forces.
-  //  Pass 2:
-  //    Vertex shader.
-  //    Update position and velocity.
-
-  // Plan A.1
-  //
-  //  Pass 1:
-  //    Geometry shader, all triangles.
-  //    Write surface force and lengths to texture.
-  //  Pass 2:
-  //    Vertex shader.
-  //    Read forces from texture.
-  //    Update position and velocity.
-
-  // Plan B
-  //
-  //   Pass 1a, 1b, etc.
-  //    Geometry shader, non-touching sets of triangles.
-  //    Add forces each pass.
-  //   Pass 2
-  //    Position and velocity.
-
-  // Plan C
-  //
-  //   Pass 1
-  //     Vertex shader, read neighbors using texture.
-  //     Each triangle gets computed three times.
-  //     Compute velocity and new position.
-
-  // Plan D
-  //
-  //   CUDA.
 
   static bool gpu_init = false;
   if ( !gpu_init )
@@ -1565,6 +1525,8 @@ World::render()
   ogl_helper.fbprintf("VAR %s = %.5f  (+/- to adjust)\n",
                       cvar->name,cvar->var[0]);
 
+  // Write framebuffer stencil with ball's shadow.
+  //
   {
     glDisable(GL_LIGHTING);
     glEnable(GL_STENCIL_TEST);
@@ -1594,6 +1556,8 @@ World::render()
     glBindBuffer(GL_ARRAY_BUFFER,0);
   }
 
+  // Setup texture for platform.
+  //
   glActiveTexture(GL_TEXTURE0);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
@@ -1607,10 +1571,14 @@ World::render()
     {
       if ( pass == 0 )
         {
+          // Prepare to write unshadowed parts of frame buffer.
+          //
           glStencilFunc(GL_NOTEQUAL,1,-1); // ref, mask
         }
       else
         {
+          // Prepare to write shadowed parts of frame buffer.
+          //
           glStencilFunc(GL_EQUAL,1,-1); // ref, mask
           glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.3);
           glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 4.0);
@@ -1631,12 +1599,17 @@ World::render()
       glVertexPointer
         (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
       glEnableClientState(GL_VERTEX_ARRAY);
+
+      // Write lighter-colored, textured tiles.
+      //
       glColor3f(0.5,0.5,0.5);
       const int half_elements = platform_tile_coords.elements >> 3 << 2;
       glDrawArrays(GL_QUADS,0,half_elements+4);
+
+      // Write darker-colored, untextured tiles.
+      //
       glDisableClientState(GL_TEXTURE_COORD_ARRAY);
       glDisable(GL_TEXTURE_2D);
-
       glColor3f(0.4,0.4,0.4);
       glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
       glDisableClientState(GL_VERTEX_ARRAY);
