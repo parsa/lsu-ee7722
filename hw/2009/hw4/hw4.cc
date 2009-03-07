@@ -134,6 +134,9 @@
  //  expect given the change in the transfer rate? Explain your
  //  answer.
 
+ //  Is the change in GPU usage more, less, or equal to what one
+ //  might expect from the change in transfer rate? Explain.
+
 
 #include <stdio.h>
 #include <strings.h>
