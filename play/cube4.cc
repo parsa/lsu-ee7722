@@ -1070,18 +1070,11 @@ void cbRenderScene(
 
    bool ball_rendered = false;
 
-   if ( false )
-     {
-       vs_lighting->validate_once();
-       vs_circle->validate_once();
-     }
-
-#ifdef use_cg
-   cgGLBindProgram(cgp_lighting->profile);
-   cgGLEnableProfile(cgp_lighting->profile);
-#else
    vs_lighting->use();
-#endif
+
+   ///
+   /// Iterate over Cube Faces
+   ///
 
    while ( !part_idx.empty() )
      {
@@ -1092,6 +1085,8 @@ void cbRenderScene(
        pVect plane = cube.face_local(fi.f).normal;
        const bool front = fi.order >= 0;
 
+       // Render the ball.
+       //
        if ( !ball_rendered && front )
          {
            vs_fixed->use();
@@ -1113,11 +1108,14 @@ void cbRenderScene(
                glEnable(GL_BLEND);
                glDepthFunc(GL_ALWAYS);
              }
+           glEnable(GL_STENCIL_TEST);
          }
 
        glPushMatrix();
        glMultTransposeMatrixf(fgi.face_forward.a);
 
+       // Decide which bumps to render.
+       //
        for ( pContact_List::iterator ci = contact.begin();
              ci < contact.end(); ci++ )
          ci->render_bump = ci->speed >= .3;
@@ -1128,37 +1126,53 @@ void cbRenderScene(
 
        fci.texgen_on();
 
-       glEnable(GL_STENCIL_TEST);
+       // Effectively turn off stenciling by setting stencil test
+       // to always pass.
+       //
        glStencilFunc(GL_ALWAYS,fi.f,-1);
        glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
 
        glEnable(GL_TEXTURE_2D);
 
+       // Render bumps that face away from viewer.  Parts of these
+       // will be overwritten by the cube face at unstenciled locations.
+       //
        if ( !front ) bumps_render(fi.f);
 
+       glDisable(GL_TEXTURE_2D);
+
+       ///
+       /// Stencil in Holes
+       ///
+       // Write stencil value fi.f (face number) at place where ball
+       // hits cube face.
+       //
        glStencilFunc(GL_NEVER,fi.f,-1);
        glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
-
-       glDisable(GL_TEXTURE_2D);
 
        pError_Check();
        for ( pContact_List::iterator ci = contact.begin();
              ci < contact.end(); ci++ )
          circle_render(ci,fi.f);
 
+       ///
+       /// Render Cube Face in Places Without Holes
+       ///
+
+       // Set stencil test to fail at hole locations.
+       //
        glStencilFunc(GL_NOTEQUAL,fi.f,-1);
        glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
 
        glEnable(GL_TEXTURE_2D);
 
-#ifdef use_cg
-#else
        vs_lighting->use();
-#endif
 
        glColor4f(1,1,1,1);
        glNormal3f(0,0,1);
 
+       // Render cube face.
+       //
        glBegin(GL_QUADS);
        glVertex2f(0,0);
        glVertex2f(0,1);
@@ -1166,29 +1180,19 @@ void cbRenderScene(
        glVertex2f(1,0);
        glEnd();
 
+       // Effectively turn off stenciling.
+       //
        glStencilFunc(GL_ALWAYS,fi.f,-1);
        glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+
+       ///
+       /// Render Bumps That Face Viewer
+       ///
 
        if ( front ) bumps_render(fi.f);
 
        glPopMatrix();
-
-       if ( false )
-         {
-           glDisable(GL_STENCIL_TEST);
-           glDisable(GL_TEXTURE_2D);
-
-           //  glDisable(GL_BLEND);
-           glDepthFunc(GL_LESS);
-           glColor4f(0xf9/255.0,0xb2/255.0,0x37/255.0,1);
-           glBegin(GL_LINE_LOOP);
-           glVertex4fv(fgi.v00);
-           glVertex4fv(fgi.v01);
-           glVertex4fv(fgi.v11);
-           glVertex4fv(fgi.v10);
-           glEnd();
-           glDepthFunc(GL_ALWAYS);
-         }
+         
      }
 
    vs_fixed->use();
