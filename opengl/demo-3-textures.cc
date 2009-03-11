@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
  /// Texturing Demonstration
 
@@ -141,13 +141,22 @@ pTexture_From_PNM
   if ( option & PT_Invert ) image.color_invert();
   GLuint texture_id;
 
+  // Generate a texture id (name). (This doesn't create a texture object.)
+  //
   glGenTextures(1,&texture_id);
+
+  // Create a texture object for texture_id (since one doesn't yet exist).
+  //
   glBindTexture(GL_TEXTURE_2D,texture_id);
 
+  // Set some parameters for our new texture object.
+  //
   glTexParameteri(GL_TEXTURE_2D,GL_GENERATE_MIPMAP,1);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
+  // Load data into the texture object.
+  //
   glTexImage2D
     (GL_TEXTURE_2D,
      0,                // Level of Detail (0 is base).
@@ -260,13 +269,17 @@ public:
   Tube(pOpenGL_Helper &fb):ogl_helper(fb){ init(); }
   static void render_w(void *moi){ ((Tube*)moi)->render(); }
   void init();
+  void modelview_update();
   void render();
 private:
   pOpenGL_Helper &ogl_helper;
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
 
-  pVect to_eye_vector;
+  pCoor eye_location;
+  pVect eye_direction;
+  pMatrix modelview;
+  bool opt_move_light;
 
   float r0;
   float x_shift;
@@ -317,13 +330,13 @@ Tube::init()
   opt_light_intensity = 2;
   opt_light_location.set(( r0 - 0.1 ), 0, -3 );
 
-  to_eye_vector.set(-1,-0.5,-3);
+  eye_location.set(0,0,2.5);
+  eye_direction.set(0,0,-1);
+  modelview_update();
 
   // Arrange that variables below can be modified from the keyboard.
   //
-  variable_control.insert(to_eye_vector.z,"Viewer Z");
   variable_control.insert(opt_light_intensity,"Light Intensity");
-  variable_control.insert(to_eye_vector.x,"Viewer X");
 
   coor_buffer = NULL;
   norm_buffer = NULL;
@@ -341,6 +354,14 @@ Tube::init()
   opt_pause = false;
 }
 
+void
+Tube::modelview_update()
+{
+  pMatrix_Translate center_eye(-eye_location);
+  pMatrix_Rotation rotate_eye(eye_direction,pVect(0,0,-1));
+  modelview = rotate_eye * center_eye;
+}
+
 
 void
 Tube::render()
@@ -355,20 +376,44 @@ Tube::render()
   //
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
+  ///
+  /// Transformation Matrix Setup
+  ///
+
+  glMatrixMode(GL_MODELVIEW);
+  glLoadTransposeMatrixf(modelview);
+
+  const int win_width = ogl_helper.get_width();
+  const int win_height = ogl_helper.get_height();
+  const float aspect = float(win_width) / win_height;
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glFrustum(-0.8,+0.8,-0.8/aspect,0.8/aspect,1,5000);
+
+  glViewport(0, 0, win_width, win_height);
+  pError_Check();
 
   ///
-  /// Light Location and Lighting Options
+  /// Adjust options based on user input.
   ///
 
-  // Adjust options based on user input.
-  //
+  pVect adjustment(0,0,0);
+  pVect user_rot_axis(0,0,0);
+
   switch ( ogl_helper.keyboard_key ) {
-  case FB_KEY_LEFT: opt_light_location.x -= 0.1; break;
-  case FB_KEY_RIGHT: opt_light_location.x += 0.1; break;
-  case FB_KEY_UP: opt_light_location.y += 0.1; break;
-  case FB_KEY_DOWN: opt_light_location.y -= 0.1; break;
-  case FB_KEY_PAGE_DOWN: opt_light_location.z += 0.2; break;
-  case FB_KEY_PAGE_UP: opt_light_location.z -= 0.2; break;
+  case FB_KEY_LEFT: adjustment.x = -0.1; break;
+  case FB_KEY_RIGHT: adjustment.x = 0.1; break;
+  case FB_KEY_UP: adjustment.z = -0.1; break;
+  case FB_KEY_DOWN: adjustment.z = 0.1; break;
+  case FB_KEY_PAGE_DOWN: adjustment.y = -0.1; break;
+  case FB_KEY_PAGE_UP: adjustment.y = 0.1; break;
+  case FB_KEY_DELETE: user_rot_axis.y = 1; break;
+  case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
+  case FB_KEY_HOME: user_rot_axis.x = 1; break;
+  case FB_KEY_END: user_rot_axis.x = -1; break;
+  case 'l': case 'L': opt_move_light = true; break;
+  case 'e': case 'E': opt_move_light = false; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 'm': opt_texture_env_mode++;
     if ( !texture_env_modes[opt_texture_env_mode].label )
@@ -382,30 +427,38 @@ Tube::render()
     if ( !texture_mag_filters[opt_texture_mag_filter].label )
       opt_texture_mag_filter = 0;
     break;
+
   case 9: variable_control.switch_var_right(); break;
   case '-':case '_': variable_control.adjust_lower(); break;
   case '+':case '=': variable_control.adjust_higher(); break;
+
   default: break;
   }
 
-  ///
-  /// Transformation Matrix Setup
-  ///
+  // Update eye_direction based on keyboard command.
+  //
+  if ( user_rot_axis.x || user_rot_axis.y )
+    {
+      pMatrix_Rotation rotall(pVect(0,0,-1),eye_direction);
+      user_rot_axis *= rotall;
+      eye_direction *= pMatrix_Rotation(user_rot_axis, M_PI * 0.03);
+      modelview_update();
+    }
 
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  glTranslatef(to_eye_vector.x,to_eye_vector.y,to_eye_vector.z);
+  // Update eye_location based on keyboard command.
+  //
+  if ( adjustment.x || adjustment.y || adjustment.z )
+    {
+      const double angle =
+        fabs(eye_direction.y) > 0.99
+        ? 0 : atan2(eye_direction.x,-eye_direction.z);
+      pMatrix_Rotation rotall(pVect(0,1,0),-angle);
+      adjustment *= rotall;
+      if ( opt_move_light ) opt_light_location += adjustment;
+      else                  eye_location += adjustment;
+      modelview_update();
+    }
 
-  const int win_width = ogl_helper.get_width();
-  const int win_height = ogl_helper.get_height();
-  const float aspect = float(win_width) / win_height;
-
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glFrustum(-0.8,+0.8,-0.8/aspect,0.8/aspect,1,5000);
-
-  glViewport(0, 0, win_width, win_height);
-  pError_Check();
 
   glLightfv(GL_LIGHT0, GL_POSITION, opt_light_location);
 
@@ -580,6 +633,8 @@ Tube::render()
       {
 	glBindTexture(GL_TEXTURE_2D,texture_id_image);
 
+        // Set parameters in texture object (texture_id_image).
+        //
 	glTexParameterf
 	  (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
 	   texture_min_filters[opt_texture_min_filter].value);
@@ -588,6 +643,8 @@ Tube::render()
 	  (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
 	   texture_mag_filters[opt_texture_mag_filter].value);
 
+        // Set parameter for texture unit.
+        //
 	glTexEnvi
 	  (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,
 	   texture_env_modes[opt_texture_env_mode].value);
