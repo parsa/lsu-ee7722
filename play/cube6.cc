@@ -861,6 +861,7 @@ Balloon::time_step_cpu_once()
   if ( !opt_gravity ) gravity = pVect(0,0,0);
   const bool first_iteration = cpu_iteration == 0;
   cpu_iteration++;
+  need_cpu_iteration = false;
 
   float volume_x2 = 0;
   float area_x2 = 0;
