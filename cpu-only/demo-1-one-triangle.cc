@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
  /// CPU-Only Demo 1: One Triangle
 
