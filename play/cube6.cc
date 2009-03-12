@@ -1571,7 +1571,7 @@ World::render()
 
       // Reflected front face should still be treated as the front face.
       //
-      glFrontFace(GL_CCW);
+      glFrontFace(GL_CW);
 
       glColor3fv(color_ball);
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,scolor_ball);
