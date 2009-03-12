@@ -8,7 +8,7 @@ INCLUDE =
 LIBDIR  =
 
 PROG_NAMES = simple demo-1-one-triangle demo-2-many-triangles \
- demo-3-color-and-z-buffering demo-4-lighting
+ demo-3-color-and-z-buffering demo-4-lighting demo-5-textures
 
 CFLAGSMAGIK_MAYBE := $(shell Magick++-config --cppflags --cxxflags)
 LDFLAGSMAGIK := $(shell Magick++-config  --ldflags --libs)
@@ -18,13 +18,10 @@ else
 CFLAGSMAGIK := $(CFLAGSMAGIK_MAYBE) -DMAGICK
 endif
 
-#demo-2-many-t-reorg
-
-#default: demo-2-many-t-reorg
 default: $(PROG_NAMES)
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3 -O3 $(CFLAGSMAGIK)
-COMPILERFLAGS = -Wall
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3  $(CFLAGSMAGIK)
+COMPILERFLAGS = -Wall -O3
 CC = gcc
 CXX = g++
 CXXFLAGS = $(CFLAGS)
