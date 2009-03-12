@@ -314,7 +314,6 @@ inline pVect operator * (pVect v, float s){return pVect(s,v); }
 inline pVect operator * (float s,pVect v){return pVect(s,v); }
 inline pVect operator * (pVect v,pVect q)
 {return pVect(v.x*q.x,v.y*q.y,v.z*q.z);}
-inline pVect operator * (double s,pVect v){return pVect(s,v); }
 inline pVect operator / (pVect v, float f)
 {
   const float finv = 1.0 / f;

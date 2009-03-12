@@ -1,4 +1,4 @@
-### LSU EE 7700-2 (Sp 08), Graphics Processors
+### LSU EE 7700-1 (Sp 2009), Graphics Processors
 ##
 ##  Makefile for OpenGL demo programs.
 ##
@@ -12,12 +12,13 @@ PROG_NAMES = demo-3-textures demo-2-transfer demo-0-hello \
 
 default: $(PROG_NAMES)
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -O3
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g 
 COMPILERFLAGS = -Wall
 CC = gcc
 CXX = g++
-CXXFLAGS = $(CFLAGS)
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt
+CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
+LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
+  $(shell Magick++-config --ldflags --libs)
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 

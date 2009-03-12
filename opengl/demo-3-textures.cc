@@ -25,6 +25,7 @@
 //  m: Change texture application modes. Initially texturing off.
 //  a: Change texture magnification filtering options.
 //  i: Change texture minification filtering options.
+//  b: Turn blending on and off. Affects appearance of syllabus on rectangle.
 //  p: Pause/resume.
 
 
@@ -126,13 +127,13 @@
 #include "image.h"
 
 
-///
+ ///
  ///  Create and Initialize a Texture Object from a File
-///
+ ///
 enum { PT_Invert = 1, PT_To_Alpha = 2 };
 
 GLuint
-pTexture_From_PNM
+pTexture_From_Image
 (char *file_name, int option = 0, int transp = 256 )
 {
   P_Image_Read image(file_name,transp);
@@ -163,8 +164,8 @@ pTexture_From_PNM
      GL_RGBA,          // Internal format to be used for texture.
      image.width, image.height,
      0,                // Border
-     GL_RGBA,          // Format of data read by this call.
-     GL_UNSIGNED_BYTE,
+     image.gl_fmt,     // GL_BGRA: Format of data read by this call.
+     image.gl_type,    // GL_UNSIGNED_BYTE: Size of component.
      (void*)image.data);
   pError_Check();
 
@@ -290,6 +291,7 @@ private:
   float opt_light_intensity;
   pCoor opt_light_location;
   bool opt_pause;
+  bool opt_blend;
 
   double time_last_frame;
   double time_app;
@@ -343,13 +345,14 @@ Tube::init()
   num_coor_alloc = 0;
 
   texture_id_syllabus =
-    pTexture_From_PNM("gp.ppm",PT_Invert | PT_To_Alpha,true);
-  //  texture_id_image = pTexture_From_PNM("ee_bdg_to_ur_ed.ppm",false,-1);
-  texture_id_image = pTexture_From_PNM("gp.ppm");
+    pTexture_From_Image("gp.png",PT_Invert | PT_To_Alpha,true);
+  //  texture_id_image = pTexture_From_Image("ee_bdg_to_ur_ed.ppm",false,-1);
+  texture_id_image = pTexture_From_Image("gp.png");
 
   opt_texture_env_mode = 0;
   opt_texture_min_filter = 0;
   opt_texture_mag_filter = 0;
+  opt_blend = true;
 
   opt_pause = false;
 }
@@ -412,6 +415,7 @@ Tube::render()
   case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
+  case 'b': case 'B': opt_blend = !opt_blend; break;
   case 'l': case 'L': opt_move_light = true; break;
   case 'e': case 'E': opt_move_light = false; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
@@ -491,6 +495,7 @@ Tube::render()
 		      texture_min_filters[opt_texture_min_filter].label);
   ogl_helper.fbprintf("Mag Filter: %s  (a to change)\n",
 		      texture_mag_filters[opt_texture_mag_filter].label);
+  ogl_helper.fbprintf("Blending %s\n", opt_blend ? "ON" : "OFF");
   if ( opt_pause )
     ogl_helper.fbprintf("Animation PAUSED  (p to resume)");
   else
@@ -629,29 +634,35 @@ Tube::render()
       }
   }
 
-    if ( opt_texture_env_mode )
-      {
-	glBindTexture(GL_TEXTURE_2D,texture_id_image);
+  if ( opt_texture_env_mode )
+    {
+      // Make the Image texture the current 2D texture.
+      //
+      glBindTexture(GL_TEXTURE_2D,texture_id_image);
 
-        // Set parameters in texture object (texture_id_image).
-        //
-	glTexParameterf
-	  (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-	   texture_min_filters[opt_texture_min_filter].value);
+      // Set parameters in texture object (texture_id_image).
+      //
+      glTexParameterf
+        (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+         texture_min_filters[opt_texture_min_filter].value);
 
-	glTexParameterf
-	  (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
-	   texture_mag_filters[opt_texture_mag_filter].value);
+      glTexParameterf
+        (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+         texture_mag_filters[opt_texture_mag_filter].value);
 
-        // Set parameter for texture unit.
-        //
-	glTexEnvi
-	  (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,
-	   texture_env_modes[opt_texture_env_mode].value);
+      // Set parameter for texture unit.
+      //
+      glTexEnvi
+        (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,
+         texture_env_modes[opt_texture_env_mode].value);
 
-	glEnable(GL_TEXTURE_2D);
-      }
+      glEnable(GL_TEXTURE_2D);
+    }
 
+  // Render Tube
+  //
+  // Note that now texture coordinates are also sent.
+  //
   glNormalPointer(GL_FLOAT,0,norm_buffer);
   glVertexPointer(3,GL_FLOAT,sizeof(pCoor),coor_buffer);
   glTexCoordPointer(2,GL_FLOAT,0,text_buffer);
@@ -689,9 +700,22 @@ Tube::render()
 
     if ( opt_texture_env_mode )
       {
+        // Make the Syllabus texture the current 2D texture.
+        //
 	glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
 
-	glEnable(GL_BLEND);
+        // Enable Blending
+        //
+        // Blending helps with anti-aliasing the syllabus text.
+        // (Blending is not a texture-specific feature.)
+        // When blending is off an alpha test is used to make the syllabus
+        // "paper" transparent.
+        //
+        if ( opt_blend )
+          glEnable(GL_BLEND);
+        else
+          glEnable(GL_ALPHA_TEST);
+        glAlphaFunc(GL_GREATER,0.1);
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
       }
 
@@ -708,6 +732,7 @@ Tube::render()
 
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
 
   }
 
