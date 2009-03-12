@@ -398,6 +398,7 @@ public:
   void cb_keyboard();
   void modelview_update();
   void shadow_update();
+  void shadow_transform_create(pMatrix& m, pCoor light);
 
   pOpenGL_Helper& ogl_helper;
   pVariable_Control variable_control;
@@ -421,6 +422,7 @@ public:
   pVect eye_direction;
   pMatrix modelview;
   pMatrix modelview_shadow;
+  pMatrix transform_mirror;
 
   pShader vs_fixed;
 
@@ -767,6 +769,18 @@ World::modelview_update()
 
 void
 World::shadow_update()
+{
+  // These routines need to be made more general.
+  pCoor platform_point(platform_xmin,0,platform_zmin);
+  pVect platform_normal(0,1,0);
+  shadow_transform_create(modelview_shadow,light_location);
+  pCoor eye_loc_mirror(eye_location.x, -eye_location.y, eye_location.z);
+  pMatrix reflect; reflect.set_identity(); reflect.rc(1,1) = -1;
+  transform_mirror = modelview * reflect * invert(modelview);
+}
+
+void
+World::shadow_transform_create(pMatrix& m, pCoor light_location)
 {
   pVect platform_normal(0,1,0);
   pVect eye_normal(0,0,-1);
@@ -1477,10 +1491,25 @@ World::render()
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
 
-  glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
   glEnable(GL_COLOR_MATERIAL);
+  glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
 
   glShadeModel(GL_SMOOTH);
+
+  pColor color_ball(0x777777);
+  pColor scolor_ball(0xffffff);
+  const float shininess_ball = 5;
+
+  // Common to all textures.
+  //
+  glActiveTexture(GL_TEXTURE0);
+  glEnable(GL_TEXTURE_2D);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+  glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
   insert_tetrahedron(light_location,0.05);
   glEnable(GL_RESCALE_NORMAL);
@@ -1525,121 +1554,30 @@ World::render()
   ogl_helper.fbprintf("VAR %s = %.5f  (+/- to adjust)\n",
                       cvar->name,cvar->var[0]);
 
-  // Write framebuffer stencil with ball's shadow.
-  //
-  {
-    glDisable(GL_LIGHTING);
-    glEnable(GL_STENCIL_TEST);
-    glStencilFunc(GL_NEVER,1,-1); // ref, mask
-    glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadTransposeMatrixf(modelview_shadow);
-    const int vstride = sizeof(Balloon_Vertex);
-    if ( opt_gpu && !balloon.gpu_data_stale )
-      {
-        balloon.gpu_data_vtx.bind();
-        glVertexPointer
-          (3, GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]),
-           (void*)( 2 * sizeof(pCoor) ));
-      }
-    else
-      glVertexPointer(4, GL_FLOAT, vstride, &balloon.points[0].pos);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    balloon.point_indices.bind(GL_ELEMENT_ARRAY_BUFFER);
-    glDrawElements
-      (GL_TRIANGLES,balloon.point_indices.elements,GL_UNSIGNED_INT, NULL);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glPopMatrix();
-    glEnable(GL_LIGHTING);
-    glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-  }
-
-  // Setup texture for platform.
-  //
-  glActiveTexture(GL_TEXTURE0);
-  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-  glBindTexture(GL_TEXTURE_2D,balloon.texid_syl);
-  glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
-  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
-
-  for ( int pass = 0;  pass < 2;  pass++ )
-    {
-      if ( pass == 0 )
-        {
-          // Prepare to write unshadowed parts of frame buffer.
-          //
-          glStencilFunc(GL_NOTEQUAL,1,-1); // ref, mask
-        }
-      else
-        {
-          // Prepare to write shadowed parts of frame buffer.
-          //
-          glStencilFunc(GL_EQUAL,1,-1); // ref, mask
-          glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.3);
-          glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 4.0);
-        }
-
-      glNormal3f(0,1,0);
-      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
-
-      if ( opt_surface_smooth )
-        {
-          glEnable(GL_TEXTURE_2D);
-          platform_tex_coords.bind();
-          glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
-          glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        }
-
-      platform_tile_coords.bind();
-      glVertexPointer
-        (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
-      glEnableClientState(GL_VERTEX_ARRAY);
-
-      // Write lighter-colored, textured tiles.
-      //
-      glColor3f(0.5,0.5,0.5);
-      const int half_elements = platform_tile_coords.elements >> 3 << 2;
-      glDrawArrays(GL_QUADS,0,half_elements+4);
-
-      // Write darker-colored, untextured tiles.
-      //
-      glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-      glDisable(GL_TEXTURE_2D);
-      glColor3f(0.4,0.4,0.4);
-      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
-      glDisableClientState(GL_VERTEX_ARRAY);
-      glBindBuffer(GL_ARRAY_BUFFER,0);
-    }
-
-  glDisable(GL_TEXTURE_2D);
-  glDisable(GL_STENCIL_TEST);
-  glEnable(GL_LIGHT0);
-  glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
-
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,10);
+  const int half_elements = platform_tile_coords.elements >> 3 << 2;
+  const int vstride = sizeof(Balloon_Vertex);
 
   if ( opt_surface_smooth )
     {
-      const int vstride = sizeof(Balloon_Vertex);
+      //
+      // Render balloon reflection.  (Will be blended with dark tiles.)
+      //
 
-      glActiveTexture(GL_TEXTURE0);
-      glEnable(GL_TEXTURE_2D);
-      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,
-                      GL_LINEAR_MIPMAP_LINEAR);
-      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+      // Use a transform that reflects objects to other size of platform.
+      //
+      glMatrixMode(GL_PROJECTION);
+      glPushMatrix();
+      glMultTransposeMatrixf(transform_mirror);
+
+      // Reflected front face should still be treated as the front face.
+      //
+      glFrontFace(GL_CCW);
+
+      glColor3fv(color_ball);
+      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,scolor_ball);
+      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
+
       glBindTexture(GL_TEXTURE_2D,balloon.texid_pse);
-      glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
-      glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
-
-      pColor color(0.9,0.9,0.9);
-      glColor3fv(color);
-      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color);
 
       balloon.tex_coords.bind();
       glTexCoordPointer(2,GL_FLOAT,0,NULL);
@@ -1665,6 +1603,165 @@ World::render()
       glEnableClientState(GL_NORMAL_ARRAY);
 
       balloon.point_indices.bind(GL_ELEMENT_ARRAY_BUFFER);
+
+      glDrawElements
+        (GL_TRIANGLES,balloon.point_indices.elements,GL_UNSIGNED_INT, NULL);
+
+      glDisableClientState(GL_NORMAL_ARRAY);
+      glDisableClientState(GL_VERTEX_ARRAY);
+      glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+      glBindBuffer(GL_ARRAY_BUFFER,0);
+
+      glFrontFace(GL_CCW);
+      glPopMatrix();
+    }
+
+  {
+    //
+    // Write framebuffer stencil with ball's shadow.
+    //
+
+    // Use transform that maps vertices to platform surface.
+    //
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadTransposeMatrixf(modelview_shadow);
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_NEVER,1,-1); // ref, mask
+    glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
+
+    if ( opt_gpu && !balloon.gpu_data_stale )
+      {
+        balloon.gpu_data_vtx.bind();
+        glVertexPointer
+          (3, GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]),
+           (void*)( 2 * sizeof(pCoor) ));
+      }
+    else
+      glVertexPointer(4, GL_FLOAT, vstride, &balloon.points[0].pos);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    balloon.point_indices.bind(GL_ELEMENT_ARRAY_BUFFER);
+    glDrawElements
+      (GL_TRIANGLES,balloon.point_indices.elements,GL_UNSIGNED_INT, NULL);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER,0);
+
+    glEnable(GL_LIGHTING);
+    glDisable(GL_STENCIL_TEST);
+    glPopMatrix();
+  }
+
+  // Setup texture for platform.
+  //
+  glBindTexture(GL_TEXTURE_2D,balloon.texid_syl);
+
+  // Blend dark tiles with existing balloon reflection.
+  //
+  glEnable(GL_STENCIL_TEST);
+  glBlendEquation(GL_FUNC_ADD);
+  glBlendFunc(GL_CONSTANT_ALPHA,GL_ONE_MINUS_CONSTANT_ALPHA); // src, dst
+  glBlendColor(0,0,0,0.3);
+
+  glDepthFunc(GL_ALWAYS);
+  glNormal3f(0,1,0);
+
+  if ( opt_surface_smooth )
+    {
+      glEnable(GL_TEXTURE_2D);
+      platform_tex_coords.bind();
+      glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
+
+  platform_tile_coords.bind();
+  glVertexPointer
+    (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+
+  for ( int pass = 0;  pass < 2;  pass++ )
+    {
+      if ( pass == 0 )
+        {
+          // Prepare to write unshadowed parts of frame buffer.
+          //
+          glStencilFunc(GL_NOTEQUAL,1,1);
+        }
+      else
+        {
+          // Prepare to write shadowed parts of frame buffer.
+          //
+          glStencilFunc(GL_EQUAL,1,1);
+          glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 4.0);
+        }
+
+      if ( opt_surface_smooth ) glEnable(GL_TEXTURE_2D);
+
+      // Write lighter-colored, textured tiles.
+      //
+      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
+      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
+      glColor3f(0.5,0.5,0.5);
+      glDrawArrays(GL_QUADS,0,half_elements+4);
+
+      // Write darker-colored, untextured, mirror tiles.
+      //
+      glEnable(GL_BLEND);
+      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
+      glDisable(GL_TEXTURE_2D);
+      glColor3f(0.2,0.2,0.2);
+      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+      glDisable(GL_BLEND);
+    }
+
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
+
+  glDepthFunc(GL_LESS);
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_STENCIL_TEST);
+  glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
+
+  if ( opt_surface_smooth )
+    {
+      const int vstride = sizeof(Balloon_Vertex);
+
+      glEnable(GL_TEXTURE_2D);
+      glBindTexture(GL_TEXTURE_2D,balloon.texid_pse);
+
+      glColor3fv(color_ball);
+      glMaterialfv(GL_BACK,GL_SPECULAR,scolor_ball);
+
+      balloon.tex_coords.bind();
+      glTexCoordPointer(2,GL_FLOAT,0,NULL);
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+      if ( opt_gpu && !balloon.gpu_data_stale )
+        {
+          balloon.gpu_data_vtx.bind();
+          glVertexPointer
+            (3, GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]),
+             (void*)( 2 * sizeof(pCoor) ));
+          glNormalPointer
+            (GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]), NULL );
+        }
+      else
+        {
+          glBindBuffer(GL_ARRAY_BUFFER,0);
+          glVertexPointer(4, GL_FLOAT, vstride, &balloon.points[0].pos);
+          glNormalPointer(GL_FLOAT, vstride, &balloon.points[0].surface_normal);
+        }
+
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glEnableClientState(GL_NORMAL_ARRAY);
+      balloon.point_indices.bind(GL_ELEMENT_ARRAY_BUFFER);
+
       glDrawElements
         (GL_TRIANGLES,balloon.point_indices.elements,GL_UNSIGNED_INT, NULL);
 
@@ -1734,7 +1831,6 @@ World::render()
   frame_timer.frame_end();
 
   glutSwapBuffers();
-
 }
 
 
