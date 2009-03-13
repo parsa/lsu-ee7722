@@ -1564,6 +1564,23 @@ World::render()
       // Render balloon reflection.  (Will be blended with dark tiles.)
       //
 
+      // Write stencil at location of dark (mirrored) tiles.
+      //
+      glDisable(GL_LIGHTING);
+      glEnable(GL_STENCIL_TEST);
+      glStencilFunc(GL_NEVER,2,2);
+      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+      platform_tile_coords.bind();
+      glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+      glEnable(GL_LIGHTING);
+
+      // Prepare to write only stenciled locations.
+      //
+      glStencilFunc(GL_EQUAL,2,2);
+      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+
       // Use a transform that reflects objects to other size of platform.
       //
       glMatrixMode(GL_PROJECTION);
@@ -1615,6 +1632,7 @@ World::render()
 
       glFrontFace(GL_CCW);
       glPopMatrix();
+      glDisable(GL_STENCIL_TEST);
     }
 
   {
