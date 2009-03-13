@@ -588,7 +588,7 @@ Tube::render()
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
     pError_Check();
-    num_bytes += ( sizeof(float) * 6 + sizeof(int) ) * num_indices;
+    num_bytes += ( sizeof(float) * 6 ) * num_indices;
     break;
 
   case 1:
