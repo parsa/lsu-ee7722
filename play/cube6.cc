@@ -288,7 +288,6 @@ public:
   ~Balloon(){ }
   void init(pCoor center, double radius);
   void update_for_config();
-  void update_for_volume();
   void time_step_cpu(int steps);
   void time_step_cpu_once();
   void time_step_gpu(int steps);
@@ -296,6 +295,15 @@ public:
   void cpu_data_to_gpu();
   void translate(pVect amt);
   void push(pVect amt);
+  float pressure_air(float msl)
+  {
+    return opt_gravity ? exp( - 0.2 * air_particle_mass * msl ) : 1.0;
+  }
+  float pressure_gas(float msl, float factorp = 0)
+  {
+    const float factor = factorp ? factorp : gas_pressure_factor;
+    return opt_gravity ? factor * exp( - gas_m_over_temp * msl ) : factor;
+  }
   pVect velocity_avg()
   {
     pVect vel_avg(0,0,0);
@@ -330,17 +338,21 @@ public:
 
   float spring_constant;
   float damping_factor;
+  float air_resistance;
   float surface_mass;
   float gas_amount;
-  float particle_mass;
+  float gas_particle_mass;
   float air_particle_mass;
-  float air_pressure_factor;
+  float gas_mass_per_vertex;
+  float pressure_factor_coeff;
+  float gas_pressure_factor;
 
   float nom_volume; // nominal
 
   float volume;
   float area;
   float temperature;
+  pVect weight;
   pCoor centroid;
 
   // Computed after each change to user-set physical quantity.
@@ -351,6 +363,7 @@ public:
   //
   float gas_m_over_temp;  // Coefficient in pressure formula.
   float pressure;
+  float density_air, density_gas;
 
   double e_spring, e_kinetic;
   double energy, e_zero;
@@ -455,12 +468,13 @@ World::init()
   balloon.opt_damping = false;
   balloon.opt_surface_fix = true;
   balloon.damping_factor = 0.2;
-  balloon.spring_constant = 21000.0;
+  balloon.spring_constant = 40.0;
+  balloon.air_resistance = 0.001;
   balloon.gas_amount = 0;
-  balloon.surface_mass = 1000;
+  balloon.surface_mass = 1;
   balloon.e_zero = 0;
   balloon.opt_gravity_accel = 9.8;
-  balloon.particle_mass = 0.01;
+  balloon.gas_particle_mass = 0.01;
   balloon.air_particle_mass = 0.01;
   balloon.temperature = 300;
   opt_pause = false;
@@ -468,8 +482,9 @@ World::init()
   variable_control.insert(balloon.opt_gravity_accel,"Gravity");
   variable_control.insert(balloon.temperature,"Temperature");
   variable_control.insert(balloon.damping_v,"Damping Factor");
+  variable_control.insert(balloon.air_resistance,"Air Resistance");
   variable_control.insert(opt_light_intensity,"Light Intensity");
-  variable_control.insert(balloon.particle_mass,"Particle Mass");
+  variable_control.insert(balloon.gas_particle_mass,"Gas Particle Mass");
   variable_control.insert(balloon.spring_constant,"Spring Constant");
   variable_control.insert(balloon.surface_mass,"Surface Mass");
   balloon.init(center,radius);
@@ -756,6 +771,13 @@ Balloon::update_for_config()
   const double a = sqrt( 2.0 * ell * spring_constant * point_mass_inv  );
   oversample = M_PI / ( 2 * a * world.delta_t );
   tightness = a;
+  gas_m_over_temp = 0.2 * gas_particle_mass / temp_ratio;
+  pressure_factor_coeff = gas_amount * temp_ratio;
+  const double mass_gas =
+    ( pressure_gas(centroid.y - 0.5, pressure_factor_coeff)
+      - pressure_gas(centroid.y + 0.5, pressure_factor_coeff) )
+    / opt_gravity_accel;
+  gas_mass_per_vertex = mass_gas / point_count;
 }
 
 void
@@ -836,16 +858,6 @@ Balloon::push(pVect amt)
 }
 
 void
-Balloon::update_for_volume()
-{
-  const float eff_volume = fabs( volume );
-  const float volume_ratio = nom_volume / eff_volume;
-
-  pressure = gas_amount * volume_ratio * temp_ratio;
-  gas_m_over_temp = particle_mass / temp_ratio;
-}
-
-void
 Balloon::time_step_cpu(int steps)
 {
   for ( int i=0; i<steps; i++ ) time_step_cpu_once();
@@ -854,7 +866,7 @@ Balloon::time_step_cpu(int steps)
 void
 Balloon::time_step_cpu_once()
 {
-  const double friction_coefficient = 0.08;
+  const double friction_coefficient = 0.04;
   const double bounce_factor = 0.0;
   const double delta_t = world.delta_t;
   pVect gravity(0,-opt_gravity_accel,0);
@@ -863,19 +875,19 @@ Balloon::time_step_cpu_once()
   cpu_iteration++;
   need_cpu_iteration = false;
 
-  float volume_x2 = 0;
-  float area_x2 = 0;
+  double volume_x2 = 0;
+  double area_x2 = 0;
   double kinetic_energy_total = 0;
   double spring_energy_factor_total = 0;
   pVect surface_error2(0,0,0);
   centroid = pCoor(0,0,0,0);
+  weight = pVect(0,0,0);
 
   for ( int idx = 0;  idx < point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
       centroid += p->pos;
       kinetic_energy_total += p->vel.mag();
-      p->force = pVect(0,0,0);
       p->force_spring = pVect(0,0,0);
       p->surface_normal = pVect(0,0,0);
     }
@@ -917,9 +929,9 @@ Balloon::time_step_cpu_once()
       const float eff_length = max(0.0f, perimeter - tri->length_relaxed );
       const float spring_force = eff_length * spring_constant;
 
-      p->force += spring_force * p_to_c;
-      q->force += spring_force * q_to_c;
-      r->force += spring_force * r_to_c;
+      p->force_spring += spring_force * p_to_c;
+      q->force_spring += spring_force * q_to_c;
+      r->force_spring += spring_force * r_to_c;
 
       const double spring_energy = eff_length;
       spring_energy_factor_total += spring_energy;
@@ -929,28 +941,39 @@ Balloon::time_step_cpu_once()
 
   volume = volume_x2 / 2.0;
   area = area_x2 / 2.0;
+  const float exp_air = pressure_air(centroid.y);
+  const float exp_gas = pressure_gas(centroid.y,1);
 
   if ( first_iteration )
     {
       double pf_sum = 0; // Pressure factor.
+      double area_sum_x6 = 0;
       for ( int i=0; i<point_count; i++ )
         {
           Balloon_Vertex* const p = &points[i];
           pNorm inward(p->surface_normal);
-          const double pf_balance = dot(p->force,inward) / inward.magnitude;
+          const double pf_balance = dot(p->force_spring,inward);
           pf_sum += pf_balance;
+          area_sum_x6 += inward.magnitude;
         }
-      gas_amount = 6 * pf_sum * volume / ( nom_volume * point_count );
+
+      const double area_sum = area_sum_x6 / 6;
+
+      gas_amount = damping_v *
+        ( pf_sum / area_sum + exp_air ) * volume / ( temp_ratio * exp_gas );
+                                   
+      update_for_config(); // Recompute pressure_factor_coeff.
     }
 
-  update_for_volume();
-
-  const float pressure_factor = 1.0/6 * pressure;
-
-  if ( first_iteration )
-    {
-      air_pressure_factor = 0.5 * pressure_factor;
-    }
+  const float eff_volume = fabs( volume );
+  gas_pressure_factor = pressure_factor_coeff / eff_volume;
+  pressure = gas_pressure_factor * exp_gas / exp_air;
+  density_air =
+    ( pressure_air(centroid.y - 0.5) - pressure_air(centroid.y + 0.5) )
+    / opt_gravity_accel;
+  density_gas =
+    ( pressure_gas(centroid.y - 0.5) - pressure_gas(centroid.y + 0.5) )
+    / opt_gravity_accel;
 
   const double spring_energy =
     12 * pow(point_mass,-0.5) * spring_energy_factor_total;
@@ -970,35 +993,42 @@ Balloon::time_step_cpu_once()
   for ( int i=0; i<point_count; i++ )
     {
       Balloon_Vertex* const p = &points[i];
-      const float pressure =
-        opt_gravity
-        ? pressure_factor * exp( - gas_m_over_temp * p->pos.y )
-        : pressure_factor;
-      const float air_pressure =
-        opt_gravity
-        ? air_pressure_factor * exp( - air_particle_mass * p->pos.y )
-        : air_pressure_factor;
+      const float gas_pressure = pressure_gas(p->pos.y);
+      const float air_pressure = pressure_air(p->pos.y);
 
-      p->force_spring = p->force;
+      p->surface_normal *= 1./6;
 
       p->force_pressure =
-        ( air_pressure -pressure ) * p->surface_normal;
+        ( air_pressure - gas_pressure ) * p->surface_normal;
 
-      p->force += p->force_pressure;
+      p->force = p->force_pressure;
 
-      pVect force_ng = p->force;
+      pNorm vel_norm(-p->vel);
+      const float facing_area = max(0.0f,dot(vel_norm,p->surface_normal));
+      pVect force_ar = - air_resistance * facing_area * p->vel;
+
       pVect gforce = point_mass * p->mass * gravity;
       p->force += gforce;
 
-      pVect delta_vng = point_mass_inv * p->mass_inv * delta_t * force_ng;
-      pVect delta_vg = delta_t * gravity;
-      pVect delta_v = delta_vng + delta_vg;
+      weight += p->force;
+      p->force += force_ar;
+
+      pVect force_ns = p->force; // Force non-spring.
+
+      p->force += p->force_spring;
+
+      const float mass_wgas_inv_dt =
+        delta_t / ( point_mass * p->mass + gas_mass_per_vertex );
+
+      pVect delta_vns = mass_wgas_inv_dt * force_ns;
+      pVect delta_vs = mass_wgas_inv_dt * p->force_spring;
+      pVect delta_v = delta_vns + delta_vs;
 
       //  pVect pos_verlet = p->pos - pos_prev + delta_t * delta_v;
 
       p->pos_prev = p->pos;
       p->pos += ( p->vel +  0.5 * delta_v ) * delta_t;
-      p->vel += damping_v * delta_vng + delta_vg;
+      p->vel += damping_v * delta_vs + delta_vns;
 
     }
 
@@ -1030,9 +1060,13 @@ Balloon::time_step_cpu_once()
       if ( p->pos_prev.y < 0 ) continue;
       p->pos.y = 0;
       p->vel.y = - bounce_factor * p->vel.y;
-      if ( p->force.y >= 0 ) continue;
-      const float friction_force = -p->force.y * friction_coefficient;
-      const float delta_v = point_mass * friction_force * p->mass * delta_t;
+      const float gas_pressure = pressure_gas(p->pos.y);
+      pVect gforce = point_mass * p->mass * gravity;
+      const float f_y =
+        gforce.y + p->force_spring.y - gas_pressure * p->surface_normal.y;
+      if ( f_y >= 0 ) continue;
+      const float friction_force = -f_y * friction_coefficient;
+      const float delta_v = friction_force * delta_t / ( point_mass*p->mass );
       const pNorm xzvel(p->vel.x,0,p->vel.z);
       if ( xzvel.magnitude <= delta_v ) {
         p->vel.x = 0;  p->vel.z = 0;
@@ -1145,16 +1179,18 @@ Balloon::time_step_gpu(int steps)
   glUniform1i(stx_data_tri,1);
 
   glUniform4f
-    (sun_constants_sc,spring_constant,damping_v,nom_volume,temp_ratio);
+    (sun_constants_sc,spring_constant,damping_v,
+     pressure_factor_coeff,
+     gas_m_over_temp);
 
   glUniform4f
     (sun_constants_gas,
-     gas_amount, particle_mass,
+     air_resistance, gas_mass_per_vertex,
      air_particle_mass, opt_gravity ? opt_gravity_accel : 0.0 );
 
   glUniform4f
     (sun_constants_dt,
-     world.delta_t, air_pressure_factor, point_mass, point_mass_inv);
+     world.delta_t, 0.0, point_mass, point_mass_inv);
 
   glUniform4f
     (sun_platform,
@@ -1276,7 +1312,6 @@ Balloon::time_step_gpu(int steps)
       gpu_data_vtx.bid_swap();
     }
 
-  update_for_volume();
   if ( false )
     {
       BV_GPU_Data_Vtx after = gpu_data_vtx.data[0];
@@ -1437,7 +1472,9 @@ World::render()
       const int time_steps_needed = int( sim_time_needed / delta_t );
       const int time_steps = min(time_steps_needed,100);
       balloon.update_for_config();
-      if ( opt_gpu && balloon.need_cpu_iteration ) balloon.time_step_cpu_once();
+      if ( opt_gpu &&
+           ( balloon.need_cpu_iteration || balloon.opt_surface_fix ) )
+        balloon.time_step_cpu_once();
       if ( opt_gpu ) balloon.time_step_gpu(time_steps);
       else balloon.time_step_cpu(time_steps);
       frame_timer.work_amt_set(time_steps);
@@ -1520,13 +1557,8 @@ World::render()
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
-     "(%suse arrow and page keys to move).\n",
+     "Eye direction: [%+.2f, %+.2f, %+.2f]\n",
      eye_location.x, eye_location.y, eye_location.z,
-     opt_move_item == MI_Eye ? "press 'e' then " : "" );
-
-  ogl_helper.fbprintf
-    ("Eye direction: [%+.2f, %+.2f, %+.2f]  "
-     "(use 'Home', 'End', 'Del', 'Insert' keys to turn).\n",
      eye_direction.x, eye_direction.y, eye_direction.z);
 
   pCoor cent = balloon.centroid;
@@ -1534,12 +1566,24 @@ World::render()
 
   ogl_helper.fbprintf
     ("Centroid  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  "
-     "Gas Amt %.2f  Volume  %.2f  Pressure %.0f\n",
+     "Gas Amt %.2f  Volume  %.2f  Pressure %.2f\n",
      cent.x,cent.y,cent.z,
      vel.x,vel.y,vel.z,
      balloon.gas_amount,
      balloon.volume / balloon.nom_volume,
      balloon.pressure
+     );
+
+  ogl_helper.fbprintf
+    ("Weight (Surf+Gas-Displ Air=W) (%6.2f + %6.2f - %6.2f = %6.2f)  "
+     "Net Force [%+6.1f,%+8.1f,%+6.1f]\n",
+     balloon.opt_gravity_accel * balloon.surface_mass,
+     balloon.opt_gravity_accel * balloon.volume * balloon.density_gas,
+     balloon.opt_gravity_accel * balloon.volume * balloon.density_air,
+     balloon.opt_gravity_accel * balloon.surface_mass
+     + balloon.opt_gravity_accel * balloon.volume * balloon.density_gas
+     - balloon.opt_gravity_accel * balloon.volume * balloon.density_air,
+     balloon.weight.x, balloon.weight.y, balloon.weight.z
      );
 
   ogl_helper.fbprintf
@@ -1683,7 +1727,7 @@ World::render()
   glEnable(GL_STENCIL_TEST);
   glBlendEquation(GL_FUNC_ADD);
   glBlendFunc(GL_CONSTANT_ALPHA,GL_ONE_MINUS_CONSTANT_ALPHA); // src, dst
-  glBlendColor(0,0,0,0.3);
+  glBlendColor(0,0,0,0.5);
 
   glDepthFunc(GL_ALWAYS);
   glNormal3f(0,1,0);

@@ -103,16 +103,15 @@ void
 plan_c_pass_2_vertices()
 {
   float damping_v = constants_sc.y;
-  float nom_volume = constants_sc.z;
-  float temp_ratio = constants_sc.w;
+  float pressure_factor_coeff = constants_sc.z;
+  float gas_m_over_temp = constants_sc.w;
 
-  float gas_amount = constants_gas.x;
-  float particle_mass = constants_gas.y;
+  float air_resistance = constants_gas.x;
+  float gas_mass_per_vertex = constants_gas.y;
   float air_particle_mass = constants_gas.z;
   float gravity_mag = constants_gas.w;
 
   float delta_t = constants_dt.x;
-  float air_pressure_factor = constants_dt.y;
   float point_mass = constants_dt.z;
   float point_mass_inv = constants_dt.w;
 
@@ -121,8 +120,8 @@ plan_c_pass_2_vertices()
   float platform_zmin = platform.z;
   float platform_zmax = platform.w;
 
-  const float friction_coefficient = 0.08;
-  const float bounce_factor = 0.5;
+  const float friction_coefficient = .04;
+  const float bounce_factor = 0.0;
   const float mass = 1.0;
 
   vec3 gravity = vec3(0.0,-gravity_mag,0.0);
@@ -152,34 +151,43 @@ plan_c_pass_2_vertices()
       vec4 center_and_force = texelFetchBuffer(tex_data_tri,idx+1);
       force_spring += center_and_force.w * ( center_and_force.xyz - pos );
     }
-  vec3 surface_normal = surface_normal_vol.xyz;
+  vec3 surface_normal = (1./6.) * surface_normal_vol.xyz;
 
-  float eff_volume = abs( volume );
-  float volume_ratio = nom_volume / eff_volume;
-  float pressure_factor = 1.0/6.0 * gas_amount * volume_ratio * temp_ratio;
-  float gas_m_over_temp = particle_mass / temp_ratio;
-    
+  float pressure_factor = pressure_factor_coeff / abs(volume);
+
   float pressure =
     opt_gravity
     ? pressure_factor * exp( - gas_m_over_temp * pos.y )
     : pressure_factor;
   float air_pressure =
-    opt_gravity
-    ? air_pressure_factor * exp( - air_particle_mass * pos.y )
-    : air_pressure_factor;
+    opt_gravity ? exp( - 0.2 * air_particle_mass * pos.y ) : 1.0;
 
   vec3 force_pressure = ( air_pressure - pressure ) * surface_normal;
+
+  vec3 force = force_pressure;
+
+  vec3 vel_norm = normalize(-vel);
+  float facing_area = max(0.0f,dot(vel_norm,surface_normal));
+  vec3 force_ar = - air_resistance * facing_area * vel;
+
   vec3 gforce = point_mass * mass * gravity;
+  force += gforce;
 
-  vec3 force_ng = force_pressure + force_spring;
-  vec3 force = force_ng + gforce;
+  force += force_ar;
 
-  vec3 delta_vng = point_mass_inv * delta_t * force_ng;
-  vec3 delta_vg = delta_t * gravity;
-  vec3 delta_v = delta_vng + delta_vg;
+  vec3 force_ns = force;
+
+  force += force_spring;
+
+  float mass_wgas_inv_dt =
+    delta_t / ( point_mass * mass + gas_mass_per_vertex );
+
+  vec3 delta_vns = mass_wgas_inv_dt * force_ns;
+  vec3 delta_vs = mass_wgas_inv_dt * force_spring;
+  vec3 delta_v = delta_vns + delta_vs;
 
   vec3 pos_next = pos + ( vel +  0.5 * delta_v ) * delta_t;
-  vec3 vel_next = vel + damping_v * delta_vng + delta_vg;
+  vec3 vel_next = vel + damping_v * delta_vs + delta_vns;
 
   while ( true ) {
     if ( pos_next.x < platform_xmin || pos_next.x > platform_xmax
@@ -188,9 +196,10 @@ plan_c_pass_2_vertices()
     if ( pos.y < 0.0 ) break;
     pos_next.y = 0.0;
     vel_next.y = - bounce_factor * vel_next.y;
-    if ( force.y >= 0.0 ) break;
-    float friction_force = -force.y * friction_coefficient;
-    float delta_v = point_mass * friction_force * mass * delta_t;
+    float f_y = gforce.y + force_spring.y - pressure * surface_normal.y;
+    if ( f_y >= 0.0 ) break;
+    float friction_force = -f_y * friction_coefficient;
+    float delta_v = friction_force * delta_t / ( point_mass * mass );
     vec3 xzvel = vec3(vel_next.x,0,vel_next.z);
     if ( length(xzvel) <= delta_v ) {
       vel_next.x = 0.0;  vel_next.z = 0.0;
