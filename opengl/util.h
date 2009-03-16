@@ -113,7 +113,7 @@ public:
   pFrame_Timer():inited(false),work_description(NULL)
   {
     query_timer_id = 0;
-    frame_group_size = 10;
+    frame_group_size = 30;
     frame_rate = 0;
     cpu_frac = 0;
   }
@@ -134,13 +134,13 @@ private:
   void var_reset()
   {
     frame_group_count = 0;
-    cpu_tsum = tsum = 0;
+    cpu_tsum = gpu_tsum_ns = 0;
     work_accum = 0;
   }
   bool inited;
   double frame_group_start_time;
   int frame_group_count;
-  double tsum, tlast, cpu_tsum, cpu_tlast;
+  double gpu_tsum_ns, gpu_tlast, cpu_tsum, cpu_tlast;
   double work_accum;
   double work_multiplier;
   int work_count_last;
@@ -148,7 +148,7 @@ private:
   double work_rate;
 
   double frame_rate;
-  double cpu_frac;
+  double cpu_frac, gpu_frac;
   double time_render_start;
   GLuint query_timer_id;
   uint xfcount;  // Frame count provided by glx.
@@ -175,10 +175,11 @@ pFrame_Timer::frame_rate_group_start()
   frame_group_start_time = time_wall_fp();
   const double group_duration = frame_group_start_time - last_wall_time;
 
-  tlast = 1e-6 * tsum * last_frame_count_inv;
+  gpu_tlast = 1e-9 * gpu_tsum_ns * last_frame_count_inv;
   cpu_tlast = cpu_tsum * last_frame_count_inv;
   frame_rate = last_frame_count / group_duration;
   cpu_frac = cpu_tsum / group_duration;
+  gpu_frac = 1e-9 * gpu_tsum_ns / group_duration;
   if ( work_description )
     {
       work_rate = work_multiplier * work_accum / group_duration;      
@@ -206,7 +207,7 @@ pFrame_Timer::frame_end()
       glEndQuery(GL_TIME_ELAPSED_EXT);
       int timer_val = 0;
       glGetQueryObjectiv(query_timer_id,GL_QUERY_RESULT,&timer_val);
-      tsum += timer_val;
+      gpu_tsum_ns += timer_val;
     }
   cpu_tsum += time_render_elapsed;
   const uint xfcount_prev = xfcount;
@@ -221,7 +222,8 @@ pFrame_Timer::frame_end()
 
   frame_rate_text += "  GPU ";
   if ( query_timer_id )
-    frame_rate_text.sprintf("%.3f us",tlast);
+    frame_rate_text.sprintf
+      ("%.3f ms (%.1f%%)", 1000 * gpu_tlast, 100 * gpu_frac);
   else
     frame_rate_text += "---";
 
