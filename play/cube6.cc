@@ -213,11 +213,6 @@ pBuild_Texture_File
 
 class World;
 
-struct Balloon_Spring {
-  float length_relaxed;
-  int vtx_in; // Index in points array.
-};
-
 struct Balloon_Triangle {
   int pi, qi, ri;
   pColor color;
