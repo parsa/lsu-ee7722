@@ -28,6 +28,11 @@
 #include "../opengl/pstring.h"
 #include "../opengl/misc.h"
 
+
+ ///
+ /// Class for managing an OpenGL ARRAY_BUFFER
+ ///
+
 template <typename T>
 class pBuffer_Object {
 public:
@@ -142,6 +147,11 @@ public:
   int elements, chars;
 };
 
+
+ ///
+ /// Ad-Hoc Class for Reading Images
+ ///
+
 using namespace Magick;
 
 class P_Image_Read
@@ -183,32 +193,52 @@ public:
 private:
 };
 
-int
+
+ ///
+ /// Create and initialize texture object using image file.
+ ///
+
+GLuint
 pBuild_Texture_File
 (const char *name, bool invert = false, int transp = 256 )
 {
-  GLenum gluerr;
+  // Read image from file.
+  //
   P_Image_Read image(name,transp);
   if ( !image.image_loaded ) return 0;
+
+  // Invert colors. (E.g., to show text as white on black.)
+  //
   if ( invert ) image.color_invert();
+
   GLuint tid;
   glGenTextures(1,&tid);
   glBindTexture(GL_TEXTURE_2D,tid);
-  if ( ( gluerr =
-	 gluBuild2DMipmaps
-	 (GL_TEXTURE_2D,
-	  GL_RGBA,
-	  //  GL_DEPTH_COMPONENT,
-	  image.width, image.height,
-          image.gl_fmt, image.gl_type,
-          (void *)image.data))) {
+  glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 
-      pStringF msg("GLULib%s\n",gluErrorString(gluerr));
-      pError_Msg(msg.s);
-   }
+  // Load data into the texture object.
+  //
+  glTexImage2D
+    (GL_TEXTURE_2D,
+     0,                // Level of Detail (0 is base).
+     GL_RGBA,          // Internal format to be used for texture.
+     image.width, image.height,
+     0,                // Border
+     image.gl_fmt,     // GL_BGRA: Format of data read by this call.
+     image.gl_type,    // GL_UNSIGNED_BYTE: Size of component.
+     (void*)image.data);
+  pError_Check();
 
-   return tid;
+  return tid;
 }
+
+
+///
+/// Main Data Structures
+///
+//
+// class World: All data about scene.
+// class Balloon: Data about a balloon.
 
 
 class World;
@@ -252,27 +282,36 @@ struct Balloon_Vertex {
   int ring;
 };
 
+// GPU-Computed Balloon Data for Triangles
+//
 struct BV_GPU_Data_Tri {
-  pCoor surface_normal;
+  pCoor surface_normal; // Magnitude is area of incident triangles.
   pCoor force;
   pCoor padding;
 };
 
+// GPU-Computed Balloon Data for Verticies
+//
 struct BV_GPU_Data_Vtx {
-  pCoor surface_normal;
+  pCoor surface_normal; // Magnitude is area of incident triangles.
   pCoor vel;
   pCoor pos;
 };
 
+// Structural Data for GPU, One per Triangle
+//
 struct BV_GPU_Plan_C_Triangle_Data {
-  float pi, qi, ri;
+  float pi, qi, ri;             // Index of triangle's vertices.
   float length_relaxed;
 };
 
+
+// Structural Data for GPU, One per Vertex
+//
 struct BV_GPU_Plan_C_Vertex_Data {
   float self_idx;
-  float left_idx;
-  int16_t neighbors[8];
+  float left_idx;               // Not used.
+  int16_t neighbors[8];         // Index of vertex's triangles.
 };
 
 class Balloon {
@@ -282,14 +321,33 @@ public:
   }
   ~Balloon(){ }
   void init(pCoor center, double radius);
+
+  // Called each time user changes a configuration variable, such as gravity.
   void update_for_config();
+
+  // Advance (time-step) simulated time.
+  //
   void time_step_cpu(int steps);
   void time_step_cpu_once();
   void time_step_gpu(int steps);
+
   void gpu_data_to_cpu();
   void cpu_data_to_gpu();
-  void translate(pVect amt);
-  void push(pVect amt);
+
+  // User Interaction
+  //
+  void translate(pVect amt); // Instantly move balloon.
+  void push(pVect amt);      // Instantly add velocity.
+  void stop()                //  Stop motion but not other motion.
+  {
+    pVect avg_vel = velocity_avg();
+    for ( int i=0; i<point_count; i++ ) points[i].vel -= avg_vel;
+  }
+  void freeze()             //  Stop all motion.
+  {
+    for ( int i=0; i<point_count; i++ ) points[i].vel = pVect(0,0,0);
+  }
+
   float pressure_air(float msl)
   {
     return opt_gravity ? exp( - 0.2 * air_particle_mass * msl ) : 1.0;
@@ -306,76 +364,76 @@ public:
     vel_avg *= 1.0/point_count;
     return vel_avg;
   }
-  void stop()
-  {
-    pVect avg_vel = velocity_avg();
-    for ( int i=0; i<point_count; i++ ) points[i].vel -= avg_vel;
-  }
-  void freeze()
-  {
-    for ( int i=0; i<point_count; i++ ) points[i].vel = pVect(0,0,0);
-  }
 
   World& world;
 
-  GLuint texid_pse, texid_syl;
+  // Structural Data
+  //
+  float radius;                 // Initial radius.
+  float nom_volume; // Volume based on initial radius
 
+  // Balloon Structure
+  //
   PStack<Balloon_Vertex> points;
   PStack<Balloon_Triangle> triangles;
   pBuffer_Object<GLuint> point_indices;
   pBuffer_Object<float> tex_coords;
   int point_count;
   int tri_count;
-  float radius;
   int tethered_idx;
 
-  int cpu_iteration;
 
+  // Fixed (or user set) Physical Constants
+  //
   float spring_constant;
-  float damping_factor;
   float air_resistance;
   float surface_mass;
   float gas_amount;
   float gas_particle_mass;
   float air_particle_mass;
-  float gas_mass_per_vertex;
-  float pressure_factor_coeff;
-  float gas_pressure_factor;
-
-  float nom_volume; // nominal
-
-  float volume;
-  float area;
   float temperature;
-  pVect weight;
-  pCoor centroid;
+  float opt_gravity_accel;
+  float damping_v;              // CPU and gpu. Higher is less damping.
+  float damping_factor;         // CPU only code.
+
+  // User-Set Options (in addition to physical constants above).
+  //
+  bool opt_gravity;             // If false, no gravity.
+  bool opt_damping;             // Only used in cpu code. See also damping_v
+  bool opt_surface_fix;         // Name is completely misleading.
 
   // Computed after each change to user-set physical quantity.
   //
   float temp_ratio;  // Temperature ratio.
+  float gas_mass_per_vertex;
+  float pressure_factor_coeff;
+  float gas_pressure_factor;
+  double oversample;       // Harmonic (approx) divided by time step delta t.
+  double tightness;
+  float damping_factor_per_step;
+  float point_mass;
+  float point_mass_inv;
 
-  // Computed each time step
+  // Computed each time step.
   //
+  float volume;
+  float area;
+  pVect weight;
+  pCoor centroid;
   float gas_m_over_temp;  // Coefficient in pressure formula.
   float pressure;
   float density_air, density_gas;
 
+  // Computed but not yet correct.
+  //
   double e_spring, e_kinetic;
   double energy, e_zero;
 
-  bool opt_gravity;
-  bool opt_damping;
-  float opt_gravity_accel;
-  bool opt_surface_fix;
-  bool length_relaxed_update;
-  bool need_cpu_iteration;
+  GLuint texid_pse, texid_syl;
 
-  float point_mass;
-  float point_mass_inv;
-  float damping_factor_per_step;
-  float damping_v;
-  double oversample;
-  double tightness;
+  int cpu_iteration;
+  bool need_cpu_iteration;
+  bool length_relaxed_update;
 
   bool gpu_data_stale;
   bool cpu_data_stale;
@@ -412,8 +470,10 @@ public:
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
   double world_time;
-  double delta_t;
+  double delta_t;               // Duration of time step.
 
+  // Tiled platform for balloon.
+  //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
@@ -709,7 +769,6 @@ Balloon::init(pCoor center, double r)
       points[tri->ri].triangles += idx;
     }
 
-  // texid_pse = pBuild_Texture_File("avatar2.png");
   texid_pse = pBuild_Texture_File("mult.png",false,255);
   tex_coords.take(gpu_tex_coords,GL_STATIC_DRAW);
   tex_coords.to_gpu();
@@ -826,6 +885,9 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
   pMatrix from_platform = un_center_light * un_rotate_platform;
   pMatrix project = from_platform * to_platform;
   modelview_shadow = modelview * from_platform * to_platform;
+
+  // Compute coordinates to help with debugging.
+  //
   pCoor test_pt(1.1,0,2.2);
   pCoor test_pt2(1.1,1,2.2);
   pCoor test_pt_a = step1 * test_pt;
@@ -1461,6 +1523,8 @@ World::render()
     }
   else
     {
+      // Advance simulated time.
+      //
       const double time_start = time_wall_fp();
       const double sim_time_needed = time_start - world_time;
       delta_t = 1.0 / ( 30 * ( opt_gpu ? 40 : 20 ) ) ;
@@ -1476,6 +1540,8 @@ World::render()
       world_time += delta_t * time_steps;
     }
 
+  // Rescue balloon if it is sinking into the abyss.
+  //
   if ( balloon.centroid.y < -50 )
     {
       pVect rescue_vector = pCoor(0,12,-12) - balloon.centroid;
@@ -1784,10 +1850,15 @@ World::render()
   glDisable(GL_TEXTURE_2D);
   glDisable(GL_STENCIL_TEST);
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
+  glMaterialf(GL_BACK,GL_SHININESS,shininess_ball);
 
+  //
+  // Render Balloon
+  //
   if ( opt_surface_smooth )
     {
+      // With Textures
+
       const int vstride = sizeof(Balloon_Vertex);
 
       glEnable(GL_TEXTURE_2D);
@@ -1795,6 +1866,10 @@ World::render()
 
       glColor3fv(color_ball);
       glMaterialfv(GL_BACK,GL_SPECULAR,scolor_ball);
+      glColorMaterial(GL_BACK,GL_AMBIENT_AND_DIFFUSE);
+      pColor color_red(0.9,0.2,0.2);
+      glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,color_red);
+      glMaterialfv(GL_FRONT,GL_SPECULAR,dark);
 
       balloon.tex_coords.bind();
       glTexCoordPointer(2,GL_FLOAT,0,NULL);
@@ -1831,6 +1906,8 @@ World::render()
     }
   else
     {
+      // With Colored Stripes
+
       balloon.gpu_data_to_cpu();
       glBegin(GL_TRIANGLES);
 
