@@ -6,6 +6,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <math.h>
 
 #include "glextfuncs.h"
 #include "pstring.h"
@@ -234,26 +235,62 @@ pFrame_Timer::frame_end()
     frame_rate_text.sprintf("  %s %.3f", work_description, work_rate);
 }
 
-struct pVariable_Control_Elt {float *var; char *name;};
+struct pVariable_Control_Elt
+{
+  char *name;
+  float *var;
+  float inc_factor, dec_factor;
+  int *ivar;
+  int inc;
+};
 
 class pVariable_Control {
 public:
   pVariable_Control()
   {
     size = 0;  storage = (pVariable_Control_Elt*)malloc(0); current = NULL;
+    inc_factor_def = pow(10,1.0/45);
   }
-  void insert(float &var, const char *name)
+  void insert(int &var, const char *name, int inc = 1)
+  {
+    pVariable_Control_Elt* const elt = insert_common(name);
+    elt->ivar = &var;
+    elt->inc = 1;
+  }
+
+  void insert(float &var, const char *name, float inc_factor = 0)
+  {
+    pVariable_Control_Elt* const elt = insert_common(name);
+    elt->var = &var;
+    elt->inc_factor = inc_factor ? inc_factor : inc_factor_def;
+    elt->dec_factor = 1.0 / elt->inc_factor;
+  }
+
+private:
+  pVariable_Control_Elt* insert_common(const char *name)
   {
     size++;
     const int cidx = current - storage;
     storage = (pVariable_Control_Elt*)realloc(storage,size*sizeof(*storage));
     pVariable_Control_Elt* const elt = &storage[size-1];
-    elt->var = &var;
-    elt->name = strdup(name);
     current = &storage[ size == 1 ? 0 : cidx ];
+    elt->name = strdup(name);
+    elt->ivar = NULL;
+    elt->var = NULL;
+    return elt;
   }
-  void adjust_higher() {if ( current ) current->var[0] *= 1.05;}
-  void adjust_lower() {if ( current ) current->var[0] *= 0.95;}
+public:
+
+  void adjust_higher() {
+    if ( !current ) return;
+    if ( current->var ) current->var[0] *= current->inc_factor;
+    else                current->ivar[0] += current->inc;
+  }
+  void adjust_lower() {
+    if ( !current ) return;
+    if ( current->var ) current->var[0] *= current->dec_factor;
+    else                current->ivar[0] -= current->inc;
+  }
   void switch_var_right()
   {
     if ( !current ) return;
@@ -262,6 +299,7 @@ public:
   }
   int size;
   pVariable_Control_Elt *storage, *current;
+  float inc_factor_def;
 };
 
 
