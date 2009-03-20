@@ -228,10 +228,10 @@ public:
   inline pVect operator - (void){ return pVect(-x,-y,-z); }
   inline pVect operator - (pVect v){ return pVect(x-v.x,y-v.y,z-v.z); }
 #endif
-  float mag() { return sqrt( dot(*this,*this) ); }
-  float mag_xy() { return sqrt( x*x + y*y ); }
-  float mag_xz() { return sqrt( x*x + z*z ); }
-  float mag_yz() { return sqrt( y*y + z*z ); }
+  float mag() const { return sqrt( dot(*this,*this) ); }
+  float mag_xy() const { return sqrt( x*x + y*y ); }
+  float mag_xz() const { return sqrt( x*x + z*z ); }
+  float mag_yz() const { return sqrt( y*y + z*z ); }
 
   float x, y, z;
 };
@@ -303,6 +303,8 @@ inline void pCoor::operator += (pVect v) { add_vector(v); }
 inline pCoor pCoor::operator + (pVect v)
 {return pCoor(x + v.x, y + v.y, z + v.z);}
 inline pCoor::pCoor(pVect v):x(v.x),y(v.y),z(v.z),w(1){}
+inline pCoor operator - (pCoor c, pVect v)
+{return pCoor(c.x-v.x,c.y-v.y,c.z-v.z); }
 inline pVect operator + (pVect v, pVect q)
 {return pVect(v.x+q.x,v.y+q.y,v.z+q.z); }
 inline pVect operator - (pVect v, pVect q)
