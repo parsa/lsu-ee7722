@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 08), Graphics Processors
+/// LSU EE 7700-1 (Spring 2009), Graphics Processors
 //
  /// Fragment Shader / Phong Shading Demonstration
 
@@ -14,7 +14,7 @@
 //     http://www.ece.lsu.edu/koppel/gp/refs/glspec21.pdf
 //
 //   OpenGL Shading Language
-//     http://www.ece.lsu.edu/koppel/gp/refs/GLSLangSpec.Full.1.20.8.pdf
+//     http://www.ece.lsu.edu/koppel/gp/refs/GLSLangSpec.Full.1.30.08.withchanges.pdf
 
  /// What Code Does
 
