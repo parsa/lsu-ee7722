@@ -297,6 +297,12 @@ public:
     current++;
     if ( current == &storage[size] ) current = storage;
   }
+  void switch_var_left()
+  {
+    if ( !current ) return;
+    if ( current == storage ) current = &storage[size];
+    current--;
+  }
   int size;
   pVariable_Control_Elt *storage, *current;
   float inc_factor_def;
