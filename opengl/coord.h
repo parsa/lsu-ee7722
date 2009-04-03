@@ -24,7 +24,7 @@ inline pCoor mult_MC(pMatrix& m, pCoor c);
 inline void pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2);
 pVect cross(pCoor a, pCoor b, pCoor c);
 pVect cross(pVect a, pVect b);
-float dot(pVect a, pVect b);
+double dot(pVect a, pVect b);
 
 class pCoor {
 public:
@@ -245,8 +245,8 @@ public:
     g( ( ( rgb >> 8 ) & 0xff ) / 255.0 ),
     b( ( ( rgb ) & 0xff ) / 255.0 ),a(1){}
   pColor(){}
-  float *v() { return &r; }
-  operator float*() { return v(); }
+  const float* v() const { return &r; }
+  operator const float* () const { return v(); }
   float r, g, b, a;
 };
 
@@ -255,9 +255,9 @@ inline pColor operator * (pColor c, float scale)
   return pColor(c.r*scale, c.g*scale, c.b*scale, c.a);
 }
 
-inline float dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
+inline double dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
 
-float dot(pCoor a, pCoor b)
+double dot(pCoor a, pCoor b)
 {return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;}
 
 pVect cross(pVect a, pVect b)
@@ -332,12 +332,14 @@ public:
   pNorm(pVect v){set(v);}
   void set(pVect v)
   {
-    magnitude = v.mag();
+    mag_sq = dot(v,v);
+    magnitude = sqrt(mag_sq);
     pVect v2 = magnitude == 0 ? pVect(0,0,0) : v / magnitude;
     pVect::set(v2);
   }
   void operator = (pVect v) { set(v); }
-  float magnitude;
+  double magnitude;
+  double mag_sq;
 };
 
 inline void
