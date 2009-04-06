@@ -245,8 +245,21 @@ class World;
 
 struct Balloon_Triangle {
   int pi, qi, ri;
+  int pi_opp, qi_opp, ri_opp;
+  bool pi_less, qi_less, ri_less;
   pColor color;
+  pVect normal;
   float length_relaxed;
+  bool a_vtx(int v) const { return v == pi || v == qi || v == ri; }
+  int third_vtx(int v1, int v2) const
+  { return ( v1 == pi && v2 == qi || v2 == pi && v1 == qi ? ri :
+             v1 == pi && v2 == ri || v2 == pi && v1 == ri ? qi :
+             v1 == qi && v2 == ri || v2 == qi && v1 == ri ? pi : -1 ); }
+};
+
+struct Balloon_Rep_Pair {
+  // Repulsion pairs.
+  int pi, qi;
 };
 
 struct Balloon_Vertex {
@@ -272,6 +285,7 @@ struct Balloon_Vertex {
   pVect force;
   pVect force_spring;
   pVect force_pressure;
+  pVect force_rep; // Repulsion.
   pVect surface_normal;
 
   // Only used during initialization.
@@ -286,16 +300,18 @@ struct Balloon_Vertex {
 //
 struct BV_GPU_Data_Tri {
   pCoor surface_normal; // Magnitude is area of incident triangles.
-  pCoor force;
-  pCoor padding;
+  pCoor force_p;
+  pCoor force_q;
+  pCoor force_r;
 };
 
-// GPU-Computed Balloon Data for Verticies
+// GPU-Computed Balloon Data for Vertices
 //
 struct BV_GPU_Data_Vtx {
   pCoor surface_normal; // Magnitude is area of incident triangles.
   pCoor vel;
   pCoor pos;
+  pCoor padding;
 };
 
 // Structural Data for GPU, One per Triangle
@@ -303,6 +319,7 @@ struct BV_GPU_Data_Vtx {
 struct BV_GPU_Plan_C_Triangle_Data {
   float pi, qi, ri;             // Index of triangle's vertices.
   float length_relaxed;
+  int pi_opp, qi_opp, ri_opp;
 };
 
 
@@ -376,16 +393,19 @@ public:
   //
   PStack<Balloon_Vertex> points;
   PStack<Balloon_Triangle> triangles;
+  PStack<Balloon_Rep_Pair> rep_pairs;
   pBuffer_Object<GLuint> point_indices;
   pBuffer_Object<float> tex_coords;
   int point_count;
   int tri_count;
+  int rep_pair_count;
   int tethered_idx;
 
 
   // Fixed (or user set) Physical Constants
   //
   float spring_constant;
+  float rep_constant;
   float air_resistance;
   float surface_mass;
   float gas_amount;
@@ -450,7 +470,7 @@ public:
   GLint sat_indices, sat_volume, sat_pos, sat_vel;
   GLint sun_constants_sc;
   GLint sun_constants_gas, sun_constants_dt, sun_platform;
-  GLint svl_surface_normal, svl_force_or_v, svl_pos;
+  GLint svl_surface_normal, svl_force_or_v, svl_pos, svl_force_r;
   GLint stx_data_vtx, stx_data_tri;
 
 };
@@ -524,6 +544,7 @@ World::init()
   balloon.opt_surface_fix = true;
   balloon.damping_factor = 0.2;
   balloon.spring_constant = 40.0;
+  balloon.rep_constant = 0.1;
   balloon.air_resistance = 0.001;
   balloon.gas_amount = 0;
   balloon.surface_mass = 1;
@@ -541,6 +562,7 @@ World::init()
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(balloon.gas_particle_mass,"Gas Particle Mass");
   variable_control.insert(balloon.spring_constant,"Spring Constant");
+  variable_control.insert(balloon.rep_constant,"Repulsion Constant");
   variable_control.insert(balloon.surface_mass,"Surface Mass");
   balloon.init(center,radius);
 
@@ -721,8 +743,8 @@ Balloon::init(pCoor center, double r)
       Balloon_Vertex* const p = &points[idx];
       pColor color;
 
-      p->tex_coor.x = 1 - ( p->theta - tex_theta_min ) * theta_to_s;
-      p->tex_coor.y = 1 - ( p->eta - tex_eta_min ) * eta_to_s;
+      p->tex_coor.x = ( p->theta - tex_theta_min ) * theta_to_s;
+      p->tex_coor.y = ( p->eta - tex_eta_min ) * eta_to_s;
       gpu_tex_coords += p->tex_coor.x;
       gpu_tex_coords += p->tex_coor.y;
 
@@ -769,10 +791,45 @@ Balloon::init(pCoor center, double r)
       points[tri->ri].triangles += idx;
     }
 
+  for ( int i=0; i<tri_count; i++ )
+    {
+      Balloon_Triangle* const tri = &triangles[i];
+      const int pi = tri->pi;
+      const int qi = tri->qi;
+      const int ri = tri->ri;
+      int opp_p = -1, opp_q = -1, opp_r = -1;
+      for ( int j=0; j<tri_count; j++ )
+        {
+          if ( i == j ) continue;
+          Balloon_Triangle* const tri2 = &triangles[j];
+          if ( opp_r < 0 ) opp_r = tri2->third_vtx(pi,qi);
+          if ( opp_p < 0 ) opp_p = tri2->third_vtx(ri,qi);
+          if ( opp_q < 0 ) opp_q = tri2->third_vtx(ri,pi);
+        }
+      ASSERTS( opp_p != -1 && opp_q != -1 && opp_r != -1 );
+
+#define OP_SET(v)                                                             \
+      tri->v##i_opp = opp_##v;                                                \
+      tri->v##i_less = v##i < opp_##v;                                        \
+      if ( tri->v##i_less )                                                   \
+        {                                                                     \
+          Balloon_Rep_Pair* const rp = rep_pairs.pushi();                     \
+          rp->pi = v##i;  rp->qi = opp_##v;                                   \
+        }
+
+      OP_SET(p); OP_SET(q); OP_SET(r);
+    }
+
+  rep_pair_count = rep_pairs.occ();
+
   texid_pse = pBuild_Texture_File("mult.png",false,255);
+  //  texid_pse = pBuild_Texture_File("shot-emacs.png",false,255);
   tex_coords.take(gpu_tex_coords,GL_STATIC_DRAW);
   tex_coords.to_gpu();
   texid_syl = pBuild_Texture_File("gp.png",false,255);
+  if ( 0 )
+    texid_syl = pBuild_Texture_File("/home/faculty/koppel/teach/gpp09/gpp.png",
+                                    false,255);
 
   point_indices.take(p_indices,GL_STATIC_DRAW,GL_ELEMENT_ARRAY_BUFFER);
   point_indices.to_gpu();
@@ -788,25 +845,31 @@ Balloon::init(pCoor center, double r)
     {
       Balloon_Vertex* const p = &points[idx];
       BV_GPU_Plan_C_Vertex_Data* const vd = &gpu_plan_c_vertex_data[idx];
-      vd->self_idx = float( 3 * idx );
+      vd->self_idx = float( idx );
       vd->left_idx = 0.5;
       int np = 0;
       for ( int ti = 0; p->triangles.iterate(ti); )
         {
-          vd->neighbors[np++] = 3 * ti;
+          Balloon_Triangle* const tri = &triangles[ti];
+          const int pos = tri->pi == idx ? 0 : tri->qi == idx ? 1 : 2;
+          const int pos_packed = 4 * ti + pos;
+          vd->neighbors[np] = pos_packed;
+          ASSERTS( vd->neighbors[np] == pos_packed );
+          np++;
         }
       ASSERTS( np < 8 );
-      while ( np < 8 ) vd->neighbors[np++] = 1;
+      while ( np < 8 ) vd->neighbors[np++] = -1;
     }
 
   for ( int idx=0; idx<tri_count; idx++ )
     {
       Balloon_Triangle* const tri = &triangles[idx];
       BV_GPU_Plan_C_Triangle_Data* const td = &gpu_plan_c_triangle_data[idx];
-      td->pi = float(tri->pi * 3);
-      td->qi = float(tri->qi * 3);
-      td->ri = float(tri->ri * 3);
+#     define CPY_IDX(I) td->I = (typeof td->I)(tri->I);
+      CPY_IDX(pi); CPY_IDX(qi); CPY_IDX(ri);
+      CPY_IDX(pi_opp); CPY_IDX(qi_opp); CPY_IDX(ri_opp);
       td->length_relaxed = tri->length_relaxed;
+#     undef CPY_IDX
     }
 }
 
@@ -946,6 +1009,7 @@ Balloon::time_step_cpu_once()
       centroid += p->pos;
       kinetic_energy_total += p->vel.mag();
       p->force_spring = pVect(0,0,0);
+      p->force_rep = pVect(0,0,0);
       p->surface_normal = pVect(0,0,0);
     }
   centroid.homogenize();
@@ -992,6 +1056,18 @@ Balloon::time_step_cpu_once()
 
       const double spring_energy = eff_length;
       spring_energy_factor_total += spring_energy;
+    }
+
+  for ( int i=0; i<rep_pair_count; i++ )
+    {
+      Balloon_Rep_Pair* const rp = &rep_pairs[i];
+      Balloon_Vertex* const p = &points[rp->pi];
+      Balloon_Vertex* const q = &points[rp->qi];
+      pNorm p_to_q(p->pos,q->pos);
+      const double dist_sq_inv = rep_constant / max(0.001,p_to_q.mag_sq);
+      pVect rep_force(dist_sq_inv * p_to_q);
+      p->force_rep -= rep_force;
+      q->force_rep += rep_force;
     }
 
   length_relaxed_update = false;
@@ -1061,7 +1137,7 @@ Balloon::time_step_cpu_once()
       p->force = p->force_pressure;
 
       pNorm vel_norm(-p->vel);
-      const float facing_area = max(0.0f,dot(vel_norm,p->surface_normal));
+      const double facing_area = max(0.0,dot(vel_norm,p->surface_normal));
       pVect force_ar = - air_resistance * facing_area * p->vel;
 
       pVect gforce = point_mass * p->mass * gravity;
@@ -1071,14 +1147,15 @@ Balloon::time_step_cpu_once()
       p->force += force_ar;
 
       pVect force_ns = p->force; // Force non-spring.
+      pVect force_s = p->force_spring + p->force_rep;
 
-      p->force += p->force_spring;
+      p->force += force_s;
 
       const float mass_wgas_inv_dt =
         delta_t / ( point_mass * p->mass + gas_mass_per_vertex );
 
       pVect delta_vns = mass_wgas_inv_dt * force_ns;
-      pVect delta_vs = mass_wgas_inv_dt * p->force_spring;
+      pVect delta_vs = mass_wgas_inv_dt * force_s;
       pVect delta_v = delta_vns + delta_vs;
 
       //  pVect pos_verlet = p->pos - pos_prev + delta_t * delta_v;
@@ -1209,6 +1286,7 @@ Balloon::time_step_gpu(int steps)
       svl_surface_normal = vs_plan_c.varying_location("out_surface_normal");
       svl_force_or_v = vs_plan_c.varying_location("out_force_or_v");
       svl_pos = vs_plan_c.varying_location("out_pos");
+      svl_force_r = vs_plan_c.varying_location("out_force_r");
       vs_plan_c.print_active_varying();
       vs_plan_c.validate_once();
     }
@@ -1247,16 +1325,17 @@ Balloon::time_step_gpu(int steps)
 
   glUniform4f
     (sun_constants_dt,
-     world.delta_t, 0.0, point_mass, point_mass_inv);
+     world.delta_t, rep_constant, point_mass, point_mass_inv);
 
   glUniform4f
     (sun_platform,
      world.platform_xmin, world.platform_xmax,
      world.platform_zmin, world.platform_zmax);
 
-  const GLint svl_p1[] = { svl_surface_normal, svl_force_or_v, svl_pos };
+  const GLint svl_p1[] =
+    { svl_surface_normal, svl_force_or_v, svl_pos, svl_force_r };
   glTransformFeedbackVaryingsNV
-    (vs_plan_c.pobject, 3, &svl_p1[0], GL_INTERLEAVED_ATTRIBS_NV);
+    (vs_plan_c.pobject, 4, &svl_p1[0], GL_INTERLEAVED_ATTRIBS_NV);
   pError_Check();
 
   BV_GPU_Data_Vtx before = gpu_data_vtx.data[0];
@@ -1273,6 +1352,8 @@ Balloon::time_step_gpu(int steps)
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_BUFFER_EXT,gpu_data_tri_tid);  pError_Check();
 
+  glEnableVertexAttribArray(sat_indices);
+
   for ( int i=0; i<steps; i++ )
     {
       const bool skip_volume = i + 1 != steps && true && ( i & 0x3 );
@@ -1288,7 +1369,11 @@ Balloon::time_step_gpu(int steps)
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_BUFFER_EXT,0);
 
+      const int tstride = sizeof(gpu_plan_c_triangle_data[0]);
+
       gpu_plan_c_triangle_data.bind();
+      glVertexAttribIPointerEXT(sat_indices, 4, GL_INT, tstride, (void*)16);
+
       glVertexPointer(4, GL_FLOAT, sizeof(gpu_plan_c_triangle_data[0]), 0);
       glBindBuffer(GL_ARRAY_BUFFER,0);
 
@@ -1345,7 +1430,6 @@ Balloon::time_step_gpu(int steps)
       glVertexPointer(2, GL_FLOAT, vstride, 0);
 
       glVertexAttribIPointerEXT(sat_indices, 4, GL_INT, vstride, (void*)8);
-      glEnableVertexAttribArray(sat_indices);
 
       const int dvstride = sizeof(BV_GPU_Data_Vtx);
 
@@ -1362,7 +1446,6 @@ Balloon::time_step_gpu(int steps)
 
       TRY_XF_FEEDBACK( glDrawArrays(GL_POINTS,0,point_count), point_count);
 
-      glDisableVertexAttribArray(sat_indices);
       glDisableVertexAttribArray(sat_pos);
       glDisableVertexAttribArray(sat_vel);
 
@@ -1378,6 +1461,7 @@ Balloon::time_step_gpu(int steps)
   world.vs_fixed.use();
 
   glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableVertexAttribArray(sat_indices);
 
   glBindBuffer(GL_ARRAY_BUFFER,0);
 
@@ -1548,6 +1632,14 @@ World::render()
       balloon.translate(rescue_vector);
     }
 
+  const pColor white(0xffffff);
+  const pColor gray(0x303030);
+  const pColor lsu_business_purple(0x7f5ca2);
+  const pColor lsu_spirit_purple(0x580da6);
+  const pColor lsu_spirit_gold(0xf9b237);
+  const pColor lsu_official_purple(0x2f0462);
+  const pColor dark(0);
+
   const int win_width = ogl_helper.get_width();
   const int win_height = ogl_helper.get_height();
   const float aspect = float(win_width) / win_height;
@@ -1577,10 +1669,6 @@ World::render()
   glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.3);
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
   glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
-
-  pColor white(0xffffff);
-  pColor gray(0x303030);
-  pColor dark(0);
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, gray);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
@@ -1837,7 +1925,7 @@ World::render()
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
       glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
       glDisable(GL_TEXTURE_2D);
-      glColor3f(0.2,0.2,0.2);
+      glColor3fv(lsu_spirit_purple);
       glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
       glDisable(GL_BLEND);
     }
@@ -2006,9 +2094,10 @@ World::cb_keyboard()
   case 'S': balloon.freeze(); break;
   case 'x': balloon.opt_surface_fix = !balloon.opt_surface_fix; break;
   case 9: variable_control.switch_var_right(); break;
+  case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
   case '+':case '=': variable_control.adjust_higher(); break;
-  default: printf("Unknown key\n"); break;
+  default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
 
   // Update eye_direction based on keyboard command.

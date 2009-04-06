@@ -34,8 +34,9 @@ attribute ivec4 in_indices;
 attribute vec4 in_pos;
 attribute vec4 in_vel;
 varying vec4 out_surface_normal;
-varying vec4 out_force_or_v;
-varying vec4 out_pos;
+varying vec4 out_force_or_v;  // force_p
+varying vec4 out_pos;         // force_q
+varying vec4 out_force_r;
 
 void
 main_physics_plan_c()
@@ -51,12 +52,28 @@ main_physics_plan_c()
     }
 }
 
+vec3
+plan_c_pass_1_repforce(vec3 p_pos, int po_idx)
+{
+  float rep_constant = constants_dt.y;
+  vec4 po_posd = texelFetchBuffer(tex_data_vtx,po_idx+2);  
+  vec3 po_pos = po_posd.xyz;
+  vec3 p_to_q = p_pos - po_pos;
+  float mag_sq = dot(p_to_q,p_to_q);
+  float dist_sq_inv = rep_constant / max(0.001,mag_sq);
+  vec3 p_to_q_n = normalize(p_to_q);
+  return dist_sq_inv * p_to_q_n;
+}
+
 void
 plan_c_pass_1_triangles()
 {
-  int pidx = int(gl_Vertex.x);
-  int qidx = int(gl_Vertex.y);
-  int ridx = int(gl_Vertex.z);
+  int pidx = int(gl_Vertex.x) << 2;
+  int qidx = int(gl_Vertex.y) << 2;
+  int ridx = int(gl_Vertex.z) << 2;
+  int pi_opp = in_indices.x << 2;
+  int qi_opp = in_indices.y << 2;
+  int ri_opp = in_indices.z << 2;
 
   float spring_constant = constants_sc.x;
   vec4 pposd = texelFetchBuffer(tex_data_vtx,pidx+2);
@@ -73,6 +90,10 @@ plan_c_pass_1_triangles()
 
   float tower_volume_x2 = -pqr_cross.y * center.y;
 
+  vec3 force_p = plan_c_pass_1_repforce(ppos,pi_opp);
+  vec3 force_q = plan_c_pass_1_repforce(qpos,qi_opp);
+  vec3 force_r = plan_c_pass_1_repforce(rpos,ri_opp);
+
   vec3 p_to_c = center - ppos;
   vec3 q_to_c = center - qpos;
   vec3 r_to_c = center - rpos;
@@ -87,8 +108,13 @@ plan_c_pass_1_triangles()
   float eff_length = max(0.0, perimeter - length_relaxed );
   float spring_force = eff_length * spring_constant;
 
-  out_force_or_v.xyz = center;
-  out_force_or_v.w = spring_force;
+  force_p += spring_force * p_to_c;
+  force_q += spring_force * q_to_c;
+  force_r += spring_force * r_to_c;
+
+  out_force_or_v.xyz = force_p;
+  out_pos.xyz = force_q;
+  out_force_r.xyz = force_r;
 
   gl_Position = vec4(-1.0,-1.0,0.0,1.0);
   gl_FrontColor.rgb = center;
@@ -112,6 +138,7 @@ plan_c_pass_2_vertices()
   float gravity_mag = constants_gas.w;
 
   float delta_t = constants_dt.x;
+  float rep_constant = constants_dt.y;
   float point_mass = constants_dt.z;
   float point_mass_inv = constants_dt.w;
 
@@ -145,11 +172,12 @@ plan_c_pass_2_vertices()
 
   for ( int i=0; i<8; i++ )
     {
-      int idx = indices[i];
-      if ( idx == 1 ) continue;
-      surface_normal_vol += texelFetchBuffer(tex_data_tri,idx);
-      vec4 center_and_force = texelFetchBuffer(tex_data_tri,idx+1);
-      force_spring += center_and_force.w * ( center_and_force.xyz - pos );
+      int idx_packed = indices[i];
+      if ( idx_packed == -1 ) continue;
+      int idx_base = idx_packed & ~0x3;
+      int idx_force = idx_base + 1 + ( idx_packed & 0x3 );
+      surface_normal_vol += texelFetchBuffer(tex_data_tri,idx_base);
+      force_spring += texelFetchBuffer(tex_data_tri,idx_force);
     }
   vec3 surface_normal = (1./6.) * surface_normal_vol.xyz;
 
@@ -167,7 +195,7 @@ plan_c_pass_2_vertices()
   vec3 force = force_pressure;
 
   vec3 vel_norm = normalize(-vel);
-  float facing_area = max(0.0f,dot(vel_norm,surface_normal));
+  float facing_area = max(0.0,dot(vel_norm,surface_normal));
   vec3 force_ar = - air_resistance * facing_area * vel;
 
   vec3 gforce = point_mass * mass * gravity;
