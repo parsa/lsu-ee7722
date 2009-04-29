@@ -63,9 +63,29 @@ pError_Exit()
 }
 
 inline void
-pError_Msg(char *msg)
+pError_Msg_NP(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
+
+inline void
+pError_Msg_NP(const char *fmt, ...)
 {
-  fprintf(stderr,"User Error: %s\n",msg);
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  pError_Exit();
+}
+
+inline void
+pError_Msg(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
+
+inline void
+pError_Msg(const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  fprintf(stderr,"User Error: ");
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
   pError_Exit();
 }
 
@@ -117,6 +137,7 @@ public:
     frame_group_size = 30;
     frame_rate = 0;
     cpu_frac = 0;
+    cuda_in_use = false;
   }
   void work_unit_set(const char *description, double multiplier = 1)
   {
@@ -130,18 +151,21 @@ public:
   void frame_end();
   const char* frame_rate_text_get() const { return frame_rate_text.s; }
   int frame_group_size;
+  void cuda_frame_time_set(float time_ms)
+  { cuda_tsum_ms += time_ms; cuda_in_use = true; }
 private:
   void frame_rate_group_start();
   void var_reset()
   {
     frame_group_count = 0;
-    cpu_tsum = gpu_tsum_ns = 0;
+    cpu_tsum = gpu_tsum_ns = cuda_tsum_ms = 0;
     work_accum = 0;
   }
   bool inited;
+  bool cuda_in_use;
   double frame_group_start_time;
   int frame_group_count;
-  double gpu_tsum_ns, gpu_tlast, cpu_tsum, cpu_tlast;
+  double gpu_tsum_ns, gpu_tlast, cpu_tsum, cpu_tlast, cuda_tsum_ms, cuda_tlast;
   double work_accum;
   double work_multiplier;
   int work_count_last;
@@ -149,7 +173,7 @@ private:
   double work_rate;
 
   double frame_rate;
-  double cpu_frac, gpu_frac;
+  double cpu_frac, gpu_frac, cuda_frac;
   double time_render_start;
   GLuint query_timer_id;
   uint xfcount;  // Frame count provided by glx.
@@ -165,6 +189,10 @@ pFrame_Timer::init()
   frame_group_start_time = time_wall_fp();
   var_reset();
   frame_rate_group_start();
+#ifdef CUDA
+  cudaEventCreate(&frame_start_ce);
+  cudaEventCreate(&frame_stop_ce);
+#endif
 }
 
 void
@@ -178,9 +206,11 @@ pFrame_Timer::frame_rate_group_start()
 
   gpu_tlast = 1e-9 * gpu_tsum_ns * last_frame_count_inv;
   cpu_tlast = cpu_tsum * last_frame_count_inv;
+  cuda_tlast = 1e-3 * cuda_tsum_ms * last_frame_count_inv;
   frame_rate = last_frame_count / group_duration;
   cpu_frac = cpu_tsum / group_duration;
   gpu_frac = 1e-9 * gpu_tsum_ns / group_duration;
+  cuda_frac = 1e-3 * cuda_tsum_ms / group_duration;
   if ( work_description )
     {
       work_rate = work_multiplier * work_accum / group_duration;      
@@ -221,10 +251,17 @@ pFrame_Timer::frame_end()
   else
     frame_rate_text += "--";
 
-  frame_rate_text += "  GPU ";
+  frame_rate_text += "  GPU.GL ";
   if ( query_timer_id )
     frame_rate_text.sprintf
       ("%.3f ms (%.1f%%)", 1000 * gpu_tlast, 100 * gpu_frac);
+  else
+    frame_rate_text += "---";
+
+  frame_rate_text += "  GPU.CU ";
+  if ( cuda_in_use )
+    frame_rate_text.sprintf
+      ("%.3f ms (%.1f%%)", 1000 * cuda_tlast, 100 * cuda_frac);
   else
     frame_rate_text += "---";
 
