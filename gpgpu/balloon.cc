@@ -2112,6 +2112,9 @@ Balloon::cpu_data_to_cuda()
   cuda_tower_volumes[0] = volume;
   cuda_tower_volumes.set_primary();
   cuda_tower_volumes.to_cuda();
+  cuda_tower_volumes.swap();
+  cuda_tower_volumes.to_cuda();
+  cuda_tower_volumes.set_primary();
 
   cuda_tri_strc.to_cuda();  // OPT: Only send if dirty.
   cuda_vtx_data.to_cuda();
