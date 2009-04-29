@@ -33,7 +33,7 @@
 
  /// Initialization
 
- //  Textures loaded from image files by the procedure pTexture_From_PNM.
+ //  Textures loaded from image files by the procedure pTexture_From_Image.
  //    The procedure sets basic options for the texture, loads the data,
  //    possibly modifies it, and passes it to OpenGL. It returns
  //    a texture id that is used to refer to the texture.
@@ -50,7 +50,7 @@
  //  used for the horizontal axis (akin to x) and t is used for the
  //  vertical axis (akin to y).
 
- //  The pTexture_From_PNM procedure sets texturing so that
+ //  The pTexture_From_Image procedure sets texturing so that
  //  coordinates outside the valid range wrap, so that both (0.2,0.2)
  //  and (0.2,1.2) refer to the same texture location.
 
