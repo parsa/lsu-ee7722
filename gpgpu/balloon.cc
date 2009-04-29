@@ -34,10 +34,14 @@
 #include "balloon.cuh"
 
 
- ///
- /// CUDA Support
- ///
+///
+/// CUDA and OpenGL Support
+///
 
+
+
+ /// CUDA API Error-Checking Wrapper
+///
 #define CE(call)                                                              \
  {                                                                            \
    const cudaError_t rv = call;                                               \
@@ -172,14 +176,28 @@ public:
 };
 
 
+ ///
+ /// Class for managing CUDA device memory.
+ ///
+
 template <typename T>
 class pCUDA_Memory {
 public:
   pCUDA_Memory()
   {
-    data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;
+    data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;  bid = 0;
+    bo_ptr = NULL;
   }
-  ~pCUDA_Memory() { if ( data ) free(data); }
+  ~pCUDA_Memory()
+  {
+    if ( data ) free(data);
+    if ( bid )
+      {
+        CE(cudaGLUnmapBufferObject(bid));
+        CE(cudaGLUnregisterBufferObject(bid));
+        glDeleteBuffers(1,&bid);
+      }
+  }
 
   T* alloc(int elements_p)
   {
@@ -209,6 +227,16 @@ private:
     CE(cudaMalloc(&dev_addr[current],chars));
   }
 
+  void alloc_gl_buffer()
+  {
+    if ( bid ) return;
+    glGenBuffers(1,&bid);
+    glBindBuffer(GL_ARRAY_BUFFER,bid);
+    glBufferData(GL_ARRAY_BUFFER,chars,NULL,GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER,0);
+    CE(cudaGLRegisterBufferObject(bid));
+  }
+
 public:
   T* get_dev_addr() { alloc_maybe(); return (T*)dev_addr[current];}
   T* get_dev_addr_read() { return get_dev_addr(); }
@@ -229,10 +257,21 @@ public:
     CE(cudaMemcpy(data, dev_addr[current], chars, cudaMemcpyDeviceToHost));
   }
 
+  void cuda_to_gl()
+  {
+    alloc_gl_buffer();
+    // Due to a bug in CUDA 2.1 this is slower than copying through host.
+    CE(cudaGLMapBufferObject(&bo_ptr,bid));
+    CE(cudaMemcpy(bo_ptr, dev_addr[current], chars, cudaMemcpyDeviceToDevice));
+    CE(cudaGLUnmapBufferObject(bid));
+  }
+
   void swap() { current = 1 - current; }
+  void set_primary() { current = 0; }
 
   // Stuff below should be private to avoid abuse.
-  void *dev_addr[2];
+  void *dev_addr[2], *bo_ptr;
+  GLuint bid;
   int current;
   T *data;
   int elements, chars;
@@ -330,6 +369,8 @@ pBuild_Texture_File
 //
 // class World: All data about scene.
 // class Balloon: Data about a balloon.
+//
+// See also balloon.cuh
 
 
 class World;
@@ -388,17 +429,17 @@ struct Balloon_Vertex {
   int ring;
 };
 
-// Structural Data for GPU, One per Triangle
+// Structural Data for OpenGL Physics, One per Triangle
 //
-struct BV_GPU_Plan_C_Triangle_Data {
+struct GLP_Tri_Strc {
   float pi, qi, ri;             // Index of triangle's vertices.
   float length_relaxed;
   int pi_opp, qi_opp, ri_opp;
 };  // 7 * 4 = 28 bytes
 
-// Structural Data for GPU, One per Vertex
+// Structural Data for OpenGL Physics, One per Vertex
 //
-struct BV_GPU_Plan_C_Vertex_Data {
+struct GLP_Vtx_Strc {
   float self_idx;
   float left_idx;                     // Not used.
   uint16_t neighbors[VTX_TRI_DEG_MAX]; // Index of vertex's triangles.
@@ -407,7 +448,7 @@ struct BV_GPU_Plan_C_Vertex_Data {
 
 // GPU-Computed Balloon Data for Triangles
 //
-struct BV_GPU_Data_Tri {
+struct GLP_Tri_Data {
   pCoor surface_normal; // Magnitude is area of incident triangles.
   pCoor force_p;
   pCoor force_q;
@@ -419,7 +460,7 @@ struct BV_GPU_Data_Tri {
 
 // GPU-Computed Balloon Data for Vertices
 //
-struct BV_GPU_Data_Vtx {
+struct GLP_Vtx_Data {
   pCoor surface_normal; // Magnitude is area of incident triangles.
   pCoor vel;
   pCoor pos;
@@ -431,7 +472,7 @@ struct BV_GPU_Data_Vtx {
 
 enum Data_Location { DL_CPU = 0x1, DL_GL = 0x2, DL_CUDA = 0x4 };
 enum GPU_Physics_Method
-  { GP_cpu, GP_gl, GP_cuda_1_pass, GP_cuda_2_pass, GP_ENUM_SIZE };
+  { GP_cpu, GP_glp, GP_cuda_1_pass, GP_cuda_2_pass, GP_ENUM_SIZE };
 const char* const gpu_physics_method_str[] =
   { "CPU", "OpenGL 2 Pass", "CUDA 1 Pass", "CUDA 2 Pass" };
 
@@ -440,6 +481,8 @@ class Balloon {
 public:
   Balloon(World& w):world(w)
   {
+    cuda_initialized = false;
+    glp_initialized = false;
   }
   ~Balloon(){ }
   void init(pCoor center, double radius);
@@ -447,21 +490,24 @@ public:
   // Called each time user changes a configuration variable, such as gravity.
   void update_for_config();
 
+  void init_glp();
+
+  void init_cuda();
   void cuda_data_partition();
 
   // Advance (time-step) simulated time.
   //
   void time_step_cpu(int steps);
   void time_step_cpu_once();
-  void time_step_gpu(int steps);
-  void time_step_gl(int steps);
-  void time_step_cuda(int steps);
+  void time_step_gpu(int steps);  // Call appropriate time_step routine.
+  void time_step_glp(int steps);   // Use OpenGL API for physics.
+  void time_step_cuda(int steps); // Use CUDA API for physics.
 
   void gpu_data_to_cpu();
-  void gl_data_to_cpu();
+  void glp_data_to_cpu();
   void cuda_data_to_cpu();
-  void cpu_data_to_gl();
-  void cpu_data_to_cuda();
+  void cpu_data_to_glp();
+  bool cpu_data_to_cuda();  // Return true if data transferred.
 
   // User Interaction
   //
@@ -477,6 +523,14 @@ public:
     for ( int i=0; i<point_count; i++ ) points[i].vel = pVect(0,0,0);
   }
 
+  pCoor centroid_compute()
+  {
+    pCoor point_sum(0,0,0);
+    for ( int i=0; i<point_count; i++ ) point_sum += points[i].pos;
+    point_sum.homogenize();
+    centroid = point_sum;
+    return centroid;
+  }
   float pressure_air(float msl)
   {
     return opt_gravity ? exp( - 0.2 * air_particle_mass * msl ) : 1.0;
@@ -485,6 +539,21 @@ public:
   {
     const float factor = factorp ? factorp : gas_pressure_factor;
     return opt_gravity ? factor * exp( - gas_m_over_temp * msl ) : factor;
+  }
+  void pressure_compute()
+  {
+    // Need updated volume and centroid.
+    const float exp_air = pressure_air(centroid.y);
+    const float exp_gas = pressure_gas(centroid.y,1);
+    const float eff_volume = fabs( volume );
+    gas_pressure_factor = pressure_factor_coeff / eff_volume;
+    pressure = gas_pressure_factor * exp_gas / exp_air;
+    density_air =
+      ( pressure_air(centroid.y - 0.5) - pressure_air(centroid.y + 0.5) )
+      / opt_gravity_accel;
+    density_gas =
+      ( pressure_gas(centroid.y - 0.5) - pressure_gas(centroid.y + 0.5) )
+      / opt_gravity_accel;
   }
   pVect velocity_avg()
   {
@@ -514,7 +583,7 @@ public:
   int tethered_idx;
 
 
-  // Fixed (or user set) Physical Constants
+  // Unchanging (or user set) Physical Constants
   //
   float spring_constant;
   float rep_constant;
@@ -532,7 +601,7 @@ public:
   //
   bool opt_gravity;             // If false, no gravity.
   bool opt_damping;             // Only used in cpu code. See also damping_v
-  bool opt_surface_fix;         // Name is completely misleading.
+  bool opt_cpu_interleave;  // When gpu physics on do 1 cpu time step / frame.
 
   // Computed after each change to user-set physical quantity.
   //
@@ -568,15 +637,18 @@ public:
   bool length_relaxed_update;
 
   int data_location;
+  GLuint data_bid;
+  int data_stride;
 
-  pBuffer_Object<BV_GPU_Data_Vtx> gpu_data_vtx;
-  pBuffer_Object<BV_GPU_Data_Tri> gpu_data_tri;
-  pBuffer_Object<BV_GPU_Plan_C_Vertex_Data> gpu_plan_c_vertex_data;
-  pBuffer_Object<BV_GPU_Plan_C_Triangle_Data> gpu_plan_c_triangle_data;
+  bool glp_initialized;
+  pBuffer_Object<GLP_Vtx_Data> glp_vtx_data;
+  pBuffer_Object<GLP_Tri_Data> glp_tri_data;
+  pBuffer_Object<GLP_Vtx_Strc> glp_vtx_strc;
+  pBuffer_Object<GLP_Tri_Strc> glp_tri_strc;
 
   GLuint query_transform_feedback_id;
-  GLuint gpu_data_vtx_tid;
-  GLuint gpu_data_tri_tid;
+  GLuint glp_vtx_data_tid;
+  GLuint glp_tri_data_tid;
   GLuint framebuffer_id, renderbuffer_id;
   pShader vs_plan_c;
   GLint sat_indices, sat_volume, sat_pos, sat_vel;
@@ -587,6 +659,8 @@ public:
 
   // CUDA Stuff
   //
+  bool cuda_initialized;
+  bool cuda_constants_stale;
   pCUDA_Memory<CUDA_Tri_Strc> cuda_tri_strc;
   pCUDA_Memory<CUDA_Tri_Work_Strc> cuda_tri_work_strc;
   pCUDA_Memory<CUDA_Tri_Data> cuda_tri_data;
@@ -594,9 +668,9 @@ public:
   pCUDA_Memory<CUDA_Vtx_Data> cuda_vtx_data;
   pCUDA_Memory<float> cuda_tower_volumes;
   pCUDA_Memory<float3> cuda_centroid_parts;
-  pCUDA_Memory<CUDA_Test> cuda_test;
   int tri_work_per_vtx;
   int tri_work_per_vtx_lg;
+  dim3 Dg_tri, Db_tri, Dg_vtx, Db_vtx;
 };
 
 class World {
@@ -639,7 +713,6 @@ public:
   pMatrix transform_mirror;
 
   pShader vs_fixed;
-
 };
 
 void
@@ -651,6 +724,7 @@ World::init()
   world_time = 0;
   delta_t = 1.0 / ( 32 * 30 );
   balloon.data_location = DL_CPU;
+  balloon.data_bid = 0;
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
   opt_move_item = MI_Eye;
@@ -666,7 +740,7 @@ World::init()
   balloon.cpu_iteration = 0;
   balloon.opt_gravity = true;
   balloon.opt_damping = false;
-  balloon.opt_surface_fix = true;
+  balloon.opt_cpu_interleave = false;
   balloon.damping_factor = 0.2;
   balloon.spring_constant = 40.0;
   balloon.rep_constant = 0.1;
@@ -724,12 +798,11 @@ World::init()
       }
 
   while ( pVect* const v = p1_tile_coords.iterate() ) p_tile_coords += *v;
-  
+
   platform_tile_coords.take(p_tile_coords);
   platform_tile_coords.to_gpu();
   platform_tex_coords.take(p_tex_coords);
   platform_tex_coords.to_gpu();
-
 }
 
 
@@ -959,25 +1032,25 @@ Balloon::init(pCoor center, double r)
   tex_coords.to_gpu();
   texid_syl = pBuild_Texture_File("gp.png",false,255);
   if ( 0 )
-    texid_syl = pBuild_Texture_File("/home/faculty/koppel/teach/gpp09/gpp.png",
-                                    false,255);
+    texid_syl = pBuild_Texture_File
+      ("/home/faculty/koppel/teach/gpp09/gpp.png",false,255);
 
   point_indices.take(p_indices,GL_STATIC_DRAW,GL_ELEMENT_ARRAY_BUFFER);
   point_indices.to_gpu();
 
-  gpu_data_vtx.alloc(point_count,GL_DYNAMIC_COPY);
-  gpu_data_vtx.prepare_two_buffers();
-  gpu_data_tri.alloc(tri_count,GL_DYNAMIC_COPY);
-  gpu_data_tri.prepare_two_buffers();
-  gpu_plan_c_vertex_data.alloc(point_count,GL_STATIC_DRAW);
-  gpu_plan_c_triangle_data.alloc(tri_count,GL_STATIC_DRAW);
+  glp_vtx_data.alloc(point_count,GL_DYNAMIC_COPY);
+  glp_vtx_data.prepare_two_buffers();
+  glp_tri_data.alloc(tri_count,GL_DYNAMIC_COPY);
+  glp_tri_data.prepare_two_buffers();
+  glp_vtx_strc.alloc(point_count,GL_STATIC_DRAW);
+  glp_tri_strc.alloc(tri_count,GL_STATIC_DRAW);
   cuda_tri_strc.alloc(tri_count);
   cuda_vtx_strc.alloc(point_count);
 
   for ( int idx = 0;  idx < point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
-      BV_GPU_Plan_C_Vertex_Data* const vd = &gpu_plan_c_vertex_data[idx];
+      GLP_Vtx_Strc* const vd = &glp_vtx_strc[idx];
       CUDA_Vtx_Strc* const vc = &cuda_vtx_strc[idx];
       vd->self_idx = float( idx );
       vd->left_idx = 0.5;
@@ -1000,7 +1073,7 @@ Balloon::init(pCoor center, double r)
   for ( int idx=0; idx<tri_count; idx++ )
     {
       Balloon_Triangle* const tri = &triangles[idx];
-      BV_GPU_Plan_C_Triangle_Data* const td = &gpu_plan_c_triangle_data[idx];
+      GLP_Tri_Strc* const td = &glp_tri_strc[idx];
       CUDA_Tri_Strc* const tc = &cuda_tri_strc[idx];
 #     define CPY_IDX(I) \
        td->I = (typeof td->I)(tri->I);  tc->I = (typeof tc->I)(tri->I);
@@ -1099,7 +1172,8 @@ Balloon::translate(pVect amt)
   gpu_data_to_cpu();
   for ( int idx = 0;  idx < point_count; idx++ )
     points[idx].pos += amt;
-  data_location &= DL_CPU;
+  data_location = DL_CPU;
+  data_bid = 0;
 }
 
 void
@@ -1108,7 +1182,8 @@ Balloon::push(pVect amt)
   gpu_data_to_cpu();
   for ( int idx = 0;  idx < point_count; idx++ )
     points[idx].vel += amt;
-  data_location &= DL_CPU;
+  data_location = DL_CPU;
+  data_bid = 0;
 }
 
 void
@@ -1205,14 +1280,14 @@ Balloon::time_step_cpu_once()
     }
 
   length_relaxed_update = false;
-
   volume = volume_x2 / 2.0;
   area = area_x2 / 2.0;
-  const float exp_air = pressure_air(centroid.y);
-  const float exp_gas = pressure_gas(centroid.y,1);
 
   if ( first_iteration )
     {
+      const float exp_air = pressure_air(centroid.y);
+      const float exp_gas = pressure_gas(centroid.y,1);
+
       double pf_sum = 0; // Pressure factor.
       double area_sum_x6 = 0;
       for ( int i=0; i<point_count; i++ )
@@ -1228,19 +1303,11 @@ Balloon::time_step_cpu_once()
 
       gas_amount = damping_v *
         ( pf_sum / area_sum + exp_air ) * volume / ( temp_ratio * exp_gas );
-                                   
+
       update_for_config(); // Recompute pressure_factor_coeff.
     }
 
-  const float eff_volume = fabs( volume );
-  gas_pressure_factor = pressure_factor_coeff / eff_volume;
-  pressure = gas_pressure_factor * exp_gas / exp_air;
-  density_air =
-    ( pressure_air(centroid.y - 0.5) - pressure_air(centroid.y + 0.5) )
-    / opt_gravity_accel;
-  density_gas =
-    ( pressure_gas(centroid.y - 0.5) - pressure_gas(centroid.y + 0.5) )
-    / opt_gravity_accel;
+  pressure_compute();
 
   const double spring_energy =
     12 * pow(point_mass,-0.5) * spring_energy_factor_total;
@@ -1342,13 +1409,7 @@ Balloon::time_step_cpu_once()
       else
         p->vel -= delta_v * xzvel;
     }
-
-  if ( cpu_iteration == 240 )
-    printf("E change = %.4f\n", energy / e_zero);
-
 }
-
-
 
 
 #define TRY_XF_FEEDBACK(routine,vertex_count)                                 \
@@ -1376,67 +1437,62 @@ Balloon::time_step_cpu_once()
 void
 Balloon::time_step_gpu(int steps)
 {
-  if ( world.opt_physics_method == GP_gl )
-    time_step_gl(steps);
-  else
-    time_step_cuda(steps);
-
+  if ( world.opt_physics_method == GP_glp ) time_step_glp(steps);
+  else                                      time_step_cuda(steps);
 }
 
 void
-Balloon::time_step_gl(int steps)
+Balloon::init_glp()
 {
-  static bool gpu_init = false;
-  if ( !gpu_init )
-    {
-      gpu_init = true;
+  glp_initialized = true;
 
-      glGenTextures(1,&gpu_data_tri_tid);
-      glGenTextures(1,&gpu_data_vtx_tid);
-      pError_Check();
-      glGenQueries(1,&query_transform_feedback_id);
-      pError_Check();
+  glGenTextures(1,&glp_tri_data_tid);
+  glGenTextures(1,&glp_vtx_data_tid);
+  pError_Check();
+  glGenQueries(1,&query_transform_feedback_id);
+  pError_Check();
 
-      glGenFramebuffersEXT(1,&framebuffer_id);
-      glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer_id);
-      glGenRenderbuffersEXT(1, &renderbuffer_id);
-      glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, renderbuffer_id);
+  glGenFramebuffersEXT(1,&framebuffer_id);
+  glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer_id);
+  glGenRenderbuffersEXT(1, &renderbuffer_id);
+  glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, renderbuffer_id);
 
-      // GL_MAX_RENDERBUFFER_SIZE_EXT  Maximum size of either dimension.
-      glRenderbufferStorageEXT  // p 610
-        (GL_RENDERBUFFER_EXT, GL_FLOAT_RGBA_NV, 2, 2);
-      glFramebufferRenderbufferEXT
-        (GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT,
-         renderbuffer_id);
-      // p 640: Examples of rendering to two textures.
-      // glCheckFramebufferStatus();
+  // GL_MAX_RENDERBUFFER_SIZE_EXT  Maximum size of either dimension.
+  glRenderbufferStorageEXT  // p 610
+    (GL_RENDERBUFFER_EXT, GL_FLOAT_RGBA_NV, 2, 2);
+  glFramebufferRenderbufferEXT
+    (GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT,
+     renderbuffer_id);
 
-      glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0 );
-      glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0 );
-      pError_Check();
+  glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0 );
+  glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0 );
+  pError_Check();
 
-      // pixel buffer object?
+  vs_plan_c.init("balloon-shader.cc","main_physics_plan_c();");
+  stx_data_vtx = vs_plan_c.uniform_location("tex_data_vtx");
+  stx_data_tri = vs_plan_c.uniform_location("tex_data_tri");
+  sun_constants_sc = vs_plan_c.uniform_location("constants_sc");
+  sun_constants_gas = vs_plan_c.uniform_location("constants_gas");
+  sun_constants_dt = vs_plan_c.uniform_location("constants_dt");
+  sun_platform = vs_plan_c.uniform_location("platform");
+  sat_volume = vs_plan_c.attribute_location("volume");
+  sat_indices = vs_plan_c.attribute_location("in_indices");
+  sat_pos = vs_plan_c.attribute_location("in_pos");
+  sat_vel = vs_plan_c.attribute_location("in_vel");
+  svl_surface_normal = vs_plan_c.varying_location("out_surface_normal");
+  svl_force_or_v = vs_plan_c.varying_location("out_force_or_v");
+  svl_pos = vs_plan_c.varying_location("out_pos");
+  svl_force_r = vs_plan_c.varying_location("out_force_r");
+  vs_plan_c.print_active_varying();
+  vs_plan_c.validate_once();
+}
 
-      vs_plan_c.init("balloon-shader.cc","main_physics_plan_c();");
-      stx_data_vtx = vs_plan_c.uniform_location("tex_data_vtx");
-      stx_data_tri = vs_plan_c.uniform_location("tex_data_tri");
-      sun_constants_sc = vs_plan_c.uniform_location("constants_sc");
-      sun_constants_gas = vs_plan_c.uniform_location("constants_gas");
-      sun_constants_dt = vs_plan_c.uniform_location("constants_dt");
-      sun_platform = vs_plan_c.uniform_location("platform");
-      sat_volume = vs_plan_c.attribute_location("volume");
-      sat_indices = vs_plan_c.attribute_location("in_indices");
-      sat_pos = vs_plan_c.attribute_location("in_pos");
-      sat_vel = vs_plan_c.attribute_location("in_vel");
-      svl_surface_normal = vs_plan_c.varying_location("out_surface_normal");
-      svl_force_or_v = vs_plan_c.varying_location("out_force_or_v");
-      svl_pos = vs_plan_c.varying_location("out_pos");
-      svl_force_r = vs_plan_c.varying_location("out_force_r");
-      vs_plan_c.print_active_varying();
-      vs_plan_c.validate_once();
-    }
+void
+Balloon::time_step_glp(int steps)
+{
+  if ( !glp_initialized ) init_glp();
 
-  cpu_data_to_gl();
+  cpu_data_to_glp();
 
   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer_id);
 
@@ -1483,7 +1539,7 @@ Balloon::time_step_gl(int steps)
     (vs_plan_c.pobject, 4, &svl_p1[0], GL_INTERLEAVED_ATTRIBS_NV);
   pError_Check();
 
-  BV_GPU_Data_Vtx before = gpu_data_vtx.data[0];
+  GLP_Vtx_Data before = glp_vtx_data.data[0];
 
   if ( steps ) data_location = DL_GL;
 
@@ -1492,10 +1548,10 @@ Balloon::time_step_gl(int steps)
   glEnableClientState(GL_VERTEX_ARRAY);
 
   glActiveTexture(GL_TEXTURE0);  pError_Check();
-  glBindTexture(GL_TEXTURE_BUFFER_EXT,gpu_data_vtx_tid);   pError_Check();
+  glBindTexture(GL_TEXTURE_BUFFER_EXT,glp_vtx_data_tid);   pError_Check();
 
   glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_BUFFER_EXT,gpu_data_tri_tid);  pError_Check();
+  glBindTexture(GL_TEXTURE_BUFFER_EXT,glp_tri_data_tid);  pError_Check();
 
   glEnableVertexAttribArray(sat_indices);
 
@@ -1509,21 +1565,21 @@ Balloon::time_step_gl(int steps)
 
       glActiveTexture(GL_TEXTURE0);
       glTexBufferEXT // Attaches to the active buffer texture.
-        (GL_TEXTURE_BUFFER_EXT, GL_RGBA32F_ARB, gpu_data_vtx.bid_read());
+        (GL_TEXTURE_BUFFER_EXT, GL_RGBA32F_ARB, glp_vtx_data.bid_read());
 
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_BUFFER_EXT,0);
 
-      const int tstride = sizeof(gpu_plan_c_triangle_data[0]);
+      const int tstride = sizeof(glp_tri_strc[0]);
 
-      gpu_plan_c_triangle_data.bind();
+      glp_tri_strc.bind();
       glVertexAttribIPointerEXT(sat_indices, 4, GL_INT, tstride, (void*)16);
 
-      glVertexPointer(4, GL_FLOAT, sizeof(gpu_plan_c_triangle_data[0]), 0);
+      glVertexPointer(4, GL_FLOAT, sizeof(glp_tri_strc[0]), 0);
       glBindBuffer(GL_ARRAY_BUFFER,0);
 
       glBindBufferBaseNV
-        (GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, gpu_data_tri.bid_fresh());
+        (GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, glp_tri_data.bid_fresh());
       pError_Check();
 
       if ( skip_volume )
@@ -1549,8 +1605,8 @@ Balloon::time_step_gl(int steps)
 
       if ( false )
         {
-          gpu_data_tri.from_gpu();
-          BV_GPU_Data_Tri after_sf = gpu_data_tri.data[0];
+          glp_tri_data.from_gpu();
+          GLP_Tri_Data after_sf = glp_tri_data.data[0];
           pError_Msg("Check.");
         }
 
@@ -1565,20 +1621,20 @@ Balloon::time_step_gl(int steps)
       glBindTexture(GL_TEXTURE_BUFFER_EXT,0);
 
       glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_BUFFER_EXT,gpu_data_tri_tid);  pError_Check();
+      glBindTexture(GL_TEXTURE_BUFFER_EXT,glp_tri_data_tid);  pError_Check();
       glTexBufferEXT
-        (GL_TEXTURE_BUFFER_EXT, GL_RGBA32F_ARB, gpu_data_tri.bid);
+        (GL_TEXTURE_BUFFER_EXT, GL_RGBA32F_ARB, glp_tri_data.bid);
       pError_Check();
 
-      gpu_plan_c_vertex_data.bind();
-      const int vstride = sizeof(gpu_plan_c_vertex_data[0]);
+      glp_vtx_strc.bind();
+      const int vstride = sizeof(glp_vtx_strc[0]);
       glVertexPointer(2, GL_FLOAT, vstride, 0);
 
       glVertexAttribIPointerEXT(sat_indices, 4, GL_INT, vstride, (void*)8);
 
-      const int dvstride = sizeof(BV_GPU_Data_Vtx);
+      const int dvstride = sizeof(GLP_Vtx_Data);
 
-      gpu_data_vtx.bind();
+      glp_vtx_data.bind();
       glVertexAttribPointer(sat_vel, 4, GL_FLOAT, false, dvstride, (void*)16);
       glVertexAttribPointer(sat_pos, 4, GL_FLOAT, false, dvstride, (void*)32);
       glEnableVertexAttribArray(sat_pos);
@@ -1586,7 +1642,7 @@ Balloon::time_step_gl(int steps)
 
       glBindBuffer(GL_ARRAY_BUFFER,0);
       glBindBufferBaseNV
-        (GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, gpu_data_vtx.bid_write());
+        (GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, glp_vtx_data.bid_write());
       pError_Check();
 
       TRY_XF_FEEDBACK( glDrawArrays(GL_POINTS,0,point_count), point_count);
@@ -1594,12 +1650,12 @@ Balloon::time_step_gl(int steps)
       glDisableVertexAttribArray(sat_pos);
       glDisableVertexAttribArray(sat_vel);
 
-      gpu_data_vtx.bid_swap();
+      glp_vtx_data.bid_swap();
     }
 
   if ( false )
     {
-      BV_GPU_Data_Vtx after = gpu_data_vtx.data[0];
+      GLP_Vtx_Data after = glp_vtx_data.data[0];
       pError_Msg("Check.");
     }
 
@@ -1619,8 +1675,11 @@ Balloon::time_step_gl(int steps)
 
   glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0 );
 
-  pError_Check();
+  data_bid = glp_vtx_data.bid_read();
+  data_stride = sizeof(glp_vtx_data[0]);
+  pressure_compute();
 
+  pError_Check();
 }
 
 void
@@ -1661,7 +1720,6 @@ Balloon::cuda_data_partition()
 
   tri_work_per_vtx_lg = int(0.998 + log2(double(work_max)/block_size));
   tri_work_per_vtx = 1 << tri_work_per_vtx_lg;
-  printf("Work per vtx lg %d\n",tri_work_per_vtx_lg);
   ASSERTS( tri_work_per_vtx_lg <= 3 );
   const int work_per_block = tri_work_per_vtx * block_size;
   const int work_count = work_per_block * block_count;
@@ -1720,7 +1778,6 @@ Balloon::cuda_data_partition()
         }
       tw->length_relaxed = tri->length_relaxed;
     }
-  printf("Max pull is %d\n",max_pull);
 }
 
 template <typename T> void to_dev_ds(const char* const dst_name, T src)
@@ -1740,118 +1797,166 @@ void to_dev_ds(const char* const dst_name, double& src)
 #define TO_DEV_OM_F(obj,memb) to_dev_ds(#memb,float(obj.memb))
 
 void
+Balloon::init_cuda()
+{
+  cuda_initialized = true;
+  cuda_constants_stale = true;
+  int device_count;
+  cudaGetDeviceCount(&device_count);
+  ASSERTS( device_count );
+  const int dev = 0;
+  cudaDeviceProp prop;
+  CE(cudaGetDeviceProperties(&prop,dev));
+  CE(cudaGLSetGLDevice(dev));
+  printf
+    ("GPU: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
+     prop.name, prop.clockRate/1e6, prop.totalGlobalMem >> 20);
+  printf
+    ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %d  CONST: %d  "
+     "# REGS: %d\n",
+     prop.major, prop.minor,
+     prop.multiProcessorCount, prop.maxThreadsPerBlock,
+     prop.sharedMemPerBlock, prop.totalConstMem,
+     prop.regsPerBlock
+     );
+
+  CE(cudaEventCreate(&world.frame_start_ce));
+  CE(cudaEventCreate(&world.frame_stop_ce));
+
+  cuda_vtx_strc.to_cuda();
+  TO_DEV_DS(vtx_strc,cuda_vtx_strc.get_dev_addr());
+
+  cuda_tri_strc.to_cuda();
+  TO_DEV_DS(tri_strc,cuda_tri_strc.get_dev_addr());
+
+  cuda_tri_data.alloc(tri_count);
+  TO_DEV_DS(tri_data,cuda_tri_data.get_dev_addr());
+
+  cuda_vtx_data.alloc(point_count);
+
+  const int max_block_count =
+    int(0.5
+        + double(tri_count)/min(CUDA_TRI_BLOCK_SIZE,CUDA_VTX_BLOCK_SIZE));
+
+  cuda_tower_volumes.alloc(max_block_count);
+  TO_DEV_DS(tower_volumes,cuda_tower_volumes.get_dev_addr());
+
+  cuda_centroid_parts.alloc(max_block_count);
+  TO_DEV_DS(centroid_parts,cuda_centroid_parts.get_dev_addr());
+
+  cuda_data_partition();
+  cuda_tri_work_strc.to_cuda();
+  TO_DEV_DS(tri_work_strc,cuda_tri_work_strc.get_dev_addr());
+  TO_DEV(tri_work_per_vtx);
+  TO_DEV(tri_work_per_vtx_lg);
+
+  Dg_tri.x = int(ceil(double(tri_count)/CUDA_TRI_BLOCK_SIZE));
+  Dg_tri.y = Dg_tri.z = 1;
+  Db_tri.x = CUDA_TRI_BLOCK_SIZE;
+  Db_tri.y = Db_tri.z = 1;
+
+  Dg_vtx.x = int(ceil(double(point_count)/CUDA_VTX_BLOCK_SIZE));
+  Dg_vtx.y = Dg_vtx.z = 1;
+  Db_vtx.x = CUDA_VTX_BLOCK_SIZE;
+  Db_vtx.y = Db_vtx.z = 1;
+
+  for ( int i=0; i<2; i++ )
+    {
+      dim3 Dg = i==0 ? Dg_tri : Dg_vtx;
+      dim3 Db = i==0 ? Db_tri : Db_vtx;
+      const char* const pass = i==0 ? "Triangle" : "Vertex";
+
+      const double warp_per_block = double(Db.x) / 32;
+      const double block_per_mp = double(Dg.x) / prop.multiProcessorCount;
+      const double warp_per_mp = ceil(warp_per_block) * block_per_mp;
+      printf("\n%s pass block size %d thds, %d warps.\n",
+             pass, Db.x, Db.x >> 5);
+      printf("Grid size %d blks,  %.1f blks / MP,  %.1f warps / MP.\n",
+             Dg.x,
+             block_per_mp, warp_per_mp );
+      const double warp_util = double(min(32u,Db.x))/32;
+      const int data_dist = 2;
+      const int latency_fp_warps = 24 / 4;
+      const int latency_mem_warps = 400 / 4;
+
+      // Assume no switch between blocks to hide fp latency.
+      //
+      const double lat_coverage_fp =
+        min( warp_per_block * data_dist / latency_fp_warps, 1.0 );
+
+      // Assume gpu does switch between blocks to hide mem latency.
+      //
+      const double lat_coverage_mem =
+        min( warp_per_mp * data_dist / latency_mem_warps, 1.0 );
+
+      printf("Approx CP util fp  %.3f * %.3f = %.3f (%.3f) for avg dist %d\n",
+             warp_util, lat_coverage_fp,
+             warp_util * lat_coverage_fp,
+             warp_util * lat_coverage_fp * prop.multiProcessorCount,
+             data_dist);
+
+      printf("Approx CP util mem %.3f * %.3f = %.3f (%.3f) for avg dist %d\n",
+             warp_util, lat_coverage_mem,
+             warp_util * lat_coverage_mem,
+             warp_util * lat_coverage_mem * prop.multiProcessorCount,
+             data_dist);
+    }
+}
+
+
+void
 Balloon::time_step_cuda(int steps)
 {
-  static bool cuda_init = false;
   static int cuda_iteration = 0;
   cuda_iteration++;
-  if ( !cuda_init )
-    {
-      cuda_init = true;
-      int device_count;
-      cudaGetDeviceCount(&device_count);
-      ASSERTS( device_count );
-      const int dev = 0;
-      cudaDeviceProp prop;
-      CE(cudaGetDeviceProperties(&prop,dev));
-      CE(cudaGLSetGLDevice(dev));
-      printf
-        ("GPU: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         prop.name, prop.clockRate/1e6, prop.totalGlobalMem >> 20);
-      printf
-        ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %d  CONST: %d  "
-         "# REGS: %d\n",
-         prop.major, prop.minor,
-         prop.multiProcessorCount, prop.maxThreadsPerBlock,
-         prop.sharedMemPerBlock, prop.totalConstMem,
-         prop.regsPerBlock
-         );
 
-      CE(cudaEventCreate(&world.frame_start_ce));
-      CE(cudaEventCreate(&world.frame_stop_ce));
-
-      cuda_vtx_strc.to_cuda();
-      TO_DEV_DS(vtx_strc,cuda_vtx_strc.get_dev_addr());
-
-      cuda_tri_strc.to_cuda();
-      TO_DEV_DS(tri_strc,cuda_tri_strc.get_dev_addr());
-
-      cuda_tri_data.alloc(tri_count);
-      TO_DEV_DS(tri_data,cuda_tri_data.get_dev_addr());
-
-      cuda_vtx_data.alloc(point_count);
-
-      const int max_block_count =
-        int(0.5
-            + double(tri_count)/min(CUDA_TRI_BLOCK_SIZE,CUDA_VTX_BLOCK_SIZE));
-
-      cuda_tower_volumes.alloc(max_block_count);
-      TO_DEV_DS(tower_volumes,cuda_tower_volumes.get_dev_addr());
-
-      cuda_centroid_parts.alloc(max_block_count);
-      TO_DEV_DS(centroid_parts,cuda_centroid_parts.get_dev_addr());
-
-      cuda_data_partition();
-      cuda_tri_work_strc.to_cuda();
-      TO_DEV_DS(tri_work_strc,cuda_tri_work_strc.get_dev_addr());
-      TO_DEV(tri_work_per_vtx);
-      TO_DEV(tri_work_per_vtx_lg);
-
-      cuda_test.alloc(point_count*tri_work_per_vtx);
-      memset(cuda_test.data,0,cuda_test.chars);
-      cuda_test.to_cuda();
-      TO_DEV_DS(cuda_test,cuda_test.get_dev_addr());
-
-    }
-
-  // Load constants.
+  if ( !cuda_initialized ) init_cuda();
 
   CE(cudaEventRecord(world.frame_start_ce,0));
   cpu_data_to_cuda();
 
-  TO_DEV_DS(volume_cpu,volume);  // For debugging, not used by gpu.
-  TO_DEV(tri_count);
-  TO_DEV(point_count);
+  if ( cuda_constants_stale )
+    {
+      cuda_constants_stale = false;
+      TO_DEV_DS(volume_cpu,volume);  // For debugging, not used by gpu.
+      TO_DEV(tri_count);
+      TO_DEV(point_count);
 
-  TO_DEV(spring_constant);
-  TO_DEV(damping_v);
-  TO_DEV(pressure_factor_coeff);
-  TO_DEV(gas_m_over_temp);
+      TO_DEV(spring_constant);
+      TO_DEV(damping_v);
+      TO_DEV(pressure_factor_coeff);
+      TO_DEV(gas_m_over_temp);
 
-  TO_DEV(air_resistance);
-  TO_DEV(gas_mass_per_vertex);
-  TO_DEV(air_particle_mass);
-  float gravity_mag = opt_gravity ? opt_gravity_accel : 0;
-  TO_DEV(gravity_mag);
-  TO_DEV(opt_gravity);
+      TO_DEV(air_resistance);
+      TO_DEV(gas_mass_per_vertex);
+      TO_DEV(air_particle_mass);
+      float gravity_mag = opt_gravity ? opt_gravity_accel : 0;
+      TO_DEV(gravity_mag);
+      TO_DEV(opt_gravity);
 
-  TO_DEV_OM_F(world,delta_t);
-  TO_DEV(rep_constant);
-  TO_DEV(point_mass);
-  TO_DEV(point_mass_inv);
+      TO_DEV_OM_F(world,delta_t);
+      TO_DEV(rep_constant);
+      TO_DEV(point_mass);
+      TO_DEV(point_mass_inv);
 
-  TO_DEV_OM(world,platform_xmin);
-  TO_DEV_OM(world,platform_xmax);
-  TO_DEV_OM(world,platform_zmin);
-  TO_DEV_OM(world,platform_zmax);
-
-  CE(cudaThreadSynchronize());
-
-  const dim3 Dg_tri(int(ceil(double(tri_count)/CUDA_TRI_BLOCK_SIZE)),1,1);
-  const dim3 Db_tri(CUDA_TRI_BLOCK_SIZE,1,1);
-  dim3 Dg_vtx(int(ceil(double(point_count)/CUDA_VTX_BLOCK_SIZE)),1,1);
-  const dim3 Db_vtx(CUDA_VTX_BLOCK_SIZE,1,1);
+      TO_DEV_OM(world,platform_xmin);
+      TO_DEV_OM(world,platform_xmax);
+      TO_DEV_OM(world,platform_zmin);
+      TO_DEV_OM(world,platform_zmax);
+      cuda_tower_volumes.set_primary();
+    }
 
   const CUDA_Vtx_Data vtest = cuda_vtx_data[42];
 
   if ( steps ) data_location = DL_CUDA;
+  const bool two_pass = world.opt_physics_method == GP_cuda_2_pass;
 
   for ( int i=0; i<steps; i++ )
     {
       CUDA_Vtx_Data* const vtx_data_in_d = cuda_vtx_data.get_dev_addr_read();
       CUDA_Vtx_Data* const vtx_data_out_d = cuda_vtx_data.get_dev_addr_write();
 
-      if ( world.opt_physics_method == GP_cuda_2_pass )
+      if ( two_pass )
         {
           pass_triangles_launch
             (Dg_tri, Db_tri, vtx_data_in_d, cuda_vtx_data.chars);
@@ -1877,75 +1982,60 @@ Balloon::time_step_cuda(int steps)
       cuda_vtx_data.swap();
     }
 
-  CE(cudaThreadSynchronize());
+  if ( false )
+    {
+      // Due to a CUDA bug this is slower than just copying through host.
+      cuda_vtx_data.cuda_to_gl();
+      //  cuda_centroid_parts.from_cuda();
+      data_bid = cuda_vtx_data.bid;
+      data_stride = sizeof(cuda_vtx_data[0]);
+    }
+  else
+    {
+      cuda_data_to_cpu();
+    }
 
   {
-    const GLuint bid = gpu_data_vtx.bid;
-    void *dptr = NULL;
-    CE(cudaGLRegisterBufferObject(bid));
-    CE(cudaGLMapBufferObject(&dptr,bid));
-    CE(cudaMemcpy
-       (dptr, cuda_vtx_data.get_dev_addr_read(), cuda_vtx_data.chars,
-        cudaMemcpyDeviceToDevice));
-    CE(cudaThreadSynchronize());
-    CE(cudaGLUnmapBufferObject(bid));
-    CE(cudaGLUnregisterBufferObject(bid));
-    data_location |= DL_GL;
-  }
-
-  cuda_tower_volumes.from_cuda();
-  cuda_centroid_parts.from_cuda();
-  //  CE(cudaEventRecord(world.frame_stop_ce,0));
-  //  cuda_data_to_cpu();
-  {
-    const int blocks =
-      world.opt_physics_method == GP_cuda_2_pass ? Dg_tri.x : Dg_vtx.x;
+    cuda_tower_volumes.from_cuda();
+    const int blocks = two_pass ? Dg_tri.x : Dg_vtx.x;
     volume = 0;
-    pCoor centroid_part_sum(0,0,0);
-    for ( int i=0; i<blocks; i++ )
-      {
-        volume += cuda_tower_volumes[i];
-        if ( world.opt_physics_method != GP_cuda_2_pass ) continue;
-        pCoor part; vec_sets(part,cuda_centroid_parts[i]);
-        centroid_part_sum += part;
-      }
-    if ( world.opt_physics_method == GP_cuda_2_pass )
-      centroid = 1.0 / tri_count * centroid_part_sum;
+    for ( int i=0; i<blocks; i++ ) volume += cuda_tower_volumes[i];
   }
-  
+
   CE(cudaEventRecord(world.frame_stop_ce,0));
   CE(cudaEventSynchronize(world.frame_stop_ce));
   float cuda_time = -1.1;
   CE(cudaEventElapsedTime(&cuda_time,world.frame_start_ce,world.frame_stop_ce));
   world.frame_timer.cuda_frame_time_set(cuda_time);
-  
+  if ( !opt_cpu_interleave )
+    {
+      centroid_compute();
+      pressure_compute();
+    }
+
   CUDA_Vtx_Data vtest_aftera = cuda_vtx_data[42];
 
 #undef TO_DEV
 #undef TO_DEV_OM
-
-
 }
 
 void
 Balloon::gpu_data_to_cpu()
 {
-  if ( world.opt_physics_method == GP_gl )
-    gl_data_to_cpu();
-  else
-    cuda_data_to_cpu();
+  if ( world.opt_physics_method == GP_glp ) glp_data_to_cpu();
+  else                                      cuda_data_to_cpu();
 }
 
 void
-Balloon::gl_data_to_cpu()
+Balloon::glp_data_to_cpu()
 {
   if ( data_location & DL_CPU ) return;
   data_location |= DL_CPU;
-  gpu_data_vtx.from_gpu();
+  glp_vtx_data.from_gpu();
   for ( int idx=0; idx<point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
-      BV_GPU_Data_Vtx* const g = &gpu_data_vtx[idx];
+      GLP_Vtx_Data* const g = &glp_vtx_data[idx];
       p->pos = g->pos;
       p->vel = g->vel;
       p->surface_normal = g->surface_normal;
@@ -1969,7 +2059,7 @@ Balloon::cuda_data_to_cpu()
 }
 
 void
-Balloon::cpu_data_to_gl()
+Balloon::cpu_data_to_glp()
 {
   if ( data_location & DL_GL ) return;
   data_location |= DL_GL;
@@ -1977,7 +2067,7 @@ Balloon::cpu_data_to_gl()
   for ( int idx=0; idx<point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
-      BV_GPU_Data_Vtx* const g = &gpu_data_vtx[idx];
+      GLP_Vtx_Data* const g = &glp_vtx_data[idx];
       g->pos = p->pos;
       g->vel = p->vel;
       g->surface_normal = p->surface_normal;
@@ -1986,21 +2076,20 @@ Balloon::cpu_data_to_gl()
   for ( int idx=0; idx<tri_count; idx++ )
     {
       Balloon_Triangle* const tri = &triangles[idx];
-      BV_GPU_Plan_C_Triangle_Data* const td =
-        &gpu_plan_c_triangle_data[idx];
+      GLP_Tri_Strc* const td = &glp_tri_strc[idx];
       td->length_relaxed = tri->length_relaxed;
     }
 
-  gpu_data_vtx.to_gpu();
-  gpu_plan_c_vertex_data.to_gpu();
-  gpu_plan_c_triangle_data.to_gpu();
+  glp_vtx_data.to_gpu();
+  glp_vtx_strc.to_gpu();
+  glp_tri_strc.to_gpu();
   glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
-void
+bool
 Balloon::cpu_data_to_cuda()
 {
-  if ( data_location & DL_CUDA ) return;
+  if ( data_location & DL_CUDA ) return false;
   data_location |= DL_CUDA;
 
   for ( int idx=0; idx<point_count; idx++ )
@@ -2020,13 +2109,14 @@ Balloon::cpu_data_to_cuda()
 
   for ( int idx=1; idx<cuda_tower_volumes.elements; idx++ )
     cuda_tower_volumes[idx] = 0;
-
   cuda_tower_volumes[0] = volume;
-
+  cuda_tower_volumes.set_primary();
   cuda_tower_volumes.to_cuda();
+
   cuda_tri_strc.to_cuda();  // OPT: Only send if dirty.
   cuda_vtx_data.to_cuda();
   cuda_vtx_strc.to_cuda();  // OPT: Only send if dirty.
+  return true;
 }
 
 
@@ -2097,7 +2187,6 @@ tube_tapered(pCoor base, float radius, pVect to_apex)
 }
 
 
-
 void
 World::render()
 {
@@ -2123,7 +2212,7 @@ World::render()
       const int time_steps = min(time_steps_needed,100);
       balloon.update_for_config();
       if ( opt_physics_method &&
-           ( balloon.need_cpu_iteration || balloon.opt_surface_fix ) )
+           ( balloon.need_cpu_iteration || balloon.opt_cpu_interleave ) )
         balloon.time_step_cpu_once();
       if ( opt_physics_method ) balloon.time_step_gpu(time_steps);
       else balloon.time_step_cpu(time_steps);
@@ -2211,8 +2300,11 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
-  ogl_helper.fbprintf("Physics Computation: %s  ('a' to change).\n",
-                      gpu_physics_method_str[opt_physics_method]);
+  ogl_helper.fbprintf
+    ("Physics Computation: %s ('a' to change) "
+     "  + %d cpu timestep / frame ('x' to change)\n",
+     gpu_physics_method_str[opt_physics_method],
+     balloon.opt_cpu_interleave);
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
@@ -2234,21 +2326,19 @@ World::render()
      );
 
   ogl_helper.fbprintf
-    ("Weight (Surf+Gas-Displ Air=W) (%6.2f + %6.2f - %6.2f = %6.2f)  "
-     "Net Force [%+6.1f,%+8.1f,%+6.1f]\n",
+    ("Weight (Surf+Gas-Displ Air=W) (%6.2f + %6.2f - %6.2f = %6.2f)\n",
      balloon.opt_gravity_accel * balloon.surface_mass,
      balloon.opt_gravity_accel * balloon.volume * balloon.density_gas,
      balloon.opt_gravity_accel * balloon.volume * balloon.density_air,
      balloon.opt_gravity_accel * balloon.surface_mass
      + balloon.opt_gravity_accel * balloon.volume * balloon.density_gas
-     - balloon.opt_gravity_accel * balloon.volume * balloon.density_air,
-     balloon.weight.x, balloon.weight.y, balloon.weight.z
+     - balloon.opt_gravity_accel * balloon.volume * balloon.density_air
      );
 
   ogl_helper.fbprintf("Oversample %3.1f\n", balloon.oversample);
 
   pVariable_Control_Elt* const cvar = variable_control.current;
-  ogl_helper.fbprintf("VAR %s = %.5f  (TAG or '`' to change, +/- to adjust)\n",
+  ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->var[0]);
 
   const int half_elements = platform_tile_coords.elements >> 3 << 2;
@@ -2297,14 +2387,12 @@ World::render()
       glTexCoordPointer(2,GL_FLOAT,0,NULL);
       glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
-      if ( opt_physics_method && balloon.data_location & DL_GL )
+      if ( balloon.data_bid )
         {
-          balloon.gpu_data_vtx.bind();
+          glBindBuffer(GL_ARRAY_BUFFER,balloon.data_bid);
           glVertexPointer
-            (3, GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]),
-             (void*)( 2 * sizeof(pCoor) ));
-          glNormalPointer
-            (GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]), NULL );
+            (3, GL_FLOAT, balloon.data_stride, (void*)( 2 * sizeof(pCoor) ));
+          glNormalPointer(GL_FLOAT, balloon.data_stride, NULL );
         }
       else
         {
@@ -2349,12 +2437,11 @@ World::render()
     glStencilFunc(GL_NEVER,1,-1); // ref, mask
     glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
 
-    if ( opt_physics_method && balloon.data_location & DL_GL )
+    if ( balloon.data_bid )
       {
-        balloon.gpu_data_vtx.bind();
+        glBindBuffer(GL_ARRAY_BUFFER,balloon.data_bid);
         glVertexPointer
-          (3, GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]),
-           (void*)( 2 * sizeof(pCoor) ));
+          (3, GL_FLOAT, balloon.data_stride, (void*)( 2 * sizeof(pCoor) ));
       }
     else
       glVertexPointer(4, GL_FLOAT, vstride, &balloon.points[0].pos);
@@ -2466,14 +2553,12 @@ World::render()
       glTexCoordPointer(2,GL_FLOAT,0,NULL);
       glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
-      if ( opt_physics_method && balloon.data_location & DL_GL )
+      if ( balloon.data_bid )
         {
-          balloon.gpu_data_vtx.bind();
+          glBindBuffer(GL_ARRAY_BUFFER,balloon.data_bid);
           glVertexPointer
-            (3, GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]),
-             (void*)( 2 * sizeof(pCoor) ));
-          glNormalPointer
-            (GL_FLOAT, sizeof(balloon.gpu_data_vtx[0]), NULL );
+            (3, GL_FLOAT, balloon.data_stride, (void*)( 2 * sizeof(pCoor) ));
+          glNormalPointer(GL_FLOAT, balloon.data_stride, NULL );
         }
       else
         {
@@ -2534,24 +2619,6 @@ World::render()
 
   pError_Check();
 
-#if 0
-  for ( int idx = 0;  idx < balloon.points.occ(); idx++ )
-    {
-      Balloon_Vertex* const p = &balloon.points[idx];
-      switch ( p->ring & 0x3 ) {
-      case 0: glColor3f(1,.1,.1); break;
-      case 1: glColor3f(0.1,1,0.1); break;
-      case 2: glColor3f(0.1,0.1,1); break;
-      case 3: glColor3f(0.1,1,1); break; // Cyan
-      default: glColor3f(0.5,0.5,0.5); break;
-      }
-
-      tube_tapered(p->pos,0.06,-p->surface_normal);
-    }
-#endif
-
-  pError_Check();
-
   glColor3f(0,1,0); // This sets the text color. Don't know why.
 
   frame_timer.frame_end();
@@ -2569,7 +2636,9 @@ World::cb_keyboard()
   const float move_amt = 0.4;
 
   balloon.gpu_data_to_cpu();
-  balloon.data_location &= DL_CPU;
+  balloon.data_location = DL_CPU;
+  balloon.data_bid = 0;
+  balloon.cuda_constants_stale = true;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -2591,7 +2660,7 @@ World::cb_keyboard()
     break;
   case 'a':
     opt_physics_method++;
-    if ( opt_physics_method == GP_ENUM_SIZE ) opt_physics_method = 1;
+    if ( opt_physics_method == GP_ENUM_SIZE ) opt_physics_method = 0;
     break;
   case 'b': opt_move_item = MI_Balloon; break;
   case 'B': opt_move_item = MI_Balloon_V; break;
@@ -2604,7 +2673,7 @@ World::cb_keyboard()
   case 'r': case 'R': balloon.length_relaxed_update = true; break;
   case 's': balloon.stop(); break;
   case 'S': balloon.freeze(); break;
-  case 'x': balloon.opt_surface_fix = !balloon.opt_surface_fix; break;
+  case 'x': balloon.opt_cpu_interleave = !balloon.opt_cpu_interleave; break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
@@ -2653,5 +2722,4 @@ main(int argv, char **argc)
 
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.render_w,&world);
-
 }

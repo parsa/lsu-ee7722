@@ -10,13 +10,10 @@ LIBDIR  =
 #   Execution problem occurs with --use_fast_math and certain data placement.
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall --keep  --ptxas-options=-v
-COMPILERFLAGS =  -O3 -Xcompiler -Wall --keep --ptxas-options=-v 
-COMPILERFLAGS =   -Xcompiler -Wall --keep --ptxas-options=-v
+COMPILERFLAGS =  -O3 -Xcompiler -Wall --keep --ptxas-options=-v
+#COMPILERFLAGS =   -Xcompiler -Wall --keep --ptxas-options=-v
 
-CC = gcc
-# CXX = g++
 CXX = $(CUDAPATH)/bin/nvcc
-
 
 .SUFFIXES: .cu .cuh
 

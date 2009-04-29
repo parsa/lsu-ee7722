@@ -1,0 +1,87 @@
+Notes on tuning code.
+
+:: 20 April 2009, 18:31:21 CDT
+Data collected over many days.
+
+32 threads / block
+CUDA / CPU
+3.6 / 5.6
+
+64 threads / block
+3.8 / 5.8
+
+128 th / block
+4.0 / 6.0
+
+Compute volume on GPU.
+
+Using 128 threads / block
+4.5  Use linear sum for tri-pass volume on MP. Linear vtx pass, wrong sum.
+4.4  Use reduction tree for tri-pass volume on MP.
+4.0  Use reduction tree, don't compute sums in vertex pass.
+4.0  Don't compute volume in either pass.
+4.1  Reduction tree in tri & vtx pass. (Note: Just 18 items to sum.)
+
+5.2  Tri: red, Vtx: linear, at top
+4.1  Tri: red, Vtx: partitioned linear, top of routine.
+4.8  Tri: red, Vtx: linear, middle of routine.
+
+Using 256 threads / block
+5.0  Use linear sum for volume on MP.
+4.7  Use reduction tree for volume on MP.
+
+Tri: red, Vtx: red or partitioned sum.
+4.6  256 th / block
+4.1  128 th / block
+3.9   64 th / block
+3.8   32 th / block
+4.4   16 th / block
+
+Using 64 th / block, reduction trees.
+3.9 Use global memory for vtx data in tri-pass. (The method used till now.)
+3.4 Use texture cache for vtx data in triangle pass.
+3.3 Use texture cache for vtx data in triangle and vtx pass.
+2.0 Use texture cache for triangle data in vtx pass.
+2.0 Make triangle structure 16 bytes.
+1.9 Hand-unroll "neighbor" loop to avoid local variable allocation.
+1.9 Make vertex structure 16 bytes. (Was 24.)
+1.86 Eliminate double-precision calculations.
+1.80 Reorganize CUDA_Tri_Strc to allow vector loads. (Seven to 3?)
+1.77 Reorganize CUDA_Vtx_Strc to allow vector loads. (Eight to 2 loads.)
+
+Single-Pass, 64 threads / block
+1.76 First cut of single-pass implementation.
+1.38 Reorganize CUDA_Tri_Work_Strc.
+1.30 Don't do volume computation.
+1.34 Write volume, but don't read it.
+1.38 Reorganize CUDA_Tri_Work_Strc. (Repeated)
+1.29 Make CUDA_Tri_Shared gcd 1. (Size is now 7 floats.)
+1.26 Option: --use_fast_math (also inserted two mul24's.)
+1.29 Back out fast_math because of bug.
+1.25 Place alignment restriction on CUDA_Vtx_Data and CUDA_Tri_Data
+1.16 Don't count transfer of data back to gpu.
+1.19 Don't count transfer of data back to gpu, but do count centr & vol.
+1.25 Place alignment restriction on CUDA_Vtx_Data and CUDA_Tri_Data (copy)
+1.08 Don't copy constants every frame, don't thread sync at start.
+1.07 Eliminate thread sync between last kernel launch and data copy.
+1.05 Hand unroll loops in volume-write reduction.
+1.04 Hand unroll both reduction loops.
+
+3.71 2^3 th / blk, about    blocks, 1/4 warp / blk
+2.16 2^4 th / blk, about 64 blocks, 1/2 warp / blk
+1.82 2^5 th / blk, about 32 blocks  1   warp / blk  
+1.29 2^6 th / blk, about 16 blocks  2   warp / blk
+1.33 2^7 th / blk, about  8 blocks  4   warp / blk
+2^8 th / blk, about 4 blocks: Won't run, not enough regs.
+
+ 32 kiB reg stor / core 
+  8 ki reg / core
+ 
+
+Run with added structure to test memory access alternatives.
+
+1.84 Use perfectly laid out 16-byte structure.
+1.93 Force structure to use four loads.
+1.81 Use perfectly laid out 16-byte structure, but transpose low idx bit et al.
+The strided access didn't seem to hurt performance.
+
