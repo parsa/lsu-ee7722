@@ -105,9 +105,9 @@ __device__ float
 reduce(int block_lg, float *shared_array, float my_value, bool all)
 {
   const int tid = threadIdx.x;
-  const int block_lg_h = block_lg > 1 ? block_lg >> 1 : block_lg;
+  const int block_lg_h = block_lg >> 1;
   const int block_lg_l = block_lg - block_lg_h;
-  const int lower_size = block_lg_l >= 0 ? 1 << block_lg_l : 0;
+  const int lower_size = 1 << block_lg_l;
 
   float vol_sum = shared_array[tid] = my_value;
   __syncthreads();
