@@ -1,12 +1,105 @@
 /// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
- /// Balloon Simulation, Under construction.
+ /// Balloon Simulation
 
 // $Id:$
 
- /// Purpose
+/// Purpose
 //
 //   Demonstrate use of gpu for physics.
+
+
+/// What Code Does
+
+// The code in this file simulates a /balloon/: an elastic /surface/
+// that encloses a /gas/. Outside the balloon is /air/, and there
+// is a /platform/ for the balloon to bounce on.  Many physical
+// parameters can be varied affecting the balloon bouncyness and
+// buoyancy.
+
+// By default the balloon simulation (physics) is performed on the GPU
+// using CUDA using a one-pass algorithm, but the user can switch
+// between a second CUDA algorithm, using the OpenGL API for physics,
+// or having the CPU do the physics.
+
+// The platform consists of tiles, some are purple-tinted mirrors
+// (showing a reflection of the balloon), the others show the course
+// syllabus.  The balloon can cast a shadow on the tiles.
+
+
+///  Keyboard Commands
+ //
+ /// Object (Eye, Light, Balloon) Location or Push
+ //   Arrows, Page Up, Page Down
+ //   Will move object or push balloon, depending on mode:
+ //   'e': Move eye.
+ //   'l': Move light.
+ //   'b': Move balloon. (Change position but not velocity.)
+ //   'B': Push balloon. (Add velocity.)
+ //
+ /// Eye Direction
+ //   Home, End, Delete, Insert
+ //   Turn the eye direction.
+ //   Home should rotate eye direction up, End should rotate eye
+ //   down, Delete should rotate eye left, Insert should rotate eye
+ //   right.  The eye direction vector is displayed in the upper left.
+
+ /// Simulation Options
+ //  (Also see variables below.)
+ //
+ //  'p'    Pause simulation. (Press again to resume.)
+ //  's'    Stop balloon (but not vibration).
+ //  'S'    Freeze balloon. (Set velocity of all vertices to zero.)
+ //  'a'    Cycle between different physics algorithms and processors (GPU/CPU).
+ //  'A'    Switch between CPU and GPU physics.
+ //  'g'    Turn gravity on and off.
+ //  'n'    Switch between textured and striped balloon surface.
+ //  'F12'  Write screenshot to file balloon.png.
+
+ /// Variables
+ //   Selected program variables can be modified using the keyboard.
+ //   Use "Tab" to cycle through the variable to be modified, the
+ //   name of the variable is displayed next to "VAR" on the bottom
+ //   line of green text.
+
+ //  'Tab' Cycle to next variable.
+ //  '`'   Cycle to previous variable.
+ //  '+'   Increase variable value.
+ //  '-'   Decrease variable value.
+ //
+ //  VAR Light Intensity - The light intensity.
+ //  VAR Gas Amount - Amount of gas in balloon.
+ //  VAR Gravity - Gravitational acceleration. (Turn on/off using 'g'.)
+ //  VAR Air Resistance - Viscosity of air.
+ //  VAR Gas Particle Mass - Initially matches air mass.
+ //  VAR Spring Constant - Warning: watch Oversample as this is increased.
+ //  VAR Repulsion Constant - Determines stiffness of surface.
+ //  VAR Surface Mass -  Warning: watch Oversample as this is reduced.
+
+
+/// Bugs and Incomplete Features
+
+// Code is only sparsely commented.
+
+// Some code in this file should be moved to other files. 
+
+// The reflection and shadow are incorrect when the balloon
+// is below the platform.
+
+// At high spring constant values the simulation leaks momentum.
+
+// The repulsion used to model stiffness should be augmented or replaced
+// with forces based on angle (not just distance).
+
+
+/// To Do
+
+// Detect and prevent interpenetration.
+
+// Use something like Verlet integration to update position.
+
+// Provide presets of physical parameters, for example, to simulate a
+// hot-air balloon, a partially deflated basketball, etc.
 
 
 
@@ -37,7 +130,6 @@
 ///
 /// CUDA and OpenGL Support
 ///
-
 
 
  /// CUDA API Error-Checking Wrapper
@@ -470,7 +562,7 @@ struct GLP_Vtx_Data {
 // See also balloon.cuh.
 
 
-enum Data_Location { DL_CPU = 0x1, DL_GL = 0x2, DL_CUDA = 0x4 };
+enum Data_Location { DL_CPU = 0x1, DL_GLP = 0x2, DL_CUDA = 0x4 };
 enum GPU_Physics_Method
   { GP_cpu, GP_glp, GP_cuda_1_pass, GP_cuda_2_pass, GP_ENUM_SIZE };
 const char* const gpu_physics_method_str[] =
@@ -542,7 +634,6 @@ public:
   }
   void pressure_compute()
   {
-    // Need updated volume and centroid.
     const float exp_air = pressure_air(centroid.y);
     const float exp_gas = pressure_gas(centroid.y,1);
     const float eff_volume = fabs( volume );
@@ -755,8 +846,8 @@ World::init()
   opt_pause = false;
   variable_control.insert(balloon.gas_amount,"Gas Amount");
   variable_control.insert(balloon.opt_gravity_accel,"Gravity");
-  variable_control.insert(balloon.temperature,"Temperature");
-  variable_control.insert(balloon.damping_v,"Damping Factor");
+  //  variable_control.insert(balloon.temperature,"Temperature");
+  //  variable_control.insert(balloon.damping_v,"Damping Factor");
   variable_control.insert(balloon.air_resistance,"Air Resistance");
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(balloon.gas_particle_mass,"Gas Particle Mass");
@@ -1030,10 +1121,11 @@ Balloon::init(pCoor center, double r)
   //  texid_pse = pBuild_Texture_File("shot-emacs.png",false,255);
   tex_coords.take(gpu_tex_coords,GL_STATIC_DRAW);
   tex_coords.to_gpu();
-  texid_syl = pBuild_Texture_File("gp.png",false,255);
-  if ( 0 )
+  if ( 1 )
+    texid_syl = pBuild_Texture_File("gp.png",false,255);
+  else
     texid_syl = pBuild_Texture_File
-      ("/home/faculty/koppel/teach/gpp09/gpp.png",false,255);
+      ("/home/faculty/koppel/teach/gpup09/gpup.png",false,255);
 
   point_indices.take(p_indices,GL_STATIC_DRAW,GL_ELEMENT_ARRAY_BUFFER);
   point_indices.to_gpu();
@@ -1541,7 +1633,7 @@ Balloon::time_step_glp(int steps)
 
   GLP_Vtx_Data before = glp_vtx_data.data[0];
 
-  if ( steps ) data_location = DL_GL;
+  if ( steps ) data_location = DL_GLP;
 
   pError_Check();
 
@@ -2061,8 +2153,8 @@ Balloon::cuda_data_to_cpu()
 void
 Balloon::cpu_data_to_glp()
 {
-  if ( data_location & DL_GL ) return;
-  data_location |= DL_GL;
+  if ( data_location & DL_GLP ) return;
+  data_location |= DL_GLP;
 
   for ( int idx=0; idx<point_count; idx++ )
     {
@@ -2269,7 +2361,9 @@ World::render()
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
   glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
 
-  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, gray);
+  pColor ambient_color(0x999999);
+
+  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
   glLightfv(GL_LIGHT0, GL_AMBIENT, dark);
   glLightfv(GL_LIGHT0, GL_SPECULAR, white * opt_light_intensity);
@@ -2282,8 +2376,8 @@ World::render()
 
   glShadeModel(GL_SMOOTH);
 
-  pColor color_ball(0x777777);
-  pColor scolor_ball(0xffffff);
+  pColor color_ball(0x666666);
+  pColor scolor_ball(0x111111);
   const float shininess_ball = 5;
 
   // Common to all textures.
@@ -2297,7 +2391,6 @@ World::render()
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
-  insert_tetrahedron(light_location,0.05);
   glEnable(GL_RESCALE_NORMAL);
   glEnable(GL_NORMALIZE);
 
@@ -2424,7 +2517,7 @@ World::render()
 
   {
     //
-    // Write framebuffer stencil with ball's shadow.
+    // Write framebuffer stencil with balloon's shadow.
     //
 
     // Use transform that maps vertices to platform surface.
@@ -2500,7 +2593,7 @@ World::render()
           // Prepare to write shadowed parts of frame buffer.
           //
           glStencilFunc(GL_EQUAL,1,1);
-          glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 4.0);
+          glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 6.0);
         }
 
       if ( opt_surface_smooth ) glEnable(GL_TEXTURE_2D);
@@ -2509,7 +2602,7 @@ World::render()
       //
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
       glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
-      glColor3f(0.5,0.5,0.5);
+      glColor3f(0.35,0.35,0.35);
       glDrawArrays(GL_QUADS,0,half_elements+4);
 
       // Write darker-colored, untextured, mirror tiles.
@@ -2588,6 +2681,7 @@ World::render()
       // With Colored Stripes
 
       balloon.gpu_data_to_cpu();
+      glMaterialfv(GL_BACK,GL_SPECULAR,scolor_ball);
       glBegin(GL_TRIANGLES);
 
       for ( int idx = 0;  idx < balloon.tri_count; idx++ )
@@ -2619,6 +2713,8 @@ World::render()
       glEnd();
 
     }
+
+  insert_tetrahedron(light_location,0.05);
 
   pError_Check();
 
