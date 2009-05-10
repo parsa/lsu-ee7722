@@ -1,6 +1,6 @@
 ### LSU EE 7700-1 (Sp 2009), Graphics Processors
 ##
-##  Makefile for Homework 1
+##  Makefile for Homework 1 and 2
 ##
 ## $Id:$
 
@@ -28,6 +28,12 @@ hw1: hw1.cc frame_buffer.h coord.h Makefile
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
 
 hw1sol: hw1sol.cc frame_buffer.h coord.h Makefile
+	$(CXX) $(CFLAGS) $(OPTFLAGS) -fverbose-asm -S $@.cc
+	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.s $(LIBRARIES) -o $@
+	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
+
+
+hw2: hw2.cc frame_buffer.h coord.h Makefile
 	$(CXX) $(CFLAGS) $(OPTFLAGS) -fverbose-asm -S $@.cc
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.s $(LIBRARIES) -o $@
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
