@@ -179,12 +179,7 @@ reduce(int block_lg, float *shared_array, float my_value, bool all)
 
 __device__ float3 vtx_data_pos(int idx)
 {
-#ifdef VP_AOS
-  const int idx_tex = idx * 3;
-#else
-  const int idx_tex = idx;
-#endif
-  return make_float3(tex1Dfetch(vtx_data_pos_tex, idx_tex));
+  return make_float3(tex1Dfetch(vtx_data_pos_tex, idx));
 }
 
 __device__ float3 vtx_data_vel(int idx)
@@ -236,11 +231,7 @@ pass_triangles_launch
   CUDA_Vtx_Data *vtx_data, size_t vtx_data_size)
  {
    size_t offset;
-#ifdef VP_AOS
-   cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data, vtx_data_size);
-#else
    cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data_in->pos, vtx_data_size);
-#endif
    pass_triangles<<<dg,db>>>();
  }
 
@@ -254,20 +245,12 @@ pass_triangles()
   __syncthreads();
   if ( ti >= tri_count ) return;
 
-#ifdef VP_AOS
-  const CUDA_Tri_Strc ts = tri_strc[ti];
-#else
-  CUDA_Tri_Strc ts;
-  ts.length_relaxed = tri_strc_x.length_relaxed[ti];
   const CUDA_Tri_Strc_X_a tsa = tri_strc_x.a[ti];
-  ts.pi = tsa.pi; ts.qi = tsa.qi; ts.ri = tsa.ri;
   const CUDA_Tri_Strc_X_b tsb = tri_strc_x.b[ti];
-  ts.pi_opp = tsa.pi_opp; ts.qi_opp = tsb.qi_opp; ts.ri_opp = tsb.ri_opp;
-#endif
 
-  const float3 ppos = vtx_data_pos(ts.pi);
-  const float3 qpos = vtx_data_pos(ts.qi);
-  const float3 rpos = vtx_data_pos(ts.ri);
+  const float3 ppos = vtx_data_pos(tsa.pi);
+  const float3 qpos = vtx_data_pos(tsa.qi);
+  const float3 rpos = vtx_data_pos(tsa.ri);
 
   const float3 center = vec_scale(1.0/3.0, vec_add3(ppos,qpos,rpos));
   const float3 pqr_cross = cross3(qpos,ppos,rpos);
@@ -275,9 +258,9 @@ pass_triangles()
   const float triangle_area_x2 = length(pqr_cross);
   const float tower_volume_x2 = -pqr_cross.y * center.y;
 
-  float3 force_p = repforce_compute(ppos,ts.pi_opp);
-  float3 force_q = repforce_compute(qpos,ts.qi_opp);
-  float3 force_r = repforce_compute(rpos,ts.ri_opp);
+  float3 force_p = repforce_compute(ppos,tsa.pi_opp);
+  float3 force_q = repforce_compute(qpos,tsb.qi_opp);
+  float3 force_r = repforce_compute(rpos,tsb.ri_opp);
 
   const float3 p_to_c = vec_sub(center,ppos);
   const float3 q_to_c = vec_sub(center,qpos);
@@ -285,7 +268,7 @@ pass_triangles()
 
   const float perimeter = length(p_to_c) + length(q_to_c) + length(r_to_c);
 
-  const float length_relaxed = ts.length_relaxed;
+  const float length_relaxed = tri_strc_x.length_relaxed[ti];
   const float eff_length = max(0.0f, perimeter - length_relaxed );
   const float spring_force = eff_length * spring_constant;
 
@@ -336,24 +319,15 @@ pass_vertices(int write_side)
 
   const float3 gravity = make_float3(0.0,-gravity_mag,0.0);
 
-#ifdef VP_AOS
-  const float3 pos = vtx_data_pos(vi);
-  const float3 vel = vtx_data_vel(vi);
-#else
   CUDA_Vtx_Data_X vtx_data_r = write_side ? vtx_data_x0 : vtx_data_x1;
   const float3 vel = make_float3(vtx_data_r.vel[vi]);
   const float3 pos = make_float3(vtx_data_r.pos[vi]);
-#endif
 
-#ifdef VP_AOS
-  const CUDA_Vtx_Strc vs = vtx_strc[vi];
-#else
   CUDA_Vtx_Strc_X_a vsa = vtx_strc_x.a[vi];
   CUDA_Vtx_Strc_X_b vsb = vtx_strc_x.b[vi];
   CUDA_Vtx_Strc vs;
   vs.n0=vsa.n0; vs.n1=vsa.n1; vs.n2=vsa.n2; vs.n3=vsa.n3;
   vs.n4=vsb.n4; vs.n5=vsb.n5; vs.n6=vsb.n6; vs.n7=vsb.n7;
-#endif
 
   float3 force_spring = make_float3(0.0,0.0,0.0);
   float3 surface_normal_sum = make_float3(0.0,0.0,0.0);
@@ -370,12 +344,8 @@ pass_vertices(int write_side)
         vec_addto(force_spring, force_x);                                     \
       }}
 
-#if 1
   TRI_BODY(0); TRI_BODY(1); TRI_BODY(2); TRI_BODY(3);
   TRI_BODY(4); TRI_BODY(5); TRI_BODY(6); TRI_BODY(7);
-#else
-  for ( int i=0; i<VTX_TRI_DEG_MAX; i++ ) TRI_BODY(i);
-#endif
 #undef TRI_BODY
 
   float3 surface_normal = vec_scale(1./6., surface_normal_sum);
@@ -439,21 +409,10 @@ pass_vertices(int write_side)
         vec_addto(vel_next, vec_scale( -delta_v, normalize(xzvel) ));
     }
 
-#ifdef VP_AOS
-
-  CUDA_Vtx_Data* const vtx_data = write_side ? vtx_data_1 : vtx_data_0;
-  vtx_data[vi].surface_normal = surface_normal;
-  vtx_data[vi].vel = vel_next;
-  vtx_data[vi].pos = pos_next;
-
-#else
-
   CUDA_Vtx_Data_X vtx_data_w = write_side ? vtx_data_x1 : vtx_data_x0;
   vtx_data_w.surface_normal[vi] = make_float4(surface_normal,0);
   vtx_data_w.vel[vi] = make_float4(vel_next,0);
   vtx_data_w.pos[vi] = make_float4(pos_next,1);
-
-#endif
 }
 
 
@@ -477,11 +436,7 @@ pass_unified_launch
  CUDA_Vtx_Data_X *vtx_data_in, size_t vtx_data_size )
 {
   size_t offset;
-#ifdef VP_AOS
-  cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data_in, vtx_data_size);
-#else
   cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data_in->pos, vtx_data_size);
-#endif
   pass_unified<<<dg,db>>>(write_side);
   cudaUnbindTexture(vtx_data_pos_tex);
 }
@@ -519,9 +474,7 @@ pass_unified(int write_side)
   float3 force_spring = make_float3(0,0,0);
   float3 surface_normal_sum = make_float3(0,0,0);
 
-#ifndef VP_AOS
   CUDA_Vtx_Data_X vtx_data_r = write_side ? vtx_data_x0 : vtx_data_x1;
-#endif
 
   const float3 pos =
     vi < point_count ? vtx_data_pos(vi) : make_float3(0,0,0);
@@ -529,25 +482,19 @@ pass_unified(int write_side)
   for ( int i=0; i<tri_work_per_vtx; i++ )
     {
       const int widx = work_idx_base + ( i << block_lg );
-      CUDA_Tri_Work_Strc ts;
       CUDA_Tri_Work_Strc_X_a tsa = tri_work_strc_x.a[widx];
       CUDA_Tri_Work_Strc_X_b tsb = tri_work_strc_x.b[widx];
       CUDA_Tri_Work_Strc_X_c tsc = tri_work_strc_x.c[widx];
-      ts.length_relaxed = tri_work_strc_x.length_relaxed[widx];
-      ts.pi = tsa.pi; ts.qi = tsa.qi; ts.ri = tsa.ri; ts.pull_i = tsa.pull_i;
-      ts.vi_opp0 = tsb.vi_opp0; ts.vi_opp1 = tsb.vi_opp1;
-      ts.vi_opp2 = tsb.vi_opp2; ts.vi_opp3 = tsb.vi_opp3;
-      ts.pull_tid_0 = tsc.pull_tid_0; ts.pull_tid_1 = tsc.pull_tid_1;
-      ts.pull_tid_2 = tsc.pull_tid_2; ts.pull_tid_3 = tsc.pull_tid_3;
-      const int ts_pull_i =  ts.pull_i;
+
+      const int ts_pull_i =  tsa.pull_i;
 
       /// Compute information for a triangle (if there is one).
       //
-      if ( ts.pi != ts.ri || ts.pi != ts.qi ) // Compiler Workaround
+      if ( tsa.pi != tsa.ri || tsa.pi != tsa.qi ) // Compiler Workaround
         {
-          const float3 ppos = vtx_data_pos(ts.pi);
-          const float3 qpos = vtx_data_pos(ts.qi);
-          const float3 rpos = vtx_data_pos(ts.ri);
+          const float3 ppos = vtx_data_pos(tsa.pi);
+          const float3 qpos = vtx_data_pos(tsa.qi);
+          const float3 rpos = vtx_data_pos(tsa.ri);
 
           const float3 center = vec_scale(1.0/3.0, vec_add3(ppos,qpos,rpos));
           const float3 pqr_cross = cross3(qpos,ppos,rpos);
@@ -560,7 +507,7 @@ pass_unified(int write_side)
           const float3 q_to_c = vec_sub(center,qpos);
           const float3 r_to_c = vec_sub(center,rpos);
           const float perimeter = length(p_to_c)+length(q_to_c)+length(r_to_c);
-          const float length_relaxed = ts.length_relaxed;
+          const float length_relaxed = tri_work_strc_x.length_relaxed[widx];
           const float eff_length = max(0.0f, perimeter - length_relaxed );
           const float spring_force = eff_length * spring_constant;
 
@@ -581,11 +528,11 @@ pass_unified(int write_side)
 #define VTX_PULL(idx)                                                         \
       if ( idx < pull_i )                                                     \
         {                                                                     \
-          const int tri_id = ts.pull_tid_##idx;                               \
+          const int tri_id = tsc.pull_tid_##idx;                              \
           const float3 center = tri_shared[tri_id].center;                    \
           const float3 surface_normal_t = tri_shared[tri_id].surface_normal;  \
           vec_addto(surface_normal_sum,surface_normal_t);                     \
-          vec_addto(force_spring,repforce_compute(pos,ts.vi_opp##idx));       \
+          vec_addto(force_spring,repforce_compute(pos,tsb.vi_opp##idx));      \
           const float3 p_to_c = vec_sub(center,pos);                          \
           const float spring_force = tri_shared[tri_id].spring_force;         \
           vec_addto(force_spring, vec_scale(spring_force, p_to_c));           \
@@ -629,11 +576,7 @@ pass_unified(int write_side)
 
   const float3 gravity = make_float3(0.0,-gravity_mag,0.0);
 
-#ifdef VP_AOS
-  const float3 vel = vtx_data_vel(vi);
-#else
   const float3 vel = make_float3(vtx_data_r.vel[vi]);
-#endif
 
   const float3 surface_normal = vec_scale((1./6.), surface_normal_sum);
 
@@ -696,19 +639,8 @@ pass_unified(int write_side)
         vec_addto(vel_next, vec_scale( -delta_v, normalize(xzvel) ));
     }
 
-#ifdef VP_AOS
-
-  CUDA_Vtx_Data* const vtx_data = write_side ? vtx_data_1 : vtx_data_0;
-  vtx_data[vi].surface_normal = surface_normal;
-  vtx_data[vi].vel = vel_next;
-  vtx_data[vi].pos = pos_next;
-
-#else
-
   CUDA_Vtx_Data_X vtx_data_x = write_side ? vtx_data_x1 : vtx_data_x0;
   vtx_data_x.surface_normal[vi] = make_float4(surface_normal,0);
   vtx_data_x.vel[vi] = make_float4(vel_next,0);
   vtx_data_x.pos[vi] = make_float4(pos_next,1);
-
-#endif
 }

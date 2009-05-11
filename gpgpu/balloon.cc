@@ -2104,42 +2104,27 @@ Balloon::init_cuda()
 
   CMX_SETUP(cuda_vtx_strc,a,n0);
   CMX_SETUP(cuda_vtx_strc,b,n4);
-#ifdef VP_AOS
-  cuda_vtx_strc.use_aos = true;
-  TO_DEV_DS(vtx_strc,cuda_vtx_strc.get_dev_addr());
-#else
   cuda_vtx_strc.use_aos = false;
   cuda_vtx_strc.ptrs_to_cuda_soa("vtx_strc_x");
-#endif
   cuda_vtx_strc.to_cuda();
 
   CMX_SETUP(cuda_tri_strc,a,pi);
   CMX_SETUP(cuda_tri_strc,b,qi_opp);
   CMX_SETUP(cuda_tri_strc,length_relaxed,length_relaxed);
-#ifdef VP_AOS
-  cuda_tri_strc.use_aos = true;
-  TO_DEV_DS(tri_strc,cuda_tri_strc.get_dev_addr());
-#else
   cuda_tri_strc.use_aos = false;
   cuda_tri_strc.ptrs_to_cuda_soa("tri_strc_x");
-#endif
   cuda_tri_strc.to_cuda();
 
   cuda_tri_data.alloc(tri_count);
   TO_DEV_DS(tri_data,cuda_tri_data.get_dev_addr());
 
-#ifdef VP_AOS
-  cuda_vtx_data.use_aos = true;
-#else
-  cuda_vtx_data.use_aos = false;
-#endif
 
   CMX_SETUP(cuda_vtx_data,pos,pos);
   CMX_SETUP(cuda_vtx_data,surface_normal,surface_normal);
   CMX_SETUP(cuda_vtx_data,vel,vel);
+  cuda_vtx_data.use_aos = false;
   cuda_vtx_data.alloc_locked(point_count);
   cuda_vtx_data.ptrs_to_cuda_soa("vtx_data_x0","vtx_data_x1");
-  cuda_vtx_data.ptrs_to_cuda_aos("vtx_data_0","vtx_data_1");
 
   const int max_block_count =
     int(0.5
@@ -2256,12 +2241,8 @@ Balloon::time_step_cuda(int steps)
     }
 
   const CUDA_Vtx_Data vtest = cuda_vtx_data[42];
-#ifdef VP_AOS
-  const int pos_array_chars = point_count * sizeof(cuda_vtx_data[0]);
-#else
-  const int pos_array_chars = point_count *
-    sizeof(cuda_vtx_data.sample_soa.pos[0]);
-#endif
+  const int pos_array_chars =
+    point_count * sizeof(cuda_vtx_data.sample_soa.pos[0]);
 
   if ( steps ) data_location = DL_CUDA;
   const bool two_pass = world.opt_physics_method == GP_cuda_2_pass;
@@ -2276,28 +2257,18 @@ Balloon::time_step_cuda(int steps)
         {
           pass_triangles_launch
             (Dg_tri, Db_tri, write_side,
-#ifdef VP_AOS
-             (CUDA_Vtx_Data_X*)vtx_data_in_d,
-#else
              &cuda_vtx_data.shadow_soa[read_side],
-#endif
              vtx_data_in_d, pos_array_chars);
 
           pass_vertices_launch
             (Dg_vtx, Db_vtx, write_side,
-             cuda_tri_data.get_dev_addr(),
-             cuda_tri_data.chars);
+             cuda_tri_data.get_dev_addr(), cuda_tri_data.chars);
         }
       else
         {
           pass_unified_launch
             (Dg_vtx, Db_vtx, write_side,
-#ifdef VP_AOS
-             (CUDA_Vtx_Data_X*)vtx_data_in_d,
-#else
-             &cuda_vtx_data.shadow_soa[read_side],
-#endif
-             pos_array_chars);
+             &cuda_vtx_data.shadow_soa[read_side], pos_array_chars);
 
           cuda_tower_volumes.swap();
         }
@@ -2375,17 +2346,9 @@ Balloon::cuda_data_to_cpu()
   for ( int idx=0; idx<point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
-#ifdef VP_AOS
-      CUDA_Vtx_Data* const g = &cuda_vtx_data[idx];
-      vec_sets(p->pos,g->pos);
-      vec_sets(p->vel,g->vel);
-      vec_sets(p->surface_normal,g->surface_normal);
-#else
       vec_sets(p->pos,cuda_vtx_data.soa.pos[idx]);
       vec_sets4(p->vel,cuda_vtx_data.soa.vel[idx]);
       vec_sets4(p->surface_normal,cuda_vtx_data.soa.surface_normal[idx]);
-#endif
-
     }
 }
 

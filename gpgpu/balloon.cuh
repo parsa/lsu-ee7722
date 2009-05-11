@@ -13,8 +13,6 @@
 
 #include <stdint.h>
 
-#undef VP_AOS
-
 #define CUDA_TRI_BLOCK_LG 6
 #define CUDA_TRI_BLOCK_SIZE (1<<CUDA_TRI_BLOCK_LG)
 
