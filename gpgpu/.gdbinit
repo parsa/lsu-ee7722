@@ -13,3 +13,6 @@ set print thread-events off
 # common errors such as free something twice.
 #
 set environment MALLOC_CHECK_ 2
+
+#set environment CUDA_PROFILE 1
+set environment CUDA_PROFILE_CONFIG .cuda-profile-config

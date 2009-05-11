@@ -146,7 +146,9 @@
 
 void vec_set(float3& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z;}
 void vec_sets(pCoor& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w=1;}
+void vec_sets(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w = b.w;}
 void vec_sets(pVect& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+void vec_sets4(pVect& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
 
 
  ///
@@ -282,7 +284,7 @@ public:
   }
   ~pCUDA_Memory()
   {
-    if ( data ) free(data);
+    if ( data ) if ( locked ) {CE(cudaFreeHost(data));} else { free(data); }
     if ( bid )
       {
         CE(cudaGLUnmapBufferObject(bid));
@@ -291,14 +293,22 @@ public:
       }
   }
 
-  T* alloc(int elements_p)
+  T* alloc_locked_maybe(int elements_p, bool locked_p)
   {
     if ( data ) pError_Msg("Double allocation of pCUDA_Memory.");
     elements = elements_p;
+    locked = locked_p;
     chars = elements * sizeof(T);
-    data = new T[elements];
+    if ( locked )
+      { CE(cudaMallocHost((void**)&data,chars)); }
+    else
+      { data = (T*) malloc(chars); }
+    new (data) T[elements];
     return data;
   }
+
+  T* alloc(int nelem) { return alloc_locked_maybe(nelem,false); }
+  T* alloc_locked(int nelem) { return alloc_locked_maybe(nelem,true); }
 
   void take(PStack<T>& stack)
   {
@@ -311,12 +321,17 @@ public:
   T& operator [] (int idx) const { return data[idx]; }
 
 private:
-  void alloc_maybe() { if ( !dev_addr[current] ) alloc_gpu_buffer(); }
-
-  void alloc_gpu_buffer()
+  void alloc_maybe() { alloc_maybe(current); }
+  void alloc_maybe(int side)
   {
-    ASSERTS( !dev_addr[current] );
-    CE(cudaMalloc(&dev_addr[current],chars));
+    if ( !dev_addr[side] ) alloc_gpu_buffer(side);
+  }
+
+  void alloc_gpu_buffer(){ alloc_gpu_buffer(current); }
+  void alloc_gpu_buffer(int side)
+  {
+    ASSERTS( !dev_addr[side] );
+    CE(cudaMalloc(&dev_addr[side],chars));
   }
 
   void alloc_gl_buffer()
@@ -330,13 +345,11 @@ private:
   }
 
 public:
-  T* get_dev_addr() { alloc_maybe(); return (T*)dev_addr[current];}
-  T* get_dev_addr_read() { return get_dev_addr(); }
-  T* get_dev_addr_write()
-  {
-    if ( !dev_addr[1-current] ) { swap(); alloc_gpu_buffer(); swap(); }
-    return (T*)dev_addr[1-current];
-  }
+  T* get_dev_addr() { return get_dev_addr(current); }
+  T* get_dev_addr(int side)
+  { alloc_maybe(side); return (T*)dev_addr[side]; }
+  T* get_dev_addr_read() { return get_dev_addr(current); }
+  T* get_dev_addr_write() { return get_dev_addr(1-current); }
 
   void to_cuda()
   {
@@ -366,8 +379,163 @@ public:
   GLuint bid;
   int current;
   T *data;
+  bool locked;
   int elements, chars;
 };
+
+
+struct pCM_Struc_Info
+{
+  int elt_size;
+  int offset_aos;
+  int soa_elt_idx;
+  size_t soa_cpu_base;
+};
+
+template<typename Taos, typename Tsoa>
+class pCUDA_Memory_X : public pCUDA_Memory<Taos>
+{
+public:
+  typedef pCUDA_Memory<Taos> pCM;
+  pCUDA_Memory_X()
+    : pCM(),alloc_unit_lg(8),alloc_unit_mask((1<<alloc_unit_lg)-1)
+  {
+    use_aos = false; data_aos_stale = false; soa_allocated = false;
+  }
+  void setup(uint elt_size, int offset_aos, void **soa_elt_ptr)
+  {
+    pCM_Struc_Info* const si = struc_info.pushi();
+    si->elt_size = elt_size;
+    si->offset_aos = offset_aos;
+    si->soa_cpu_base = -1;
+    si->soa_elt_idx = ((void**)soa_elt_ptr) - ((void**)&sample_soa);
+  }
+  void alloc(size_t nelements){ pCM::alloc(nelements); }
+  void alloc_soa()
+  {
+    if ( soa_allocated ) return;
+    soa_allocated = true;
+    size_t soa_cpu_base_next = 0;
+    while ( pCM_Struc_Info* const si = struc_info.iterate() )
+      {
+        si->soa_cpu_base = soa_cpu_base_next;
+        const size_t size = pCM::elements * si->elt_size;
+        const bool extra = size & alloc_unit_mask;
+        const size_t size_round =
+          ( size >> alloc_unit_lg ) + extra << alloc_unit_lg;
+        soa_cpu_base_next += size_round;
+      }
+    cuda_mem_all.alloc(soa_cpu_base_next);
+    void** soa_ptr = (void**)&soa;
+    char* const cpu_base = (char*) &cuda_mem_all.data[0];
+    while ( pCM_Struc_Info* const si = struc_info.iterate() )
+      soa_ptr[si->soa_elt_idx] = cpu_base + si->soa_cpu_base;
+  }
+
+  Taos& operator [] (int idx)
+  {
+    if ( data_aos_stale ) soa_to_aos();
+    return pCM::data[idx];
+  }
+
+  void aos_to_soa()
+  {
+    alloc_soa();
+    while ( pCM_Struc_Info* const si = struc_info.iterate() )
+      {
+        char* const soa_cpu_base = &cuda_mem_all[si->soa_cpu_base];
+        Taos* const aos_cpu_base =
+          (Taos*)(((char*)&pCM::data[0])+si->offset_aos);
+        for ( int i=0; i<pCM::elements; i++ )
+          memcpy( soa_cpu_base + i*si->elt_size,
+                  aos_cpu_base + i,  si->elt_size);
+      }
+  }
+  void soa_to_aos()
+  {
+    while ( pCM_Struc_Info* const si = struc_info.iterate() )
+      {
+        char* const soa_cpu_base = &cuda_mem_all[si->soa_cpu_base];
+        Taos* const aos_cpu_base =
+          (Taos*)(((char*)&pCM::data[0])+si->offset_aos);
+        for ( int i=0; i<pCM::elements; i++ )
+          memcpy( aos_cpu_base + i,
+                  soa_cpu_base + i*si->elt_size, si->elt_size);
+      }
+    data_aos_stale = false;
+  }
+
+  void to_cuda()
+  {
+    if ( use_aos ) { pCM::to_cuda();  return; }
+    aos_to_soa();
+    cuda_mem_all.to_cuda();
+  }
+  void from_cuda()
+  {
+    if ( use_aos ) { pCM::from_cuda();  return; }
+    cuda_mem_all.from_cuda();
+    data_aos_stale = true;
+  }
+
+  void swap()
+  {
+    pCM::swap();
+    cuda_mem_all.swap();
+  }
+
+  void ptrs_to_cuda_soa_side(const char *dev_name, int side)
+  {
+    alloc_soa();
+    void** soa = (void**)&shadow_soa[side];
+    char* const dev_base = (char*) cuda_mem_all.get_dev_addr(side);
+    while ( pCM_Struc_Info* const si = struc_info.iterate() )
+      soa[si->soa_elt_idx] = dev_base + si->soa_cpu_base;
+    CE(cudaMemcpyToSymbol
+       (dev_name, soa, sizeof(Tsoa), 0, cudaMemcpyHostToDevice));
+  }
+  void ptrs_to_cuda(char *dev_name_0, char *dev_name_1 = NULL)
+  {
+    ptrs_to_cuda_soa(dev_name_0,dev_name_1);
+  }
+  void ptrs_to_cuda_soa(char *dev_name_0, char *dev_name_1 = NULL)
+  {
+    ptrs_to_cuda_soa_side(dev_name_0,0);
+    if ( !dev_name_1 ) return;
+    ptrs_to_cuda_soa_side(dev_name_1,1);
+  }
+
+  void ptrs_to_cuda_aos_side(const char *dev_name, int side)
+  {
+    void* const dev_addr = pCM::get_dev_addr(side);
+    CE(cudaMemcpyToSymbol
+       (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
+  }
+  void ptrs_to_cuda_aos(char *dev_name_0, char *dev_name_1 = NULL)
+  {
+    ptrs_to_cuda_aos_side(dev_name_0,0);
+    if ( !dev_name_1 ) return;
+    ptrs_to_cuda_aos_side(dev_name_1,1);
+  }
+
+  const int alloc_unit_lg, alloc_unit_mask;
+  PStack<pCM_Struc_Info> struc_info;
+  pCUDA_Memory<char> cuda_mem_all;
+  bool use_aos;
+  bool data_aos_stale;
+  bool soa_allocated;
+
+  Tsoa shadow_soa[2];
+  Tsoa soa;
+
+  Tsoa sample_soa;
+  Taos sample_aos;
+};
+
+#define CMX_SETUP(mx,memb_soa,memb_aos)                                       \
+        mx.setup(sizeof(*mx.sample_soa.memb_soa),                             \
+                 ((char*)&mx.sample_aos.memb_aos)- ((char*)&mx.sample_aos),   \
+                 (void**)&mx.sample_soa.memb_soa)
 
 
  ///
@@ -752,11 +920,11 @@ public:
   //
   bool cuda_initialized;
   bool cuda_constants_stale;
-  pCUDA_Memory<CUDA_Tri_Strc> cuda_tri_strc;
-  pCUDA_Memory<CUDA_Tri_Work_Strc> cuda_tri_work_strc;
+  pCUDA_Memory_X<CUDA_Tri_Strc,CUDA_Tri_Strc_X> cuda_tri_strc;
+  pCUDA_Memory_X<CUDA_Tri_Work_Strc,CUDA_Tri_Work_Strc_X> cuda_tri_work_strc;
   pCUDA_Memory<CUDA_Tri_Data> cuda_tri_data;
-  pCUDA_Memory<CUDA_Vtx_Strc> cuda_vtx_strc;
-  pCUDA_Memory<CUDA_Vtx_Data> cuda_vtx_data;
+  pCUDA_Memory_X<CUDA_Vtx_Strc,CUDA_Vtx_Strc_X> cuda_vtx_strc;
+  pCUDA_Memory_X<CUDA_Vtx_Data,CUDA_Vtx_Data_X> cuda_vtx_data;
   pCUDA_Memory<float> cuda_tower_volumes;
   pCUDA_Memory<float3> cuda_centroid_parts;
   int tri_work_per_vtx;
@@ -1136,6 +1304,7 @@ Balloon::init(pCoor center, double r)
   glp_tri_data.prepare_two_buffers();
   glp_vtx_strc.alloc(point_count,GL_STATIC_DRAW);
   glp_tri_strc.alloc(tri_count,GL_STATIC_DRAW);
+
   cuda_tri_strc.alloc(tri_count);
   cuda_vtx_strc.alloc(point_count);
 
@@ -1815,16 +1984,30 @@ Balloon::cuda_data_partition()
   ASSERTS( tri_work_per_vtx_lg <= 3 );
   const int work_per_block = tri_work_per_vtx * block_size;
   const int work_count = work_per_block * block_count;
+  const int work_per_vtx_mask = tri_work_per_vtx - 1;
+
+  CMX_SETUP(cuda_tri_work_strc,a,pi);
+  CMX_SETUP(cuda_tri_work_strc,b,vi_opp0);
+  CMX_SETUP(cuda_tri_work_strc,length_relaxed,length_relaxed);
+  CMX_SETUP(cuda_tri_work_strc,c,pull_tid_0);
+
   cuda_tri_work_strc.alloc( work_count );
-  int ci = 0, wi = 0;
+  int wi = 0;
   CUDA_Tri_Work_Strc tw_pad; memset(&tw_pad,-1,sizeof(tw_pad));
   int waste = 0;
-  for ( int amt = 0; work_sizes.iterate(amt); )
+  for ( int blk = 0; blk < block_count; blk++ )
     {
-      for ( int i=0; i<amt; i++ ) cuda_tri_work_strc[ci++] = tri_work[wi++];
+      const int amt = work_sizes[blk];
+      CUDA_Tri_Work_Strc* const tw_blk =
+        &cuda_tri_work_strc[blk * work_per_block];
+      for ( int i=0; i<work_per_block; i++ )
+        {
+          const int idx =
+            ( i & work_per_vtx_mask ) << block_lg | i >> tri_work_per_vtx_lg;
+          tw_blk[idx] = i < amt ? tri_work[wi++] : tw_pad;
+        }
       int pad = work_per_block - amt;
       waste += pad;
-      while ( pad-- ) cuda_tri_work_strc[ci++] = tw_pad;
     }
   for ( int i=0; i<work_count; i++ ) cuda_tri_work_strc[i].pull_i = 0;
   int max_pull = 0;
@@ -1836,16 +2019,16 @@ Balloon::cuda_data_partition()
       const int ti = int(tw->length_relaxed);
       Balloon_Triangle* const tri = &triangles[ti];
       typeof tri->pi_opp* const t_optr = &tri->pi_opp;
-      const int round = i % tri_work_per_vtx;
       const int blk = i / tri_work_per_vtx >> block_lg;
-      const int tid = i / tri_work_per_vtx & block_mask;
+      const int tid = i & block_mask;
+      const int round_base = i & ~block_mask;
       typeof tw->pi* const w_vptr = &tw->pi;
       for ( int v=0; v<3; v++ )
         {
           const int vi = w_vptr[v];
           const int vi_blk = vi >> block_lg;
           if ( vi_blk != blk ) continue;
-          const int vi_tri = vi * tri_work_per_vtx + round;
+          const int vi_tri = round_base + ( vi & block_mask );
           CUDA_Tri_Work_Strc* const tv = &cuda_tri_work_strc[vi_tri];
           typeof tv->vi_opp0* const w_optr = &tv->vi_opp0;
           typeof tv->pull_tid_0* const w_pptr = &tv->pull_tid_0;
@@ -1872,21 +2055,25 @@ Balloon::cuda_data_partition()
     }
 }
 
-template <typename T> void to_dev_ds(const char* const dst_name, T src)
+template <typename T>
+void to_dev_ds(const char* const dst_name, int idx, T src)
 {
   T cpy = src;
-  CE(cudaMemcpyToSymbol(dst_name, &cpy, sizeof(T), 0, cudaMemcpyHostToDevice));
+  const int offset = sizeof(void*) * idx;
+  CE(cudaMemcpyToSymbol(dst_name,&cpy,sizeof(T),offset,cudaMemcpyHostToDevice));
 }
 
-void to_dev_ds(const char* const dst_name, double& src)
+void to_dev_ds(const char* const dst_name, int idx, double& src)
 {
   ASSERTS( false );
 }
 
-#define TO_DEV_DS(dst,src) to_dev_ds(#dst,src);
-#define TO_DEV(var) to_dev_ds<typeof var>(#var,var)
-#define TO_DEV_OM(obj,memb) to_dev_ds(#memb,obj.memb)
-#define TO_DEV_OM_F(obj,memb) to_dev_ds(#memb,float(obj.memb))
+#define TO_DEV_DS(dst,src) to_dev_ds(#dst,0,src);
+#define TO_DEV_DSS(dst,src1,src2) \
+        to_dev_ds(#dst,0,src1); to_dev_ds(#dst,1,src2);
+#define TO_DEV(var) to_dev_ds<typeof var>(#var,0,var)
+#define TO_DEV_OM(obj,memb) to_dev_ds(#memb,0,obj.memb)
+#define TO_DEV_OM_F(obj,memb) to_dev_ds(#memb,0,float(obj.memb))
 
 void
 Balloon::init_cuda()
@@ -1915,23 +2102,52 @@ Balloon::init_cuda()
   CE(cudaEventCreate(&world.frame_start_ce));
   CE(cudaEventCreate(&world.frame_stop_ce));
 
-  cuda_vtx_strc.to_cuda();
+  CMX_SETUP(cuda_vtx_strc,a,n0);
+  CMX_SETUP(cuda_vtx_strc,b,n4);
+#ifdef VP_AOS
+  cuda_vtx_strc.use_aos = true;
   TO_DEV_DS(vtx_strc,cuda_vtx_strc.get_dev_addr());
+#else
+  cuda_vtx_strc.use_aos = false;
+  cuda_vtx_strc.ptrs_to_cuda_soa("vtx_strc_x");
+#endif
+  cuda_vtx_strc.to_cuda();
 
-  cuda_tri_strc.to_cuda();
+  CMX_SETUP(cuda_tri_strc,a,pi);
+  CMX_SETUP(cuda_tri_strc,b,qi_opp);
+  CMX_SETUP(cuda_tri_strc,length_relaxed,length_relaxed);
+#ifdef VP_AOS
+  cuda_tri_strc.use_aos = true;
   TO_DEV_DS(tri_strc,cuda_tri_strc.get_dev_addr());
+#else
+  cuda_tri_strc.use_aos = false;
+  cuda_tri_strc.ptrs_to_cuda_soa("tri_strc_x");
+#endif
+  cuda_tri_strc.to_cuda();
 
   cuda_tri_data.alloc(tri_count);
   TO_DEV_DS(tri_data,cuda_tri_data.get_dev_addr());
 
-  cuda_vtx_data.alloc(point_count);
+#ifdef VP_AOS
+  cuda_vtx_data.use_aos = true;
+#else
+  cuda_vtx_data.use_aos = false;
+#endif
+
+  CMX_SETUP(cuda_vtx_data,pos,pos);
+  CMX_SETUP(cuda_vtx_data,surface_normal,surface_normal);
+  CMX_SETUP(cuda_vtx_data,vel,vel);
+  cuda_vtx_data.alloc_locked(point_count);
+  cuda_vtx_data.ptrs_to_cuda_soa("vtx_data_x0","vtx_data_x1");
+  cuda_vtx_data.ptrs_to_cuda_aos("vtx_data_0","vtx_data_1");
 
   const int max_block_count =
     int(0.5
         + double(tri_count)/min(CUDA_TRI_BLOCK_SIZE,CUDA_VTX_BLOCK_SIZE));
 
   cuda_tower_volumes.alloc(max_block_count);
-  TO_DEV_DS(tower_volumes,cuda_tower_volumes.get_dev_addr());
+  TO_DEV_DSS(tower_volumes,cuda_tower_volumes.get_dev_addr(0),
+             cuda_tower_volumes.get_dev_addr(1));
 
   cuda_centroid_parts.alloc(max_block_count);
   TO_DEV_DS(centroid_parts,cuda_centroid_parts.get_dev_addr());
@@ -1941,6 +2157,7 @@ Balloon::init_cuda()
   TO_DEV_DS(tri_work_strc,cuda_tri_work_strc.get_dev_addr());
   TO_DEV(tri_work_per_vtx);
   TO_DEV(tri_work_per_vtx_lg);
+  cuda_tri_work_strc.ptrs_to_cuda("tri_work_strc_x");
 
   Dg_tri.x = int(ceil(double(tri_count)/CUDA_TRI_BLOCK_SIZE));
   Dg_tri.y = Dg_tri.z = 1;
@@ -2039,6 +2256,12 @@ Balloon::time_step_cuda(int steps)
     }
 
   const CUDA_Vtx_Data vtest = cuda_vtx_data[42];
+#ifdef VP_AOS
+  const int pos_array_chars = point_count * sizeof(cuda_vtx_data[0]);
+#else
+  const int pos_array_chars = point_count *
+    sizeof(cuda_vtx_data.sample_soa.pos[0]);
+#endif
 
   if ( steps ) data_location = DL_CUDA;
   const bool two_pass = world.opt_physics_method == GP_cuda_2_pass;
@@ -2046,27 +2269,35 @@ Balloon::time_step_cuda(int steps)
   for ( int i=0; i<steps; i++ )
     {
       CUDA_Vtx_Data* const vtx_data_in_d = cuda_vtx_data.get_dev_addr_read();
-      CUDA_Vtx_Data* const vtx_data_out_d = cuda_vtx_data.get_dev_addr_write();
+      const int read_side = cuda_vtx_data.current;
+      const int write_side = 1 - read_side;
 
       if ( two_pass )
         {
           pass_triangles_launch
-            (Dg_tri, Db_tri, vtx_data_in_d, cuda_vtx_data.chars);
+            (Dg_tri, Db_tri, write_side,
+#ifdef VP_AOS
+             (CUDA_Vtx_Data_X*)vtx_data_in_d,
+#else
+             &cuda_vtx_data.shadow_soa[read_side],
+#endif
+             vtx_data_in_d, pos_array_chars);
 
           pass_vertices_launch
-            (Dg_vtx, Db_vtx,
-             cuda_tri_data.get_dev_addr(), vtx_data_out_d,
+            (Dg_vtx, Db_vtx, write_side,
+             cuda_tri_data.get_dev_addr(),
              cuda_tri_data.chars);
         }
       else
         {
-          float* const tv_in = cuda_tower_volumes.get_dev_addr_read();
-          float* const tv_out = cuda_tower_volumes.get_dev_addr_write();
-
           pass_unified_launch
-            (Dg_vtx, Db_vtx,
-             vtx_data_in_d, vtx_data_out_d, tv_in, tv_out,
-             cuda_tri_data.chars, cuda_vtx_data.chars);
+            (Dg_vtx, Db_vtx, write_side,
+#ifdef VP_AOS
+             (CUDA_Vtx_Data_X*)vtx_data_in_d,
+#else
+             &cuda_vtx_data.shadow_soa[read_side],
+#endif
+             pos_array_chars);
 
           cuda_tower_volumes.swap();
         }
@@ -2099,13 +2330,14 @@ Balloon::time_step_cuda(int steps)
   float cuda_time = -1.1;
   CE(cudaEventElapsedTime(&cuda_time,world.frame_start_ce,world.frame_stop_ce));
   world.frame_timer.cuda_frame_time_set(cuda_time);
+
+  CUDA_Vtx_Data vtest_aftera = cuda_vtx_data[42];
+
   if ( !opt_cpu_interleave )
     {
       centroid_compute();
       pressure_compute();
     }
-
-  CUDA_Vtx_Data vtest_aftera = cuda_vtx_data[42];
 
 #undef TO_DEV
 #undef TO_DEV_OM
@@ -2143,10 +2375,17 @@ Balloon::cuda_data_to_cpu()
   for ( int idx=0; idx<point_count; idx++ )
     {
       Balloon_Vertex* const p = &points[idx];
+#ifdef VP_AOS
       CUDA_Vtx_Data* const g = &cuda_vtx_data[idx];
       vec_sets(p->pos,g->pos);
       vec_sets(p->vel,g->vel);
       vec_sets(p->surface_normal,g->surface_normal);
+#else
+      vec_sets(p->pos,cuda_vtx_data.soa.pos[idx]);
+      vec_sets4(p->vel,cuda_vtx_data.soa.vel[idx]);
+      vec_sets4(p->surface_normal,cuda_vtx_data.soa.surface_normal[idx]);
+#endif
+
     }
 }
 

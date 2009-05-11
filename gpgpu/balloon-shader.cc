@@ -167,7 +167,7 @@ plan_c_pass_2_vertices()
   indices[6] = lo_idx(in_indices.w);
   indices[7] = hi_idx(in_indices.w);
 
-  vec3 force_spring = vec3(0.0,0.0,0.0);
+  vec4 force_spring4 = vec4(0.0,0.0,0.0,0.0);
   vec4 surface_normal_vol = vec4(0.0,0.0,0.0,0.0);
 
   for ( int i=0; i<8; i++ )
@@ -177,9 +177,10 @@ plan_c_pass_2_vertices()
       int idx_base = idx_packed & ~0x3;
       int idx_force = idx_base + 1 + ( idx_packed & 0x3 );
       surface_normal_vol += texelFetchBuffer(tex_data_tri,idx_base);
-      force_spring += texelFetchBuffer(tex_data_tri,idx_force);
+      force_spring4 += texelFetchBuffer(tex_data_tri,idx_force);
     }
   vec3 surface_normal = (1./6.) * surface_normal_vol.xyz;
+  vec3 force_spring = force_spring4.xyz;
 
   float pressure_factor = pressure_factor_coeff / abs(volume);
 

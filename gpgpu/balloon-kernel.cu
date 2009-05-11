@@ -12,15 +12,20 @@
 #include "balloon.cuh"
 
 __constant__ CUDA_Tri_Strc* tri_strc;
+__constant__ CUDA_Tri_Strc_X tri_strc_x;
 __constant__ CUDA_Vtx_Strc* vtx_strc;
+__constant__ CUDA_Vtx_Strc_X vtx_strc_x;
 __constant__ CUDA_Tri_Data* tri_data;
-__constant__ float* tower_volumes;
+__constant__ CUDA_Vtx_Data *vtx_data_0, *vtx_data_1;
+__constant__ CUDA_Vtx_Data_X vtx_data_x0, vtx_data_x1;
+__constant__ float *tower_volumes[2];
 __constant__ float3* centroid_parts;
 
-texture<float4> vtx_data_tex;
+texture<float4> vtx_data_pos_tex;
 texture<float4> tri_data_tex;
 
 __constant__ CUDA_Tri_Work_Strc* tri_work_strc;
+__constant__ CUDA_Tri_Work_Strc_X tri_work_strc_x;
 __constant__ int tri_work_per_vtx;
 __constant__ int tri_work_per_vtx_lg;
 
@@ -49,6 +54,13 @@ __constant__ float platform_xmax;
 __constant__ float platform_zmin;
 __constant__ float platform_zmax;
 
+
+__device__ float4 make_float4(float3 f3, float f)
+{
+  return make_float4(f3.x,f3.y,f3.z,f);
+}
+
+__device__ float3 make_float3(float4 f4){return make_float3(f4.x,f4.y,f4.z);}
 
 __device__ int
 div_p2_ceil(int num, int den_lg)
@@ -118,9 +130,9 @@ reduce(int block_lg, float *shared_array, float my_value, bool all)
     {
       // Note: CUDA is not good at unrolling loops or optimizing once
       // unrolled. For that matter, it's not good at scheduling
-      // either. (CUDA 2.1)  That's why to loops below are hand unrolled.
-      // Thankfully CUDA does optimize out the if statements.
-      //
+      // either. (CUDA 2.1) That's why the two loops below are hand
+      // unrolled. Thankfully CUDA does optimize out the if
+      // statements.
 #define ITER(i) vol_sum += shared_array[ (i << block_lg_l ) + tid ]
 #define ITER2(i) { ITER(i); ITER(i+1); }
 #define ITER4(i) { ITER2(i); ITER2(i+2); }
@@ -167,44 +179,27 @@ reduce(int block_lg, float *shared_array, float my_value, bool all)
 
 __device__ float3 vtx_data_pos(int idx)
 {
-  const int idx_tex = idx * 3 + 2;
-  const float4 pos4 = tex1Dfetch(vtx_data_tex, idx_tex);
-  return make_float3(pos4.x,pos4.y,pos4.z);
+#ifdef VP_AOS
+  const int idx_tex = idx * 3;
+#else
+  const int idx_tex = idx;
+#endif
+  return make_float3(tex1Dfetch(vtx_data_pos_tex, idx_tex));
 }
 
 __device__ float3 vtx_data_vel(int idx)
 {
-  const int idx_tex = idx * 3 + 1;
-  const float4 pos4 = tex1Dfetch(vtx_data_tex, idx_tex);
-  return make_float3(pos4.x,pos4.y,pos4.z);
+  return make_float3(tex1Dfetch(vtx_data_pos_tex, idx * 3 + 2));
 }
 
 __device__ float3 tri_data_surface_normal(int idx)
 {
-  const int idx_tex = idx * 3;
-  const float4 sn = tex1Dfetch(tri_data_tex, idx_tex);
-  return make_float3(sn.x,sn.y,sn.z);
+  return make_float3(tex1Dfetch(tri_data_tex, idx << 2));
 }
 
 __device__ float3 tri_data_force(int idx, int member)
 {
-  const int idx_tex_base = idx * 3;
-  float4 el, eh;
-  switch (member) {
-  case 0:                       // force_p
-    el = tex1Dfetch(tri_data_tex,idx_tex_base);
-    eh = tex1Dfetch(tri_data_tex,idx_tex_base+1);
-    return make_float3(el.w,eh.x,eh.y);
-  case 1:                       // force_q
-    el = tex1Dfetch(tri_data_tex,idx_tex_base+1);
-    eh = tex1Dfetch(tri_data_tex,idx_tex_base+2);
-    return make_float3(el.z,el.w,eh.x);
-  case 2:                       // force_r
-    el = tex1Dfetch(tri_data_tex,idx_tex_base+2);
-    return make_float3(el.y,el.z,el.w);
-  default:                      // Unreachable.
-    return make_float3(0,0,0);
-  }
+  return make_float3(tex1Dfetch(tri_data_tex, (idx<<2)+1+member));
 }
 
 
@@ -231,15 +226,21 @@ repforce_compute(float3 p_pos, int po_idx)
 ///
 
 __global__ void pass_triangles();
-__global__ void pass_vertices(CUDA_Vtx_Data *vtx_data_out);
+__global__ void pass_vertices(int write_side);
 
 
  __host__ void
 pass_triangles_launch
- (dim3 dg, dim3 db, CUDA_Vtx_Data *vtx_data, size_t vtx_data_size)
+ (dim3 dg, dim3 db, int write_size,
+  CUDA_Vtx_Data_X *vtx_data_in,
+  CUDA_Vtx_Data *vtx_data, size_t vtx_data_size)
  {
    size_t offset;
-   cudaBindTexture(&offset, vtx_data_tex, vtx_data, vtx_data_size);
+#ifdef VP_AOS
+   cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data, vtx_data_size);
+#else
+   cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data_in->pos, vtx_data_size);
+#endif
    pass_triangles<<<dg,db>>>();
  }
 
@@ -253,7 +254,16 @@ pass_triangles()
   __syncthreads();
   if ( ti >= tri_count ) return;
 
+#ifdef VP_AOS
   const CUDA_Tri_Strc ts = tri_strc[ti];
+#else
+  CUDA_Tri_Strc ts;
+  ts.length_relaxed = tri_strc_x.length_relaxed[ti];
+  const CUDA_Tri_Strc_X_a tsa = tri_strc_x.a[ti];
+  ts.pi = tsa.pi; ts.qi = tsa.qi; ts.ri = tsa.ri;
+  const CUDA_Tri_Strc_X_b tsb = tri_strc_x.b[ti];
+  ts.pi_opp = tsa.pi_opp; ts.qi_opp = tsb.qi_opp; ts.ri_opp = tsb.ri_opp;
+#endif
 
   const float3 ppos = vtx_data_pos(ts.pi);
   const float3 qpos = vtx_data_pos(ts.qi);
@@ -275,35 +285,36 @@ pass_triangles()
 
   const float perimeter = length(p_to_c) + length(q_to_c) + length(r_to_c);
 
-  tri_data[ti].surface_normal = pqr_cross;
-
   const float length_relaxed = ts.length_relaxed;
   const float eff_length = max(0.0f, perimeter - length_relaxed );
   const float spring_force = eff_length * spring_constant;
 
-  tri_data[ti].force_p = vec_add(force_p, vec_scale(spring_force, p_to_c));
-  tri_data[ti].force_q = vec_add(force_q, vec_scale(spring_force, q_to_c));
-  tri_data[ti].force_r = vec_add(force_r, vec_scale(spring_force, r_to_c));
+  tri_data[ti].surface_normal = make_float4(pqr_cross,0);
+  tri_data[ti].force_p =
+    make_float4(vec_add(force_p, vec_scale(spring_force, p_to_c)),0);
+  tri_data[ti].force_q =
+    make_float4(vec_add(force_q, vec_scale(spring_force, q_to_c)),0);
+  tri_data[ti].force_r = 
+    make_float4(vec_add(force_r, vec_scale(spring_force, r_to_c)),0);
 
   const float vol_sum =
     reduce(CUDA_TRI_BLOCK_LG,volumes,tower_volume_x2 * 0.5f,false);
-  if ( threadIdx.x == 0 ) tower_volumes[ blockIdx.x ] = vol_sum;
+  if ( threadIdx.x == 0 ) tower_volumes[0][ blockIdx.x ] = vol_sum;
 }
 
 __host__ void
 pass_vertices_launch
-(dim3 dg, dim3 db, CUDA_Tri_Data *tri_data, CUDA_Vtx_Data *vtx_out,
- size_t tri_data_size)
+(dim3 dg, dim3 db, int write_side, CUDA_Tri_Data *tri_data, size_t tri_data_size)
 {
   size_t offset;
   cudaBindTexture(&offset, tri_data_tex, tri_data, tri_data_size);
-  pass_vertices<<<dg,db>>>(vtx_out);
-  cudaUnbindTexture(vtx_data_tex);
+  pass_vertices<<<dg,db>>>(write_side);
+  cudaUnbindTexture(vtx_data_pos_tex);
   cudaUnbindTexture(tri_data_tex);
 }
 
 __global__ void
-pass_vertices(CUDA_Vtx_Data *vtx_data_out)
+pass_vertices(int write_side)
 {
   const int tid = threadIdx.x;
   const int vi = blockIdx.x * blockDim.x + threadIdx.x;
@@ -315,8 +326,9 @@ pass_vertices(CUDA_Vtx_Data *vtx_data_out)
   const int start = tid * vol_per_thread;
   const int stop = min(grid_dim_tri, start + vol_per_thread);
   float my_vol = 0;
-  for ( int i=start; i<stop; i++ ) my_vol += tower_volumes[i];
+  for ( int i=start; i<stop; i++ ) my_vol += tower_volumes[0][i];
   const float volume = reduce(CUDA_VTX_BLOCK_LG,volumes,my_vol,true);
+  if ( vi >= point_count ) return;
 
   const float friction_coefficient = .04;
   const float bounce_factor = 0.0;
@@ -324,9 +336,24 @@ pass_vertices(CUDA_Vtx_Data *vtx_data_out)
 
   const float3 gravity = make_float3(0.0,-gravity_mag,0.0);
 
+#ifdef VP_AOS
   const float3 pos = vtx_data_pos(vi);
   const float3 vel = vtx_data_vel(vi);
+#else
+  CUDA_Vtx_Data_X vtx_data_r = write_side ? vtx_data_x0 : vtx_data_x1;
+  const float3 vel = make_float3(vtx_data_r.vel[vi]);
+  const float3 pos = make_float3(vtx_data_r.pos[vi]);
+#endif
+
+#ifdef VP_AOS
   const CUDA_Vtx_Strc vs = vtx_strc[vi];
+#else
+  CUDA_Vtx_Strc_X_a vsa = vtx_strc_x.a[vi];
+  CUDA_Vtx_Strc_X_b vsb = vtx_strc_x.b[vi];
+  CUDA_Vtx_Strc vs;
+  vs.n0=vsa.n0; vs.n1=vsa.n1; vs.n2=vsa.n2; vs.n3=vsa.n3;
+  vs.n4=vsb.n4; vs.n5=vsb.n5; vs.n6=vsb.n6; vs.n7=vsb.n7;
+#endif
 
   float3 force_spring = make_float3(0.0,0.0,0.0);
   float3 surface_normal_sum = make_float3(0.0,0.0,0.0);
@@ -412,9 +439,21 @@ pass_vertices(CUDA_Vtx_Data *vtx_data_out)
         vec_addto(vel_next, vec_scale( -delta_v, normalize(xzvel) ));
     }
 
-  vtx_data_out[vi].surface_normal = surface_normal;
-  vtx_data_out[vi].vel = vel_next;
-  vtx_data_out[vi].pos = pos_next;
+#ifdef VP_AOS
+
+  CUDA_Vtx_Data* const vtx_data = write_side ? vtx_data_1 : vtx_data_0;
+  vtx_data[vi].surface_normal = surface_normal;
+  vtx_data[vi].vel = vel_next;
+  vtx_data[vi].pos = pos_next;
+
+#else
+
+  CUDA_Vtx_Data_X vtx_data_w = write_side ? vtx_data_x1 : vtx_data_x0;
+  vtx_data_w.surface_normal[vi] = make_float4(surface_normal,0);
+  vtx_data_w.vel[vi] = make_float4(vel_next,0);
+  vtx_data_w.pos[vi] = make_float4(pos_next,1);
+
+#endif
 }
 
 
@@ -430,32 +469,36 @@ struct CUDA_Tri_Shared {
   float3 surface_normal;
 };
 
-__global__ void pass_unified
-(CUDA_Vtx_Data *vtx_data_out, float *tv_in, float *tv_out);
+__global__ void pass_unified(int write_side);
 
 __host__ void
 pass_unified_launch
-(dim3 dg, dim3 db,
- CUDA_Vtx_Data *vtx_data_in, CUDA_Vtx_Data *vtx_out,
- float *tv_in, float *tv_out,
- size_t tri_data_size, size_t vtx_data_size )
+(dim3 dg, dim3 db, int write_side,
+ CUDA_Vtx_Data_X *vtx_data_in, size_t vtx_data_size )
 {
   size_t offset;
-  cudaBindTexture(&offset, vtx_data_tex, vtx_data_in, vtx_data_size);
-  pass_unified<<<dg,db>>>(vtx_out,tv_in,tv_out);
-  cudaUnbindTexture(vtx_data_tex);
+#ifdef VP_AOS
+  cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data_in, vtx_data_size);
+#else
+  cudaBindTexture(&offset, vtx_data_pos_tex, vtx_data_in->pos, vtx_data_size);
+#endif
+  pass_unified<<<dg,db>>>(write_side);
+  cudaUnbindTexture(vtx_data_pos_tex);
 }
 
 __global__ void
-pass_unified
-(CUDA_Vtx_Data *vtx_data_out, float *tower_volumes_in, float *tower_volumes_out)
+pass_unified(int write_side)
 {
   const int tid = threadIdx.x;
   const int vtx_bk_base = __mul24(blockIdx.x , blockDim.x);
   const int vi = vtx_bk_base + tid;
-  const int work_idx_base = __mul24(vi , tri_work_per_vtx);
+  const int work_idx_base = __mul24(tri_work_per_vtx, vtx_bk_base) + tid;
   const int block_lg = CUDA_VTX_BLOCK_LG;
   const int block_size = CUDA_VTX_BLOCK_SIZE;
+  float* const tower_volumes_in = 
+    write_side ? tower_volumes[0] : tower_volumes[1];
+  float* const tower_volumes_out =
+    write_side ? tower_volumes[1] : tower_volumes[0];
 
   __shared__ float volumes[block_size], volumes_read[block_size];
   __shared__ CUDA_Tri_Shared tri_shared[block_size];
@@ -476,17 +519,31 @@ pass_unified
   float3 force_spring = make_float3(0,0,0);
   float3 surface_normal_sum = make_float3(0,0,0);
 
+#ifndef VP_AOS
+  CUDA_Vtx_Data_X vtx_data_r = write_side ? vtx_data_x0 : vtx_data_x1;
+#endif
+
   const float3 pos =
     vi < point_count ? vtx_data_pos(vi) : make_float3(0,0,0);
 
   for ( int i=0; i<tri_work_per_vtx; i++ )
     {
-      const CUDA_Tri_Work_Strc ts = tri_work_strc[work_idx_base+i];
+      const int widx = work_idx_base + ( i << block_lg );
+      CUDA_Tri_Work_Strc ts;
+      CUDA_Tri_Work_Strc_X_a tsa = tri_work_strc_x.a[widx];
+      CUDA_Tri_Work_Strc_X_b tsb = tri_work_strc_x.b[widx];
+      CUDA_Tri_Work_Strc_X_c tsc = tri_work_strc_x.c[widx];
+      ts.length_relaxed = tri_work_strc_x.length_relaxed[widx];
+      ts.pi = tsa.pi; ts.qi = tsa.qi; ts.ri = tsa.ri; ts.pull_i = tsa.pull_i;
+      ts.vi_opp0 = tsb.vi_opp0; ts.vi_opp1 = tsb.vi_opp1;
+      ts.vi_opp2 = tsb.vi_opp2; ts.vi_opp3 = tsb.vi_opp3;
+      ts.pull_tid_0 = tsc.pull_tid_0; ts.pull_tid_1 = tsc.pull_tid_1;
+      ts.pull_tid_2 = tsc.pull_tid_2; ts.pull_tid_3 = tsc.pull_tid_3;
       const int ts_pull_i =  ts.pull_i;
 
       /// Compute information for a triangle (if there is one).
       //
-      if ( ts.pi != -1 )
+      if ( ts.pi != ts.ri || ts.pi != ts.qi ) // Compiler Workaround
         {
           const float3 ppos = vtx_data_pos(ts.pi);
           const float3 qpos = vtx_data_pos(ts.qi);
@@ -572,7 +629,11 @@ pass_unified
 
   const float3 gravity = make_float3(0.0,-gravity_mag,0.0);
 
+#ifdef VP_AOS
   const float3 vel = vtx_data_vel(vi);
+#else
+  const float3 vel = make_float3(vtx_data_r.vel[vi]);
+#endif
 
   const float3 surface_normal = vec_scale((1./6.), surface_normal_sum);
 
@@ -635,7 +696,19 @@ pass_unified
         vec_addto(vel_next, vec_scale( -delta_v, normalize(xzvel) ));
     }
 
-  vtx_data_out[vi].surface_normal = surface_normal;
-  vtx_data_out[vi].vel = vel_next;
-  vtx_data_out[vi].pos = pos_next;
+#ifdef VP_AOS
+
+  CUDA_Vtx_Data* const vtx_data = write_side ? vtx_data_1 : vtx_data_0;
+  vtx_data[vi].surface_normal = surface_normal;
+  vtx_data[vi].vel = vel_next;
+  vtx_data[vi].pos = pos_next;
+
+#else
+
+  CUDA_Vtx_Data_X vtx_data_x = write_side ? vtx_data_x1 : vtx_data_x0;
+  vtx_data_x.surface_normal[vi] = make_float4(surface_normal,0);
+  vtx_data_x.vel[vi] = make_float4(vel_next,0);
+  vtx_data_x.pos[vi] = make_float4(pos_next,1);
+
+#endif
 }

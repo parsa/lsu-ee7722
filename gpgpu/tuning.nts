@@ -37,7 +37,7 @@ Tri: red, Vtx: red or partitioned sum.
 3.8   32 th / block
 4.4   16 th / block
 
-Using 64 th / block, reduction trees.
+Using 64 th / block, reduction trees, two pass.
 3.9 Use global memory for vtx data in tri-pass. (The method used till now.)
 3.4 Use texture cache for vtx data in triangle pass.
 3.3 Use texture cache for vtx data in triangle and vtx pass.
@@ -48,6 +48,13 @@ Using 64 th / block, reduction trees.
 1.86 Eliminate double-precision calculations.
 1.80 Reorganize CUDA_Tri_Strc to allow vector loads. (Seven to 3?)
 1.77 Reorganize CUDA_Vtx_Strc to allow vector loads. (Eight to 2 loads.)
+
+1.36 AOS implementation.
+1.21 AOS implementation, but make sure tri_data stores use vector insn.
+1.23 All but tri_data soa, but compiler refuses to do a vector load.
+1.10 All but tri_data soa, make sure tri_data stores at least use vector insn.
+1.08 Additional changes. Umm...
+1.06 Workaround so that vertex indices loaded with two rather than 3 loads.
 
 Single-Pass, 64 threads / block
 1.76 First cut of single-pass implementation.
@@ -66,6 +73,12 @@ Single-Pass, 64 threads / block
 1.07 Eliminate thread sync between last kernel launch and data copy.
 1.05 Hand unroll loops in volume-write reduction.
 1.04 Hand unroll both reduction loops.
+1.03 Make CUDA_Tri_Work_Strc sequential for tid, not for iterations.
+0.96 Transpose CUDA_Tri_Work_Strc into SOA.
+0.89 Also transpose CUDA_Vtx_Data into SOA (just to avoid store incoherence.)
+
+Other Experiments:
+ + 0.14: Unneeded second texture cache bind.
 
 3.71 2^3 th / blk, about    blocks, 1/4 warp / blk
 2.16 2^4 th / blk, about 64 blocks, 1/2 warp / blk
@@ -85,3 +98,19 @@ Run with added structure to test memory access alternatives.
 1.81 Use perfectly laid out 16-byte structure, but transpose low idx bit et al.
 The strided access didn't seem to hurt performance.
 
+
+Two-Pass, AOS
+_Z14pass_trianglesv  gld_incoherent=[ 1280 ] gst_incoherent=[ 2568 ] 
+_Z13pass_verticesi gld_incoherent=[ 256 ] gst_incoherent=[ 1536 ] 
+
+TRI:  gputime=[ 17.728 ] cputime=[ 38.000 ] occupancy=[ 0.333 ] divergent_branch=[ 9 ] instructions=[ 1048 ] gld_incoherent=[ 1280 ] gst_incoherent=[ 2568 ] 
+VTX:  gputime=[ 23.328 ] cputime=[ 45.000 ] occupancy=[ 0.417 ] divergent_branch=[ 3 ] instructions=[ 679 ] gld_incoherent=[ 256 ] gst_incoherent=[ 1536 ] 
+
+Two-Pass SOA
+
+TRI: gputime=[ 15.584 ] cputime=[ 36.000 ] occupancy=[ 0.333 ] divergent_branch=[ 9 ] instructions=[ 947 ] gld_incoherent=[ 640 ] gst_incoherent=[ 2568 ] 
+VTX: gputime=[ 18.464 ] cputime=[ 40.000 ] occupancy=[ 0.417 ] divergent_branch=[ 3 ] instructions=[ 697 ] gld_incoherent=[ 0 ] gst_incoherent=[ 0 ] 
+
+
+TRI:  gputime=[ 14.912 ] cputime=[ 35.000 ] occupancy=[ 0.333 ] divergent_branch=[ 9 ] instructions=[ 868 ] gld_incoherent=[ 0 ] gst_incoherent=[ 2568 ] 
+VTX:  gputime=[ 17.248 ] cputime=[ 33.000 ] occupancy=[ 0.333 ] divergent_branch=[ 3 ] instructions=[ 667 ] gld_incoherent=[ 0 ] gst_incoherent=[ 0 ] 

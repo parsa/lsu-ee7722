@@ -17,7 +17,7 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 .SUFFIXES: .cu .cuh
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
@@ -30,6 +30,7 @@ default:balloon
 
 .cu.o:
 	$(CXX) $(CFLAGS) -c $*.cu
+#	~/lbuild/decuda-0.4.2/decuda -p -o $*.cubin.ptx $*.sm_10.cubin 
 
 balloon.o: Makefile ../opengl/coord.h ../opengl/util.h ../opengl/shader.h 
 balloon.o: balloon.cuh balloon.cc
