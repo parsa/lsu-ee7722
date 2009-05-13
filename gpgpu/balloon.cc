@@ -685,8 +685,9 @@ struct Balloon_Vertex {
   int edge_in_count;
   int edge_in[6];
   double eta;
-  double theta;
+  double theta, delta_theta;
   int ring;
+  int edge_long_next; // Longitude next.
 };
 
 // Structural Data for OpenGL Physics, One per Triangle
@@ -700,10 +701,10 @@ struct GLP_Tri_Strc {
 // Structural Data for OpenGL Physics, One per Vertex
 //
 struct GLP_Vtx_Strc {
-  float self_idx;
-  float left_idx;                     // Not used.
+  int self_idx_encoded;
+  int tri_idx_base;  // Tri idx of neighbor i is tri_idx_base + neighbors[i];
   uint16_t neighbors[VTX_TRI_DEG_MAX]; // Index of vertex's triangles.
-}; // 8 + 16 = 24 bytes. Yuck!
+};
 
 
 // GPU-Computed Balloon Data for Triangles
@@ -1002,7 +1003,7 @@ World::init()
   balloon.opt_cpu_interleave = false;
   balloon.damping_factor = 0.2;
   balloon.spring_constant = 40.0;
-  balloon.rep_constant = 0.1;
+  balloon.rep_constant = 0.01;
   balloon.air_resistance = 0.001;
   balloon.gas_amount = 0;
   balloon.surface_mass = 1;
@@ -1072,15 +1073,16 @@ Balloon::init(pCoor center, double r)
   nom_volume = 4.0/3.0 * M_PI * r * r *r;
   const int equator_points = 60;
   const int slice_points_min = 6;
-  static const double two_pi = 2 * M_PI;
+  const double two_pi = 2 * M_PI;
+  const double half_pi = 0.5 * M_PI;
   const double equator_interpoint_radians = two_pi / equator_points;
   const double equator_interpoint = r * equator_interpoint_radians;
-  const double epsilon = 0.00001;
+  const double epsilon = 0.00000001;
   point_count = 0;
 
   Balloon_Vertex* const pole_south = points.pushi();
   pole_south->mass_inv = 1;
-  pole_south->theta = 10;
+  pole_south->theta = pole_south->delta_theta = 10;
   pole_south->pos = center + pVect(0,0,r);
   pole_south->vel = pVect(0,0,0);
   pole_south->ring = 0;
@@ -1096,64 +1098,87 @@ Balloon::init(pCoor center, double r)
   PStack<int> rings_first_idx;
   rings_first_idx += 0;
 
-  for ( double eta = first_eta + epsilon;
-        eta <= M_PI-first_eta;
-        eta += delta_eta - epsilon )
+  PStack<double> etas;
+  PStack<int> slice_points_hemi;
+
+  int slice_points_next = slice_points_min;
+  for ( double eta = first_eta; eta <= half_pi; eta += delta_eta )
     {
-      ring_count++;
+      const double slice_r = r * sin(eta);
+      const int slice_points_even =
+        int( 0.5 + two_pi * slice_r / equator_interpoint );
+      const int slice_points_use = min(slice_points_even,slice_points_next);
+      slice_points_hemi += slice_points_use;
+      slice_points_next = 2 * slice_points_use;
+    }
+  PStack<int> slice_points_all;
+  for ( int sp=0; slice_points_hemi.iterate(sp); ) slice_points_all += sp;
+  slice_points_hemi.pop();
+  while ( slice_points_hemi.occ() ) slice_points_all += slice_points_hemi.pop();
+
+  for ( int slice_points=0; slice_points_all.iterate(slice_points); )
+    {
+      const int ring_count = 1 + slice_points_all.iterate_get_idx();
+      const double eta = first_eta + ring_count * delta_eta;
       const double z = r * cos(eta);
       const double slice_r = r * sin(eta);
-      const int slice_points = int( two_pi * slice_r / equator_interpoint );
-      const double delta_theta = two_pi / slice_points;
       const int ring_first_idx = point_count;
-      const int lower_ring_first_idx = rings_first_idx.peek();
+      const int lr_first_idx = rings_first_idx.peek();
+      const int lr_last_idx = point_count - 1;
       ASSERTS( ring_count != 1 || slice_points == slice_points_min );
       ASSERTS( ring_count != rings + 1 || slice_points == slice_points_min );
 
       rings_first_idx += point_count;
 
-      int lower_ring_idx = point_count - 1;
-      if ( points[lower_ring_idx].theta < two_pi - delta_theta )
-        lower_ring_idx = lower_ring_first_idx;
-      const int lower_ring_first_connected = lower_ring_idx;
-      double lower_ring_angle_adj =
-        lower_ring_idx == lower_ring_first_idx ? 0 : -two_pi;
-      const double theta_first = ring_count & 1 ? 0 : delta_theta * 0.5;
+      double thetas[slice_points+1];
+      const double delta_theta = two_pi / slice_points;
+      thetas[0] = ring_count & 1 ? 0 : delta_theta * 0.5;
+      for ( int i=1; i<=slice_points; i++ )
+        thetas[i] = thetas[i-1] + delta_theta;
 
-      int slice_idx = 0;
-      for ( double theta = theta_first; theta < two_pi - 0.001;
-            theta += delta_theta )
+      int lr_idx = // Lower ring index
+        points[lr_first_idx].theta < thetas[0] + epsilon
+        ? lr_first_idx : lr_last_idx;
+
+      double lr_theta =
+        points[lr_idx].theta + ( lr_idx == lr_first_idx ? 0 : -two_pi );
+        
+      const int lr_first_connected = lr_idx;
+      bool past_first_connected = false;
+
+      for ( int slice_idx = 0; slice_idx < slice_points; slice_idx++ )
         {
+          const double theta = thetas[slice_idx];
+          const bool first_slice = slice_idx == 0;
+          const bool last_slice = slice_idx == slice_points - 1;
           Balloon_Vertex* const point = points.pushi();
           point->mass_inv = 1;
           point->ring = ring_count;
           point->eta = eta;
           point->theta = theta;
+          point->delta_theta = thetas[slice_idx+1] - theta;
           point->pos = center +
             pVect(slice_r * cos(theta), slice_r * sin(theta), z );
           point->vel = pVect(0,0,0);
+          point->edge_long_next = last_slice ? ring_first_idx : point_count + 1;
           point->edge_out[point->edge_out_count++] =
-            point_count - 1 + ( slice_idx ? 0 : slice_points );
+            point_count - 1 + ( first_slice ? slice_points : 0 );
 
-          const double next_theta = theta + delta_theta;
+          const double mid_theta = 0.5 * ( theta + thetas[slice_idx+1] );
           while ( true )
             {
-              point->edge_out[point->edge_out_count++] = lower_ring_idx;
-              const bool lr_last = lower_ring_idx + 1 == ring_first_idx;
-              const int next_idx =
-                lr_last ? lower_ring_first_idx : lower_ring_idx + 1;
-              Balloon_Vertex* const n_lr_next = &points[next_idx];
-              const double next_angle_adj =
-                lower_ring_angle_adj + ( lr_last ? two_pi : 0 );
-              const double lower_ring_angle = n_lr_next->theta + next_angle_adj;
-              if ( lower_ring_angle > next_theta + 0.0001 ) break;
-              if ( slice_idx > 1 &&
-                   lower_ring_idx == lower_ring_first_connected ) break;
-              lower_ring_idx = next_idx;
-              lower_ring_angle_adj = next_angle_adj;
+              point->edge_out[point->edge_out_count++] = lr_idx;
+              if ( lr_theta > 7 ) break;  // Special case for pole.
+              if ( past_first_connected && lr_idx == lr_first_connected ) break;
+              Balloon_Vertex* const lr_p = &points[lr_idx];
+              const double lr_theta_next = lr_theta + lr_p->delta_theta;
+              if ( !last_slice
+                   && lr_theta >= theta && lr_theta_next > mid_theta  ) break;
+              lr_idx = lr_p->edge_long_next;
+              lr_theta = lr_theta_next;
+              past_first_connected = true;
             }
-
-          slice_idx++;  point_count++;
+          point_count++;
         }
     }
 
@@ -1181,7 +1206,7 @@ Balloon::init(pCoor center, double r)
       ASSERTS( p->mass_inv > 0 );
       p->mass = 1.0 / p->mass_inv;
 
-      if ( p->pos.y < min_y ) { tethered_idx = idx;  min_y = p->pos.y; }
+      if ( p->pos.y > min_y ) { tethered_idx = idx;  min_y = p->pos.y; }
 
       for ( int j = 0;  j < p->edge_out_count;  j++ )
         {
@@ -1313,20 +1338,26 @@ Balloon::init(pCoor center, double r)
       Balloon_Vertex* const p = &points[idx];
       GLP_Vtx_Strc* const vd = &glp_vtx_strc[idx];
       CUDA_Vtx_Strc* const vc = &cuda_vtx_strc[idx];
-      vd->self_idx = float( idx );
-      vd->left_idx = 0.5;
+      vd->self_idx_encoded = -idx-2;
       int np = 0;
+
+      int ti_min = tri_count;
+      for ( int ti = 0; p->triangles.iterate(ti); ) ti_min = min(ti_min,ti);
+      ti_min--;
+      vd->tri_idx_base = vc->tri_idx_base = ti_min;
+
       for ( int ti = 0; p->triangles.iterate(ti); )
         {
           Balloon_Triangle* const tri = &triangles[ti];
           const int pos = tri->pi == idx ? 0 : tri->qi == idx ? 1 : 2;
-          const int pos_packed = 4 * ti + pos;
+          const int pos_packed = 4 * ( ti - ti_min ) + pos;
+          ASSERTS( pos_packed );
           vd->neighbors[np] = pos_packed;
           ASSERTS( vd->neighbors[np] == pos_packed );
           np++;
         }
       ASSERTS( np < VTX_TRI_DEG_MAX );
-      while ( np < VTX_TRI_DEG_MAX ) vd->neighbors[np++] = -1;
+      while ( np < VTX_TRI_DEG_MAX ) vd->neighbors[np++] = 0;
       typeof vc->n0* const vcn = &vc->n0;
       for ( int i=0; i<VTX_TRI_DEG_MAX; i++ ) vcn[i] = vd->neighbors[i];
     }
@@ -1343,6 +1374,9 @@ Balloon::init(pCoor center, double r)
       CPY_IDX(length_relaxed);
 #     undef CPY_IDX
     }
+
+  printf("For %d equator points: %d vertices (points) and %d triangles.\n",
+         equator_points, point_count, tri_count);
 }
 
 void
@@ -1555,14 +1589,14 @@ Balloon::time_step_cpu_once()
         {
           Balloon_Vertex* const p = &points[i];
           pNorm inward(p->surface_normal);
-          const double pf_balance = dot(p->force_spring,inward);
+          const double pf_balance = dot(p->force_spring+p->force_rep,inward);
           pf_sum += pf_balance;
           area_sum_x6 += inward.magnitude;
         }
 
       const double area_sum = area_sum_x6 / 6;
 
-      gas_amount = damping_v *
+      gas_amount =
         ( pf_sum / area_sum + exp_air ) * volume / ( temp_ratio * exp_gas );
 
       update_for_config(); // Recompute pressure_factor_coeff.
@@ -1596,7 +1630,7 @@ Balloon::time_step_cpu_once()
       p->force_pressure =
         ( air_pressure - gas_pressure ) * p->surface_normal;
 
-      p->force = p->force_pressure;
+      p->force = pVect(0,0,0);
 
       pNorm vel_norm(-p->vel);
       const double facing_area = max(0.0,dot(vel_norm,p->surface_normal));
@@ -1609,7 +1643,8 @@ Balloon::time_step_cpu_once()
       p->force += force_ar;
 
       pVect force_ns = p->force; // Force non-spring.
-      pVect force_s = p->force_spring + p->force_rep;
+
+      pVect force_s = p->force_spring + p->force_rep + p->force_pressure;
 
       p->force += force_s;
 
@@ -1889,7 +1924,7 @@ Balloon::time_step_glp(int steps)
 
       glp_vtx_strc.bind();
       const int vstride = sizeof(glp_vtx_strc[0]);
-      glVertexPointer(2, GL_FLOAT, vstride, 0);
+      glVertexPointer(2, GL_INT, vstride, 0);
 
       glVertexAttribIPointerEXT(sat_indices, 4, GL_INT, vstride, (void*)8);
 
@@ -1914,8 +1949,9 @@ Balloon::time_step_glp(int steps)
       glp_vtx_data.bid_swap();
     }
 
-  if ( false )
+  if ( steps && false )
     {
+      glp_vtx_data.from_gpu();
       GLP_Vtx_Data after = glp_vtx_data.data[0];
       pError_Msg("Check.");
     }
@@ -1978,6 +2014,9 @@ Balloon::cuda_data_partition()
       work_sizes += uniq_tris;
       work_max = max(work_max,uniq_tris);
     }
+
+  printf("Cuda 1-pass exact iter per thread: %.1f\n",
+         double(work_max)/block_size);
 
   tri_work_per_vtx_lg = int(0.998 + log2(double(work_max)/block_size));
   tri_work_per_vtx = 1 << tri_work_per_vtx_lg;
@@ -2104,6 +2143,7 @@ Balloon::init_cuda()
 
   CMX_SETUP(cuda_vtx_strc,a,n0);
   CMX_SETUP(cuda_vtx_strc,b,n4);
+  CMX_SETUP(cuda_vtx_strc,tri_idx_base,tri_idx_base);
   cuda_vtx_strc.use_aos = false;
   cuda_vtx_strc.ptrs_to_cuda_soa("vtx_strc_x");
   cuda_vtx_strc.to_cuda();
@@ -2126,15 +2166,16 @@ Balloon::init_cuda()
   cuda_vtx_data.alloc_locked(point_count);
   cuda_vtx_data.ptrs_to_cuda_soa("vtx_data_x0","vtx_data_x1");
 
-  const int max_block_count =
-    int(0.5
-        + double(tri_count)/min(CUDA_TRI_BLOCK_SIZE,CUDA_VTX_BLOCK_SIZE));
+  const int min_blk_size = min(CUDA_TRI_BLOCK_SIZE,CUDA_VTX_BLOCK_SIZE);
+  const double max_block_count = ceil(double(tri_count)/min_blk_size);
+  const int iter = int(ceil( max_block_count / min_blk_size ));
+  const int tower_size = CUDA_VTX_BLOCK_SIZE * iter;
 
-  cuda_tower_volumes.alloc(max_block_count);
+  cuda_tower_volumes.alloc(tower_size);
   TO_DEV_DSS(tower_volumes,cuda_tower_volumes.get_dev_addr(0),
              cuda_tower_volumes.get_dev_addr(1));
 
-  cuda_centroid_parts.alloc(max_block_count);
+  cuda_centroid_parts.alloc(tower_size);
   TO_DEV_DS(centroid_parts,cuda_centroid_parts.get_dev_addr());
 
   cuda_data_partition();
@@ -2215,6 +2256,7 @@ Balloon::time_step_cuda(int steps)
       TO_DEV_DS(volume_cpu,volume);  // For debugging, not used by gpu.
       TO_DEV(tri_count);
       TO_DEV(point_count);
+      TO_DEV(tethered_idx);
 
       TO_DEV(spring_constant);
       TO_DEV(damping_v);
@@ -2884,6 +2926,7 @@ World::render()
 
       balloon.gpu_data_to_cpu();
       glMaterialfv(GL_BACK,GL_SPECULAR,scolor_ball);
+      glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
       glBegin(GL_TRIANGLES);
 
       for ( int idx = 0;  idx < balloon.tri_count; idx++ )
@@ -2893,8 +2936,7 @@ World::render()
           Balloon_Vertex* const q = &balloon.points[tri->qi];
           Balloon_Vertex* const r = &balloon.points[tri->ri];
 
-          glColor3fv(tri->color);
-          glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,tri->color);
+          glColor3fv( tri->color * color_ball );
 
           const bool true_normal = false;
           if ( !true_normal )

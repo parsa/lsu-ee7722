@@ -50,6 +50,7 @@ struct CUDA_Tri_Strc_X {
 struct __align__(16) CUDA_Vtx_Strc  {
   // Index of triangles that contain this element's vertex.
   uint16_t n0, n1, n2, n3, n4, n5, n6, n7;
+  int32_t tri_idx_base;
 };
 
 struct __align__(8) CUDA_Vtx_Strc_X_a { uint16_t n0, n1, n2, n3; };
@@ -58,6 +59,7 @@ struct __align__(8) CUDA_Vtx_Strc_X_b { uint16_t n4, n5, n6, n7; };
 struct CUDA_Vtx_Strc_X {
   CUDA_Vtx_Strc_X_a *a;
   CUDA_Vtx_Strc_X_b *b;
+  int32_t *tri_idx_base;
 };
 
 struct __align__(16) CUDA_Vtx_Data {

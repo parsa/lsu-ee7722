@@ -1,5 +1,6 @@
 
 CUDAPATH = /usr/local/cuda
+DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
 INCLUDE =
 
 LIBDIR  =
@@ -30,7 +31,7 @@ default:balloon
 
 .cu.o:
 	$(CXX) $(CFLAGS) -c $*.cu
-#	~/lbuild/decuda-0.4.2/decuda -p -o $*.cubin.ptx $*.sm_10.cubin 
+#	$(DECUDA) -p -o $*.cubin.ptx $*.sm_10.cubin 
 
 balloon.o: Makefile ../opengl/coord.h ../opengl/util.h ../opengl/shader.h 
 balloon.o: balloon.cuh balloon.cc

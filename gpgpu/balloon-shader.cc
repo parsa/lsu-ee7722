@@ -1,6 +1,6 @@
 /// LSU EE 7700-1 (Sp 2009), Graphics Processors
 //
- /// Balloon Simulation, Under construction.
+ /// Balloon Simulation
 
 // $Id:$
 
@@ -41,7 +41,7 @@ varying vec4 out_force_r;
 void
 main_physics_plan_c()
 {
-  int pass = gl_Vertex.y == 0.5 ? 2 : 1;
+  int pass = gl_Vertex.x <= -2 ? 2 : 1;
   if ( pass == 1 )
     {
       plan_c_pass_1_triangles();
@@ -169,12 +169,13 @@ plan_c_pass_2_vertices()
 
   vec4 force_spring4 = vec4(0.0,0.0,0.0,0.0);
   vec4 surface_normal_vol = vec4(0.0,0.0,0.0,0.0);
+  int tri_idx_base = int(gl_Vertex.y) << 2;
 
   for ( int i=0; i<8; i++ )
     {
       int idx_packed = indices[i];
-      if ( idx_packed == -1 ) continue;
-      int idx_base = idx_packed & ~0x3;
+      if ( idx_packed == 0 ) continue;
+      int idx_base = tri_idx_base + ( idx_packed & ~0x3 );
       int idx_force = idx_base + 1 + ( idx_packed & 0x3 );
       surface_normal_vol += texelFetchBuffer(tex_data_tri,idx_base);
       force_spring4 += texelFetchBuffer(tex_data_tri,idx_force);
@@ -193,7 +194,8 @@ plan_c_pass_2_vertices()
 
   vec3 force_pressure = ( air_pressure - pressure ) * surface_normal;
 
-  vec3 force = force_pressure;
+  vec3 force = vec3(0.0,0.0,0.0);
+  force_spring += force_pressure;
 
   vec3 vel_norm = normalize(-vel);
   float facing_area = max(0.0,dot(vel_norm,surface_normal));
@@ -225,7 +227,7 @@ plan_c_pass_2_vertices()
     if ( pos.y < 0.0 ) break;
     pos_next.y = 0.0;
     vel_next.y = - bounce_factor * vel_next.y;
-    float f_y = gforce.y + force_spring.y - pressure * surface_normal.y;
+    float f_y = gforce.y + force_spring.y;
     if ( f_y >= 0.0 ) break;
     float friction_force = -f_y * friction_coefficient;
     float delta_v = friction_force * delta_t / ( point_mass * mass );

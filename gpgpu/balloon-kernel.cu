@@ -32,6 +32,7 @@ __constant__ int tri_work_per_vtx_lg;
 __constant__ float volume_cpu;
 __constant__ int tri_count;
 __constant__ int point_count;
+__constant__ int tethered_idx;
 __constant__ bool opt_gravity;
 
 __constant__ float spring_constant;
@@ -182,11 +183,6 @@ __device__ float3 vtx_data_pos(int idx)
   return make_float3(tex1Dfetch(vtx_data_pos_tex, idx));
 }
 
-__device__ float3 vtx_data_vel(int idx)
-{
-  return make_float3(tex1Dfetch(vtx_data_pos_tex, idx * 3 + 2));
-}
-
 __device__ float3 tri_data_surface_normal(int idx)
 {
   return make_float3(tex1Dfetch(tri_data_tex, idx << 2));
@@ -306,10 +302,10 @@ pass_vertices(int write_side)
 
   const int grid_dim_tri = div_p2_ceil(tri_count,CUDA_TRI_BLOCK_LG);
   const int vol_per_thread = div_p2_ceil(grid_dim_tri,CUDA_VTX_BLOCK_LG);
-  const int start = tid * vol_per_thread;
-  const int stop = min(grid_dim_tri, start + vol_per_thread);
   float my_vol = 0;
-  for ( int i=start; i<stop; i++ ) my_vol += tower_volumes[0][i];
+  for ( int i=0; i<vol_per_thread; i++ )
+    my_vol += tower_volumes[0][tid + ( i << CUDA_VTX_BLOCK_LG ) ];
+
   const float volume = reduce(CUDA_VTX_BLOCK_LG,volumes,my_vol,true);
   if ( vi >= point_count ) return;
 
@@ -325,6 +321,7 @@ pass_vertices(int write_side)
 
   CUDA_Vtx_Strc_X_a vsa = vtx_strc_x.a[vi];
   CUDA_Vtx_Strc_X_b vsb = vtx_strc_x.b[vi];
+  const int tri_idx_base = vtx_strc_x.tri_idx_base[vi];
   CUDA_Vtx_Strc vs;
   vs.n0=vsa.n0; vs.n1=vsa.n1; vs.n2=vsa.n2; vs.n3=vsa.n3;
   vs.n4=vsb.n4; vs.n5=vsb.n5; vs.n6=vsb.n6; vs.n7=vsb.n7;
@@ -334,9 +331,9 @@ pass_vertices(int write_side)
 
 #define TRI_BODY(i)                                                           \
   { const int idx_packed = vs.n##i;                                           \
-    if ( idx_packed != -1 )                                                   \
+    if ( idx_packed )                                                         \
       {                                                                       \
-        const int idx_base = idx_packed >> 2;                                 \
+        const int idx_base = tri_idx_base + ( idx_packed >> 2 );              \
         const int idx_force = idx_packed & 0x3;                               \
         const float3 surface_normal_t = tri_data_surface_normal(idx_base);    \
         vec_addto(surface_normal_sum, surface_normal_t);                      \
@@ -361,7 +358,8 @@ pass_vertices(int write_side)
 
   float3 force_pressure = vec_scale(air_pressure - pressure, surface_normal);
 
-  float3 force = force_pressure;
+  float3 force = make_float3(0,0,0);
+  vec_addto(force_spring, force_pressure);
 
   float3 vel_norm = normalize(vel);
   float facing_area = max(0.0f,-dot(vel_norm,surface_normal));
@@ -397,8 +395,7 @@ pass_vertices(int write_side)
     {
       pos_next.y = 0.0;
       vel_next.y = - bounce_factor * vel_next.y;
-      const float f_y =
-        min(0.0, gforce.y + force_spring.y - pressure * surface_normal.y);
+      const float f_y = min(0.0, gforce.y + force_spring.y );
       const float friction_force = -f_y * friction_coefficient;
       const float delta_v = friction_force * delta_t / ( point_mass * mass );
       const float3 xzvel = make_float3(vel_next.x,0,vel_next.z);
@@ -408,6 +405,8 @@ pass_vertices(int write_side)
       else
         vec_addto(vel_next, vec_scale( -delta_v, normalize(xzvel) ));
     }
+
+  if ( false && vi == tethered_idx ) { vel_next = vel; pos_next = pos; }
 
   CUDA_Vtx_Data_X vtx_data_w = write_side ? vtx_data_x1 : vtx_data_x0;
   vtx_data_w.surface_normal[vi] = make_float4(surface_normal,0);
@@ -554,13 +553,10 @@ pass_unified(int write_side)
   // Retrieve volumes of blocks written in the last time step and
   // compute their sum.
   //
-  const int grid_dim_vol = gridDim.x;
   const int vol_per_thread = div_p2_ceil(gridDim.x,block_lg);
-  const int start = tid * vol_per_thread;
-  const int stop = min(grid_dim_vol, start + vol_per_thread);
-  const int tid_limit = min(block_size, gridDim.x);
   float my_vol = 0;
-  for ( int i=start; i<stop; i++ ) my_vol += tower_volumes_in[i];
+  for ( int i=0; i<vol_per_thread; i++ )
+    my_vol += tower_volumes_in[tid + ( i << block_lg ) ];
   const float volume = reduce(block_lg,volumes_read,my_vol,true);
 
   ///
@@ -591,7 +587,8 @@ pass_unified(int write_side)
 
   float3 force_pressure = vec_scale(air_pressure - pressure, surface_normal);
 
-  float3 force = force_pressure;
+  float3 force = make_float3(0,0,0);
+  vec_addto(force_spring,force_pressure);
 
   float3 vel_norm = normalize(vel);
   float facing_area = max(0.0f,-dot(vel_norm,surface_normal));
@@ -627,8 +624,7 @@ pass_unified(int write_side)
     {
       pos_next.y = 0.0;
       vel_next.y = - bounce_factor * vel_next.y;
-      const float f_y =
-        min(0.0f, gforce.y + force_spring.y - pressure * surface_normal.y);
+      const float f_y = min(0.0f, gforce.y + force_spring.y);
       const float friction_force = -f_y * friction_coefficient;
       const float delta_v = friction_force * delta_t / ( point_mass * mass );
       const float3 xzvel = make_float3(vel_next.x,0,vel_next.z);
