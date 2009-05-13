@@ -255,6 +255,11 @@ inline pColor operator * (pColor c, float scale)
   return pColor(c.r*scale, c.g*scale, c.b*scale, c.a);
 }
 
+inline pColor operator * (pColor c, pColor d)
+{
+  return pColor(c.r*d.r, c.g*d.g, c.b*d.b, c.a);
+}
+
 inline double dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
 
 double dot(pCoor a, pCoor b)
