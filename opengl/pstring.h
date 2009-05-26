@@ -104,6 +104,7 @@ public:
   char *dup() {return s ? strdup(s) : NULL;}
   char *remove()
   {
+    if ( !s ) return NULL;
     char *rv = (char*)realloc(s,occ+1);
     cpy(NULL);
     return rv;
