@@ -759,11 +759,25 @@ bump_render_vs(pPlane& plane, pContact_List::iterator ci, int face)
       pError_Check();
     }
 
+  // Tell OpenGL that next call go glFOOPointer should refer to
+  // gpu_vertex_buffer, not CPU memory.
+  //
   glBindBuffer(GL_ARRAY_BUFFER,gpu_vertex_buffer);
+
+  // A call to glFOOPointer (FOO=Vertex). This, along with
+  // glEnableClientState, tells OpenGL to use gpu_vertex_buffer for
+  // vertices in the next call to glDrawArrays. Each vertex will
+  // consist of 2 coordinates, which are in GL_FLOAT format.
+  //
   glVertexPointer(2,GL_FLOAT,0,NULL);
   glEnableClientState(GL_VERTEX_ARRAY);
+
+  // Unbind buffer so a call to glFOOPointer will refer to a pointer
+  // in CPU memory.
   glBindBuffer(GL_ARRAY_BUFFER,0);
+
   pError_Check();
+
   glVertexAttrib2f(vsal_bump_info,impact.x,impact.y);
   glVertexAttrib4f(vsal_pinnacle,pinnacle.x,pinnacle.y,pinnacle.z,radius);
   glDrawArrays(GL_QUADS,0,vertices_used);
