@@ -21,12 +21,12 @@
 #include <GL/freeglut.h>
 #include <Magick++.h>
 
-#include "../opengl/util.h"
-#include "glextfuncs.h"
-#include "../opengl/coord.h"
-#include "../opengl/shader.h"
-#include "../opengl/pstring.h"
-#include "../opengl/misc.h"
+#include "../include/util.h"
+#include "../include/glextfuncs.h"
+#include "../include/coord.h"
+#include "../include/shader.h"
+#include "../include/pstring.h"
+#include "../include/misc.h"
 
 
  ///

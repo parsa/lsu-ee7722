@@ -113,8 +113,8 @@
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
-#include "util.h"
-#include "coord.h"
+#include "../include/util.h"
+#include "../include/coord.h"
 
 // Display a tetrahedron, used to indicate light position.
 //

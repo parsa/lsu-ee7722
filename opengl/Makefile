@@ -22,7 +22,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 
-$(OBJ_NAMES): util.h coord.h image.h Makefile
+$(OBJ_NAMES): ../include/util.h ../include/coord.h Makefile
 
 $(PROG_NAMES): %: %.o Makefile
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)

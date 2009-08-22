@@ -18,7 +18,7 @@ default:cube6
 	$(CXX) $(CFLAGS) -S $*.cc
 	$(CXX) $(CFLAGS) -c $*.s
 
-cube6.o: Makefile ../opengl/coord.h ../opengl/util.h shader.h 
+cube6.o: Makefile ../include/coord.h ../include/util.h shader.h 
 cube5.o: Makefile coord.h util.h shader.h 
 
 cube5_shader.s: cube5_shader.cc

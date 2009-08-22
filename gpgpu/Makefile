@@ -33,7 +33,7 @@ default:balloon
 	$(CXX) $(CFLAGS) -c $*.cu
 #	$(DECUDA) -p -o $*.cubin.ptx $*.sm_10.cubin 
 
-balloon.o: Makefile ../opengl/coord.h ../opengl/util.h ../opengl/shader.h 
+balloon.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
 balloon.o: balloon.cuh balloon.cc
 
 balloon-kernel.o: Makefile balloon.cuh balloon-kernel.cu
