@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Spring 2009), Graphics Processors  -*- c++ -*-
+/// LSU EE 4702-X / EE 77XX   -*- c++ -*-
 //
  ///  Geometry Classes and Functions
 
