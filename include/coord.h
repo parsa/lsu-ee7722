@@ -522,7 +522,7 @@ invert(pMatrix& original)
           sum += fabs(ihope.rc(r,c)-iis.rc(r,c));
       if ( sum > 1e-5 )
         {
-          printf("Can't invert, sum: %f\n",sum);
+          //  printf("Can't invert, sum: %f\n",sum);
           //  pError_Exit();
         }
     }
