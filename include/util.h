@@ -345,11 +345,33 @@ public:
   float inc_factor_def;
 };
 
+const void* const all_glut_fonts[] =
+  { GLUT_STROKE_ROMAN,
+    GLUT_STROKE_MONO_ROMAN,
+    GLUT_BITMAP_9_BY_15,
+    GLUT_BITMAP_8_BY_13,
+    GLUT_BITMAP_TIMES_ROMAN_10,
+    GLUT_BITMAP_TIMES_ROMAN_24,
+    GLUT_BITMAP_HELVETICA_10,
+    GLUT_BITMAP_HELVETICA_12,
+    GLUT_BITMAP_HELVETICA_18 };
+
+const void* const glut_fonts[] =
+  { 
+    GLUT_BITMAP_TIMES_ROMAN_10,
+    GLUT_BITMAP_HELVETICA_10,
+    GLUT_BITMAP_HELVETICA_12,
+    GLUT_BITMAP_8_BY_13,
+    GLUT_BITMAP_9_BY_15,
+    GLUT_BITMAP_HELVETICA_18,
+    GLUT_BITMAP_TIMES_ROMAN_24
+ };
 
 class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
   {
+    glut_font_idx = 2;
     opengl_helper_self_ = this;
     width = height = 0;
     frame_period = -1; // No timer callback.
@@ -447,7 +469,15 @@ public:
     if ( !frame_print_calls ) glWindowPos2i(10,height-20);
     frame_print_calls++;
 
-    glutBitmapString(GLUT_BITMAP_HELVETICA_12,(unsigned char*)str.s);
+    glutBitmapString((void*)glut_fonts[glut_font_idx],(unsigned char*)str.s);
+  }
+
+  void cycle_font()
+  {
+    const int font_cnt = sizeof(glut_fonts) / sizeof(glut_fonts[0]);
+    glut_font_idx++;
+    if ( glut_font_idx >= font_cnt ) glut_font_idx = 0;
+    printf("Changed to %d\n",glut_font_idx);
   }
 
 private:
@@ -500,6 +530,7 @@ private:
     keyboard_y = y;
     if ( !key ) return;
     if ( keyboard_key == FB_KEY_F12 ) { write_img(); return; }
+    if ( keyboard_key == FB_KEY_F11 ) { cycle_font(); return; }
     glutPostRedisplay();
   }
 
@@ -536,6 +567,7 @@ private:
   int width;
   int height;
   int frame_print_calls;
+  int glut_font_idx;
   int glut_window_id;
   void (*user_display_func)(void *data);
   void *user_display_data;
