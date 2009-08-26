@@ -96,22 +96,87 @@ class World;
 
 class Sphere {
 public:
-  Sphere():glu_sphere(gluNewQuadric()){};
-  void init(float radiusp){ radius = radiusp; }
-  void render()
-  {
-    const pColor lsu_spirit_gold(0xf9b237);
-    glColor3fv(lsu_spirit_gold);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glTranslatef(center.x,center.y,center.z);
-    gluSphere(glu_sphere,radius,10,10);
-    glPopMatrix();
-  }
-  GLUquadricObj* const glu_sphere;
+  Sphere(){};
+  void init(int slices);
+  void render();
+  int slices;
+  pBuffer_Object<pVect> points_bo;
+  pBuffer_Object<float> tex_coord_bo;
+  PStack<int> strip_starts;
+  PStack<int> strip_sizes;
   pCoor center;
-  float radius;
 };
+
+void
+Sphere::init(int slicesp)
+{
+  slices = slicesp;
+  const double two_pi = 2.0 * M_PI;
+  const double delta_theta = two_pi / slices;
+  const double epsilon = 0.001 * delta_theta;
+  const double pi_me = M_PI - epsilon;
+  const double two_pi_me = two_pi - epsilon;
+  PStack<pVect> points;
+  PStack<float> tex_coord;
+  for ( double theta = 0; theta < two_pi_me; theta += delta_theta )
+    {
+      const int point_count = points.occ();
+      strip_starts += point_count;
+      const double theta1 = theta + delta_theta;
+      const double cos_th0 = cos(theta);
+      const double sin_th0 = sin(theta);
+      const double cos_th1 = cos(theta1);
+      const double sin_th1 = sin(theta1);
+      const float tc_s0 = theta / two_pi;
+      const float tc_s1 = theta1 / two_pi;
+      points += pVect(0,1,0);
+      tex_coord += 1-(tc_s0 + tc_s1) * 0.5;  tex_coord += 0;
+      for ( double eta = delta_theta; eta < pi_me; eta += delta_theta )
+        {
+          const float y = cos(eta);
+          const double slice_r = sin(eta);
+          const float x0 = slice_r * cos_th0;
+          const float z0 = slice_r * sin_th0;
+          const float tc_t = eta / M_PI;
+          points += pVect(slice_r * cos_th1, y, slice_r * sin_th1);
+          tex_coord += 1-tc_s1;  tex_coord += tc_t;
+          points += pVect(x0,y,z0);
+          tex_coord += 1-tc_s0;  tex_coord += tc_t;
+        }
+      points += pVect(0,-1,0);
+      tex_coord += 1-(tc_s0 + tc_s1) * 0.5;  tex_coord += 1;
+      strip_sizes += points.occ() - point_count;
+    }
+  points_bo.take(points);
+  points_bo.to_gpu();
+  tex_coord_bo.take(tex_coord);
+  tex_coord_bo.to_gpu();
+}
+
+void
+Sphere::render()
+{
+  const pColor lsu_spirit_gold(0xf9b237);
+  glColor3fv(lsu_spirit_gold);
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glTranslatef(center.x,center.y,center.z);
+  points_bo.bind();
+  glVertexPointer(3,GL_FLOAT,0,0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glNormalPointer(GL_FLOAT,0,0);
+  glEnableClientState(GL_NORMAL_ARRAY);
+  tex_coord_bo.bind();
+  glTexCoordPointer(2,GL_FLOAT,0,0);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  glMultiDrawArrays
+    (GL_TRIANGLE_STRIP,
+     strip_starts.get_storage(), strip_sizes.get_storage(), slices);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glPopMatrix();
+}
 
 
 // Object Holding Ball State
@@ -149,10 +214,11 @@ public:
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_pi_xwidth_inv;
-  float opt_platform_depth, platform_depth;
+  pBuffer_Object<pVect> platform_tile_norms;
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
   GLuint texid_syl;
+  GLuint texid_emacs;
   bool opt_platform_texture;
   bool opt_platform_flat;
   void platform_update();
@@ -192,23 +258,20 @@ World::init()
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
-  opt_platform_depth = 10;
-  opt_platform_flat = true;
-  platform_depth = opt_platform_flat ? 0.0 : opt_platform_depth;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
+  texid_emacs = pBuild_Texture_File("../gpgpu/mult.png", false,-1);
 
   opt_light_intensity = 100.2;
   light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
 
   variable_control.insert(opt_gravity_accel,"Gravity");
-  variable_control.insert(opt_platform_depth,"Platform Depth");
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
 
   ball_init();
-  sphere.init(2);
+  sphere.init(40);
   sphere.center = ball.position;
 
   platform_update();
@@ -221,7 +284,7 @@ World::platform_update()
 {
   const float tile_count = 19;
   const float ep = 1.00001;
-  const float xdelta = ( platform_xmax - platform_xmin ) / tile_count * ep;
+  const float platform_delta_x = platform_xmax - platform_xmin;
   const float zdelta = ( platform_zmax - platform_zmin ) / tile_count * ep;
 
   const float trmin = 0.05;
@@ -231,34 +294,50 @@ World::platform_update()
 
   PStack<pVect> p_tile_coords;
   PStack<pVect> p1_tile_coords;
+  PStack<pVect> p_tile_norms;
+  PStack<pVect> p1_tile_norms;
   PStack<float> p_tex_coords;
   bool even = true;
-  platform_pi_xwidth_inv = M_PI / ( platform_xmax - platform_xmin );
+  platform_pi_xwidth_inv = M_PI / platform_delta_x;
 
-  for ( float x = platform_xmin; x < platform_xmax; x += xdelta )
+  const double delta_theta = M_PI / tile_count;
+  const float platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
+  const float platform_xhlf = 0.5 * platform_delta_x;
+  const double platform_depth = 0;
+
+  for ( int i = 0; i < tile_count; i++ )
     {
-      const float x0 = x - platform_xmin;
-      const float y =
-        -0.01 - platform_depth * sin(x0 * platform_pi_xwidth_inv);
-      const float y_next =
-        -0.01 - platform_depth * sin((x0+xdelta) * platform_pi_xwidth_inv);
+      const double theta0 = i * delta_theta;
+      const double theta1 = theta0 + delta_theta;
+      const float x0 = platform_xmid - platform_xhlf * cos(theta0);
+      const float x1 = platform_xmid - platform_xhlf * cos(theta1);
+      const float y0 = -0.01 - platform_depth * sin(theta0);
+      const float y1 = -0.01 - platform_depth * sin(theta1);
+      pNorm norm0( platform_depth * cos(theta0), platform_xhlf*sin(theta0), 0);
+      pNorm norm1( platform_depth * cos(theta1), platform_xhlf*sin(theta1), 0);
       for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
         {
           PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
+          PStack<pVect>& t_norms = even ? p_tile_norms : p1_tile_norms;
           p_tex_coords += trmax; p_tex_coords += tsmax;
-          t_coords += pVect(x,y,z);
+          t_coords += pVect(x0,y0,z);
+          t_norms += norm0;  t_norms += norm0;
           p_tex_coords += trmax; p_tex_coords += tsmin;
-          t_coords += pVect(x,y,z+zdelta);
+          t_coords += pVect(x0,y0,z+zdelta);
           p_tex_coords += trmin; p_tex_coords += tsmin;
-          t_coords += pVect(x+xdelta,y_next,z+zdelta);
+          t_coords += pVect(x1,y1,z+zdelta);
+          t_norms += norm1;  t_norms += norm1;
           p_tex_coords += trmin; p_tex_coords += tsmax;
-          t_coords += pVect(x+xdelta,y_next,z);
+          t_coords += pVect(x1,y1,z);
           even = !even;
         }
     }
 
   while ( pVect* const v = p1_tile_coords.iterate() ) p_tile_coords += *v;
+  while ( pVect* const v = p1_tile_norms.iterate() ) p_tile_norms += *v;
 
+  platform_tile_norms.re_take(p_tile_norms);
+  platform_tile_norms.to_gpu();
   platform_tile_coords.re_take(p_tile_coords);
   platform_tile_coords.to_gpu();
   platform_tex_coords.re_take(p_tex_coords);
@@ -338,6 +417,10 @@ World::ball_init()
 void
 World::time_step_cpu_v0(double delta_t)
 {
+  /// Update Position and Velocity of Ball
+
+  // This code is precise.
+
   // New ball position, accounting for current speed and acceleration,
   // and assuming no collision.
   //
@@ -348,7 +431,10 @@ World::time_step_cpu_v0(double delta_t)
   //
   ball.velocity += gravity_accel * delta_t;
 
-  // Collision with Platform
+
+  /// Possible Collision with Platform
+
+  // This code is an approximation. In this simple case, unnecessary.
   //
   // Position and velocity computation simplified: they do not
   // account for the exact time of collision, which in this
@@ -423,12 +509,6 @@ World::time_step_cpu_v1(double delta_t)
   //
   ball.velocity += gravity_accel * delta_t;
 
-  // Find y position of platform directly under ball.
-  //
-  const float platform_y =
-    -platform_depth
-    * sin( ( ball.position.x - platform_xmin ) * platform_pi_xwidth_inv );
-
   // Update position and velocity for collision.
   //
   // Does not account for time of impact.
@@ -439,9 +519,9 @@ World::time_step_cpu_v1(double delta_t)
   //
   if ( !platform_collision_possible(ball.position) ) return;
 
-  if ( ball.position.y < platform_y )
+  if ( ball.position.y < 0 )
     {
-      ball.position.y = platform_y;
+      ball.position.y = 0;
 
       // Reflect y (vertical) component of velocity, with a reduction
       // due to energy lost in the collision.
@@ -666,7 +746,6 @@ World::render()
   glBlendColor(0,0,0,0.5);
 
   glDepthFunc(GL_ALWAYS);
-  glNormal3f(0,1,0);
 
   if ( opt_platform_texture )
     {
@@ -680,6 +759,10 @@ World::render()
   glVertexPointer
     (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
   glEnableClientState(GL_VERTEX_ARRAY);
+  platform_tile_norms.bind();
+  glNormalPointer
+    (GL_FLOAT,sizeof(platform_tile_norms.data[0]), 0);
+  glEnableClientState(GL_NORMAL_ARRAY);
 
   for ( int pass = 0;  pass < 2;  pass++ )
     {
@@ -719,17 +802,19 @@ World::render()
 
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_NORMAL_ARRAY);
   glBindBuffer(GL_ARRAY_BUFFER,0);
-
-  glDepthFunc(GL_LESS);
-  glDisable(GL_TEXTURE_2D);
   glDisable(GL_STENCIL_TEST);
-  glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
-  glMaterialf(GL_BACK,GL_SHININESS,shininess_ball);
+  glDepthFunc(GL_LESS);
 
   // Render Ball
   //
+  glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
+  glMaterialf(GL_BACK,GL_SHININESS,shininess_ball);
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texid_emacs);
   sphere.render();
+  glDisable(GL_TEXTURE_2D);
 
   // Render Marker for Light Source
   //
@@ -737,7 +822,7 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0,1,0); // This sets the text color. Don't know why.
+  glColor3f(0.5,1,0.5);
 
   frame_timer.frame_end();
 
@@ -752,7 +837,6 @@ World::cb_keyboard()
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
   const float move_amt = 0.4;
-  const float platform_depth_prev = platform_depth;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -782,7 +866,6 @@ World::cb_keyboard()
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
 
-  platform_depth = opt_platform_flat ? 0.0 : opt_platform_depth;
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
 
   // Update eye_direction based on keyboard command.
@@ -815,8 +898,6 @@ World::cb_keyboard()
       modelview_update();
     }
 
-  if ( platform_depth != platform_depth_prev )
-    platform_update();
 }
 
 // Display a tetrahedron, used to indicate light position.
