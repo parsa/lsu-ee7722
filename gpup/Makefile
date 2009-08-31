@@ -15,7 +15,9 @@ CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 
-default:demo-1-simple
+default:all
+
+all:demo-2-springs demo-1-simple demo-3-balls
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -24,5 +26,18 @@ demo-1-simple.o: Makefile ../include/coord.h ../include/util.h ../include/shader
 demo-1-simple.o: demo-1-simple.cc
 
 demo-1-simple: demo-1-simple.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+
+demo-2-springs.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
+demo-2-springs.o: demo-2-springs.cc
+
+demo-2-springs: demo-2-springs.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-3-balls.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
+demo-3-balls.o: demo-3-balls.cc
+
+demo-3-balls: demo-3-balls.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
