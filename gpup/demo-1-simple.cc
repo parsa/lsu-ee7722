@@ -13,15 +13,15 @@
 
 // Simulates a ball bouncing over a platform. The platform consists of
 // tiles, some are purple-tinted mirrors (showing a reflection of the
-// balloon), the others show the course syllabus. The ball and the
+// ball), the others show the course syllabus. The ball and the
 // shape of the platform can be manipulated by the user.
 
 
 ///  Keyboard Commands
  //
- /// Object (Eye, Light, Balloon) Location or Push
+ /// Object (Eye, Light, Ball) Location or Push
  //   Arrows, Page Up, Page Down
- //   Will move object or push balloon, depending on mode:
+ //   Will move object or push ball, depending on mode:
  //   'e': Move eye.
  //   'l': Move light.
  //   'b': Move ball. (Change position but not velocity.)
@@ -210,7 +210,7 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
 
-  // Tiled platform for balloon.
+  // Tiled platform for bal.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_pi_xwidth_inv;
@@ -226,7 +226,7 @@ public:
 
   pCoor light_location;
   float opt_light_intensity;
-  enum { MI_Eye, MI_Light, MI_Balloon, MI_Balloon_V, MI_COUNT } opt_move_item;
+  enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
   bool opt_pause;
 
   pCoor eye_location;
@@ -512,8 +512,6 @@ World::time_step_cpu_v1(double delta_t)
   // Update position and velocity for collision.
   //
   // Does not account for time of impact.
-  // Does not account for angle of impact.
-  //
 
   // Return quickly if collision impossible.
   //
@@ -668,7 +666,7 @@ World::render()
   if ( opt_platform_flat )
     {
       //
-      // Render balloon reflection.  (Will be blended with dark tiles.)
+      // Render ball reflection.  (Will be blended with dark tiles.)
       //
 
       // Write stencil at location of dark (mirrored) tiles.
@@ -738,7 +736,7 @@ World::render()
   //
   glBindTexture(GL_TEXTURE_2D,texid_syl);
 
-  // Blend dark tiles with existing balloon reflection.
+  // Blend dark tiles with existing ball reflection.
   //
   glEnable(GL_STENCIL_TEST);
   glBlendEquation(GL_FUNC_ADD);
@@ -849,8 +847,8 @@ World::cb_keyboard()
   case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
-  case 'b': opt_move_item = MI_Balloon; break;
-  case 'B': opt_move_item = MI_Balloon_V; break;
+  case 'b': opt_move_item = MI_Ball; break;
+  case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'f': case 'F': opt_platform_flat = !opt_platform_flat; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
@@ -889,8 +887,8 @@ World::cb_keyboard()
       adjustment *= rotall;
 
       switch ( opt_move_item ){
-      case MI_Balloon: ball.translate(adjustment); break;
-      case MI_Balloon_V: ball.push(adjustment); break;
+      case MI_Ball: ball.translate(adjustment); break;
+      case MI_Ball_V: ball.push(adjustment); break;
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
       default: break;
