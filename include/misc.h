@@ -89,6 +89,17 @@ public:
     return d;
   }
 
+  void iterate_yank()
+  {
+    ASSERTS( iterator );
+    const int idx = iterate_get_idx();
+    storage[idx].~Data();
+    first_free--;
+    iterator = idx;
+    if ( idx == first_free ) return;
+    storage[idx] = storage[first_free];
+  }
+
   // Pop the stack and return the popped item.
   operator Data () { return pop(); }
 
