@@ -36,6 +36,7 @@ demo-2-springs: demo-2-springs.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 demo-3-balls.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
+demo-3-balls.o: demo-3-balls.cc shapes.h
 demo-3-balls.o: demo-3-balls.cc
 
 demo-3-balls: demo-3-balls.o
