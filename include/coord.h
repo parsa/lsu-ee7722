@@ -69,7 +69,7 @@ public:
 
   operator float* () { return &a[0]; }
 
-  void copy(pMatrix& m){ memcpy(a,m.a,sizeof(a)); }
+  void copy(pMatrix m){ memcpy(a,m.a,sizeof(a)); }
 
   void set_zero(){memset(a,0,sizeof(a));}
 
@@ -445,30 +445,68 @@ public:
 };
 
 
+class pMatrix_Rotation_Shortest : public pMatrix {
+public:
+  pMatrix_Rotation_Shortest(pVect dir_from, pVect dir_to)
+  {
+    // Akeinine-Moeller, 4.3.2
+    const double e = dot(dir_from,dir_to);
+    const double epsilon = 0.00001;
+    if ( e + epsilon >= 1 ) { set_identity(); return; }
+    if ( e - epsilon <= -1 )
+      {
+        pVect ref(-dir_from.z,dir_from.x,dir_from.y);
+        pVect axis = cross(ref,dir_from);
+        set_rotation(axis,M_PI);
+        return;
+      }
+    const pVect v = cross(dir_from,dir_to);
+    const double h = 1 / ( 1 + e );
+    set_identity();
+    rc(0,0) = e + h * v.x * v.x;
+    rc(0,1) = h * v.x * v.y - v.z;
+    rc(0,2) = h * v.x * v.z + v.y;
+    rc(1,0) = h * v.x * v.y + v.z;
+    rc(1,1) = e + h * v.y * v.y;
+    rc(1,2) = h * v.y * v.z - v.x;
+    rc(2,0) = h * v.x * v.z - v.y;
+    rc(2,1) = h * v.y * v.z + v.x;
+    rc(2,2) = e + h * v.z * v.z;
+  }
+};
+
 class pMatrix_Rotation : public pMatrix {
 public:
   pMatrix_Rotation(pVect axis, double angle)
   { set_rotation(axis,angle); }
   pMatrix_Rotation(pVect dir_from, pVect dir_to)
+  { set_rotation_flat(dir_from,dir_to); }
+  pMatrix_Rotation(pNorm dir_from, pNorm dir_to)
+  { set_rotation_flat(dir_from,dir_to); }
+  void set_rotation_flat(pVect dir_from, pVect dir_to)
+  { set_rotation_flat(pNorm(dir_from),pNorm(dir_to)); }
+  void set_rotation_flat(pNorm dir_from, pNorm dir_to)
   {
-    dir_from.normalize(); dir_to.normalize();
-    if ( pangle(dir_from,dir_to) < 0.0001 ) { set_identity(); return; }
-    if ( fabs(dot(dir_to,pVect(0,1,0))) > 0.9999 )
-      {
-        pNorm axis(dir_from, dir_to);
-        set_rotation(axis,asin(axis.magnitude));
-      }
-    else
-      {
-        const double
-          a1 = atan2(dir_from.z,dir_from.x) - atan2(dir_to.z,dir_to.x);
-        pMatrix_Rotation rot1(pVect(0,1,0),a1);
-        pVect norm(dir_to,pVect(0,1,0));  norm.normalize();
-        const double a2 =
-          atan2(dir_from.mag_xz(),dir_from.y) - atan2(dir_to.mag_xz(),dir_to.y);
-        pMatrix_Rotation rot2(norm,a2);
-        pMMultiply(*this,rot2,rot1);
-      }
+    const double epsilon = 0.00001;
+
+    pNorm xz_from(dir_from.x,0,dir_from.z);
+    pNorm xz_to(dir_to.x,0,dir_to.z);
+    const bool do_xz = xz_from.mag_sq > epsilon && xz_to.mag_sq > epsilon;
+
+    const double fix =
+      xz_to.magnitude < epsilon ? 0.0 : xz_from.magnitude / xz_to.magnitude;
+    pVect y_from(fix * dir_to.x, dir_from.y, fix * dir_to.z);
+    const bool do_y = dot(y_from,y_from) > epsilon;
+
+    pMatrix rot_xz, rot_y;
+    if ( do_xz ) rot_xz = pMatrix_Rotation_Shortest(xz_from,xz_to);
+    if ( do_y  ) rot_y = pMatrix_Rotation_Shortest(y_from,dir_to);
+
+    if ( do_xz && rot_y ) copy( rot_y * rot_xz );
+    else if ( do_xz )     copy(rot_xz);
+    else if ( do_y )      copy(rot_y); 
+    else                  set_identity(); 
+
     rot_check(*this,dir_from,dir_to);
   }
 private:
