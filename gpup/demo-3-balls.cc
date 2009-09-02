@@ -36,6 +36,7 @@
  //  (Also see variables below.)
  //
  //  'p'    Pause simulation. (Press again to resume.)
+ //  'n'    Toggle visibility of platform normals.
  //  's'    Stop ball.
  //  'S'    Freeze ball. (Set velocity of all vertices to zero.)
  //  'g'    Turn gravity on and off.
@@ -79,6 +80,7 @@
 
 // Display simple item to mark light location.
 static void insert_tetrahedron(pCoor& loc, float size);
+void tube_tapered(pCoor base, float radius, pVect to_apex);
 
 
 
@@ -97,18 +99,24 @@ public:
   void init(int slices);
   void render();
   void render(pVect position){ center = position; render(); }
+  void render(pVect position, pVect axisp, double anglep)
+  { center = position; axis = axisp;  angle = anglep; render(); }
   int slices;
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<float> tex_coord_bo;
   PStack<int> strip_starts;
   PStack<int> strip_sizes;
   pCoor center;
+  pVect axis;
+  double angle;
 };
 
 void
 Sphere::init(int slicesp)
 {
   slices = slicesp;
+  axis = pVect(0,1,0);
+  angle = 0;
   const double two_pi = 2.0 * M_PI;
   const double delta_theta = two_pi / slices;
   const double epsilon = 0.001 * delta_theta;
@@ -160,6 +168,10 @@ Sphere::render()
   glPushMatrix();
   glTranslatef(center.x,center.y,center.z);
   glScalef(2,2,2);
+  pVect up(0,1,0);
+  pMatrix_Rotation rot(up,axis);
+  glMultTransposeMatrixf(rot);
+  glRotatef( angle * 360 / ( 2 * M_PI ), up.x, up.y, up.z );
   points_bo.bind();
   glVertexPointer(3,GL_FLOAT,0,0);
   glEnableClientState(GL_VERTEX_ARRAY);
@@ -185,6 +197,13 @@ public:
   Ball();
   pCoor position;
   pVect velocity;
+
+  bool contact;                 // If true, in contact with platform.
+  int row_num, col_num;         // Refers to tile.
+
+  pVect axis;
+  double angle;
+
   void push(pVect amt);
   void translate(pVect amt);
   void stop();
@@ -213,6 +232,8 @@ public:
   // Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
+  float platform_xmid, platform_xrad, platform_xrad_inv;
+  float delta_theta_inv, tile_size_inv;
   float platform_pi_xwidth_inv;
   float opt_platform_depth, platform_depth;
   pBuffer_Object<pVect> platform_tile_norms;
@@ -220,7 +241,7 @@ public:
   pBuffer_Object<float> platform_tex_coords;
   GLuint texid_syl;
   GLuint texid_emacs;
-  bool opt_platform_texture;
+  bool opt_normals_visible;
   void platform_update();
   bool platform_collision_possible(pCoor pos);
 
@@ -255,7 +276,7 @@ World::init()
   opt_gravity_accel = 9.8;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
-  opt_platform_texture = true;
+  opt_normals_visible = false;
 
   eye_location = pCoor(17.9,-2,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
@@ -311,8 +332,11 @@ World::platform_update()
   platform_pi_xwidth_inv = M_PI / platform_delta_x;
 
   const double delta_theta = M_PI / tile_count;
-  const float platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
-  const float platform_xrad = 0.5 * platform_delta_x;
+  delta_theta_inv = 1.0 / delta_theta;
+  tile_size_inv = 1 / zdelta;
+  platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
+  platform_xrad = 0.5 * platform_delta_x;
+  platform_xrad_inv = 1 / platform_xrad;
 
   for ( int i = 0; i < tile_count; i++ )
     {
@@ -417,6 +441,8 @@ Ball::Ball()
 {
   position = pCoor(30,22,-15.4);
   velocity = pVect(random()/(0.0+RAND_MAX),0,random()/(0.0+RAND_MAX));
+  axis = pNorm(0,1,0);
+  angle = 0;
 }
 
 
@@ -467,7 +493,6 @@ World::time_step_cpu(double delta_t)
 void
 World::time_step_cpu_ball(double delta_t, Ball* ball)
 {
-
   // New ball position, accounting for current speed and acceleration,
   // and assuming no collision.
   //
@@ -482,17 +507,31 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
   //
   if ( !platform_collision_possible(ball->position) ) return;
 
-  const float x_hlf = 0.5 * ( platform_xmax - platform_xmin );
-  const float platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
-  const float cos_th = ( platform_xmid - ball->position.x ) / x_hlf;
+  const float cos_th = ( platform_xmid - ball->position.x ) * platform_xrad_inv;
   const float sin_th =  sqrt(1.0 - cos_th * cos_th );
   const float platform_y = -platform_depth * sin_th;
-  
-  if ( ball->position.y > platform_y ) return;
 
-  ball->position.y = platform_y;
+  const bool contact_prev = ball->contact;
+  const bool true_contact = ball->position.y <= platform_y + 0.01;
+  ball->contact = ball->position.y <= platform_y + 0.5;
+  if ( !ball->contact ) return;
 
-  pNorm platform_norm( platform_depth * cos_th, x_hlf * sin_th, 0);
+  ball->position.y = max(ball->position.y,platform_y);
+  pNorm platform_norm( platform_depth * cos_th, platform_xrad * sin_th, 0);
+
+  const int row_num_prev = ball->row_num;
+  const int col_num_prev = ball->col_num;
+  const int row_num = int(ball->position.z * tile_size_inv);
+  const int col_num = int(acos(cos_th) * delta_theta_inv);
+  ball->col_num = col_num;
+  ball->row_num = row_num;
+  if ( contact_prev &&
+       ( row_num_prev != row_num || col_num_prev != col_num ) )
+    {
+      // Ball has rolled from one tile to another.
+    }
+
+  if ( !true_contact ) return;
 
   const float speed_to_surface = dot(platform_norm,ball->velocity);
 
@@ -504,7 +543,7 @@ void
 World::balls_render()
 {
   for ( Ball *ball; balls.iterate(ball); )
-    sphere.render(ball->position);
+    sphere.render(ball->position,ball->axis,ball->angle);
 }
 
 void
@@ -532,7 +571,7 @@ World::render()
     {
       /// Advance simulation state by wall clock time.
       //
-      const double delta_t = time_now - world_time;
+      const double delta_t = min(1./20,time_now - world_time);
       time_step_cpu(delta_t);
       world_time += delta_t;
     }
@@ -639,6 +678,8 @@ World::render()
 
   if ( false )
     {
+      // Note: This code only works for a planar platform.
+
       //
       // Render ball reflection.  (Will be blended with dark tiles.)
       //
@@ -682,6 +723,8 @@ World::render()
 
   if ( false )
     {
+      // Note: This code only works for a planar platform.
+
       //
       // Write framebuffer stencil with shadow.
       //
@@ -719,13 +762,10 @@ World::render()
 
   glDepthFunc(GL_ALWAYS);
 
-  if ( opt_platform_texture )
-    {
-      glEnable(GL_TEXTURE_2D);
-      platform_tex_coords.bind();
-      glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
-      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    }
+  glEnable(GL_TEXTURE_2D);
+  platform_tex_coords.bind();
+  glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
   platform_tile_coords.bind();
   glVertexPointer
@@ -752,7 +792,7 @@ World::render()
           glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 6.0);
         }
 
-      if ( opt_platform_texture ) glEnable(GL_TEXTURE_2D);
+      glEnable(GL_TEXTURE_2D);
 
       // Write lighter-colored, textured tiles.
       //
@@ -790,9 +830,16 @@ World::render()
 
   glDisable(GL_TEXTURE_2D);
 
+  if ( opt_normals_visible )
+    {
+      glColor3fv(lsu_spirit_gold);
+      for ( int i=0; i<platform_tile_coords.elements; i++ )
+        tube_tapered(platform_tile_coords[i],0.2,5 * platform_tile_norms[i]);
+    }
+
   // Render Marker for Light Source
   //
-  insert_tetrahedron(light_location,0.05);
+  insert_tetrahedron(light_location,0.5);
 
   pError_Check();
 
@@ -829,7 +876,7 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
-  case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
+  case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': balls_stop(); break;
   case 'x': case 'X': balls += new Ball(); break;
@@ -907,6 +954,41 @@ insert_tetrahedron(pCoor& loc, float size)
 # undef TRI
 
   glEnable(GL_LIGHTING);
+}
+
+void
+tube_tapered(pCoor base, float radius, pVect to_apex)
+{
+  const int sides = 10;
+  const double delta_theta = 2 * M_PI / sides;
+  const double base_radius = 1;
+  const double apex_radius = 0.1;
+  const double apex_height = 1;
+  const double alpha = atan2(apex_height,base_radius-apex_radius);
+  const double vec_z = sin(alpha);
+  const float to_height = to_apex.mag();
+
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+
+  pVect from_apex(0,0,1);
+  pVect rn(from_apex,to_apex);
+  const float rot_angle = pangle(from_apex,to_apex);
+  glTranslatef(base.x,base.y,base.z);
+  glRotatef(rot_angle * 180.0 / M_PI,rn.x,rn.y,rn.z);
+  glScalef(radius,radius,to_height);
+  glBegin(GL_QUAD_STRIP);
+  for ( int i=0; i<=sides; i++ )
+    {
+      const double theta = delta_theta * i;
+      const double cos_t = cos(theta);
+      const double sin_t = sin(theta);
+      glNormal3f( cos_t, sin_t, vec_z );
+      glVertex3f( apex_radius * cos_t, apex_radius * sin_t, apex_height);
+      glVertex3f( base_radius * cos_t, base_radius * sin_t, 0);
+    }
+  glEnd();
+  glPopMatrix();
 }
 
 
