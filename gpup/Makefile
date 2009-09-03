@@ -1,6 +1,6 @@
 
 DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
-INCLUDE =
+INCLUDE = -I../include
 
 LIBDIR  =
 

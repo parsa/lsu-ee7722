@@ -68,14 +68,14 @@
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
-#include "../include/util.h"
-#include "../include/glextfuncs.h"
-#include "../include/coord.h"
-#include "../include/shader.h"
-#include "../include/pstring.h"
-#include "../include/misc.h"
-#include "../include/gl-buffer.h"
-#include "../include/texture-util.h"
+#include <gp/util.h>
+#include <gp/glextfuncs.h>
+#include <gp/coord.h>
+#include <gp/shader.h>
+#include <gp/pstring.h>
+#include <gp/misc.h>
+#include <gp/gl-buffer.h>
+#include <gp/texture-util.h>
 #include "shapes.h"
 
 
