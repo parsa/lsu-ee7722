@@ -2,10 +2,9 @@
 ///
 /// Homework 1
 
-/// THIS FILE NOT YET FINISHED
-
- /// Due: 
+ /// Due:   Friday, 11 September 2009
  //  E-mail this file (with solution).
+
 
  /// Team Member Names
  /// Name:
@@ -33,29 +32,95 @@
 // it makes more sense to edit others (e.g.,, coord.h). If it seems
 // that come other file must be edited, contact me.
 
-// The main code is in routine time_
-// The routine sample_code provides examples of the geometry objects.
+ /// Please:  Do not make unnecessary changes, such as formatting.
+ //  Solutions will be graded by comparing your submission to the
+ //  original using a 'diff' program.  Doing things like renaming
+ //  a variable or changing indentation but making no "real" changes
+ //  to a region of code will make it harder to find regions with "real"
+ //  changes. 
 
 
 /// Problem 0
+//
+ /// Familiarization
 
-// Fill in your name in the comment near the top of this file, then
-// build and run the program. It should display a tube similar to
-// demo-4-lighting. Try out the keyboard commands described below and
-// promptly resolve any problems, feel free to ask for help from
-// Dr. Koppelman or others, especially on issues of missing libraries,
-// and other setup problems.
+// Fill in team member names in the comment near the top of this file
+// then build and run the program. It should display a half cylinder
+// similar to demo-3-balls. Try out the keyboard commands described
+// below (under heading Keyboard Commands) and promptly resolve any
+// problems, feel free to ask for help from Dr. Koppelman or others,
+// especially on issues of missing libraries, and other setup
+// problems.
 
-// [ ]  Name placed at top of this file.
+// [ ]  Names placed at top of this file.
 // [ ]  Code compiles and runs.
-// [ ]  Had fun moving that green thing.
+// [ ]  Move eye viewpoint around with arrows, etc.
+// [ ]  Play with: Pause (p), Stop (s), Gravity Toggle (g)
+// [ ]  Press x to release more balls, hold down x to get a stream of balls.
+// [ ]  Change the ball radius using TAB and +/-.
+// [ ]  Had fun moving view position through foam of balls.
+
+
+
+/// Problem 1
+//
+ /// Change ball model from point to spheres.
+
+// The graphical model shows the balls as spheres but in the
+// physical model they are points. As a result balls are shown
+// passing as much as half-way through the platform before bouncing.
+// In this problem modify the code so that contact is based on
+// the sphere surface rather than the center position.
+
+//  * The variable opt_ball_radius holds the ball radius.
+
+//  * The platform is a perfect cylinder. (The demo-3-balls code
+//    has a harder-to-work-with ellipse.)  See code in routine
+//    platform_update for exact shape.  Note that variables platform_xrad
+//    and others are available to the time step routine.
+
+// [ ]  The balls should not pass through the platform.
+
+// [ ]  Base distance on the closest platform point.
+//      (Currently the code uses the distance to the platform point
+//       directly below the ball, which is not as accurate.)
+
+ /// Optional
+
+// [ ]  Use exact (or better) time of contact for computing new
+//      ball velocity and position.
+
+
+
+/// Problem 2
+
+ /// Rolling over "tile seams" causes balls to bounce.
+
+// The platform appears to consist of tiles.  Imagine that
+// between each tile is a little bump where grout is bulging
+// out.  In the real world a ball rolling over such a bump might
+// bounce.  Modify the simulation so that happens here too.
+
+//  * The code already detects when the ball rolls over a tile seam
+//    or passes close enough to hit the seam.
+
+// [ ]  Add code to have the ball bounce in some reasonable way.
+
+// [ ]  Add a variable for the height of the seam, and make it
+//      user modifiable (as is opt_ball_radius).
+
+// [ ]  The writeup should explain the physical model for the
+//      seams. (Separate instructions for the writeup will be
+//      provided.)
+
+
 
 
 
 /// What Code Does
 
 // Simulates balls bouncing over a curved platform. The platform
-// consists of tiles and the shape can be manipulated by the user.
+// consists of tiles and the shape is a half cylinder.
 
 
 ///  Keyboard Commands
@@ -65,8 +130,8 @@
  //   Will move object or push ball, depending on mode:
  //   'e': Move eye.
  //   'l': Move light.
- //   'b': Move ball. (Change position but not velocity.)
- //   'B': Push ball. (Add velocity.)
+ //   'b': Move a ball. (Change position but not velocity.)
+ //   'B': Push a ball. (Add velocity.)
  //
  /// Eye Direction
  //   Home, End, Delete, Insert
@@ -79,10 +144,11 @@
  //  (Also see variables below.)
  //
  //  'p'    Pause simulation. (Press again to resume.)
+ //  'x'    Release another ball. (Try holding it in.)
  //  'n'    Toggle visibility of platform normals.
- //  's'    Stop ball.
- //  'S'    Freeze ball. (Set velocity of all vertices to zero.)
+ //  's'    Stop balls.
  //  'g'    Turn gravity on and off.
+ //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
 
  /// Variables
@@ -98,7 +164,7 @@
  //
  //  VAR Light Intensity - The light intensity.
  //  VAR Gravity - Gravitational acceleration. (Turn on/off using 'g'.)
- //  VAR Platform Depth - Adjust depth of curved platform. (On/off suing 'f'.)
+ //  VAR Ball Radius
 
 
 #define GL_GLEXT_PROTOTYPES
@@ -144,8 +210,8 @@ public:
   bool contact;                 // If true, in contact with platform.
   int row_num, col_num;         // Refers to tile.
 
-  pVect axis;
-  double angle;
+  pVect axis;                   // Direction of ball's axis.
+  double angle;                 // Angle around axis.
 
   void push(pVect amt);
   void translate(pVect amt);
@@ -169,6 +235,8 @@ public:
   float opt_gravity_accel;      // Value chosen by user.
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
+
+  float opt_ball_radius;
 
   // Tiled platform for ball.
   //
@@ -229,15 +297,19 @@ World::init()
   opt_light_intensity = 100.2;
   light_location = pCoor(28.2,-2.8,-14.3);
 
+  opt_ball_radius = 2;
+
   variable_control.insert(opt_gravity_accel,"Gravity");
   variable_control.insert(opt_light_intensity,"Light Intensity");
+  variable_control.insert(opt_ball_radius,"Ball Radius");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
 
   ball_countdown = 1e10;
   balls += new Ball();
-  sphere.init(40);
+  sphere.init(40);   // Argument indicates amount of detail.
+  sphere.radius = opt_ball_radius;
 
   platform_update();
   modelview_update();
@@ -341,7 +413,8 @@ World::platform_collision_possible(pCoor pos)
 {
   // Assuming no motion in x or z axes.
   //
-  return pos.x >= platform_xmin && pos.x <= platform_xmax
+  return pos.y < opt_ball_radius
+    && pos.x >= platform_xmin && pos.x <= platform_xmax
     && pos.z >= platform_zmin && pos.z <= platform_zmax;
 }
 
@@ -371,43 +444,59 @@ World::time_step_cpu(double delta_t)
 {
   const float deep = -100;
 
+  // Iterate over balls.
+  //
   for ( Ball *ball; balls.iterate(ball); )
     {
+      // Simulate ball.
+      //
       time_step_cpu_ball(delta_t,ball);
+
+      // Remove ball if it has fallen too far.
+      //
       if ( ball->position.y < deep ) { balls.iterate_yank(); delete ball; }
+
     }
 
+  // Possibly add more balls to simulation.
+  //
   ball_countdown -= delta_t;
   if ( ball_countdown <= 0 || balls.occ() == 0 )
     {
       balls += new Ball();
       ball_countdown = 1e10;
     }
-
 }
 
 void
 World::time_step_cpu_ball(double delta_t, Ball* ball)
 {
-  // New ball position, accounting for current speed and acceleration,
-  // and assuming no collision.
+  // Compute new ball position, accounting for current speed and
+  // acceleration, and assuming no collision.
   //
   ball->position +=
     ball->velocity * delta_t + 0.5 * gravity_accel * delta_t * delta_t;
 
-  // New velocity, assuming no collision.
+  // Compute new velocity, assuming no collision.
   //
   ball->velocity += gravity_accel * delta_t;
 
+  // Set ball axis to direction of travel.
+  //
   pNorm tangent(ball->velocity);
   ball->axis = tangent.mag_sq ? tangent : pVect(0,-1,0);
-  ball->angle +=  0.1;
 
+  // Spin ball at a constant rate.
+  ball->angle +=  delta_t * 4;
 
   // Return quickly if collision impossible.
   //
   if ( !platform_collision_possible(ball->position) ) return;
 
+  // Compute y coordinate of platform under ball.
+  //
+  // Note that this is not really the closest point on the platform to the ball.
+  //
   const float cos_th = ( platform_xmid - ball->position.x ) * platform_xrad_inv;
   const float sin_th =  sqrt(1.0 - cos_th * cos_th );
   const float platform_y = -platform_xrad * sin_th;
@@ -437,7 +526,6 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
   const float speed_to_surface = dot(platform_norm,ball->velocity);
 
   ball->velocity -= 1.9 * speed_to_surface * platform_norm;
-
 }
 
 void
@@ -482,9 +570,6 @@ World::render()
   
   // Understanding of the code below not required for introductory
   // lectures.
-
-  // That said, much of the complexity of the code is to show
-  // the ball shadow and reflection.
 
   const pColor white(0xffffff);
   const pColor gray(0x303030);
@@ -723,6 +808,7 @@ World::cb_keyboard()
   }
 
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
+  sphere.radius = opt_ball_radius;
 
   // Update eye_direction based on keyboard command.
   //
