@@ -1,10 +1,16 @@
+### LSU EE 4702-1 (Fall 2009), GPU Programming
+##
+##  Makefile for Classroom Demos
+##
+## $Id:$
 
-DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
-INCLUDE = -I../include
 
-LIBDIR  =
+COURSE_INCLUDE_DIR = ../include
 
-COMPILERFLAGS =    -Wall
+INCLUDE = -I$(COURSE_INCLUDE_DIR)
+
+
+COMPILERFLAGS =  -Wall -O3
 
 CXX = g++
 
@@ -14,31 +20,30 @@ CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
+LIBDIR  =
 
 default:all
-
 all:demo-2-springs demo-1-simple demo-3-balls
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
 
-demo-1-simple.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
-demo-1-simple.o: demo-1-simple.cc
+INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
+	        gl-buffer.h texture-util.h 
 
-demo-1-simple: demo-1-simple.o
+INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
+	 shapes.h Makefile
+
+
+demo-1-simple.o:  $(INCLUDES)
+demo-1-simple: demo-1-simple.o 
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
-
-demo-2-springs.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
-demo-2-springs.o: demo-2-springs.cc
-
+demo-2-springs.o: $(INCLUDES)
 demo-2-springs: demo-2-springs.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
-demo-3-balls.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
-demo-3-balls.o: demo-3-balls.cc shapes.h
-demo-3-balls.o: demo-3-balls.cc
-
+demo-3-balls.o: $(INCLUDES)
 demo-3-balls: demo-3-balls.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
