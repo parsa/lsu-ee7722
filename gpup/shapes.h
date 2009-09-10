@@ -29,6 +29,7 @@ public:
   pVect axis, axis_prepared;
   double angle, angle_prepared;
   float radius;
+  pColor color;
   pMatrix rotation_matrix;
   bool default_orientation;
 };
@@ -41,6 +42,7 @@ Sphere::init(int slicesp)
   angle = 0;
   radius = 2;
   default_orientation = true;
+  color = pColor(0xf9b237); // LSU Spirit Gold
   const double two_pi = 2.0 * M_PI;
   const double delta_theta = two_pi / slices;
   const double epsilon = 0.001 * delta_theta;
@@ -99,8 +101,7 @@ Sphere::rotation_matrix_compute()
 void
 Sphere::render()
 {
-  const pColor lsu_spirit_gold(0xf9b237);
-  glColor3fv(lsu_spirit_gold);
+  glColor3fv(color);
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glTranslatef(center.x,center.y,center.z);
