@@ -126,13 +126,14 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
 
+  float opt_ball_radius;
+
   // Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_xmid, platform_xrad, platform_xrad_inv;
   float delta_theta_inv, tile_size_inv;
   float platform_pi_xwidth_inv;
-  float opt_platform_depth, platform_depth;
   pBuffer_Object<pVect> platform_tile_norms;
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
@@ -181,8 +182,6 @@ World::init()
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
-  opt_platform_depth = 45;
-  platform_depth = opt_platform_depth;
   texid_syl = pBuild_Texture_File("../gpup/gpup.png",false,255);
   texid_emacs = pBuild_Texture_File
     ( //"shot-emacs.png",
@@ -192,15 +191,18 @@ World::init()
   opt_light_intensity = 100.2;
   light_location = pCoor(28.2,-2.8,-14.3);
 
+  opt_ball_radius = 2;
+
   variable_control.insert(opt_gravity_accel,"Gravity");
-  variable_control.insert(opt_platform_depth,"Platform Depth");
   variable_control.insert(opt_light_intensity,"Light Intensity");
+  variable_control.insert(opt_ball_radius,"Ball Radius");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
 
   ball_countdown = 1e10;
   balls += new Ball();
+  sphere.radius = opt_ball_radius;
   sphere.init(40);
 
   platform_update();
@@ -235,6 +237,8 @@ World::platform_update()
   platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
   platform_xrad = 0.5 * platform_delta_x;
   platform_xrad_inv = 1 / platform_xrad;
+
+  const float platform_depth = platform_xrad;
 
   for ( int i = 0; i < tile_count; i++ )
     {
@@ -349,7 +353,8 @@ World::platform_collision_possible(pCoor pos)
 {
   // Assuming no motion in x or z axes.
   //
-  return pos.x >= platform_xmin && pos.x <= platform_xmax
+  return pos.y < opt_ball_radius
+    && pos.x >= platform_xmin && pos.x <= platform_xmax
     && pos.z >= platform_zmin && pos.z <= platform_zmax;
 }
 
@@ -418,7 +423,7 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
 
   const float cos_th = ( platform_xmid - ball->position.x ) * platform_xrad_inv;
   const float sin_th =  sqrt(1.0 - cos_th * cos_th );
-  const float platform_y = -platform_depth * sin_th;
+  const float platform_y = -platform_xrad * sin_th;
 
   const bool contact_prev = ball->contact;
   const bool true_contact = ball->position.y <= platform_y + 0.01;
@@ -426,7 +431,7 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
   if ( !ball->contact ) return;
 
   ball->position.y = max(ball->position.y,platform_y);
-  pNorm platform_norm( platform_depth * cos_th, platform_xrad * sin_th, 0);
+  pNorm platform_norm( platform_xrad * cos_th, platform_xrad * sin_th, 0);
 
   const int row_num_prev = ball->row_num;
   const int col_num_prev = ball->col_num;
@@ -775,7 +780,6 @@ World::cb_keyboard()
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
   const float move_amt = 0.4;
-  const float platform_depth_prev = platform_depth;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -804,8 +808,8 @@ World::cb_keyboard()
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
 
-  platform_depth = opt_platform_depth;
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
+  sphere.radius = opt_ball_radius;
 
   // Update eye_direction based on keyboard command.
   //
@@ -836,9 +840,6 @@ World::cb_keyboard()
       }
       modelview_update();
     }
-
-  if ( platform_depth != platform_depth_prev )
-    platform_update();
 }
 
 
