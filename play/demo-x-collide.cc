@@ -98,6 +98,8 @@ public:
   bool contact;                 // If true, in contact with platform.
   int row_num, col_num;         // Refers to tile.
 
+  bool bcontact;
+
   pVect axis;
   double angle;
 
@@ -390,6 +392,42 @@ World::time_step_cpu(double delta_t)
       if ( ball->position.y < deep ) { balls.iterate_yank(); delete ball; }
     }
 
+  const int nb = balls.occ();
+  const float ball_diameter = 2 * opt_ball_radius;
+
+  for ( Ball *ball; balls.iterate(ball); ) ball->bcontact = false;
+
+  PSList<Ball*,double> z;
+  for ( Ball *ball; balls.iterate(ball); ) z.insert(ball->position.z,ball);
+  z.sort();
+  for ( int idx0 = 0, idx9 = 0; idx9 < z.occ(); idx9++ )
+    {
+      Ball* const ball9 = z[idx9];
+      const float z_min = ball9->position.z - ball_diameter;
+
+      while ( idx0 < idx9 && z[idx0]->position.z < z_min ) idx0++;
+
+      for ( int i=idx0; i<idx9; i++ )
+        {
+          Ball* const ball1 = z[i];
+          if ( distance(ball9->position,ball1->position) > ball_diameter )
+            continue;
+          ball9->bcontact = ball1->bcontact = true;
+        }
+    }
+
+  for ( int i=0; i<nb; i++ )
+    {
+      Ball* const ball0 = balls[i];
+      for ( int j=i+1; j<nb; j++ )
+        {
+          Ball* const ball1 = balls[j];
+          if ( distance(ball0->position,ball1->position) >= ball_diameter )
+            continue;
+          ASSERTS( ball0->bcontact && ball1->bcontact );
+        }
+    }
+
   ball_countdown -= delta_t;
   if ( ball_countdown <= 0 || balls.occ() == 0 )
     {
@@ -456,8 +494,17 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
 void
 World::balls_render()
 {
+  const pColor red(1,0,0);
+  const pColor lsu_business_purple(0x7f5ca2);
+  const pColor lsu_spirit_purple(0x580da6);
+  const pColor lsu_spirit_gold(0xf9b237);
+  const pColor lsu_official_purple(0x2f0462);
+
   for ( Ball *ball; balls.iterate(ball); )
-    sphere.render(ball->position,ball->axis,ball->angle);
+    {
+      sphere.color = ball->bcontact ? red : lsu_spirit_gold;
+      sphere.render(ball->position,ball->axis,ball->angle);
+    }
 }
 
 void
