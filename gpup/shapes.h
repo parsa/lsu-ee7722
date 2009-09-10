@@ -28,6 +28,7 @@ public:
   pCoor center;
   pVect axis, axis_prepared;
   double angle, angle_prepared;
+  float radius;
   pMatrix rotation_matrix;
   bool default_orientation;
 };
@@ -38,6 +39,7 @@ Sphere::init(int slicesp)
   slices = slicesp;
   axis = pVect(0,1,0);
   angle = 0;
+  radius = 2;
   default_orientation = true;
   const double two_pi = 2.0 * M_PI;
   const double delta_theta = two_pi / slices;
@@ -102,7 +104,7 @@ Sphere::render()
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glTranslatef(center.x,center.y,center.z);
-  glScalef(2,2,2);
+  glScalef(radius,radius,radius);
   if ( !default_orientation ) glMultTransposeMatrixf(rotation_matrix);
   points_bo.bind();
   glVertexPointer(3,GL_FLOAT,0,0);
