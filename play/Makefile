@@ -1,8 +1,7 @@
-INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include
-LIBDIR  = -L/usr/X11R6/lib
+INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I../include
 LIBDIR  =
 
-COMPILERFLAGS = -Wall -O3
+COMPILERFLAGS = -Wall
 CC = gcc
 CXX = g++
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -fverbose-asm 
@@ -12,7 +11,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
 
-default:cube6
+default: demo-x-collide
 
 .cc.o:
 	$(CXX) $(CFLAGS) -S $*.cc
@@ -55,3 +54,11 @@ cube2: cube2.o
 
 cube: cube.o
 	$(CC) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
+
+demo-x-collide.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
+demo-x-collide.o: demo-x-collide.cc ../gpup/shapes.h
+demo-x-collide.o: demo-x-collide.cc
+
+demo-x-collide: demo-x-collide.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
