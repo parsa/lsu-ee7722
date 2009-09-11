@@ -92,6 +92,12 @@ class World;
 class Ball {
 public:
   Ball();
+  pCoor prev_position;
+  pVect prev_velocity;
+  bool prev_bcontact;
+  double contact_t;
+  int serial;
+
   pCoor position;
   pVect velocity;
 
@@ -108,6 +114,8 @@ public:
   void stop();
   void freeze();
 };
+
+int ball_serial_next = 0;
 
 class World {
 public:
@@ -127,6 +135,7 @@ public:
   float opt_gravity_accel;      // Value chosen by user.
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
+  bool opt_spray_on;
 
   float opt_ball_radius;
 
@@ -161,6 +170,8 @@ public:
   void ball_init();
   void balls_render();
   void balls_stop();
+  double collision_time(Ball *ball1, Ball *ball2, double delta_t);
+  void collision_resolve(Ball *ball1, Ball *ball2, double delta_t);
   void time_step_cpu(double);
   void time_step_cpu_ball(double delta_t, Ball* ball);
 
@@ -178,12 +189,13 @@ World::init()
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
+  opt_spray_on = true;
 
   eye_location = pCoor(17.9,-2,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
 
   platform_xmin = -40; platform_xmax = 40;
-  platform_zmin = -40; platform_zmax = 40;
+  platform_zmin = -300; platform_zmax = 100;
   texid_syl = pBuild_Texture_File("../gpup/gpup.png",false,255);
   texid_emacs = pBuild_Texture_File
     ( //"shot-emacs.png",
@@ -202,7 +214,7 @@ World::init()
   opt_move_item = MI_Eye;
   opt_pause = false;
 
-  ball_countdown = 1e10;
+  ball_countdown = 0.1;
   balls += new Ball();
   sphere.radius = opt_ball_radius;
   sphere.init(40);
@@ -215,10 +227,10 @@ World::init()
 void
 World::platform_update()
 {
-  const float tile_count = 19;
-  const float ep = 1.00001;
+  const float platform_delta_z = platform_zmax - platform_zmin;
+  const int tile_count = int(max(1.0,platform_delta_z * 0.5));
+  const float zdelta = platform_delta_z / tile_count;
   const float platform_delta_x = platform_xmax - platform_xmin;
-  const float zdelta = ( platform_zmax - platform_zmin ) / tile_count * ep;
 
   const float trmin = 0.05;
   const float trmax = 0.7;
@@ -230,10 +242,10 @@ World::platform_update()
   PStack<pVect> p_tile_norms;
   PStack<pVect> p1_tile_norms;
   PStack<float> p_tex_coords;
-  bool even = true;
   platform_pi_xwidth_inv = M_PI / platform_delta_x;
 
-  const double delta_theta = M_PI / tile_count;
+  const int th_tile_count = 19;
+  const double delta_theta = M_PI / th_tile_count;
   delta_theta_inv = 1.0 / delta_theta;
   tile_size_inv = 1 / zdelta;
   platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
@@ -242,10 +254,11 @@ World::platform_update()
 
   const float platform_depth = platform_xrad;
 
-  for ( int i = 0; i < tile_count; i++ )
+  for ( int i = 0; i < th_tile_count; i++ )
     {
       const double theta0 = i * delta_theta;
       const double theta1 = theta0 + delta_theta;
+      bool even = i & 1;
       const float x0 = platform_xmid - platform_xrad * cos(theta0);
       const float x1 = platform_xmid - platform_xrad * cos(theta1);
       const float y0 = -0.01 - platform_depth * sin(theta0);
@@ -343,10 +356,12 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
 
 Ball::Ball()
 {
+  serial = ball_serial_next++;
   position = pCoor(30,22,-15.4);
   velocity = pVect(random()/(0.0+RAND_MAX),0,random()/(0.0+RAND_MAX));
   axis = pNorm(0,1,0);
   angle = 0;
+  contact_t = -1000;
 }
 
 
@@ -381,6 +396,57 @@ void World::balls_stop()
   for ( Ball *ball; balls.iterate(ball); ) ball->stop();
 }
 
+double
+World::collision_time(Ball *ball1, Ball *ball2, double delta_t)
+{
+  const pCoor pos1(ball1->position);
+  const pCoor pos2(ball2->position);
+  const pVect cp0(pos2,pos1);
+  const pVect delta_v = ball1->velocity - ball2->velocity;
+  const double delta_s_sq = dot(delta_v,delta_v);
+  const double rsq = 4 * opt_ball_radius * opt_ball_radius;
+  const double dist_sq = dot(cp0,cp0);
+  const double separation = dist_sq - rsq;
+  if ( separation <= 0 ) ball1->bcontact = ball2->bcontact = true;
+  if ( delta_s_sq < 1e-10 ) return 1e20;
+  const double vcp0 = dot(delta_v,cp0);
+  const double radical = 4 * ( vcp0 * vcp0 - delta_s_sq * separation );
+  if ( radical < 0 ) return 1e20;
+  const double sqrt_radical = sqrt(radical);
+  const double t1 = ( -2 * vcp0 + sqrt_radical ) / ( 2 * delta_s_sq );
+  const double t2 = ( -2 * vcp0 - sqrt_radical ) / ( 2 * delta_s_sq );
+  const double t = min(t1,t2);
+  const double tmax = max(t1,t2);
+  if ( t > 0 ) return t;
+  //  if ( t <= -delta_t && tmax < 0 || t <= -2 * delta_t ) return t;
+  if ( t <= -delta_t && tmax < 0 ) return t;
+
+  const pCoor pos1c = pos1 + ball1->velocity * t;
+  const pCoor pos2c = pos2 + ball2->velocity * t;
+  const double check = distance(pos1c,pos2c);
+  ASSERTS ( fabs( check - 2 * opt_ball_radius ) < 0.01 );
+  const pNorm norm_12(pos1c,pos2c);
+  pVect coll_vel = dot(delta_v,norm_12) * norm_12;
+  pVect vel1c = ball1->prev_velocity - 0.5 * coll_vel;
+  pVect vel2c = ball2->prev_velocity + 0.5 * coll_vel;
+  const double sub_delta_t = delta_t + t;
+  ball1->position = pos1c - vel1c * sub_delta_t;
+  ball2->position = pos2c - vel2c * sub_delta_t;
+  ball1->velocity = vel1c;
+  ball2->velocity = vel2c;
+
+  if ( ball1->contact_t <= world_time || ball1->contact_t > t )
+    ball1->contact_t = world_time + t;
+  if ( ball2->contact_t <= world_time || ball2->contact_t > t )
+    ball2->contact_t = world_time + t;
+  return t;
+}
+
+void
+World::collision_resolve(Ball *ball1, Ball *ball2, double delta_t)
+{
+}
+
 void
 World::time_step_cpu(double delta_t)
 {
@@ -392,8 +458,7 @@ World::time_step_cpu(double delta_t)
       if ( ball->position.y < deep ) { balls.iterate_yank(); delete ball; }
     }
 
-  const int nb = balls.occ();
-  const float ball_diameter = 2 * opt_ball_radius;
+  const float region_length = 3 * opt_ball_radius;
 
   for ( Ball *ball; balls.iterate(ball); ) ball->bcontact = false;
 
@@ -403,36 +468,38 @@ World::time_step_cpu(double delta_t)
   for ( int idx0 = 0, idx9 = 0; idx9 < z.occ(); idx9++ )
     {
       Ball* const ball9 = z[idx9];
-      const float z_min = ball9->position.z - ball_diameter;
+      const float z_min = ball9->position.z - region_length;
 
       while ( idx0 < idx9 && z[idx0]->position.z < z_min ) idx0++;
 
       for ( int i=idx0; i<idx9; i++ )
         {
           Ball* const ball1 = z[i];
-          if ( distance(ball9->position,ball1->position) > ball_diameter )
-            continue;
-          ball9->bcontact = ball1->bcontact = true;
+          collision_time(ball1,ball9,delta_t);
         }
     }
 
+#if 0
+  const int nb = balls.occ();
+  const double ball_diameter = 2 * opt_ball_radius;
   for ( int i=0; i<nb; i++ )
     {
       Ball* const ball0 = balls[i];
       for ( int j=i+1; j<nb; j++ )
         {
           Ball* const ball1 = balls[j];
-          if ( distance(ball0->position,ball1->position) >= ball_diameter )
-            continue;
+          const double dist = distance(ball0->position,ball1->position);
+          if ( dist >= ball_diameter ) continue;
           ASSERTS( ball0->bcontact && ball1->bcontact );
         }
     }
+#endif
 
   ball_countdown -= delta_t;
-  if ( ball_countdown <= 0 || balls.occ() == 0 )
+  if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
     {
       balls += new Ball();
-      ball_countdown = 1e10;
+      ball_countdown = 0.1;
     }
 
 }
@@ -440,6 +507,10 @@ World::time_step_cpu(double delta_t)
 void
 World::time_step_cpu_ball(double delta_t, Ball* ball)
 {
+  ball->prev_position = ball->position;
+  ball->prev_velocity = ball->velocity;
+  ball->prev_bcontact = ball->bcontact;
+
   // New ball position, accounting for current speed and acceleration,
   // and assuming no collision.
   //
@@ -495,14 +566,21 @@ void
 World::balls_render()
 {
   const pColor red(1,0,0);
+  const pColor green(0,1,0);
+  const pColor blue(0,0,1);
   const pColor lsu_business_purple(0x7f5ca2);
   const pColor lsu_spirit_purple(0x580da6);
   const pColor lsu_spirit_gold(0xf9b237);
   const pColor lsu_official_purple(0x2f0462);
 
+  double coll_soon_time = world_time + 2;
+
   for ( Ball *ball; balls.iterate(ball); )
     {
-      sphere.color = ball->bcontact ? red : lsu_spirit_gold;
+      sphere.color = 
+        ball->bcontact ? red : 
+        ball->contact_t > world_time && ball->contact_t < coll_soon_time
+        ? blue : lsu_spirit_gold;
       sphere.render(ball->position,ball->axis,ball->angle);
     }
 }
@@ -631,7 +709,9 @@ World::render()
 
   Ball& ball = *balls[0];
   ogl_helper.fbprintf
-    ("Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+    ("Ball Count %d  1st Ball Pos  "
+     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+     balls.occ(),
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z );
 
@@ -847,7 +927,8 @@ World::cb_keyboard()
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': balls_stop(); break;
-  case 'x': case 'X': balls += new Ball(); break;
+  case 'x': opt_spray_on = !opt_spray_on; break;
+  case 'X': balls += new Ball(); break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
