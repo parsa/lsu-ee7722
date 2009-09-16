@@ -10,7 +10,7 @@ COURSE_INCLUDE_DIR = ../include
 INCLUDE = -I$(COURSE_INCLUDE_DIR)
 
 
-COMPILERFLAGS =  -Wall -O3
+COMPILERFLAGS =  -Wall 
 
 CXX = g++
 
@@ -23,7 +23,8 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 LIBDIR  =
 
 default:all
-all:demo-2-springs demo-1-simple demo-3-balls
+all:demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
+	demo-5-more-ogl
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -45,5 +46,15 @@ demo-2-springs: demo-2-springs.o
 
 demo-3-balls.o: $(INCLUDES)
 demo-3-balls: demo-3-balls.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+
+demo-4-simple-ogl.o: $(INCLUDES)
+demo-4-simple-ogl: demo-4-simple-ogl.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+
+demo-5-more-ogl.o: $(INCLUDES)
+demo-5-more-ogl: demo-5-more-ogl.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
