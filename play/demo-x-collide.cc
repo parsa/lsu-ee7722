@@ -95,8 +95,11 @@ public:
   pCoor prev_position;
   pVect prev_velocity;
   bool prev_bcontact;
+  double ts_t;
   double contact_t;
+  Ball *contact_ball;
   int serial;
+  int resolved;
 
   pCoor position;
   pVect velocity;
@@ -105,10 +108,14 @@ public:
   int row_num, col_num;         // Refers to tile.
 
   bool bcontact;
+  bool rolling;
 
   pVect axis;
   double angle;
+  double rotation_rate;
 
+  void fly(double t);
+  void fly_to(double t);
   void push(pVect amt);
   void translate(pVect amt);
   void stop();
@@ -136,8 +143,11 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
   bool opt_spray_on;
+  bool opt_color_events;
 
   float opt_ball_radius;
+  float opt_bounce_loss;
+  float opt_friction_coeff;
 
   // Tiled platform for ball.
   //
@@ -167,13 +177,18 @@ public:
 
   double ball_countdown;
 
+  float ts_mov_max;
+
   void ball_init();
   void balls_render();
   void balls_stop();
-  double collision_time(Ball *ball1, Ball *ball2, double delta_t);
-  void collision_resolve(Ball *ball1, Ball *ball2, double delta_t);
+  void fly_to_pc(Ball *ball, double ts_t);
+  void ball_surface_snap(Ball *ball);
+  double ball_platform_collision_time(Ball *ball);
+  double ball_ball_collision_time(Ball *ball1, Ball *ball2);
+  double collision_platform_resolve(Ball *ball);
+  double collision_ball_resolve(Ball *ball1, Ball *ball2, double limit_t);
   void time_step_cpu(double);
-  void time_step_cpu_ball(double delta_t, Ball* ball);
 
   PStack<Ball*> balls;
   Sphere sphere;
@@ -190,12 +205,13 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
   opt_spray_on = true;
+  opt_color_events = false;
 
   eye_location = pCoor(17.9,-2,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
 
   platform_xmin = -40; platform_xmax = 40;
-  platform_zmin = -300; platform_zmax = 100;
+  platform_zmin = -100; platform_zmax = 100;
   texid_syl = pBuild_Texture_File("../gpup/gpup.png",false,255);
   texid_emacs = pBuild_Texture_File
     ( //"shot-emacs.png",
@@ -206,7 +222,11 @@ World::init()
   light_location = pCoor(28.2,-2.8,-14.3);
 
   opt_ball_radius = 2;
+  opt_friction_coeff = 1;
+  opt_bounce_loss = 0.4;
 
+  variable_control.insert(opt_friction_coeff,"Friction");
+  variable_control.insert(opt_bounce_loss,"Bounce Energy Loss");
   variable_control.insert(opt_gravity_accel,"Gravity");
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(opt_ball_radius,"Ball Radius");
@@ -215,12 +235,32 @@ World::init()
   opt_pause = false;
 
   ball_countdown = 0.1;
-  balls += new Ball();
   sphere.radius = opt_ball_radius;
   sphere.init(40);
 
   platform_update();
   modelview_update();
+
+  if ( opt_spray_on )
+    {
+      balls += new Ball();
+      return;
+    }
+
+  const float r_short = platform_xrad - opt_ball_radius;
+
+  if (1){
+      Ball* const b = new Ball();
+      b->position = pCoor(0,-r_short,1);
+      b->velocity = pVect(0,0,0);
+      balls += b;
+    }
+    {
+      Ball* const b = new Ball();
+      b->position = pCoor(r_short*cos(1.75*M_PI),r_short*sin(1.75*M_PI),1);
+      b->velocity = pVect(0,0,0);
+      balls += b;
+    }
 
 }
 
@@ -357,10 +397,12 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
 Ball::Ball()
 {
   serial = ball_serial_next++;
+  resolved = 0;
   position = pCoor(30,22,-15.4);
   velocity = pVect(random()/(0.0+RAND_MAX),0,random()/(0.0+RAND_MAX));
   axis = pNorm(0,1,0);
   angle = 0;
+  rotation_rate = 0;
   contact_t = -1000;
 }
 
@@ -370,9 +412,11 @@ World::platform_collision_possible(pCoor pos)
 {
   // Assuming no motion in x or z axes.
   //
-  return pos.y < opt_ball_radius
-    && pos.x >= platform_xmin && pos.x <= platform_xmax
-    && pos.z >= platform_zmin && pos.z <= platform_zmax;
+  return pos.y < opt_ball_radius + ts_mov_max
+    && pos.x - ts_mov_max >= platform_xmin
+    && pos.x + ts_mov_max <= platform_xmax
+    && pos.z - ts_mov_max >= platform_zmin
+    && pos.z + ts_mov_max <= platform_zmax;
 }
 
  /// External Modifications to State
@@ -397,17 +441,18 @@ void World::balls_stop()
 }
 
 double
-World::collision_time(Ball *ball1, Ball *ball2, double delta_t)
+World::ball_ball_collision_time(Ball *ball1, Ball *ball2)
 {
+  const double ball2_dt = ball1->ts_t - ball2->ts_t;
   const pCoor pos1(ball1->position);
-  const pCoor pos2(ball2->position);
+  const pCoor pos2 = ball2->position + ball2->velocity * ball2_dt;
   const pVect cp0(pos2,pos1);
   const pVect delta_v = ball1->velocity - ball2->velocity;
   const double delta_s_sq = dot(delta_v,delta_v);
   const double rsq = 4 * opt_ball_radius * opt_ball_radius;
   const double dist_sq = dot(cp0,cp0);
   const double separation = dist_sq - rsq;
-  if ( separation <= 0 ) ball1->bcontact = ball2->bcontact = true;
+  if ( separation < -0.001 ) ball1->bcontact = ball2->bcontact = true;
   if ( delta_s_sq < 1e-10 ) return 1e20;
   const double vcp0 = dot(delta_v,cp0);
   const double radical = 4 * ( vcp0 * vcp0 - delta_s_sq * separation );
@@ -415,52 +460,149 @@ World::collision_time(Ball *ball1, Ball *ball2, double delta_t)
   const double sqrt_radical = sqrt(radical);
   const double t1 = ( -2 * vcp0 + sqrt_radical ) / ( 2 * delta_s_sq );
   const double t2 = ( -2 * vcp0 - sqrt_radical ) / ( 2 * delta_s_sq );
-  const double t = min(t1,t2);
-  const double tmax = max(t1,t2);
-  if ( t > 0 ) return t;
-  //  if ( t <= -delta_t && tmax < 0 || t <= -2 * delta_t ) return t;
-  if ( t <= -delta_t && tmax < 0 ) return t;
+  const double tmin = min(t1,t2);
+  return ball1->ts_t + tmin;
+}
 
-  const pCoor pos1c = pos1 + ball1->velocity * t;
-  const pCoor pos2c = pos2 + ball2->velocity * t;
-  const double check = distance(pos1c,pos2c);
+double
+World::collision_ball_resolve(Ball *ball1, Ball *ball2, double limit_t)
+{
+  const double check = distance(ball1->position,ball2->position);
   ASSERTS ( fabs( check - 2 * opt_ball_radius ) < 0.01 );
-  const pNorm norm_12(pos1c,pos2c);
-  pVect coll_vel = dot(delta_v,norm_12) * norm_12;
-  pVect vel1c = ball1->prev_velocity - 0.5 * coll_vel;
-  pVect vel2c = ball2->prev_velocity + 0.5 * coll_vel;
-  const double sub_delta_t = delta_t + t;
-  ball1->position = pos1c - vel1c * sub_delta_t;
-  ball2->position = pos2c - vel2c * sub_delta_t;
-  ball1->velocity = vel1c;
-  ball2->velocity = vel2c;
+  const pNorm norm_12(ball1->position,ball2->position);
+  const pVect delta_v = ball1->velocity - ball2->velocity;
+  double coll_spd = dot(delta_v,norm_12);
+  const float coll_spd_min = 1;
+  if ( coll_spd < coll_spd_min ) coll_spd = coll_spd_min;
 
-  if ( ball1->contact_t <= world_time || ball1->contact_t > t )
-    ball1->contact_t = world_time + t;
-  if ( ball2->contact_t <= world_time || ball2->contact_t > t )
-    ball2->contact_t = world_time + t;
-  return t;
+  pVect coll_vel = coll_spd  * norm_12 * ( 1 - 0.5 * opt_bounce_loss );
+
+  ball1->velocity = ball1->velocity - coll_vel;
+  ball2->velocity = ball2->velocity + coll_vel;
+  ball1->resolved = 20;
+  ball2->resolved = 20;
+  return 0;
+}
+
+double
+World::collision_platform_resolve(Ball *ball)
+{
+  pCoor axis(0,0,ball->position.z);
+  pNorm ax_normal(ball->position,axis);
+  const float v_to_axis = dot(ball->velocity,ax_normal);
+  if ( v_to_axis < 0 )
+    ball->velocity -= (2 - opt_bounce_loss ) * v_to_axis * ax_normal;
+  return v_to_axis;
+}
+
+class Contact {
+public:
+  Contact(){};
+  Contact(double t, Ball *ball):t(t),ball1(ball),ball2(NULL){};
+  Contact(double t, Ball *ball1, Ball *ball2):
+    t(t),ball1(ball1),ball2(ball2){};
+  double t;
+  Ball *ball1, *ball2;
+};
+
+void Ball::fly_to(double goal_ts){ fly(goal_ts-ts_t); }
+void Ball::fly(double t){ position += t * velocity; ts_t += t; }
+
+void
+World::fly_to_pc(Ball *ball, double ts_t)
+{
+  while ( ball->ts_t < ts_t )
+    {
+      const double plat_t = ball_platform_collision_time(ball);
+      if ( plat_t <= ts_t )
+        {
+          ball->fly_to(plat_t);
+          collision_platform_resolve(ball);
+          ball->fly_to(ts_t);
+          ball_surface_snap(ball);
+          break;
+        }
+      ball->fly_to(ts_t);
+      break;
+    }
 }
 
 void
-World::collision_resolve(Ball *ball1, Ball *ball2, double delta_t)
+World::ball_surface_snap(Ball *ball)
 {
+  if ( !platform_collision_possible(ball->position) ) return;
+  const float short_r = platform_xrad - 1.001 * opt_ball_radius;
+  pNorm norm(ball->position.x,ball->position.y,0);
+  if ( norm.magnitude < short_r ) return;
+  ball->position = pCoor(0,0,ball->position.z) + norm * short_r;
 }
 
 void
 World::time_step_cpu(double delta_t)
 {
   const float deep = -100;
+  
+  for ( Ball *ball; balls.iterate(ball); )
+    if ( ball->position.y < deep ) { balls.iterate_yank(); delete ball; }
 
   for ( Ball *ball; balls.iterate(ball); )
     {
-      time_step_cpu_ball(delta_t,ball);
-      if ( ball->position.y < deep ) { balls.iterate_yank(); delete ball; }
+      ball->prev_position = ball->position;
+      ball->prev_velocity = ball->velocity;
+      ball->prev_bcontact = ball->bcontact;
+      ball->bcontact = false;
+      ball->rolling = false;
+      ball->contact_ball = NULL;
+      ball->resolved--;
+      ball->ts_t = 0;
     }
 
-  const float region_length = 3 * opt_ball_radius;
+  float v_max = 0;
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      ball->velocity += gravity_accel * delta_t;
+#     define SET_AMAX(c) \
+      { float v = fabs(ball->velocity.c);  if ( v_max < v ) v_max = v; }
+      SET_AMAX(x); SET_AMAX(y); SET_AMAX(z);
+#     undef SET_AMAX
+    }
+  ts_mov_max = v_max * delta_t;
 
-  for ( Ball *ball; balls.iterate(ball); ) ball->bcontact = false;
+  PSList<Contact,double> contact;
+
+  const float fric_deltav = opt_friction_coeff * delta_t;
+
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      ball->contact_t = ball_platform_collision_time(ball);
+      if ( !ball->rolling ) continue;
+      pNorm vel(ball->velocity);
+      if ( fric_deltav >= vel.magnitude )
+        ball->velocity = pVect(0,0,0);
+      else
+        ball->velocity -= fric_deltav * vel;
+
+      continue;
+#if 0
+      pVect surface_vel = opt_ball_radius * cross(ball->axis,plat_normal);
+      pVect contact_vel = ball->velocity + surface_vel;
+#endif
+      pNorm plat_norm(ball->position,pCoor(0,0,ball->position.z));
+
+      pNorm non_r_vel = ball->velocity - ball->velocity * plat_norm;
+
+      if ( non_r_vel.mag_sq < 0.0001 ) continue;
+
+      pNorm axis = cross(plat_norm, non_r_vel);
+      ball->axis = axis;
+      ball->rotation_rate = non_r_vel.magnitude / opt_ball_radius;
+
+      ball->angle += ball->rotation_rate * delta_t;
+
+    }
+  
+  const float region_length = 3 * opt_ball_radius;
+  const float two_r = 2 * opt_ball_radius;
 
   PSList<Ball*,double> z;
   for ( Ball *ball; balls.iterate(ball); ) z.insert(ball->position.z,ball);
@@ -475,113 +617,142 @@ World::time_step_cpu(double delta_t)
       for ( int i=idx0; i<idx9; i++ )
         {
           Ball* const ball1 = z[i];
-          collision_time(ball1,ball9,delta_t);
+
+          const pNorm dist(ball1->position,ball9->position);
+          if ( dist.magnitude < two_r )
+            {
+              const float vel = 0.5 * ( two_r - dist.magnitude ) / 0.5;
+              ball1->velocity -= vel * dist;
+              ball9->velocity += vel * dist;
+              continue;
+            }
+
+          const double t_coll = ball_ball_collision_time(ball1,ball9);
+
+          if ( t_coll < -0.01 || t_coll >= delta_t ) continue;
+
+          if ( !ball1->contact_ball || ball1->contact_t > t_coll )
+            {
+              ball1->contact_t = t_coll;
+              ball1->contact_ball = ball9;
+            }
+
+          if ( !ball9->contact_ball || ball9->contact_t > t_coll )
+            {
+              ball9->contact_t = t_coll;
+              ball9->contact_ball = ball1;
+            }
         }
     }
 
-#if 0
-  const int nb = balls.occ();
-  const double ball_diameter = 2 * opt_ball_radius;
-  for ( int i=0; i<nb; i++ )
+  PSList<Ball*,double> clist;
+  for ( Ball *ball; balls.iterate(ball); ) clist.insert(ball->contact_t,ball);
+  clist.sort();
+  while ( Ball* const ball = clist.iterate() )
     {
-      Ball* const ball0 = balls[i];
-      for ( int j=i+1; j<nb; j++ )
+      Ball* const cball = ball->contact_ball;
+      double t_coll = cball ? ball_ball_collision_time(ball,cball) : 1e20;
+
+      while ( cball && t_coll < delta_t )
         {
-          Ball* const ball1 = balls[j];
-          const double dist = distance(ball0->position,ball1->position);
-          if ( dist >= ball_diameter ) continue;
-          ASSERTS( ball0->bcontact && ball1->bcontact );
+          if ( ball->ts_t > t_coll ) break;
+          if ( cball->ts_t > t_coll ) break;
+          ball->fly_to(t_coll);  cball->fly_to(t_coll);
+          collision_ball_resolve(ball,cball,delta_t);
+          ball_surface_snap(ball);ball_surface_snap(cball);
+          break;
         }
+      fly_to_pc(ball,delta_t);
     }
-#endif
+
 
   ball_countdown -= delta_t;
   if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
     {
-      balls += new Ball();
+      Ball* const nball = new Ball();
+      double r = opt_ball_radius * 5;
+      double c = 2 * M_PI * r;
+      const double delta_theta =
+        0.0001 + 2 * M_PI / ( c / (2 * opt_ball_radius ) );
+      static double th = 0;  th += delta_theta;
+      nball->position.x = platform_xmax - r - 2 * opt_ball_radius
+        + (r+opt_ball_radius) * cos(th);
+      nball->position.z += (r+opt_ball_radius) * sin(th);
+      //  nball->velocity = pVect(0,0,0);
+      balls += nball;
       ball_countdown = 0.1;
     }
 
 }
 
-void
-World::time_step_cpu_ball(double delta_t, Ball* ball)
+class Collide_Line_Sphere {
+public:
+  Collide_Line_Sphere(pCoor& p0, pVect& v, pCoor c, float r)
+  {init(p0,v,c,r);}
+  void init(pCoor& p0, pVect& v, pCoor c, float r)
+  {
+    t1 = t2 = tmin = tmax = 1e20;
+    const pVect cp0(c,p0);
+    delta_s_sq = dot(v,v);
+    const double rsq = r * r;
+    dist_sq = dot(cp0,cp0);
+    const double separation = dist_sq - rsq;
+    if ( delta_s_sq < 1e-10 ) return;
+    const double vcp0 = dot(v,cp0);
+    const double radical = 4 * ( vcp0 * vcp0 - delta_s_sq * separation );
+    if ( radical < 0 ) return;
+    const double sqrt_radical = sqrt(radical);
+    t1 = ( -2 * vcp0 + sqrt_radical ) / ( 2 * delta_s_sq );
+    t2 = ( -2 * vcp0 - sqrt_radical ) / ( 2 * delta_s_sq );
+    tmin = min(t1,t2);
+    tmax = max(t1,t2);
+  }
+  double delta_s_sq, dist_sq;
+  double delta_s;
+  double t1, t2, tmin, tmax;
+};
+
+double
+World::ball_platform_collision_time(Ball *ball)
 {
-  ball->prev_position = ball->position;
-  ball->prev_velocity = ball->velocity;
-  ball->prev_bcontact = ball->bcontact;
-
-  // New ball position, accounting for current speed and acceleration,
-  // and assuming no collision.
-  //
-  ball->position +=
-    ball->velocity * delta_t + 0.5 * gravity_accel * delta_t * delta_t;
-
-  // New velocity, assuming no collision.
-  //
-  ball->velocity += gravity_accel * delta_t;
-
-  pNorm tangent(ball->velocity);
-  ball->axis = tangent.mag_sq ? tangent : pVect(0,-1,0);
-  ball->angle +=  0.1;
-
-
-  // Return quickly if collision impossible.
-  //
-  if ( !platform_collision_possible(ball->position) ) return;
-
-  const float cos_th = ( platform_xmid - ball->position.x ) * platform_xrad_inv;
-  const float sin_th =  sqrt(1.0 - cos_th * cos_th );
-  const float platform_y = -platform_xrad * sin_th;
-
-  const bool contact_prev = ball->contact;
-  const bool true_contact = ball->position.y <= platform_y + 0.01;
-  ball->contact = ball->position.y <= platform_y + 0.5;
-  if ( !ball->contact ) return;
-
-  ball->position.y = max(ball->position.y,platform_y);
-  pNorm platform_norm( platform_xrad * cos_th, platform_xrad * sin_th, 0);
-
-  const int row_num_prev = ball->row_num;
-  const int col_num_prev = ball->col_num;
-  const int row_num = int(ball->position.z * tile_size_inv);
-  const int col_num = int(acos(cos_th) * delta_theta_inv);
-  ball->col_num = col_num;
-  ball->row_num = row_num;
-  if ( contact_prev &&
-       ( row_num_prev != row_num || col_num_prev != col_num ) )
-    {
-      // Ball has rolled from one tile to another.
-    }
-
-  if ( !true_contact ) return;
-
-  const float speed_to_surface = dot(platform_norm,ball->velocity);
-
-  ball->velocity -= 1.9 * speed_to_surface * platform_norm;
-
+  if ( ! platform_collision_possible(ball->position) ) return 1e20;
+  pCoor pos_xy(ball->position.x,ball->position.y,0);
+  pVect vel_xy(ball->velocity.x,ball->velocity.y,0);
+  const float short_r = platform_xrad - opt_ball_radius;
+  Collide_Line_Sphere collide(pos_xy,vel_xy,pVect(0,0,0),short_r);
+  const float short_r_sq = short_r * short_r;
+  ball->rolling = fabs(collide.dist_sq - short_r_sq) < 1;
+  const double t = collide.tmin < 0 ? collide.tmax : collide.tmin;
+  return t + ball->ts_t;
 }
 
 void
 World::balls_render()
 {
-  const pColor red(1,0,0);
-  const pColor green(0,1,0);
-  const pColor blue(0,0,1);
-  const pColor lsu_business_purple(0x7f5ca2);
-  const pColor lsu_spirit_purple(0x580da6);
-  const pColor lsu_spirit_gold(0xf9b237);
-  const pColor lsu_official_purple(0x2f0462);
+  pColor red(1,0,0);
+  pColor green(0,1,0);
+  pColor blue(0,0,1);
+  pColor lsu_business_purple(0x7f5ca2);
+  pColor lsu_spirit_purple(0x580da6);
+  pColor lsu_spirit_gold(0xf9b237);
+  pColor lsu_official_purple(0x2f0462);
+  pColor* const colors[4] =
+    { &lsu_spirit_gold, &lsu_spirit_purple, &green, &blue };
 
   double coll_soon_time = world_time + 2;
 
   for ( Ball *ball; balls.iterate(ball); )
     {
-      sphere.color = 
+      pColor& color_event =
+        //  ball->rolling ? blue :
+        ball->resolved > 0 ? green :
         ball->bcontact ? red : 
         ball->contact_t > world_time && ball->contact_t < coll_soon_time
-        ? blue : lsu_spirit_gold;
+        ? lsu_spirit_purple : lsu_spirit_gold;
+      pColor* const color_idx = colors[ ( ball->serial >> 7 ) & 0x3 ];
+      sphere.color = opt_color_events ? color_event : *color_idx;
       sphere.render(ball->position,ball->axis,ball->angle);
+      if ( ball->bcontact ) ball->resolved = 0;
     }
 }
 
@@ -610,9 +781,13 @@ World::render()
     {
       /// Advance simulation state by wall clock time.
       //
-      const double delta_t = min(1./20,time_now - world_time);
-      time_step_cpu(delta_t);
-      world_time += delta_t;
+      const double delta_t = min(1./160,time_now - world_time);
+      int iters = 0;
+      while ( world_time < time_now && iters < 10 )
+        {
+          time_step_cpu(delta_t);
+          world_time += delta_t;
+        }
     }
 
   /// Emit a Graphical Representation of Simulation State
@@ -707,9 +882,9 @@ World::render()
     ("Light location: [%5.1f, %5.1f, %5.1f]\n",
      light_location.x, light_location.y, light_location.z);
 
-  Ball& ball = *balls[0];
+  Ball& ball = *balls.peek();
   ogl_helper.fbprintf
-    ("Ball Count %d  1st Ball Pos  "
+    ("Ball Count %d  Last Ball Pos  "
      "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      balls.occ(),
      ball.position.x,ball.position.y,ball.position.z,
@@ -888,14 +1063,14 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
   glDisable(GL_LIGHTING);
   glDisable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_STENCIL_TEST);
   frame_timer.frame_end();
 
+  glColor3f(0.5,1,0.5);
+  ogl_helper.user_text_reprint();
   glutSwapBuffers();
 }
 
@@ -921,6 +1096,7 @@ World::cb_keyboard()
   case FB_KEY_END: user_rot_axis.x = -1; break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
+  case 'c': case 'C': opt_color_events = !opt_color_events; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
@@ -938,6 +1114,7 @@ World::cb_keyboard()
 
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
   sphere.radius = opt_ball_radius;
+  if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
 
   // Update eye_direction based on keyboard command.
   //
@@ -960,8 +1137,8 @@ World::cb_keyboard()
       adjustment *= rotall;
 
       switch ( opt_move_item ){
-      case MI_Ball: balls[0]->translate(adjustment); break;
-      case MI_Ball_V: balls[0]->push(adjustment); break;
+      case MI_Ball: balls.peek()->translate(adjustment); break;
+      case MI_Ball_V: balls.peek()->push(adjustment); break;
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
       default: break;
