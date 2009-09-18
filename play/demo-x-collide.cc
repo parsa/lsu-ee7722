@@ -112,7 +112,11 @@ public:
 
   pVect axis;
   double angle;
+
+  pMatrix orientation;
+  pVect rotation_axis;
   double rotation_rate;
+  
 
   void fly(double t);
   void fly_to(double t);
@@ -147,6 +151,8 @@ public:
 
   float opt_ball_radius;
   float opt_bounce_loss;
+  float opt_elasticity;
+  float elasticity;
   float opt_friction_coeff;
 
   // Tiled platform for ball.
@@ -224,7 +230,9 @@ World::init()
   opt_ball_radius = 2;
   opt_friction_coeff = 1;
   opt_bounce_loss = 0.4;
+  elasticity = opt_elasticity = 1;
 
+  variable_control.insert(opt_elasticity,"Elasticity");
   variable_control.insert(opt_friction_coeff,"Friction");
   variable_control.insert(opt_bounce_loss,"Bounce Energy Loss");
   variable_control.insert(opt_gravity_accel,"Gravity");
@@ -472,7 +480,7 @@ World::collision_ball_resolve(Ball *ball1, Ball *ball2, double limit_t)
   const pNorm norm_12(ball1->position,ball2->position);
   const pVect delta_v = ball1->velocity - ball2->velocity;
   double coll_spd = dot(delta_v,norm_12);
-  const float coll_spd_min = 1;
+  const float coll_spd_min = 0;
   if ( coll_spd < coll_spd_min ) coll_spd = coll_spd_min;
 
   pVect coll_vel = coll_spd  * norm_12 * ( 1 - 0.5 * opt_bounce_loss );
@@ -576,29 +584,36 @@ World::time_step_cpu(double delta_t)
     {
       ball->contact_t = ball_platform_collision_time(ball);
       if ( !ball->rolling ) continue;
+
+#if 1
       pNorm vel(ball->velocity);
       if ( fric_deltav >= vel.magnitude )
         ball->velocity = pVect(0,0,0);
       else
         ball->velocity -= fric_deltav * vel;
+#else
 
-      continue;
-#if 0
-      pVect surface_vel = opt_ball_radius * cross(ball->axis,plat_normal);
-      pVect contact_vel = ball->velocity + surface_vel;
-#endif
+
       pNorm plat_norm(ball->position,pCoor(0,0,ball->position.z));
+      pNorm linear_vel = ball->velocity - ball->velocity * plat_norm;
 
-      pNorm non_r_vel = ball->velocity - ball->velocity * plat_norm;
+      pVect contact_rot_dir = cross( ball->rotation_axis, plat_norm );
 
-      if ( non_r_vel.mag_sq < 0.0001 ) continue;
+      const double r = opt_ball_radius * contact_rot_dir.magnitude;
+      pVect contact_rot_vel =
+        ball->rotation_rate * opt_ball_radius * contact_rot_dir;
+      pNorm contact_vel_dir( linear_vel + contact_rot_vel );
+
+      pNorm torque_axis = cross(plat_norm, contact_vel_dir);
+
+      //  if ( non_r_vel.mag_sq < 0.0001 ) continue;
 
       pNorm axis = cross(plat_norm, non_r_vel);
       ball->axis = axis;
       ball->rotation_rate = non_r_vel.magnitude / opt_ball_radius;
 
       ball->angle += ball->rotation_rate * delta_t;
-
+#endif
     }
   
   const float region_length = 3 * opt_ball_radius;
@@ -621,7 +636,7 @@ World::time_step_cpu(double delta_t)
           const pNorm dist(ball1->position,ball9->position);
           if ( dist.magnitude < two_r )
             {
-              const float vel = 0.5 * ( two_r - dist.magnitude ) / 0.5;
+              const float vel = ( two_r - dist.magnitude ) * elasticity;
               ball1->velocity -= vel * dist;
               ball9->velocity += vel * dist;
               continue;
@@ -1114,6 +1129,7 @@ World::cb_keyboard()
 
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
   sphere.radius = opt_ball_radius;
+  elasticity = opt_elasticity;
   if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
 
   // Update eye_direction based on keyboard command.
