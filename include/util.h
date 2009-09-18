@@ -10,6 +10,7 @@
 
 #include "glextfuncs.h"
 #include "pstring.h"
+#include "misc.h"
 
 template<typename T> T min(T a, T b){ return a < b ? a : b; }
 template<typename T> T max(T a, T b){ return a > b ? a : b; }
@@ -456,13 +457,15 @@ public:
   int keyboard_key;
   int keyboard_x, keyboard_y;  // Mouse location when key pressed.
 
+  PStack<pString> user_frame_text;
+
   // Print text in frame buffer, starting at upper left.
   // Arguments same as printf.
   //
   void fbprintf(const char* fmt, ...)
   {
     va_list ap;
-    pString str;
+    pString& str = *user_frame_text.pushi();
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
@@ -470,6 +473,17 @@ public:
     frame_print_calls++;
 
     glutBitmapString((void*)glut_fonts[glut_font_idx],(unsigned char*)str.s);
+  }
+
+  void user_text_reprint()
+  {
+    glDisable(GL_DEPTH_TEST);
+    glWindowPos2i(10,height-20);
+    while ( pString* const str = user_frame_text.iterate() )
+      glutBitmapString
+        ((void*)glut_fonts[glut_font_idx],(unsigned char*)str->s);  
+    user_frame_text.reset();
+    glEnable(GL_DEPTH_TEST);
   }
 
   void cycle_font()
@@ -508,6 +522,7 @@ private:
     shape_update();
     frame_print_calls = 0;
     user_display_func(user_display_data);
+    user_text_reprint();
     cb_keyboard();
   }
 
