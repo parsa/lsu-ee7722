@@ -73,7 +73,7 @@
 #include <gp/misc.h>
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
-#include "../gpup/shapes.h"
+#include "shapes.h"
 
 
 
@@ -91,46 +91,67 @@ class World;
 //
 class Ball {
 public:
-  Ball();
+  Ball(World *w);
+  ~Ball(){ glDeleteQueries(1,&query_occlusion_id); }
+  World& w;
   pCoor prev_position;
   pVect prev_velocity;
   bool prev_bcontact;
   double ts_t;
   double contact_t;
-  Ball *contact_ball;
   int serial;
-  int resolved;
+
+  GLuint query_occlusion_id;
+  bool occlusion_query_active;
+  bool occluded;
+  int occluded_run;
+  int occlusion_countdown;
+
+  pColor color_event;
+  pColor color_natural;
 
   pCoor position;
   pVect velocity;
 
-  bool contact;                 // If true, in contact with platform.
-  int row_num, col_num;         // Refers to tile.
-
   bool bcontact;
-  bool rolling;
 
-  pVect axis;
-  double angle;
-
+  pMatrix rotation_matrix;
   pMatrix orientation;
-  pVect rotation_axis;
-  double rotation_rate;
-  
+  pVect angular_momentum;
+  int collision_count;
 
   void fly(double t);
   void fly_to(double t);
+  pVect point_rot_vel(pNorm tact_dir);
+  void apply_deltao(pNorm tact_dir, pNorm force_dir, double deltao);
+  void apply_tan_do(pNorm tact_dir, pVect force);
+  void apply_tan_dv(pNorm tact_dir, pVect force);
   void push(pVect amt);
   void translate(pVect amt);
   void stop();
   void freeze();
 };
 
-int ball_serial_next = 0;
+
+const pColor red(0.8,0.1,0.1);
+const pColor green(0.1,0.8,0.1);
+const pColor blue(0.1,0.1,0.8);
+const pColor cyan(0.1,0.8,0.8);
+const pColor light_gray(0.8,0.8,0.8);
+const pColor dark_gray(0.15,0.15,0.15);
+const pColor lsu_business_purple(0x7f5ca2);
+const pColor lsu_spirit_purple(0x580da6);
+const pColor lsu_spirit_gold(0xf9b237);
+const pColor lsu_official_purple(0x2f0462);
+const pColor* const colors[8] =
+  { &lsu_spirit_gold, &lsu_spirit_purple, &green, &blue,
+    &red, &cyan, &light_gray, &dark_gray };
+const int colors_mask = 0x7;
+
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
+  World(pOpenGL_Helper &fb):ogl_helper(fb),pball(this){init();}
   void init();
   static void render_w(void *moi){ ((World*)moi)->render(); }
   void render();
@@ -138,22 +159,55 @@ public:
   void modelview_update();
   void shadow_update();
   void shadow_transform_create(pMatrix& m, pCoor light);
+  void benchmark_setup(int tiers=1);
 
   pOpenGL_Helper& ogl_helper;
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
   double world_time;
-  float opt_gravity_accel;      // Value chosen by user.
-  pVect gravity_accel;          // Set to zero when opt_gravity is false;
-  bool opt_gravity;
-  bool opt_spray_on;
+
+  bool opt_normals_visible;
   bool opt_color_events;
 
+  bool opt_spray_on;
+  int spray_cnt, spray_run;
+  double ball_countdown;
+
+  bool opt_drip;
+  int drip_cnt, drip_run;
+  Ball *dball;
+
+  bool opt_verify;
+  bool opt_debug;
+
+  bool opt_gravity;
+  float opt_gravity_accel;      // Value chosen by user.
+  float opt_ball_mass;
   float opt_ball_radius;
   float opt_bounce_loss;
   float opt_elasticity;
-  float elasticity;
   float opt_friction_coeff;
+  float opt_friction_roll;
+
+  Ball pball;
+
+  double delta_t;
+  pVect gravity_accel;          // Set to zero when opt_gravity is false;
+  pVect gravity_accel_dt;
+  double ball_mass_inv;
+  double elasticity_dt;
+  double ball_mo_inertia;
+  double two_r_sq;
+  double two_r;
+  double mo_vel_factor;
+  double v_to_do;
+  double r_inv;
+  double short_xrad_sq;
+  float platform_xmin_mr;
+  float platform_xmax_pr;
+  float platform_zmin_mr;
+  float platform_zmax_pr;
+
 
   // Tiled platform for ball.
   //
@@ -166,9 +220,8 @@ public:
   pBuffer_Object<float> platform_tex_coords;
   GLuint texid_syl;
   GLuint texid_emacs;
-  bool opt_normals_visible;
   void platform_update();
-  bool platform_collision_possible(pCoor pos);
+  bool platform_collision_possible(pCoor pos, float ts_mov_max = 0);
 
   pCoor light_location;
   float opt_light_intensity;
@@ -181,23 +234,26 @@ public:
   pMatrix modelview_shadow;
   pMatrix transform_mirror;
 
-  double ball_countdown;
-
-  float ts_mov_max;
+  int balls_occluded;
 
   void ball_init();
+  void variables_update();
   void balls_render();
   void balls_stop();
+  void balls_rot_stop();
   void fly_to_pc(Ball *ball, double ts_t);
   void ball_surface_snap(Ball *ball);
   double ball_platform_collision_time(Ball *ball);
   double ball_ball_collision_time(Ball *ball1, Ball *ball2);
   double collision_platform_resolve(Ball *ball);
   double collision_ball_resolve(Ball *ball1, Ball *ball2, double limit_t);
-  void time_step_cpu(double);
+  bool penetration_balls_resolve
+  (Ball *ball1, Ball *ball2, bool b2_real = true);
+  void time_step_cpu();
 
   PStack<Ball*> balls;
   Sphere sphere;
+  Sphere sphere_lite;
   Cone cone;                    // Used to show platform normals.
 };
 
@@ -210,30 +266,41 @@ World::init()
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
-  opt_spray_on = true;
+  opt_spray_on = false;
   opt_color_events = false;
+  opt_debug = true;
 
   eye_location = pCoor(17.9,-2,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
 
   platform_xmin = -40; platform_xmax = 40;
-  platform_zmin = -100; platform_zmax = 100;
+  platform_zmin = -80; platform_zmax = 80;
   texid_syl = pBuild_Texture_File("../gpup/gpup.png",false,255);
   texid_emacs = pBuild_Texture_File
     ( //"shot-emacs.png",
-     "../gpgpu/mult.png",
+      "../gpgpu/mult.png",
      false,-1);
 
   opt_light_intensity = 100.2;
   light_location = pCoor(28.2,-2.8,-14.3);
 
+  opt_ball_mass = 0.25;
   opt_ball_radius = 2;
-  opt_friction_coeff = 1;
-  opt_bounce_loss = 0.4;
-  elasticity = opt_elasticity = 1;
+  opt_friction_coeff = 0.2;
+  opt_friction_roll = 0.1;
+  opt_bounce_loss = 0.55;
+  opt_elasticity = 1600;
+  opt_drip = false;
+  drip_cnt = spray_cnt = 0;
+  drip_run = 3;
+  spray_run = 8;
+  dball = NULL;
+  opt_verify = true;
 
+  variable_control.insert(opt_ball_mass,"Ball Mass");
   variable_control.insert(opt_elasticity,"Elasticity");
-  variable_control.insert(opt_friction_coeff,"Friction");
+  variable_control.insert(opt_friction_coeff,"Sliding Friction");
+  variable_control.insert(opt_friction_roll,"Rolling Friction");
   variable_control.insert(opt_bounce_loss,"Bounce Energy Loss");
   variable_control.insert(opt_gravity_accel,"Gravity");
   variable_control.insert(opt_light_intensity,"Light Intensity");
@@ -242,34 +309,77 @@ World::init()
   opt_move_item = MI_Eye;
   opt_pause = false;
 
-  ball_countdown = 0.1;
-  sphere.radius = opt_ball_radius;
-  sphere.init(40);
+  pball.prev_velocity = pVect(0,0,0);
 
+  ball_countdown = 0.1;
+  sphere.init(40);
+  sphere_lite.init(4);
+
+  variables_update();
   platform_update();
   modelview_update();
 
   if ( opt_spray_on )
     {
-      balls += new Ball();
+      balls += new Ball(this);
       return;
     }
 
   const float r_short = platform_xrad - opt_ball_radius;
 
-  if (1){
-      Ball* const b = new Ball();
-      b->position = pCoor(0,-r_short,1);
+  if (true){
+    {
+      Ball* const b = new Ball(this);
+      b->position = pCoor(0,-r_short,40);
       b->velocity = pVect(0,0,0);
       balls += b;
     }
     {
-      Ball* const b = new Ball();
-      b->position = pCoor(r_short*cos(1.75*M_PI),r_short*sin(1.75*M_PI),1);
+      Ball* const b = new Ball(this);
+      b->position = pCoor(r_short*cos(1.75*M_PI),r_short*sin(1.75*M_PI),40);
       b->velocity = pVect(0,0,0);
       balls += b;
     }
+  }
 
+  if ( false )
+    {
+      Ball *b = new Ball(this);
+      b->position = pCoor(0,-r_short,48);
+      b->velocity = pVect(0,0,0);
+      b->angular_momentum = pVect(0,6,0);
+      balls += b;
+      b = new Ball(this);
+      b->position = pCoor(0,-r_short+3*opt_ball_radius,48);
+      b->velocity = pVect(0,0,0);
+      b->angular_momentum = pVect(0,1,0);
+      balls += b;
+    }
+
+}
+
+void
+World::variables_update()
+{
+  ball_mass_inv = 1 / opt_ball_mass;
+  r_inv = 1.0 / opt_ball_radius;
+  const double r_sq = opt_ball_radius * opt_ball_radius;
+  two_r_sq = 4 * r_sq;
+  two_r = 2 * opt_ball_radius;
+  gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
+  gravity_accel_dt = delta_t * gravity_accel;
+  sphere.radius = opt_ball_radius;
+  sphere_lite.radius = opt_ball_radius;
+  elasticity_dt = opt_elasticity * delta_t;
+  if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
+  ball_mo_inertia = 0.4 * opt_ball_mass * r_sq;
+  v_to_do = opt_ball_mass * opt_ball_radius / ball_mo_inertia;
+  mo_vel_factor = 0.5 / ( 1 + v_to_do * opt_ball_radius );
+  short_xrad_sq = pow(platform_xrad - opt_ball_radius,2);
+  platform_xmin_mr = platform_xmin - opt_ball_radius;
+  platform_zmin_mr = platform_zmin - opt_ball_radius;
+  platform_xmax_pr = platform_xmax + opt_ball_radius;
+  platform_zmax_pr = platform_zmax + opt_ball_radius;
 }
 
 void
@@ -394,6 +504,31 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
   pCoor test_pt2_pr = project * test_pt2;  test_pt2_pr.homogenize();
 }
 
+void
+World::benchmark_setup(int tiers)
+{
+  while ( balls.occ() ) delete balls.pop();
+  const float delta_z = opt_ball_radius * 5;
+  const float delta_x = opt_ball_radius * 2.1;
+  const float hdeltaz = delta_z / 2;
+  const float hdeltax = delta_x / 2;
+  const float delta_y = 2.1 * opt_ball_radius;
+  const float ymax = delta_y * tiers - 0.001;
+  opt_drip = false;
+  opt_spray_on = false;
+  opt_verify = false;
+  //  opt_friction_roll = 0.01; opt_friction_coeff = 0.01;
+  for ( float z = platform_zmin + hdeltaz; z < platform_zmax; z+= delta_z )
+    for ( float x = platform_xmin + hdeltax; x < platform_xmax; x += delta_x )
+      for ( float y = 0; y < ymax; y+= delta_y )
+        {
+          Ball* const b = new Ball(this);
+          b->velocity.z = 0;
+          b->position = pCoor(x,y,z);
+          balls += b;
+        }
+}
+
 
 ///
 /// Physical Simulation Code
@@ -402,29 +537,38 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
  /// Initialize Simulation
 //
 
-Ball::Ball()
+int ball_serial_next = 0;
+
+Ball::Ball(World* w):w(*w)
 {
+  occluded = false;
+  occlusion_query_active = false;
+  occluded_run = 0;
+  occlusion_countdown = 0;
+  glGenQueries(1,&query_occlusion_id);
+  collision_count = 0;
+  color_event = pColor(0.5,0.5,0.5);
+  color_natural = pColor(0.5,0.5,0.5);
   serial = ball_serial_next++;
-  resolved = 0;
   position = pCoor(30,22,-15.4);
   velocity = pVect(random()/(0.0+RAND_MAX),0,random()/(0.0+RAND_MAX));
-  axis = pNorm(0,1,0);
-  angle = 0;
-  rotation_rate = 0;
+
+  orientation.set_identity();
+  rotation_matrix.set_identity();
+
+  angular_momentum = pVect(0,0,0);
   contact_t = -1000;
 }
 
 
 bool
-World::platform_collision_possible(pCoor pos)
+World::platform_collision_possible(pCoor pos, float ts_mov_max)
 {
-  // Assuming no motion in x or z axes.
-  //
   return pos.y < opt_ball_radius + ts_mov_max
-    && pos.x - ts_mov_max >= platform_xmin
-    && pos.x + ts_mov_max <= platform_xmax
-    && pos.z - ts_mov_max >= platform_zmin
-    && pos.z + ts_mov_max <= platform_zmax;
+    && pos.x - ts_mov_max >= platform_xmin_mr
+    && pos.x + ts_mov_max <= platform_xmax_pr
+    && pos.z - ts_mov_max >= platform_zmin_mr
+    && pos.z + ts_mov_max <= platform_zmax_pr;
 }
 
  /// External Modifications to State
@@ -442,10 +586,17 @@ void Ball::push(pVect amt) {velocity += amt;}
 
 // Set the velocity to zero.
 //
-void Ball::stop() {velocity = pVect(0,0,0); }
+void Ball::stop()
+{
+  velocity = pVect(0,0,0);
+}
 void World::balls_stop()
 {
   for ( Ball *ball; balls.iterate(ball); ) ball->stop();
+}
+void World::balls_rot_stop()
+{
+  for ( Ball *ball; balls.iterate(ball); ) ball->angular_momentum = pVect(0,0,0);
 }
 
 double
@@ -485,10 +636,9 @@ World::collision_ball_resolve(Ball *ball1, Ball *ball2, double limit_t)
 
   pVect coll_vel = coll_spd  * norm_12 * ( 1 - 0.5 * opt_bounce_loss );
 
+  ball1->collision_count++;  ball2->collision_count++;
   ball1->velocity = ball1->velocity - coll_vel;
   ball2->velocity = ball2->velocity + coll_vel;
-  ball1->resolved = 20;
-  ball2->resolved = 20;
   return 0;
 }
 
@@ -501,6 +651,148 @@ World::collision_platform_resolve(Ball *ball)
   if ( v_to_axis < 0 )
     ball->velocity -= (2 - opt_bounce_loss ) * v_to_axis * ax_normal;
   return v_to_axis;
+}
+
+bool
+World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
+{
+  const pNorm dist(ball1->position,ball2->position);
+
+  if ( dist.mag_sq >= two_r_sq ) return false;
+
+  ball1->collision_count++;  ball2->collision_count++;
+
+  pVect appr_vel = ball1->velocity - ball2->velocity;
+  pVect prev_appr_vel = ball1->prev_velocity - ball2->prev_velocity;
+  const double approach_speed = dot( appr_vel, dist );
+  const double prev_approach_speed = dot( prev_appr_vel, dist );
+
+  const double loss_factor = 1 - opt_bounce_loss;
+
+  const double appr_deltas_no_loss =
+    ( two_r - dist.magnitude ) * elasticity_dt * ball_mass_inv;
+
+  const double appr_deltas =
+    approach_speed > 0
+    ? appr_deltas_no_loss : loss_factor * appr_deltas_no_loss;
+
+  ball1->velocity -= appr_deltas * dist;
+  if ( b2_real ) ball2->velocity += appr_deltas * dist;
+
+  pVect tact1_rot_vel = ball1->point_rot_vel(dist);
+  pVect tact2_rot_vel = ball2->point_rot_vel(-dist);
+
+  const bool use_prev_vel = true;
+
+  pVect tan_vel_prev = prev_appr_vel - prev_approach_speed * dist;
+  pVect tan_vel_curr = appr_vel - approach_speed * dist;
+  pVect tan_vel = use_prev_vel ? tan_vel_prev : tan_vel_curr;
+  pNorm tact_vel_dir = tact1_rot_vel - tact2_rot_vel + tan_vel;
+
+  const double fric_dv_potential =
+    fabs(appr_deltas_no_loss) * opt_friction_coeff;
+
+  const double dv_limit_raw = tact_vel_dir.magnitude * mo_vel_factor;
+  const double dv_limit = b2_real ? dv_limit_raw : 2 * dv_limit_raw;
+  const bool will_roll = dv_limit <= fric_dv_potential;
+  const double sliding_fric_deltav =
+    will_roll ? dv_limit : fric_dv_potential;
+
+  const double dv_tolerance = 0.000001;
+
+  if ( sliding_fric_deltav > dv_tolerance )
+    {
+      const double fric_deltao = sliding_fric_deltav * v_to_do;
+
+      ball1->apply_deltao(dist,tact_vel_dir,-fric_deltao);
+      ball1->velocity -= sliding_fric_deltav * tact_vel_dir;
+
+      if ( b2_real )
+        {
+          ball2->apply_deltao(-dist,tact_vel_dir,fric_deltao);
+          ball2->velocity += sliding_fric_deltav * tact_vel_dir;;
+        }
+    }
+
+  if ( !use_prev_vel && opt_verify && b2_real && will_roll )
+    {
+      pVect appr_vel2 = ball1->velocity - ball2->velocity;
+      const double approach_speed2 = dot( appr_vel2, dist );
+
+      pVect tact1_rot_vel2 = ball1->point_rot_vel(dist);
+      pVect tact2_rot_vel2 = ball2->point_rot_vel(-dist);
+
+      pVect tan_vel2 = appr_vel2 - approach_speed2 * dist;
+      pNorm tan_vel_dir2 = tact1_rot_vel2 - tact2_rot_vel2 + tan_vel2;
+      ASSERTS( tan_vel_dir2.magnitude <= 0.0001 + 100 * dv_tolerance );
+      ball1->color_event = ball2->color_event = pColor(1,1,1);
+    }
+
+  {
+    /// Torque
+    //
+    const double appr_omega =
+      dot(ball1->angular_momentum,dist) - dot(ball2->angular_momentum,dist);
+    const double fric_deltao_pot = fric_dv_potential * v_to_do;
+    const bool rev = appr_omega < 0;
+    const double fric_deltao = min(fabs(appr_omega),fric_deltao_pot);
+    pVect delta_am = rev ? -fric_deltao * dist : fric_deltao * dist;
+    ball1->angular_momentum -= delta_am;
+    if ( b2_real ) ball2->angular_momentum += delta_am;
+  }
+
+  if ( !opt_debug ) return true;
+
+  {
+    /// Rolling Friction
+    //
+    pVect tan_b12_vel = b2_real ? 0.5 * tan_vel : pVect(0,0,0);
+    const double torque_limit_sort_of = appr_deltas_no_loss
+      * sqrt( opt_ball_radius - 0.25 * dist.mag_sq * r_inv );
+
+    pVect tact1_rot_vel = ball1->point_rot_vel(dist);
+    pVect tact1_roll_vel = tact1_rot_vel + tan_b12_vel;
+    pNorm tact1_roll_vel_dir = tact1_roll_vel;
+    pVect lost_vel(0,0,0);
+
+    const double rfric_loss1 =
+      torque_limit_sort_of *
+      ( tact1_roll_vel_dir.magnitude * opt_friction_roll /
+        ( 1 + tact1_roll_vel_dir.magnitude * opt_friction_roll ) );
+    
+    pVect lost_vel1 =
+      min(tact1_roll_vel_dir.magnitude, rfric_loss1) * tact1_roll_vel_dir;
+
+    lost_vel = -lost_vel1;
+    
+    if ( b2_real )
+      {
+        pVect tact2_rot_vel = ball2->point_rot_vel(-dist);
+        pVect tact2_roll_vel = tact2_rot_vel - tan_b12_vel;
+        pNorm tact2_roll_vel_dir = tact2_roll_vel;
+        const double rfric_loss2 =
+          torque_limit_sort_of *
+          ( tact2_roll_vel_dir.magnitude * opt_friction_roll /
+            ( 1 + tact2_roll_vel_dir.magnitude * opt_friction_roll ) );
+        pVect lost_vel2 =
+          min(tact2_roll_vel_dir.magnitude, rfric_loss2 ) * tact2_roll_vel_dir;
+
+        lost_vel += lost_vel2;
+      }
+
+    ball1->apply_tan_dv(dist,lost_vel);
+    if ( b2_real ) ball2->apply_tan_dv(dist,lost_vel);
+
+    if ( opt_verify )
+      {
+        pVect ch_tact1_rot_vel = ball1->point_rot_vel(dist);
+        pVect ch_tact1_roll_vel = ch_tact1_rot_vel + tan_b12_vel;
+        const double magloss = tact1_roll_vel.mag() - ch_tact1_roll_vel.mag();
+        ASSERTS( magloss >= -10.0 );
+      }
+  }
+
+  return true;
 }
 
 class Contact {
@@ -516,28 +808,42 @@ public:
 void Ball::fly_to(double goal_ts){ fly(goal_ts-ts_t); }
 void Ball::fly(double t){ position += t * velocity; ts_t += t; }
 
+pVect
+Ball::point_rot_vel(pNorm direction)
+{
+  return w.opt_ball_radius * cross( angular_momentum, direction );
+}
+
+void
+Ball::apply_deltao(pNorm tact_dir, pNorm force_dir, double deltao)
+{
+  apply_tan_do(tact_dir, deltao * force_dir );
+}
+
+void
+Ball::apply_tan_do(pNorm tact_dir, pVect force)
+{
+  pVect axis_torque = cross( tact_dir, force );
+  angular_momentum += axis_torque;
+}
+
+void
+Ball::apply_tan_dv(pNorm tact_dir, pVect force)
+{
+  apply_tan_do(tact_dir, force * w.r_inv );
+}
+
+
 void
 World::fly_to_pc(Ball *ball, double ts_t)
 {
-  while ( ball->ts_t < ts_t )
-    {
-      const double plat_t = ball_platform_collision_time(ball);
-      if ( plat_t <= ts_t )
-        {
-          ball->fly_to(plat_t);
-          collision_platform_resolve(ball);
-          ball->fly_to(ts_t);
-          ball_surface_snap(ball);
-          break;
-        }
-      ball->fly_to(ts_t);
-      break;
-    }
+  ball->fly_to(ts_t);
 }
 
 void
 World::ball_surface_snap(Ball *ball)
 {
+  ASSERTS( false );
   if ( !platform_collision_possible(ball->position) ) return;
   const float short_r = platform_xrad - 1.001 * opt_ball_radius;
   pNorm norm(ball->position.x,ball->position.y,0);
@@ -546,78 +852,28 @@ World::ball_surface_snap(Ball *ball)
 }
 
 void
-World::time_step_cpu(double delta_t)
+World::time_step_cpu()
 {
   const float deep = -100;
-  
+
   for ( Ball *ball; balls.iterate(ball); )
     if ( ball->position.y < deep ) { balls.iterate_yank(); delete ball; }
 
   for ( Ball *ball; balls.iterate(ball); )
     {
-      ball->prev_position = ball->position;
+
       ball->prev_velocity = ball->velocity;
+#if 0
+      ball->prev_position = ball->position;
       ball->prev_bcontact = ball->bcontact;
       ball->bcontact = false;
-      ball->rolling = false;
-      ball->contact_ball = NULL;
-      ball->resolved--;
+#endif
       ball->ts_t = 0;
     }
 
-  float v_max = 0;
-  for ( Ball *ball; balls.iterate(ball); )
-    {
-      ball->velocity += gravity_accel * delta_t;
-#     define SET_AMAX(c) \
-      { float v = fabs(ball->velocity.c);  if ( v_max < v ) v_max = v; }
-      SET_AMAX(x); SET_AMAX(y); SET_AMAX(z);
-#     undef SET_AMAX
-    }
-  ts_mov_max = v_max * delta_t;
+  for ( Ball *ball; balls.iterate(ball); ) ball->velocity += gravity_accel_dt;
 
-  PSList<Contact,double> contact;
-
-  const float fric_deltav = opt_friction_coeff * delta_t;
-
-  for ( Ball *ball; balls.iterate(ball); )
-    {
-      ball->contact_t = ball_platform_collision_time(ball);
-      if ( !ball->rolling ) continue;
-
-#if 1
-      pNorm vel(ball->velocity);
-      if ( fric_deltav >= vel.magnitude )
-        ball->velocity = pVect(0,0,0);
-      else
-        ball->velocity -= fric_deltav * vel;
-#else
-
-
-      pNorm plat_norm(ball->position,pCoor(0,0,ball->position.z));
-      pNorm linear_vel = ball->velocity - ball->velocity * plat_norm;
-
-      pVect contact_rot_dir = cross( ball->rotation_axis, plat_norm );
-
-      const double r = opt_ball_radius * contact_rot_dir.magnitude;
-      pVect contact_rot_vel =
-        ball->rotation_rate * opt_ball_radius * contact_rot_dir;
-      pNorm contact_vel_dir( linear_vel + contact_rot_vel );
-
-      pNorm torque_axis = cross(plat_norm, contact_vel_dir);
-
-      //  if ( non_r_vel.mag_sq < 0.0001 ) continue;
-
-      pNorm axis = cross(plat_norm, non_r_vel);
-      ball->axis = axis;
-      ball->rotation_rate = non_r_vel.magnitude / opt_ball_radius;
-
-      ball->angle += ball->rotation_rate * delta_t;
-#endif
-    }
-  
-  const float region_length = 3 * opt_ball_radius;
-  const float two_r = 2 * opt_ball_radius;
+  const float region_length = two_r;
 
   PSList<Ball*,double> z;
   for ( Ball *ball; balls.iterate(ball); ) z.insert(ball->position.z,ball);
@@ -630,61 +886,79 @@ World::time_step_cpu(double delta_t)
       while ( idx0 < idx9 && z[idx0]->position.z < z_min ) idx0++;
 
       for ( int i=idx0; i<idx9; i++ )
-        {
-          Ball* const ball1 = z[i];
-
-          const pNorm dist(ball1->position,ball9->position);
-          if ( dist.magnitude < two_r )
-            {
-              const float vel = ( two_r - dist.magnitude ) * elasticity;
-              ball1->velocity -= vel * dist;
-              ball9->velocity += vel * dist;
-              continue;
-            }
-
-          const double t_coll = ball_ball_collision_time(ball1,ball9);
-
-          if ( t_coll < -0.01 || t_coll >= delta_t ) continue;
-
-          if ( !ball1->contact_ball || ball1->contact_t > t_coll )
-            {
-              ball1->contact_t = t_coll;
-              ball1->contact_ball = ball9;
-            }
-
-          if ( !ball9->contact_ball || ball9->contact_t > t_coll )
-            {
-              ball9->contact_t = t_coll;
-              ball9->contact_ball = ball1;
-            }
-        }
+        penetration_balls_resolve(z[i],ball9);
     }
 
-  PSList<Ball*,double> clist;
-  for ( Ball *ball; balls.iterate(ball); ) clist.insert(ball->contact_t,ball);
-  clist.sort();
-  while ( Ball* const ball = clist.iterate() )
+  for ( Ball *ball; balls.iterate(ball); )
     {
-      Ball* const cball = ball->contact_ball;
-      double t_coll = cball ? ball_ball_collision_time(ball,cball) : 1e20;
+      const pCoor pos(ball->position);
+      if ( !platform_collision_possible(pos) ) continue;
 
-      while ( cball && t_coll < delta_t )
+      pCoor axis(platform_xmid,0,pos.z);
+
+      if ( pos.y > 0 )
         {
-          if ( ball->ts_t > t_coll ) break;
-          if ( cball->ts_t > t_coll ) break;
-          ball->fly_to(t_coll);  cball->fly_to(t_coll);
-          collision_ball_resolve(ball,cball,delta_t);
-          ball_surface_snap(ball);ball_surface_snap(cball);
-          break;
+          pCoor tact
+            (pos.x > platform_xmid ? platform_xmax : platform_xmin, 0, pos.z);
+          pNorm tact_dir(pos,tact);
+          if ( tact_dir.mag_sq >= two_r_sq ) continue;
+          pball.position = tact + opt_ball_radius * tact_dir;
         }
-      fly_to_pc(ball,delta_t);
+      else if ( pos.z > platform_zmax || pos.z < platform_zmin )
+        {
+          pNorm ball_dir(axis,pos);
+          if ( ball_dir.mag_sq <= short_xrad_sq ) continue;
+          const float zedge =
+            pos.z > platform_zmax ? platform_zmax : platform_zmin;
+          pCoor axis_edge(platform_xmid,0,zedge);
+          pCoor tact = axis_edge + platform_xrad * ball_dir;
+          pNorm tact_dir(pos,tact);
+          if ( tact_dir.mag_sq >= two_r_sq ) continue;
+          pball.position = tact + opt_ball_radius * tact_dir;
+        }
+      else
+        {
+          pNorm tact_dir(axis,pos);
+          if ( tact_dir.mag_sq <= short_xrad_sq ) continue;
+          pball.position = axis + (opt_ball_radius+platform_xrad) * tact_dir;
+        }
+
+      pball.angular_momentum = pVect(0,0,0);
+      pball.velocity = pVect(0,0,0);
+      penetration_balls_resolve(ball,&pball,false);
     }
 
+  for ( Ball *ball; balls.iterate(ball); ) fly_to_pc(ball,delta_t);
+
+  float contact_y_max = -platform_xrad;
+
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      pNorm axis(ball->angular_momentum);
+      if ( axis.mag_sq < 0.000001 ) continue;
+      ball->rotation_matrix = pMatrix_Rotation(axis,delta_t * axis.magnitude);
+      pMMultiply3x3
+        (ball->orientation,ball->rotation_matrix,ball->orientation);
+      if ( ball->collision_count && ball->position.y > contact_y_max )
+        contact_y_max = ball->position.y;
+    }
 
   ball_countdown -= delta_t;
+
+  if ( opt_drip && ( !dball || dball->collision_count ) )
+    {
+      dball = new Ball(this);
+      dball->position =
+        pCoor(60,max(20.0f,contact_y_max) + 3 * opt_ball_radius,20);
+      dball->velocity = pVect(0,0,0);
+      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
+      drip_cnt++;
+      balls += dball;
+    }
+
   if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
     {
-      Ball* const nball = new Ball();
+      Ball* const nball = new Ball(this);
       double r = opt_ball_radius * 5;
       double c = 2 * M_PI * r;
       const double delta_theta =
@@ -692,12 +966,13 @@ World::time_step_cpu(double delta_t)
       static double th = 0;  th += delta_theta;
       nball->position.x = platform_xmax - r - 2 * opt_ball_radius
         + (r+opt_ball_radius) * cos(th);
-      nball->position.z += (r+opt_ball_radius) * sin(th);
-      //  nball->velocity = pVect(0,0,0);
+      nball->position.z = (r+opt_ball_radius) * sin(th);
+      nball->position.y = max(20.0f,contact_y_max + 3 * opt_ball_radius);
+      nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
+      spray_cnt++;
       balls += nball;
       ball_countdown = 0.1;
     }
-
 }
 
 class Collide_Line_Sphere {
@@ -735,8 +1010,6 @@ World::ball_platform_collision_time(Ball *ball)
   pVect vel_xy(ball->velocity.x,ball->velocity.y,0);
   const float short_r = platform_xrad - opt_ball_radius;
   Collide_Line_Sphere collide(pos_xy,vel_xy,pVect(0,0,0),short_r);
-  const float short_r_sq = short_r * short_r;
-  ball->rolling = fabs(collide.dist_sq - short_r_sq) < 1;
   const double t = collide.tmin < 0 ? collide.tmax : collide.tmin;
   return t + ball->ts_t;
 }
@@ -744,30 +1017,52 @@ World::ball_platform_collision_time(Ball *ball)
 void
 World::balls_render()
 {
-  pColor red(1,0,0);
-  pColor green(0,1,0);
-  pColor blue(0,0,1);
-  pColor lsu_business_purple(0x7f5ca2);
-  pColor lsu_spirit_purple(0x580da6);
-  pColor lsu_spirit_gold(0xf9b237);
-  pColor lsu_official_purple(0x2f0462);
-  pColor* const colors[4] =
-    { &lsu_spirit_gold, &lsu_spirit_purple, &green, &blue };
-
-  double coll_soon_time = world_time + 2;
-
+  PSList<Ball*,double> eye_dist;
   for ( Ball *ball; balls.iterate(ball); )
     {
-      pColor& color_event =
-        //  ball->rolling ? blue :
-        ball->resolved > 0 ? green :
-        ball->bcontact ? red : 
-        ball->contact_t > world_time && ball->contact_t < coll_soon_time
-        ? lsu_spirit_purple : lsu_spirit_gold;
-      pColor* const color_idx = colors[ ( ball->serial >> 7 ) & 0x3 ];
-      sphere.color = opt_color_events ? color_event : *color_idx;
-      sphere.render(ball->position,ball->axis,ball->angle);
-      if ( ball->bcontact ) ball->resolved = 0;
+      pVect ve(ball->position,eye_location);
+      eye_dist.insert(dot(ve,ve),ball);
+    }
+  eye_dist.sort();
+  balls_occluded = 0;
+
+  for ( Ball *ball; eye_dist.iterate(ball); )
+    {
+      sphere.color = opt_color_events ? ball->color_event : ball->color_natural;
+
+      while ( ball->occlusion_query_active )
+        {
+          GLint avail = -1;
+          glGetQueryObjectiv
+            (ball->query_occlusion_id,GL_QUERY_RESULT_AVAILABLE,&avail);
+          if ( !avail ) break;
+          GLint samples_passed = -1;
+          glGetQueryObjectiv
+            (ball->query_occlusion_id,GL_QUERY_RESULT,&samples_passed);
+          ball->occlusion_query_active = false;
+          ball->occluded = samples_passed == 0;
+          if ( ball->occluded ) ball->occluded_run++;
+          else                  ball->occluded_run = 0;
+          ball->occlusion_countdown = 3;
+          break;
+        }
+      const bool do_ot = ball->occlusion_countdown-- <= 0;
+
+      if ( ball->occluded ) balls_occluded++;
+      
+      if ( ball->occluded_run > 10 && !do_ot ) continue;
+
+      if ( do_ot )
+        glBeginQuery(GL_SAMPLES_PASSED,ball->query_occlusion_id);
+      if ( ball->occluded_run > 10 )
+        sphere_lite.render_simple(ball->position);
+      else
+        sphere.render(ball->position,ball->orientation);
+      if ( do_ot )
+        {
+          ball->occlusion_query_active = true;
+          glEndQuery(GL_SAMPLES_PASSED);
+        }
     }
 }
 
@@ -796,13 +1091,19 @@ World::render()
     {
       /// Advance simulation state by wall clock time.
       //
-      const double delta_t = min(1./160,time_now - world_time);
-      int iters = 0;
-      while ( world_time < time_now && iters < 10 )
+      const double new_delta_t = min(1.0/160,time_now - world_time);
+      if ( delta_t != new_delta_t )
         {
-          time_step_cpu(delta_t);
+          delta_t = new_delta_t;
+          variables_update();
+        }
+      int iters = 0;
+      while ( world_time < time_now && iters++ < 10 )
+        {
+          time_step_cpu();
           world_time += delta_t;
         }
+      frame_timer.work_amt_set(iters);
     }
 
   /// Emit a Graphical Representation of Simulation State
@@ -816,10 +1117,6 @@ World::render()
 
   const pColor white(0xffffff);
   const pColor gray(0x303030);
-  const pColor lsu_business_purple(0x7f5ca2);
-  const pColor lsu_spirit_purple(0x580da6);
-  const pColor lsu_spirit_gold(0xf9b237);
-  const pColor lsu_official_purple(0x2f0462);
   const pColor dark(0);
 
   const int win_width = ogl_helper.get_width();
@@ -846,20 +1143,31 @@ World::render()
   glDisable(GL_BLEND);
 
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
-  glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
+  glLightfv(GL_LIGHT0, GL_POSITION, light_location);
   glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.3);
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
   glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
 
-  pColor ambient_color(0x999999);
+  pCoor light1_location(0,40,100);
+  glLightfv(GL_LIGHT1, GL_POSITION, light1_location);
+  glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0.3);
+  glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 1.0);
+  glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0);
+
+  pColor ambient_color(0x555555);
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
   glLightfv(GL_LIGHT0, GL_AMBIENT, dark);
   glLightfv(GL_LIGHT0, GL_SPECULAR, white * opt_light_intensity);
 
+  glLightfv(GL_LIGHT1, GL_DIFFUSE, white * opt_light_intensity);
+  glLightfv(GL_LIGHT1, GL_AMBIENT, dark);
+  glLightfv(GL_LIGHT1, GL_SPECULAR, white * opt_light_intensity);
+
   glEnable(GL_LIGHT0);
+  glEnable(GL_LIGHT1);
   glEnable(GL_LIGHTING);
 
   glEnable(GL_COLOR_MATERIAL);
@@ -869,7 +1177,7 @@ World::render()
 
   pColor color_ball(0x666666);
   pColor scolor_ball(0x111111);
-  const float shininess_ball = 5;
+  const float shininess_ball = 1;
 
   // Common to all textures.
   //
@@ -899,11 +1207,13 @@ World::render()
 
   Ball& ball = *balls.peek();
   ogl_helper.fbprintf
-    ("Ball Count %d  Last Ball Pos  "
-     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
-     balls.occ(),
+    ("Ball Count %d (%d/%d) %d  Last Ball Pos  "
+     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Verify %d\n",
+     balls.occ(), 
+     balls.occ() - balls_occluded, balls_occluded,
+     opt_debug,
      ball.position.x,ball.position.y,ball.position.z,
-     ball.velocity.x,ball.velocity.y,ball.velocity.z );
+     ball.velocity.x,ball.velocity.y,ball.velocity.z, opt_verify );
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -1109,17 +1419,44 @@ World::cb_keyboard()
   case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
+  case FB_KEY_F8:
+    {
+      opt_elasticity = 10;
+      opt_friction_roll = 300;
+      opt_friction_coeff = 0.0001;
+      break;
+    }
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'c': case 'C': opt_color_events = !opt_color_events; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
+  case 'd': case 'D': opt_drip = !opt_drip; if(!opt_drip)dball=NULL; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': balls_stop(); break;
+  case 'S': balls_rot_stop(); break;
+  case 'T': benchmark_setup(); break;
+  case 't': benchmark_setup(5); break;
+  case 'q': opt_debug = !opt_debug; break;
+  case 'v': opt_verify = !opt_verify; break;
   case 'x': opt_spray_on = !opt_spray_on; break;
-  case 'X': balls += new Ball(); break;
+  case 'X':
+    {
+      Ball* const b1 = new Ball(this);
+      b1->position = pCoor(30,22,20);
+      b1->velocity = pVect(0,0,0);
+      b1->color_natural = lsu_spirit_purple;
+      balls += b1;
+      Ball* const b2 = new Ball(this);
+      b2->position = b1->position;
+      b2->position.z += 4 * opt_ball_radius;
+      b2->velocity = pVect(0,0,0);
+      b2->color_natural = lsu_spirit_gold;
+      balls += b2;
+    }
+    break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
@@ -1127,10 +1464,7 @@ World::cb_keyboard()
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
 
-  gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
-  sphere.radius = opt_ball_radius;
-  elasticity = opt_elasticity;
-  if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
+  variables_update();
 
   // Update eye_direction based on keyboard command.
   //

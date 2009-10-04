@@ -1,7 +1,7 @@
 INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I../include
 LIBDIR  =
 
-COMPILERFLAGS = -Wall
+COMPILERFLAGS = -Wall -O3
 CC = gcc
 CXX = g++
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -fverbose-asm 
@@ -57,7 +57,7 @@ cube: cube.o
 
 demo-x-collide.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
 demo-x-collide.o: demo-x-collide.cc ../gpup/shapes.h
-demo-x-collide.o: demo-x-collide.cc
+demo-x-collide.o: demo-x-collide.cc shapes.h
 
 demo-x-collide: demo-x-collide.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 

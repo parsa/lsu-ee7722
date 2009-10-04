@@ -305,3 +305,59 @@ Grid size 30 -> 60
 CPU: 2.6
 GPU: 2.7
 
+:: 28 September 2009, 12:03:03 CDT
+
+Bouncing ball demo to do:
+
+Take into account delta_t when applying friction.
+
+In ball collision, check for angular and linear momentum conservation.
+For ball penetration account for exact time balls intersect.
+Find a better model for collision energy loss. 
+>Account for torque in ball penetration.
+>Use penetration's collision model in platform collision code.
+
+Combine rotation axis and rate.
+
+Pre-compute factors.
+
+Determine relative cost of display and physics.
+
+CUDA
+
+CPU
+
+1.60 Use ball penetration for platform coll.
+2.38 Alternate handling of rolling friction. Temporary validation code?
+2.30 Remove test of apply deltao.
+1.64 Remove to/from am in penetration routine.
+1.56 Only use to/from to compute the rotation vector.
+1.52 No to/from, use pnorm for computing rotation matrix.
+1.47 Don't rotate orientation of mo magnitude very low.
+1.43 Use precomputed two_r_sq to rule out contact.
+1.41 A few pre-computed constants.
+1.38 No verification.
+1.36 For rolling friction add mo only after looking at both balls.
+(1.24 -.18 No rolling friction.)
+(1.27 -.09 Don't recompute orientation matrix.)
+1.30 Don't sort by bogus contact time.
+(1.35 sort contact list twice.)
+1.29 Make region length two_r, don't initialize unused members.
+(1.08 Ball render: 0.42;  Only render very other ball.)
+1.20 Use single triangle strip for ball.
+1.17 Use 3x3 matrix multiply.
+(1.04 No rolling friction: 0.13.)
+(0.87 No torque of any kind: 0.30 )
+1.20 Occlusion queries.
+
+1.69 320 time steps / s. => 0.52 per time steps, 0.65 per render.
+
+Torq   Rend   ????
+0.36 + 0.33 + 0.48
+
+::  4 October 2009, 14:27:53 CDT
+
+Balls now have angular momentum.
+A drip mode for watching balls accumulate in a sheet.
+Use occlusion test to avoid rendering hidden balls.
+Many other improvements.
