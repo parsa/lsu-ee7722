@@ -170,6 +170,17 @@ pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2)
         p.rc(row,col) += m1.rc(row,i) * m2.rc(i,col);
 }
 
+inline void
+pMMultiply3x3(pMatrix& p, pMatrix m1, pMatrix m2)
+{
+#define T(r,c,i) m1.rc(r,i) * m2.rc(i,c)
+#define E(r,c) p.rc(r,c) = T(r,c,0) + T(r,c,1) + T(r,c,2);
+#define C(r) E(r,0) E(r,1) E(r,2)
+  C(0) C(1) C(2)
+#undef T
+#undef E
+#undef C
+}
 
 class pVect {
 public:
@@ -281,7 +292,7 @@ pangle(pVect a, pVect b)
 {
   const double mag = a.mag() * b.mag();
   if ( mag == 0 ) return 0;
-  return acos(dot(a,b) / mag);
+  return acos(max(-1.0,min(1.0,dot(a,b) / mag)));
 }
 
 inline double
