@@ -26,7 +26,7 @@
 //
 //  This assignment is at SVN URI https://svn.ece.lsu.edu/svn/gp/hw/hw2
 //
-//  The assignment instructions are in file hw1.cc. (This file.)
+//  The assignment instructions are in file hw2.cc. (This file.)
 
 // For the solutions to the problems below edit this file, even if
 // it makes more sense to edit others (e.g.,, coord.h). If it seems
@@ -44,6 +44,7 @@
 
 // [ ] Use pVect, pCoor, pNorm where possible.
 // [ ] Code should be clear and easy to read.
+// [ ] Don't name a variable temp unless it's related to temperature.
 // [ ] Follow surrounding style, including indentation and naming.
 // [ ] Lines should be no more than 80 characters.
 // [ ] Frequently-executed code should be fast.
@@ -51,15 +52,15 @@
 
 /// Problem 1
 //
- /// Show seam graphically.
+ /// Show seams graphically.
 
 // Show graphically the seam between tiles that was just in the
-// physical model of homework 1. The graphical representation should
-// make it easy to see when the ball hits it. It would also be nice if
-// it looked like something that belonged there, say grout or some
-// kind of separator.
+// physical model of Homework 1. The graphical representation should
+// make it easy to see when the ball hits a seam. It would also be
+// nice if it looked like some kind of seam, say grout or some kind of
+// separator.
 
-// [ ] Pre-compute an array of coordinates for seam in platform_update.
+// [ ] Pre-compute an array of coordinates for the seam in platform_update.
 // [ ] Choose colors and other styling appropriate for the seam.
 // [ ] Code should be clean and fast.
 
@@ -70,6 +71,9 @@
 
 // Re-solve homework 1 so that the ball bounces as it hits the
 // seam and does so in a realistic manor.
+
+// [ ] Don't compute the distance from the ball to axis more than once.
+// [ ] Reflect velocity of ball based on point of impact.
 
 
 /// Problem 3
