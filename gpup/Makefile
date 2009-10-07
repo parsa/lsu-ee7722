@@ -24,7 +24,7 @@ LIBDIR  =
 
 default:all
 all:demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
-	demo-5-more-ogl
+	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -56,5 +56,13 @@ demo-4-simple-ogl: demo-4-simple-ogl.o
 
 demo-5-more-ogl.o: $(INCLUDES)
 demo-5-more-ogl: demo-5-more-ogl.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-6-lighting.o: $(INCLUDES)
+demo-6-lighting: demo-6-lighting.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-7-vtx-arrays.o: $(INCLUDES)
+demo-7-vtx-arrays: demo-7-vtx-arrays.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
