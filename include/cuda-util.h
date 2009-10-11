@@ -1,4 +1,15 @@
-// -*- c++ -*-
+/// LSU EE 4702-X / EE 77XX   -*- c++ -*-
+//
+ ///  CUDA Utility Classes and Macros
+
+ // $Id:$
+
+ /// Purpose
+//
+//   A set of classes and macros for using CUDA, mostly for managing
+//   memory. Intended to support classroom work, not tested for
+//   production use.
+
 
 #ifndef GL_CUDA_UTIL_H
 #define GL_CUDA_UTIL_H
@@ -7,6 +18,8 @@
 #include <GL/glext.h>
 #include <GL/glx.h>
 #include <GL/glxext.h>
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 
 #include "util.h"
 #include "misc.h"
@@ -34,7 +47,7 @@ public:
   pCUDA_Memory()
   {
     data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;  bid = 0;
-    bo_ptr = NULL;
+    bo_ptr = NULL;  locked = false;
   }
   ~pCUDA_Memory()
   {
@@ -45,6 +58,8 @@ public:
         CE(cudaGLUnregisterBufferObject(bid));
         glDeleteBuffers(1,&bid);
       }
+    if ( void* const a = dev_addr[0] ) CE(cudaFree(a));
+    if ( void* const a = dev_addr[1] ) CE(cudaFree(a));
   }
 
   T* alloc_locked_maybe(int elements_p, bool locked_p)
@@ -104,6 +119,20 @@ public:
   { alloc_maybe(side); return (T*)dev_addr[side]; }
   T* get_dev_addr_read() { return get_dev_addr(current); }
   T* get_dev_addr_write() { return get_dev_addr(1-current); }
+
+  void ptrs_to_cuda_side(const char *dev_name, int side)
+  {
+    void* const dev_addr = get_dev_addr(side);
+    CE(cudaMemcpyToSymbol
+       (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
+  }
+
+  void ptrs_to_cuda(char *dev_name_0, char *dev_name_1 = NULL)
+  {
+    ptrs_to_cuda_side(dev_name_0,0);
+    if ( !dev_name_1 ) return;
+    ptrs_to_cuda_side(dev_name_1,1);
+  }
 
   void to_cuda()
   {
@@ -261,9 +290,7 @@ public:
 
   void ptrs_to_cuda_aos_side(const char *dev_name, int side)
   {
-    void* const dev_addr = pCM::get_dev_addr(side);
-    CE(cudaMemcpyToSymbol
-       (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
+    pCM::ptrs_to_cuda_side(dev_name,side);
   }
   void ptrs_to_cuda_aos(char *dev_name_0, char *dev_name_1 = NULL)
   {
