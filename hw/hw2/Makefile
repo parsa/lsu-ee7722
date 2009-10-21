@@ -9,7 +9,7 @@ COURSE_INCLUDE_DIR = ./include
 INCLUDE = -I$(COURSE_INCLUDE_DIR)
 
 
-default: hw2
+default: hw2 hw2sol
 
 
 CFLAGSMAGIK_MAYBE := $(shell Magick++-config --cppflags --cxxflags)
@@ -36,6 +36,10 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 
 
 hw2: hw2.cc $(INCLUDES)
+	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc -o $@ $(LIBRARIES)
+	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
+
+hw2sol: hw2sol.cc $(INCLUDES)
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc -o $@ $(LIBRARIES)
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
 
