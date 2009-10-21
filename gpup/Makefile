@@ -24,7 +24,8 @@ LIBDIR  =
 
 default:all
 all:demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
-	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays
+	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays demo-8-texture \
+	demo-9-shader
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -64,5 +65,13 @@ demo-6-lighting: demo-6-lighting.o
 
 demo-7-vtx-arrays.o: $(INCLUDES)
 demo-7-vtx-arrays: demo-7-vtx-arrays.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-8-texture.o: $(INCLUDES)
+demo-8-texture: demo-8-texture.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-9-shader.o: $(INCLUDES)
+demo-9-shader: demo-9-shader.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
