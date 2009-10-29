@@ -358,6 +358,28 @@ public:
   double mag_sq;
 };
 
+
+class pQuat {
+public:
+  pQuat(){}
+  pQuat(pNorm axis, double angle){ set(axis,angle); }
+  void set(pNorm axis, double angle)
+  {
+    w = cos(angle/2);
+    v = sin(angle/2) * axis;
+  }
+  pVect v;
+  float w;
+};
+
+pQuat operator *(pQuat a, pQuat b)
+{
+  pQuat p;
+  p.w = a.w * b.w - dot(a.v,b.v);
+  p.v = a.w * b.v + b.w * a.v + cross(a.v,b.v);
+  return p;
+};
+
 inline void
 pMatrix::column_set(int col, pVect v)
 {
@@ -488,6 +510,20 @@ public:
 
 class pMatrix_Rotation : public pMatrix {
 public:
+  pMatrix_Rotation(pQuat q)
+  {
+    pVect v = q.v;
+    set_identity();
+    rc(0,0) = 1 - 2 * v.y * v.y - 2 * v.z * v.z;
+    rc(0,1) = 2 * v.x * v.y - 2 * q.w * v.z;
+    rc(0,2) = 2 * v.x * v.z + 2 * q.w * v.y;
+    rc(1,0) = 2 * v.x * v.y + 2 * q.w * v.z;
+    rc(1,1) = 1 - 2 * v.x * v.x - 2 * v.z * v.z;
+    rc(1,2) = 2 * v.y * v.z - 2 * q.w * v.x;
+    rc(2,0) = 2 * v.x * v.z - 2 * q.w * v.y;
+    rc(2,1) = 2 * v.y * v.z + 2 * q.w * v.x;
+    rc(2,2) = 1 - 2 * v.x * v.x - 2 * v.y * v.y;
+  }
   pMatrix_Rotation(pVect axis, double angle)
   { set_rotation(axis,angle); }
   pMatrix_Rotation(pVect dir_from, pVect dir_to)
