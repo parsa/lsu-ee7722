@@ -15,6 +15,9 @@ public:
   pShader(const char *path, const char *main_body_vs,
           const char *main_body_fs = NULL)
   {init(path,main_body_vs,main_body_fs);}
+  pShader(const char *path, const char *main_body_vs,
+          const char *main_body_gs, const char *main_body_fs)
+  {init_vgf(path,main_body_vs,main_body_gs,main_body_fs);}
   pShader()
   {
     validated = true;
@@ -54,6 +57,16 @@ private:
         return 0;
       }
     std::string shader_text;
+    const char* const stype_str =
+      shader_type == GL_VERTEX_SHADER ? "VERTEX_SHADER" :
+      shader_type == GL_FRAGMENT_SHADER ? "FRAGMENT_SHADER" :
+      shader_type == GL_GEOMETRY_SHADER_ARB
+      || shader_type == GL_GEOMETRY_SHADER_EXT ? "GEOMETRY_SHADER" :
+      "unknown_shader";
+    shader_text += "#define _";
+    shader_text += stype_str;
+    shader_text += "_\n";
+
     while ( !feof(shader_h) )
       {
         const int c = getc(shader_h);
@@ -83,8 +96,17 @@ private:
   }
 
 public:
-  uint init
-  (const char *source_pathp, const char *main_body_vs,
+  GLuint init
+  (const char *source_pathp,
+   const char *main_body_vs, const char *main_body_fs = NULL)
+  {
+    return init_vgf(source_pathp,main_body_vs,NULL,main_body_fs);
+  }
+
+  GLuint init_vgf
+  (const char *source_pathp,
+   const char *main_body_vs,
+   const char *main_body_gs = NULL,
    const char *main_body_fs = NULL)
   {
     validated = false;
@@ -97,6 +119,30 @@ public:
     pError_Check();
     if ( vs_object == 0 ) return 0;
     glAttachShader(pobject,vs_object);
+
+    if ( main_body_gs )
+      {
+        gs_object =
+          shader_load(GL_GEOMETRY_SHADER_EXT,source_path,main_body_gs);
+        if ( gs_object == 0 ) return 0;
+        glAttachShader(pobject,gs_object);
+        glProgramParameteriEXT
+          (pobject,
+           GL_GEOMETRY_INPUT_TYPE_EXT,
+           GL_TRIANGLES);
+        glProgramParameteriEXT
+          (pobject,
+           GL_GEOMETRY_OUTPUT_TYPE_EXT,
+           GL_TRIANGLE_STRIP);
+        glProgramParameteriEXT
+          (pobject,
+           GL_GEOMETRY_VERTICES_OUT_EXT,
+           9);
+      }
+    else
+      {
+        gs_object = 0;
+      }
 
     if ( main_body_fs )
       {
@@ -236,7 +282,7 @@ public:
 
   pString source_path;
   GLuint pobject;
-  GLuint vs_object, fs_object;
+  GLuint vs_object, gs_object, fs_object;
   bool validated;
 };
 
