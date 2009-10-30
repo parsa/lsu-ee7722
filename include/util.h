@@ -7,13 +7,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include <Magick++.h>
 
 #include "glextfuncs.h"
 #include "pstring.h"
 #include "misc.h"
-
-template<typename T> T min(T a, T b){ return a < b ? a : b; }
-template<typename T> T max(T a, T b){ return a > b ? a : b; }
 
 double
 time_wall_fp()
@@ -368,6 +366,8 @@ const void* const glut_fonts[] =
     GLUT_BITMAP_TIMES_ROMAN_24
  };
 
+using namespace Magick;
+
 class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
@@ -551,28 +551,15 @@ private:
 
   void write_img()
   {
-    pStringF pipe_name("pnmtopng > %s.png",exe_file_name);
-    FILE* const fp = popen(pipe_name, "w");
-    if ( !fp )
-      {
-        fprintf(stderr, "Could not open pipe for screenshot.\n");
-        return;
-      }
-    fprintf(fp,"P6\n%d %d 255\n",width,height);
+    pStringF file_name("%s.png",exe_file_name);
     glReadBuffer(GL_FRONT_LEFT);
     const int size = width * height;
-    char* const pbuffer = (char*) malloc(size * 3);
-    glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
-    for ( int y=height-1; y>=0; y-- )
-      {
-        char* row = &pbuffer[ y * width * 3 ];
-        for ( int x=0; x<width; x++ )
-          {
-            putc(row[0],fp); putc(row[1],fp); putc(row[2],fp);
-            row += 3;
-          }
-      }
-    pclose(fp);
+    const int bsize = size * 4;
+    char* const pbuffer = (char*) malloc(bsize);
+    glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,pbuffer);
+    Image image( width, height, "RGBA", CharPixel, pbuffer);
+    image.flip();
+    image.write(file_name.s);
     free(pbuffer);
   }
 
