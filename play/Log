@@ -361,3 +361,73 @@ Balls now have angular momentum.
 A drip mode for watching balls accumulate in a sheet.
 Use occlusion test to avoid rendering hidden balls.
 Many other improvements.
+
+:: 11 October 2009,  8:56:39 CDT
+
+cuda-util.h
+Added header.
+Include cuda_runtime.h and cuda_gl_interop.h
+pCUDA_Memory: 
+ Deallocate cuda memory when destructor called.
+ New: ptrs_to_cuda_side, ptrs_to_cuda
+ Initialize locked.
+pCUDA_Memory_X: Use pCUDA_Memory::ptrs_to_cuda_side.
+
+:: 13 October 2009, 18:03:25 CDT
+
+
+xf 7  cu 16.8  cpu 100.8  
+xf 7  cu 16.8  cpu  99.0  Increase sm storage from 1000 to 16000.
+xf x  cu  9.3  cpu  47.7  Turn on optimization.
+xf 1  cu ----  cpu   6.8  Turn off cuda.
+xf 3  cu  7.4  cpu  36.7  Don't reallocate cuda buffers each time step.
+xf 1  cu  2.5  cpu   6.8  Update schedule every (3) time steps.
+xf 1  cu  2.3  cpu   5.2  Update schedule every (10) time steps.
+xf 1  cu  1.8  cpu   4.9  Only send data to cuda when stale.
+xf 1  cu  1.5  cpu   4.5  Only retrieve all cuda data when ready to render.
+xf 1  cu  1.2  cpu   4.2  Base interaction region on max ball speed.
+
+:: 26 October 2009, 12:59:34 CDT
+
+Solve[ (m2 - m2 m1 ) u^4 + ( 2 m1 - 2 m1^2 + 2 e^2 + 2 m2^2 ) u^3 + 6 u^2 m2 m1 + ( -2 m2^2 + 2 m1^2 + 2 m1 - 2 e^2 ) u - m2 m1 - m2 == 0,u]
+
+:: 29 October 2009, 18:20:36 CDT
+
+Check in shader changes.
+Move quats to coor.
+
+:: 30 October 2009, 18:07:52 CDT
+
+To Do:
+
+Update comments on render routine.
+Finish comments on time-step CPU
+Document physics variables.
+Finish organizing World structure.
+Move out CUDA support code.
+Separate occlusion test for reflections.
+
+::  2 November 2009,  9:24:47 CST
+
+Warmup...
+
+
+Physics
+
+Overview
+
+ 
+
+
+Rendering
+
+Code Organization
+
+Shaders
+
+::  3 November 2009, 14:21:42 CST
+
+To Do:
+
+Remove CUDA code.
+Document user modifiable variables.

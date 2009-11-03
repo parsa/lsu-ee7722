@@ -1,12 +1,25 @@
 INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I../include
 LIBDIR  =
 
-COMPILERFLAGS = -Wall -O3
+CUDAPATH = /usr/local/cuda
+DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
+
+# -Xnvopencc -LIST:source=on
+
+# --use_fast_math  bug:
+#   Execution problem occurs with --use_fast_math and certain data placement.
+
+COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
+COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v -O3
+
+
 CC = gcc
-CXX = g++
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -fverbose-asm 
+CXX = $(CUDAPATH)/bin/nvcc
+
+.SUFFIXES: .cu .cuh
+
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
-LIBRARIES =  -lX11 -lXi -lXmu  -lglut -lGL -lGLU -lm -lpthread  -lXxf86vm -lrt
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
@@ -14,8 +27,12 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 default: demo-x-collide
 
 .cc.o:
-	$(CXX) $(CFLAGS) -S $*.cc
-	$(CXX) $(CFLAGS) -c $*.s
+	$(CXX) $(CFLAGS) -c $*.cc
+
+.cu.o:
+	$(CXX) $(CFLAGS) -c $*.cu
+#	$(DECUDA) -p -o $*.cubin.ptx $*.sm_10.cubin 
+
 
 cube6.o: Makefile ../include/coord.h ../include/util.h shader.h 
 cube5.o: Makefile coord.h util.h shader.h 
@@ -56,9 +73,10 @@ cube: cube.o
 	$(CC) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 demo-x-collide.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
-demo-x-collide.o: demo-x-collide.cc ../gpup/shapes.h
-demo-x-collide.o: demo-x-collide.cc shapes.h
+demo-x-collide.o: demo-x-collide.cc shapes.h demo-x-kernel.cu demo-x.cuh
 
-demo-x-collide: demo-x-collide.o
+demo-x-kernel.o: Makefile demo-x.cuh demo-x-kernel.cu demo-x-collide.cc
+
+demo-x-collide: demo-x-collide.o demo-x-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
