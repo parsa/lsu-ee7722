@@ -22,13 +22,6 @@
 #endif
 
 
-uniform vec4 axis_e;
-uniform vec3 axis_ne;
-uniform float platform_xrad_sq;
-uniform int light_num;
-uniform int opt_mirror_method;
-uniform int opt_color_events;
-
 ///
 /// Support Functions
 ///
@@ -39,55 +32,14 @@ float dot_pos(vec3 a, vec3 b){ return max(0.0,dot(a,b)); }
 
 vec3 deaxis(vec3 vect, vec3 norm) { return vect - dot(vect,norm) * norm; }
 vec3 deaxis(vec4 vect, vec3 norm) { return deaxis(vect.xyz,norm); }
-
-
-
-///
-/// Shader for Shadows
-///
-
-void
-vs_main_shadow()
-{
-  /// Compute coordinate of shadow cast by vertex.
-
-  vec3 axis_exy = deaxis( axis_e, axis_ne );
-  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  vec4 light_pos = gl_LightSource[light_num].position;
-  vec3 vertex_exy = deaxis( vertex_e, axis_ne );
-
-  vec3 light_pos_ma = vertex_exy - axis_exy;
-  vec3 v_light_vtx = vertex_e.xyz - light_pos.xyz;
-  vec3 v_light_vtx_xy = deaxis( v_light_vtx, axis_ne );
-
-  float a = dot(v_light_vtx_xy,v_light_vtx_xy);
-  float b = 2.0 * dot( light_pos_ma, v_light_vtx_xy );
-  float c = dot( light_pos_ma, light_pos_ma ) - platform_xrad_sq;
-  float radical = b * b - 4.0 * a * c;
-
-  // Use this position if shadow not visible.
-  //
-  gl_Position = vec4(0,0,-1000,1);
-
-  if ( radical < 0.0 ) return;
-
-  float t = ( -b + sqrt( radical ) ) / ( 2.0 * a );
-
-  if ( t < 0.0001 ) return;
-
-  vec4 shadow_e;
-  shadow_e.xyz = vertex_e.xyz + t * v_light_vtx;
-
-  shadow_e.w = 1.0;
-  gl_Position = gl_ProjectionMatrix * shadow_e;
-}
-
-
 struct pNorm {
   vec3 v;
   float mag_sq, magnitude;
 };
 
+// Structure for holding a normalized vector and it's pre-normalized
+// length.  The mn functions play the role of pNorm constructors.
+//
 pNorm mn(vec3 v)
 {
   pNorm n;
@@ -104,13 +56,137 @@ pNorm mn(vec3 v)
     }
   return n;
 }
-
 pNorm mn(vec2 v) { return mn(vec3(v,0)); }
 pNorm mn(vec2 a, vec2 b) {return mn(b.xy-a.xy);}
 pNorm mn(vec3 a, vec3 b) {return mn(b-a);}
 pNorm mn(vec4 a, vec4 b) {return mn(b.xyz-a.xyz);}
 pNorm mn(float x, float y, float z){ return mn(vec3(x,y,z)); }
 
+
+
+///
+/// Shader for Shadows
+///
+
+//  To cast a shadow vertex shader code computes a shadow location
+//  based on the vertex and light locations, and the platform
+//  geometry (a half cylinder).  The shadow location is used only
+//  to write the stencil buffer.
+
+uniform vec4 axis_e;
+uniform vec3 axis_ne;
+uniform float platform_xrad_sq;
+uniform int light_num;
+uniform int opt_color_events;
+
+void
+vs_main_shadow()
+{
+  /// Compute coordinate of shadow cast by vertex.
+  //
+  //  The shadow will be used to write the stencil buffer,
+  //  so there is no need to compute the lighted color.
+
+  // Find eye-space axis vector (of the platform) and the vertex coordinate.
+  //
+  vec3 axis_exy = deaxis( axis_e, axis_ne );
+  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
+
+  // Extract (project) only x and y coordinates of vertex.
+  //
+  vec3 vertex_exy = deaxis( vertex_e, axis_ne );
+
+  vec4 light_pos = gl_LightSource[light_num].position;
+  vec3 v_axis_to_vtx_exy = vertex_exy - axis_exy;
+  vec3 v_light_to_vtx = vertex_e.xyz - light_pos.xyz;
+  vec3 v_light_to_vtx_xy = deaxis( v_light_to_vtx, axis_ne );
+
+  // Set up quadratic equation coefficients, to solve for shadow location.
+  //
+  float a = dot(v_light_to_vtx_xy,v_light_to_vtx_xy);
+  float b = 2.0 * dot( v_axis_to_vtx_exy, v_light_to_vtx_xy );
+  float c = dot( v_axis_to_vtx_exy, v_axis_to_vtx_exy ) - platform_xrad_sq;
+  float radical = b * b - 4.0 * a * c;
+
+  // Use this position if shadow not visible.
+  //
+  gl_Position = vec4(0,0,-1000,1);
+  if ( radical < 0.0 ) return;
+
+  //
+  // Compute shadow location, transform to clip space, and we're done.
+  //
+
+  float t = ( -b + sqrt( radical ) ) / ( 2.0 * a );
+
+  vec4 shadow_e;
+
+  shadow_e.xyz = vertex_e.xyz + t * v_light_to_vtx;
+  shadow_e.w = 1.0;
+
+  gl_Position = gl_ProjectionMatrix * shadow_e;
+}
+
+
+///
+/// Shader For Reflections
+///
+
+// Reflections (of the ball on the platform) are done by transforming
+// vertex coordinates into reflected coordinates (which appear, put
+// informally, on the other side of the mirror). The reflected point
+// is found by first finding a point on the platform in which the
+// angle between the platform normal and the vector to the eye
+// location is the same as the angle between the platform normal and
+// the vertex location. It is sufficient to find such mirror points in
+// two dimensions, but still tricky. Mathematicians know this as
+// Alhazan's Billiard Problem, with the reflected light ray replaced
+// with a bouncing pool (billiard) ball. The code below uses an
+// admittedly clumsy solution.
+
+// There are several possible mirror points, up to four if the
+// platform were a full cylinder. The reflected point is the eye to
+// platform vector lengthened by the distance from the platform to the
+// vertex.
+
+// The code uses both a vertex shader and a geometry shader. The
+// vertex shader computes up to three reflected locations for each
+// vertex. The geometry shader then emits up to three triangles.
+
+
+// Used to select variations on mirror technique. Used for
+// debugging and tuning.
+//
+uniform int opt_mirror_method;
+
+uniform float platform_xmid;
+uniform float platform_xrad;
+
+
+// These needed so that reflection can be computed in world coordinates,
+// where axis is conveniently parallel to z axis.
+//
+uniform vec4 eye_location;
+uniform mat4 eye_to_world, world_to_clip;
+
+
+#ifdef _VERTEX_SHADER_
+flat out vec3 world_pos0;  // World-space coordinate of a mirror point.
+flat out vec3 world_pos1;
+flat out vec3 world_pos2;
+flat out int count;        // Number of mirror points found.
+#endif
+
+#ifdef _GEOMETRY_SHADER_
+flat in vec3 world_pos0[3];
+flat in vec3 world_pos1[3];
+flat in vec3 world_pos2[3];
+flat in int count[3];
+#endif
+
+
+// Determine the error in a possible mirror point.
+//
 float
 alhazan_check(vec2 eye,vec2 vertex,vec2 mirror)
 {
@@ -118,16 +194,21 @@ alhazan_check(vec2 eye,vec2 vertex,vec2 mirror)
   pNorm mv = mn(mirror,vertex);
   float de = dot(me.v.xy,mirror);
   float dv = dot(mv.v.xy,mirror);
-  float err = abs(dv-de);
-  return err;
+  return abs(dv-de);
 }
+
 
 struct AH_Solutions {
   vec2 sol[4];
-  int count;
+  int count;                    // Number of solutions computed.
 };
 AH_Solutions ah_solutions;
 
+
+// Given the y coordinate of a mirror point, determine the x coordinate
+// and check if it's better than a symmetric solution. If so, add it
+// to the solution list.
+//
 void
 alhazan_finish
 (vec2 eye, vec2 vertex, float errs,
@@ -137,17 +218,20 @@ alhazan_finish
   pNorm m1n = mn(x1,y,0.0); // Should this be necessary?
   vec2 m1 = rot * m1n.v.xy;
   float errm1 = alhazan_check(eye,vertex,m1);
-  if ( errm1 > errs ) return;
+  if ( errm1 > errs ) return; // Don't use if symmetric solution better.
   ah_solutions.sol[ah_solutions.count] = m1;
-  if ( m1.y < 0.1 ) ah_solutions.count++;
+  if ( m1.y < 0.1 ) ah_solutions.count++;  // Ignore solutions above platform.
 }
 
 
+ /// Compute mirror points (solutions to alhazan's problem).
+//
 void
 alhazan(vec2 eye, vec2 vertex)
 {
   //  http://mathworld.wolfram.com/AlhazensBilliardProblem.html
   //  http://www.math.sjsu.edu/~alperin/Alhazen.pdf
+  //  http://dx.doi.org/10.1137/S0036144596310872
 
   const bool avoid_br = false;
 
@@ -155,20 +239,30 @@ alhazan(vec2 eye, vec2 vertex)
 
   pNorm dir_b = mn(vertex);
 
+  // Return if outside of platform.
   if ( dir_b.magnitude > 1 && vertex.y < 0 ) return;
 
   pNorm dir_a = mn(eye);
 
+  // Compute symmetric solution.
+  // Only valid when vertex and eye are same distance from axis.
+  //
   pNorm dir_ab = mn( dir_a.v + dir_b.v );
   vec2 rvab = dir_ab.v.xy;
 
   if ( bool( opt_mirror_method & 1 ) )
     {
+      // Return quickly for experimental purposes.
+      //
       ah_solutions.sol[0] = rvab;
       ah_solutions.count = 1;
       return;
     }
 
+  // Compute error of two possible symmetric solutions and remember
+  // better one. This will be used for code below doesn't find anything
+  // better.
+  //
   float errab = alhazan_check(eye,vertex,rvab);
   vec2 rvb = dir_b.v.xy;
   float errb = alhazan_check(eye,vertex,rvb);
@@ -177,12 +271,14 @@ alhazan(vec2 eye, vec2 vertex)
   vec2 rvs = ab_better ? rvab : rvb;
   if ( rvs.y > 0 ) rvs = -rvs;
 
+
+  // Rotate space so that x-axis midway between eye and vertex directions.
+  // Simplifies computation.
+  //
   float cos_th =  dir_ab.v.x;
   float sin_th = -dir_ab.v.y;
-
   mat2 rot  = mat2(cos_th,  sin_th, -sin_th, cos_th);
   mat2 roti = mat2(cos_th, -sin_th,  sin_th, cos_th);
-
   vec2 a = rot * eye.xy;
   vec2 b = rot * vertex.xy;
 
@@ -190,6 +286,15 @@ alhazan(vec2 eye, vec2 vertex)
   float q = a.x * b.x - a.y * b.y;
   float r = a.x + b.x;
   float s = a.y + b.y;
+
+  // Code below based on Mathematica solution to
+  // a^2 + b^2 == 1,  2 q a b + s a - r b == 0
+  // See http://www.math.sjsu.edu/~alperin/Alhazen.pdf
+
+  // The solution computed below does not work well when a and b
+  // (or the eye and the vertex) are close to the same distance
+  // from the center (or axis).
+
   float ssq = s * s;
   float qsq = q * q;
   float rsq = r * r;
@@ -211,6 +316,9 @@ alhazan(vec2 eye, vec2 vertex)
 
   if ( k3_neg || avoid_br )
     {
+      // Always execute this code (avoid_br true) if cost of diverging
+      // branches is higher than unnecessary complex-realm calculations.
+      //
       float k3_imsq = max(-k3pre,0.0);
       float k3_im = k3_neg ? k3sp : 0.0;
       float k3_car = (1./3.) * atan(k3_im,k3_re);
@@ -223,7 +331,7 @@ alhazan(vec2 eye, vec2 vertex)
   else
     {
       float k3cr = pow(k3_re,1./3);
-      k21 = 
+      k21 =
         1.5874010519681996 * k3cr + 2.5198420997897464 * k4sq / k3cr;
     }
 
@@ -261,6 +369,8 @@ alhazan(vec2 eye, vec2 vertex)
 
   if ( ah_solutions.count == 0 && errs < 0.01 )
     {
+      // Use symmetric solution if code above yields nothing good.
+      //
       ah_solutions.sol[0] = rvs;
       ah_solutions.count = 1;
     }
@@ -308,55 +418,47 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 }
 
 
-uniform float platform_xmid;
-uniform float platform_xrad;
-uniform vec4 eye_location;
-uniform mat4 eye_to_world, world_to_clip;
-
-
-
-#ifdef _GEOMETRY_SHADER_
-
-flat in vec3 world_pos0[3];
-flat in vec3 world_pos1[3];
-flat in vec3 world_pos2[3];
-flat in int count[3];
-
-#endif
-
 #ifdef _VERTEX_SHADER_
-flat out vec3 world_pos0;
-flat out vec3 world_pos1;
-flat out vec3 world_pos2;
-flat out int count;
-
 
 void
 vs_main_reflect()
 {
-  // Compute locations of reflected points of vertex.
+  /// Compute locations of reflected points of vertex.
 
+  // Easy stuff first, pass on texture coordinate to next stage.
+  //
   gl_TexCoord[0] = gl_MultiTexCoord0;
 
   vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
   vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
   vec4 vertex_e_pn = vertex_e + vec4(normal_e,0);
 
+  // Compute lighting using ordinary lighting calculations.
+  //
   generic_lighting(vertex_e,gl_Color,normal_e);
 
+  // Find world-space coordinate of vertex and vertex normal,
+  // then find two-dimensional location of eye and vertex with
+  // axis at origin.
+  //
   vec4 vertex_w = eye_to_world * vertex_e;
   vec4 vertex_w_pn = eye_to_world * vertex_e_pn;
   vec3 normal_w = vertex_w_pn.xyz - vertex_w.xyz;
-  vec3 center = vec3(platform_xmid,0,0);
+  vec3 center = vec3(platform_xmid,0,0); // Axis passes through this point.
   float rad_inv = 1.0 / platform_xrad;
   vec2 eye_xy = rad_inv * ( eye_location.xy - center.xy );
   vec2 vertex_xy = rad_inv * ( vertex_w.xy - center.xy );
 
-  // Sets ah_solutions.
+  /// Compute Solutions.
+  //
+  // Solutions written to global variable ah_solutions.
+  //
   alhazan(eye_xy,vertex_xy);
 
   for ( int i=0; i<4; i++ )
     {
+      // Using 2-D mirror point compute 3-D reflected point.
+
       vec2 mirror = ah_solutions.sol[i];
       float eye_mirror_xy_dist = distance(eye_xy,mirror);
       float mirror_ball_xy_dist = distance(mirror,vertex_xy);
@@ -378,6 +480,10 @@ vs_main_reflect()
       case 2 : world_pos2 = reflection; break;
       case 3: break;
       }
+
+      // Code more efficient if loop exited this way because
+      // compiler knows there will be no more than 4 iterations.
+      //
       if ( i == ah_solutions.count ) break;
     }
   count = ah_solutions.count;
@@ -391,10 +497,16 @@ vs_main_reflect()
 void
 gs_reflect(vec3 world_pos[3],float dlimit_sq, vec3 color)
 {
+  /// Emit a triangle for a set of reflected vertices.
+
+  // Return if triangle looks suspiciously large. (This happens when
+  // a vertex is reflected to more than one location and they are
+  // not matched up properly.)  This code will also reject legitimate
+  // triangles that are very stretched out.
+  //
   vec2 v0 = world_pos[0].xy;
   vec2 v1 = world_pos[1].xy;
   vec2 v2 = world_pos[2].xy;
-
   if ( dist_sq(v0,v1) > dlimit_sq ) return;
   if ( dist_sq(v1,v2) > dlimit_sq ) return;
 
@@ -405,6 +517,10 @@ gs_reflect(vec3 world_pos[3],float dlimit_sq, vec3 color)
       gl_FrontSecondaryColor = gl_FrontSecondaryColorIn[i];
       gl_BackSecondaryColor = gl_BackSecondaryColorIn[i];
 
+      // Overwrite colors if this tuning option is turned on.
+      // The color assigned here is based on the number of
+      // solutions found.
+      //
       if ( opt_color_events != 0 )
         gl_FrontColor = gl_BackColor
           = gl_FrontSecondaryColor = gl_BackSecondaryColor = vec4(color,1);
@@ -419,6 +535,10 @@ gs_reflect(vec3 world_pos[3],float dlimit_sq, vec3 color)
 void
 reflect_if_nearby(vec2 ref)
 {
+  // Locate a set of vertices near ref and pass them to gs_reflect.
+  // This routine called when the number of solutions is not
+  // the same for every vertex.
+
   float xregion = ref.x;
   float rx = platform_xrad * 0.1;
   vec3 wp[3];
@@ -438,22 +558,42 @@ reflect_if_nearby(vec2 ref)
 void
 gs_main_reflect()
 {
+  /// Emit triangles based on the mirror points found for each triangle.
+
+  // Up to three solutions per vertex can be found (meaning the
+  // triangle would be seen reflected in three different places). The
+  // code must handle situations where one vertex has fewer or more
+  // solutions than the others. It also does not use a precise way of
+  // determining which of the multiple solutions belong to the same
+  // triangle. (Distance is used to reject mismatched sets.)
+
+
+  // Compute rejection threshold. Triangles with vertices more than
+  // this distance apart will be rejected.
+  //
   float rx = platform_xrad * 0.3;
   float rxsq = rx * rx;
 
   if ( bool(opt_mirror_method & 2 ) )
     {
+      // Just emit one triangle and return.
+      // Intended for tuning and debugging.
+      // For example, returning here will avoid massive branch
+      // divergence that occur in transitional areas.
       gs_reflect(world_pos0,rxsq,vec3(1,1,1));
       return;
     }
 
+  // Look at each vertex and find the smallest number of solutions.
   int minc = min(min(count[0],count[1]),count[2]);
   if ( minc == 0 ) return;
-
+  // And find the largest number of solutions.
   int maxc = max(max(count[0],count[1]),count[2]);
 
   if ( minc == 1 && maxc > 1 )
     {
+      // Just one complete triangle.
+      //
       vec2 ref =
         count[0] == 1 ? world_pos0[0].xy :
         count[1] == 1 ? world_pos0[1].xy : world_pos0[2].xy;
@@ -463,6 +603,8 @@ gs_main_reflect()
 
   if ( minc == 2 && maxc > 2 )
     {
+      // Two complete triangles.
+      //
       vec4 ref =
         count[0] == 2 ? vec4(world_pos0[0].xy,world_pos1[0].xy) :
         count[1] == 2 ? vec4(world_pos0[1].xy,world_pos1[1].xy)
@@ -472,6 +614,9 @@ gs_main_reflect()
       return;
     }
 
+  // Set color based on number of solutions found.  For
+  // debugging, tuning, learning, and fun.
+  //
   vec3 color = minc == 1 ? vec3(1,1,1) : minc == 2 ? vec3(0,1,0) : vec3(0,0,1);
 
   gs_reflect(world_pos0,rxsq,color);
