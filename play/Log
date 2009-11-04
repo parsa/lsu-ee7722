@@ -430,4 +430,5 @@ Shaders
 To Do:
 
 Remove CUDA code.
-Document user modifiable variables.
+>Document user modifiable variables.
+>Make sure each file has comments header.

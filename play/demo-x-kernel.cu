@@ -1,3 +1,14 @@
+/// LSU EE 4702-1 (Fall 2009), GPU Programming
+//
+ /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
+
+// $Id:$
+
+/// Purpose
+//
+//   Demonstrate Several Graphical and Simulation Techniques.
+//   This file contains GPU/cuda code.
+//   See demo-x-collide.cc for main program.
 
 #include "demo-x.cuh"
 
@@ -24,7 +35,7 @@ __constant__ float platform_xmid, platform_xrad;
 __constant__ float delta_t;
 __constant__ float short_xrad_sq;
 __constant__ float r_inv, two_r, two_r_sq;
-__constant__ float elasticity_dt, ball_mass_inv;
+__constant__ float elasticity_inv_dt, ball_mass_inv;
 __constant__ float mo_vel_factor, v_to_do;
 
 typedef float3 pCoor;
@@ -238,7 +249,7 @@ penetration_balls_resolve
   const double loss_factor = 1 - opt_bounce_loss;
 
   const double appr_deltas_no_loss =
-    ( two_r - dist.magnitude ) * elasticity_dt * ball_mass_inv;
+    ( two_r - dist.magnitude ) * elasticity_inv_dt * ball_mass_inv;
 
   const double appr_deltas =
     approach_speed > 0

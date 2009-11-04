@@ -1,3 +1,15 @@
+/// LSU EE 4702-1 (Fall 2009), GPU Programming
+//
+ /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
+
+// $Id:$
+
+/// Purpose
+//
+//   Demonstrate Several Graphical and Simulation Techniques.
+//   This file contains headers for CPU and GPU/cuda code.
+//   See demo-x-collide.cc for main program.
+
 #ifndef DEMO_X_CUH
 #define DEMO_X_CUH
 
