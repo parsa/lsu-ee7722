@@ -107,10 +107,6 @@ vs_main_shadow()
   float b = 2.0 * dot( v_axis_to_vtx_exy, v_light_to_vtx_xy );
   float c = dot( v_axis_to_vtx_exy, v_axis_to_vtx_exy ) - platform_xrad_sq;
   float radical = b * b - 4.0 * a * c;
-
-  // Use this position if shadow not visible.
-  //
-  gl_Position = vec4(0,0,-1000,1);
   if ( radical < 0.0 ) return;
 
   //
@@ -118,6 +114,14 @@ vs_main_shadow()
   //
 
   float t = ( -b + sqrt( radical ) ) / ( 2.0 * a );
+
+  // Use this position if shadow not visible.
+  //
+  gl_Position = vec4(0,0,-1000,1);
+
+  // Return if ball is very close to, or on other side of, the platform.
+  //
+  if ( t < 0.001 ) return;
 
   vec4 shadow_e;
 
