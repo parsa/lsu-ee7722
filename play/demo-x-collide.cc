@@ -72,6 +72,9 @@
  //  's'    Stop balls linear motion.
  //  'S'    Stop balls rotational motion.
 
+ //  'c'    Use colors to show number of reflected points, and other info.
+ //  'M'    Switch between different shortcuts in computing reflections.
+
  //  'g'    Turn gravity on and off.
  //  'F12'  Write screenshot to file.
 
@@ -86,9 +89,27 @@
  //  '+'   Increase variable value.
  //  '-'   Decrease variable value.
  //
- //  VAR Light Intensity - The light intensity.
+ //  VAR Light Intensity 
+ //              - The light intensity.
  //  VAR Gravity - Gravitational acceleration. (Turn on/off using 'g'.)
- //  VAR Platform Depth - Adjust depth of curved platform. (On/off suing 'f'.)
+ //  VAR Ball Mass
+ //  VAR Ball Radius
+ //  VAR Elasticity 
+ //              - Softness of balls. (Inverse of spring constant
+ //                used to compute repulsion forces when balls touch.)
+ //  VAR Sliding Friction 
+ //              - Dynamic friction coefficient. Used for ball/ball
+ //                and ball/platform contact.  The standard friction model
+ //                is used, frictional force is proportional to force
+ //                between two sliding surfaces.
+ //  VAR Rolling Friction
+ //              - Rolling friction coefficient. Used both for
+ //                ball/ball and ball/platform rolling. Frictional
+ //                model is ad-hoc, with force proportional to ball
+ //                rotation with respect to contact point and ball
+ //                deformation.
+ //  VAR Bounce Energy Loss
+ //              - Amount of energy lost in contact.
 
 
 #define GL_GLEXT_PROTOTYPES
@@ -341,7 +362,7 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   pVect gravity_accel_dt;
   double ball_mass_inv;
-  double elasticity_dt;
+  double elasticity_inv_dt;
   double ball_mo_inertia;
   double two_r_sq;
   double two_r;
@@ -371,7 +392,6 @@ public:
 
   void platform_update();
   bool platform_collision_possible(pCoor pos, float ts_mov_max = 0);
-
 
   pCoor light_location;
   float opt_light_intensity;
@@ -518,7 +538,7 @@ World::init()
   opt_friction_coeff = 0.1;
   opt_friction_roll = 0.1;
   opt_bounce_loss = 0.55;
-  opt_elasticity = 1600;
+  opt_elasticity = 1.0 / 16;
   opt_drip = true;
   drip_cnt = spray_cnt = 0;
   drip_run = 3;
@@ -642,7 +662,7 @@ World::variables_update()
   sphere.radius = opt_ball_radius;
   sphere_lite.radius = opt_ball_radius;
   for ( int i=0; i<sphere_count; i++ ) spheres[i].radius = opt_ball_radius;
-  elasticity_dt = opt_elasticity * delta_t;
+  elasticity_inv_dt = 100 * delta_t / opt_elasticity;
   if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
   ball_mo_inertia = 0.4 * opt_ball_mass * r_sq;
   v_to_do = opt_ball_mass * opt_ball_radius / ball_mo_inertia;
@@ -831,7 +851,7 @@ World::cuda_constants_update()
   TO_DEVF(delta_t);
   TO_DEVF(short_xrad_sq);
   TO_DEVF(r_inv); TO_DEVF(two_r); TO_DEVF(two_r_sq);
-  TO_DEVF(elasticity_dt); TO_DEVF(ball_mass_inv);
+  TO_DEVF(elasticity_inv_dt); TO_DEVF(ball_mass_inv);
   TO_DEVF(opt_friction_coeff); TO_DEVF(opt_friction_roll);
   TO_DEVF(mo_vel_factor); TO_DEVF(v_to_do);
 }
@@ -1026,7 +1046,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
   // energy loss.
   //
   const double appr_deltas_no_loss =
-    ( two_r - dist.magnitude ) * elasticity_dt * ball_mass_inv;
+    ( two_r - dist.magnitude ) * elasticity_inv_dt * ball_mass_inv;
 
   // Change in speed accounting for energy loss. Only applied when
   // balls separating.
@@ -2273,8 +2293,7 @@ World::balls_render(bool regular)
         {
           // Get sphere with detail level appropriate for viewer distance.
           //
-          Sphere* const s =
-            opt_pause && !opt_debug ? &sphere : sphere_get(ball);
+          Sphere* const s = opt_pause ? &sphere : sphere_get(ball);
 
           // Set ball's color, position, and orientation, and
           // render it.
@@ -2440,21 +2459,10 @@ World::render()
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z);
 
-  const float dist = distance(ball.position,eye_location);
-  const double px_len = 
-    win_width * 2.0 * M_PI * opt_ball_radius
-    / ( 1.6 * (dist - opt_ball_radius) * 2 );
-
-  const float lod_raw =
-    sphere_lod_factor / (dist-opt_ball_radius) - sphere_lod_offset;
-          //  const int lod = max(min(lod_raw,sphere_count-1),0);
-  const int lod = sphere_lod_min + int(lod_raw) * sphere_delta_lod;
-
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Debug Thing: %d ('q')  "
-     "Physics Verification %d ('v')  px len %.3f lod raw %.3f lid %d\n",
-     gpu_physics_method_str[opt_physics_method], opt_debug, opt_verify,
-     px_len,lod_raw,lod);
+    ("Physics: %s ('a')  Debug Option: %d ('q')  "
+     "Physics Verification %d ('v')\n",
+     gpu_physics_method_str[opt_physics_method], opt_debug, opt_verify);
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -2538,8 +2546,8 @@ World::render()
       pCoor pt1 = modelview * pCoor(0,0,0);
       pCoor pt2 = modelview * pCoor(0,0,1);
       pNorm axis_ne(pt1,pt2);
-      glUniform4fv(sun_axis_e, 1, axis_e);
-      glUniform3fv(sun_axis_ne, 1, axis_ne);
+      glUniform4fv(sun_axis_e, 1, axis_e); // Point on axis in eye space.
+      glUniform3fv(sun_axis_ne, 1, axis_ne); // Axis direction in eye space.
       glUniform1f(sun_platform_xrad_sq, platform_xrad * platform_xrad);
 
       // Turn off features that are time consuming and not needed
@@ -2688,6 +2696,8 @@ World::render()
   glDisable(GL_COLOR_SUM);
   glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
 
+  // Maybe render platform normals.
+  //
   if ( opt_normals_visible )
     {
       glColor3fv(lsu_spirit_gold);
