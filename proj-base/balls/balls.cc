@@ -7,6 +7,7 @@
 /// Purpose
 //
 //   Demonstrate Several Graphical and Simulation Techniques.
+//   Base for course projects.
 
 
 /// What Code Does
@@ -31,6 +32,43 @@
 //    Occlusion queries used to limit number of balls rendered.
 
 //    Two-color specular lighting used for balls.
+
+
+/// Code Checkout Instructions
+
+// Follow the class account setup instructions linked to the
+// class procedures page, http://www.ece.lsu.edu/koppel/gpup/proc.html
+
+// For instructions on how to check out edit, compile, and debug, see
+// the "Programming Homework Work Flow" entry on the procedures page,
+// http://www.ece.lsu.edu/koppel/gpup/proc.html .
+//
+// This code is in directory https://svn.ece.lsu.edu/svn/gp/proj-base/balls.
+
+// If you have previously checked out the entire repository, then just
+// update it:
+//   cd gp
+//   svn update
+// If this works you will see a list of paths that includes 
+// proj-base/balls/balls.cc.
+
+// If you haven't checked out the entire repository, then you can
+// just check out the include and project directories:
+//
+//   cd ~
+//   svn co https://svn.ece.lsu.edu/svn/gp/include
+//   svn co https://svn.ece.lsu.edu/svn/gp/proj-base
+//
+// Either way, to test the checkout:
+//
+//   cd gp/proj-base/balls
+//     or
+//   cd proj-base/balls
+//   make
+//
+// After the compilation is finished type "balls", the ball
+// simulation should start.
+
 
 
 
