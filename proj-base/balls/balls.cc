@@ -9,6 +9,8 @@
 //   Demonstrate Several Graphical and Simulation Techniques.
 //   Base for course projects.
 
+// Image: http://www.ece.lsu.edu/koppel/gpup/2009/balls.png
+
 
 /// What Code Does
 
@@ -461,14 +463,26 @@ World::init()
   opt_color_events = false;
   opt_debug = false;
 
-  vs_fixed = new pShader();
-
+  // Instantiate vertex shader used for casting shadow.
+  //
+  // See balls-shdr.cc for details, and here search for vs_shadow->use()
+  // to see where it's used.
+  //
   vs_shadow = new pShader("balls-shdr.cc","vs_main_shadow();");
+  //
+  // Get "locations" of variables in shader code so that client code
+  // (this code) can access them.
+  //
   sun_axis_e = vs_shadow->uniform_location("axis_e");
   sun_axis_ne = vs_shadow->uniform_location("axis_ne");
   sun_platform_xrad_sq = vs_shadow->uniform_location("platform_xrad_sq");
   sun_light_num = vs_shadow->uniform_location("light_num");
 
+  // Instantiate shaders used for reflections.
+  //
+  // Creating reflections uses both a vertex shader and a geometry
+  // shader, see code in balls-shdr.cc for details.
+  //
   vs_reflect =
     new pShader
     ("balls-shdr.cc","vs_main_reflect();", "gs_main_reflect();", NULL);
@@ -480,19 +494,29 @@ World::init()
   sun_opt_mirror_method = vs_reflect->uniform_location("opt_mirror_method");
   sun_opt_color_events = vs_reflect->uniform_location("opt_color_events");
 
+  // Instantiate a non-shader shader object, which will be used to
+  // tell OpenGL to used fixed functionality for all programmable
+  // stages, rather than using one of our shaders.
+  //
+  vs_fixed = new pShader();
+
   eye_location = pCoor(17.9,-2,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -80; platform_zmax = 80;
 
+  // Platform and Ball Textures
+  //
+  texid_plat = pBuild_Texture_File("gpup.png", false, 255);
+  texid_ball = pBuild_Texture_File("mult.png", false, -1);
+
+  // Limits of texture coordinates for platform tiles.
+  //
   trmax = 0.05;
   trmin = 0.7;
   tsmax = 0;
   tsmin = 0.4;
-  texid_plat = pBuild_Texture_File("gpup.png", false,255);
-
-  texid_ball = pBuild_Texture_File("mult.png", false,-1);
 
   opt_light_intensity = 100.2;
   light_location = pCoor(28.2,25.8,-14.3);
@@ -528,6 +552,10 @@ World::init()
   ball_countdown = 0.1;
   sphere.init(40);
   sphere_lite.init(4);
+
+  // Initialize spheres with varying levels of detail (lod).
+  // For performance reasons, sphere with lowest lod that provides
+  // acceptable results is used.
 
   sphere_lod_max = 40;
   sphere_lod_min = 8;
@@ -681,7 +709,7 @@ World::platform_update()
       const float trma = trmax - trdelta * ( i & ( tess_mask - 1 ) );
       const float trmi = trma - trdelta;
 
-      for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
+      for ( float z = platform_zmin; z + 0.001 < platform_zmax; z += zdelta )
         {
           PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
           PStack<pVect>& t_norms = even ? p_tile_norms : p1_tile_norms;
