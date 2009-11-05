@@ -119,6 +119,11 @@ vs_main_shadow()
 
   float t = ( -b + sqrt( radical ) ) / ( 2.0 * a );
 
+  // Return if vertex close to platform or platform is between
+  // light and vertex.
+  //
+  if ( t < 0.001 ) return;
+
   vec4 shadow_e;
 
   shadow_e.xyz = vertex_e.xyz + t * v_light_to_vtx;
