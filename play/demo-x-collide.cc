@@ -717,7 +717,7 @@ World::platform_update()
       const float trma = trmax - trdelta * ( i & ( tess_mask - 1 ) );
       const float trmi = trma - trdelta;
 
-      for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
+      for ( float z = platform_zmin; z + 0.001 < platform_zmax; z += zdelta )
         {
           PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
           PStack<pVect>& t_norms = even ? p_tile_norms : p1_tile_norms;
