@@ -1886,7 +1886,7 @@ World::cb_keyboard()
       modelview_update();
     }
 
-  // Update eye_location based on keyboard command.
+  // Update object location based on keyboard command.
   //
   if ( adjustment.x || adjustment.y || adjustment.z )
     {
