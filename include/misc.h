@@ -11,6 +11,13 @@
 #include <stdio.h>
 #include "pstring.h"
 
+
+template<typename T> T min(T a, T b){ return a < b ? a : b; }
+template<typename T> T max(T a, T b){ return a > b ? a : b; }
+template<typename T> T set_max(T& a, T b){ if ( b > a ) a = b;  return a; }
+template<typename T> T set_min(T& a, T b){ if ( b < a ) a = b;  return a; }
+
+
 #define ASSERTS(expr) { if ( !(expr) ) abort();}
 #define GCC_GE(maj,min) __GNUC__ \
   && ( __GNUC__ > (maj) || __GNUC__ == (maj) && __GNUC_MINOR__ >= (min) )
@@ -51,7 +58,9 @@ template <typename Data> class PStackIteratori;
 template <typename Data> class PStack {
 public:
   PStack(Data first) {init(); push(first);}
+  PStack(PStack<Data>& s) { cpy(s); }
   PStack() {init();}
+  void operator = (PStack<Data>& s) { cpy(s); }
   void reset() {
     first_free = 0;  iterator = 0;
     if ( taken ) { storage = NULL;  size = 0;  taken = false; }
@@ -125,7 +134,7 @@ public:
 
 
   // Return top of stack but don't pop.
-  Data peek(){ return storage[first_free-1]; } // UNTESTED.
+  Data& peek(){ return storage[first_free-1]; } // UNTESTED.
   Data peek_down(int distance){ return storage[first_free-distance-1]; }
   bool peek(Data &i) // UNTESTED
   {
@@ -152,21 +161,30 @@ public:
     return true;
   }
 
+  void cpy(PStack<Data> &s)
+  {
+    init();
+    alloc(s.occ());
+    first_free = s.occ();
+    const int cpy_amt = min(s.occ(),size);
+    memcpy(storage,s.get_storage(),cpy_amt*sizeof(Data));
+  }
+
 private:
   void init() {
     first_free = 0;  size = 0;  storage = NULL;
     iterator = 0;  taken = false;
   }
-  void alloc()
+  void alloc(int new_size = 0)
   {
     if( size )
       {
-        size <<= 2;
+        size = new_size ? max(new_size,size) : size << 2;
         storage = (Data*) realloc(storage, size * sizeof(storage[0]));
       }
     else
       {
-        size = 32;
+        size = new_size ? new_size : 32;
         storage = (Data*) malloc(size * sizeof(storage[0]));
       }
   }
@@ -282,6 +300,18 @@ public:
     ip->~Data();
     return true;
   }
+
+  Data* enqueue_at_headi()
+  {
+    if ( occupancy == size ) alloc();
+    if ( !head_idx ) head_idx = size;
+    Data* const rv = &storage[--head_idx];
+    new (rv) Data();
+    occupancy++;
+    return rv;
+  }
+
+  void enqueue_at_head(Data i){ *enqueue_at_headi() = i; }
 
   bool iterate(Data &d)
   {
@@ -461,6 +491,7 @@ public:
   }
 
   Data operator [] (int idx) {return stack.get_storage()[idx].data;}
+  Key get_key(int idx) {return stack.get_storage()[idx].key; }
 
   int key_order(int k1, int k2){ return k1-k2; }
   int key_order(uint32_t k1, uint32_t k2)
