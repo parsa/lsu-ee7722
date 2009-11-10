@@ -109,6 +109,7 @@ public:
    const char *main_body_gs = NULL,
    const char *main_body_fs = NULL)
   {
+    ready = false;
     validated = false;
     source_path = source_pathp;
 
@@ -170,8 +171,10 @@ public:
         char* const prog_info_log = (char*) alloca(info_log_length+1);
         glGetProgramInfoLog(pobject,info_log_length+1,NULL,prog_info_log);
         printf(" Program Info log:\n%s\n",prog_info_log);
+        return 0;
       }
 
+    ready = true;
     return pobject;
   }
 
@@ -280,10 +283,14 @@ public:
 
 #endif
 
+  bool okay(){ return ready; }
+
   pString source_path;
   GLuint pobject;
   GLuint vs_object, gs_object, fs_object;
   bool validated;
+private:
+  bool ready;
 };
 
 
