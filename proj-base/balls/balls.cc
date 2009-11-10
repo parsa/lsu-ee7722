@@ -473,10 +473,13 @@ World::init()
   // Get "locations" of variables in shader code so that client code
   // (this code) can access them.
   //
-  sun_axis_e = vs_shadow->uniform_location("axis_e");
-  sun_axis_ne = vs_shadow->uniform_location("axis_ne");
-  sun_platform_xrad_sq = vs_shadow->uniform_location("platform_xrad_sq");
-  sun_light_num = vs_shadow->uniform_location("light_num");
+  if ( vs_shadow->okay() )
+    {
+      sun_axis_e = vs_shadow->uniform_location("axis_e");
+      sun_axis_ne = vs_shadow->uniform_location("axis_ne");
+      sun_platform_xrad_sq = vs_shadow->uniform_location("platform_xrad_sq");
+      sun_light_num = vs_shadow->uniform_location("light_num");
+    }
 
   // Instantiate shaders used for reflections.
   //
@@ -486,13 +489,16 @@ World::init()
   vs_reflect =
     new pShader
     ("balls-shdr.cc","vs_main_reflect();", "gs_main_reflect();", NULL);
-  sun_platform_xrad = vs_reflect->uniform_location("platform_xrad");
-  sun_platform_xmid = vs_reflect->uniform_location("platform_xmid");
-  sun_eye_location = vs_reflect->uniform_location("eye_location");
-  sun_eye_to_world = vs_reflect->uniform_location("eye_to_world");
-  sun_world_to_clip = vs_reflect->uniform_location("world_to_clip");
-  sun_opt_mirror_method = vs_reflect->uniform_location("opt_mirror_method");
-  sun_opt_color_events = vs_reflect->uniform_location("opt_color_events");
+  if ( vs_reflect->okay() )
+    {
+      sun_platform_xrad = vs_reflect->uniform_location("platform_xrad");
+      sun_platform_xmid = vs_reflect->uniform_location("platform_xmid");
+      sun_eye_location = vs_reflect->uniform_location("eye_location");
+      sun_eye_to_world = vs_reflect->uniform_location("eye_to_world");
+      sun_world_to_clip = vs_reflect->uniform_location("world_to_clip");
+      sun_opt_mirror_method = vs_reflect->uniform_location("opt_mirror_method");
+      sun_opt_color_events = vs_reflect->uniform_location("opt_color_events");
+    }
 
   // Instantiate a non-shader shader object, which will be used to
   // tell OpenGL to used fixed functionality for all programmable
@@ -1522,8 +1528,9 @@ World::render()
   ogl_helper.fbprintf
     ("Shadows: %-3s ('w')  Mirror: %-3s %d "
      "Light location: [%5.1f, %5.1f, %5.1f]\n",
-     opt_shadows ? "on" : "off",
-     opt_mirror ? "on" : "off", opt_mirror_method,
+     !vs_shadow->okay() ? "unavailable" : opt_shadows ? "on" : "off",
+     !vs_reflect->okay() ? "unavailable" : opt_mirror ? "on" : "off", 
+     opt_mirror_method,
      light_location.x, light_location.y, light_location.z);
 
   Ball& ball = *balls.peek();
@@ -1544,7 +1551,7 @@ World::render()
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->var[0]);
 
-  if ( opt_mirror )
+  if ( opt_mirror && vs_reflect->okay() )
     {
       //
       // Render ball reflection.  (Will be blended with dark tiles.)
@@ -1606,7 +1613,7 @@ World::render()
       glDisable(GL_STENCIL_TEST);
     }
 
-  if ( opt_shadows )
+  if ( opt_shadows && vs_shadow->okay() )
     {
       //
       // Write framebuffer stencil with shadow.
