@@ -432,3 +432,114 @@ To Do:
 Remove CUDA code.
 >Document user modifiable variables.
 >Make sure each file has comments header.
+
+:: 12 November 2009, 18:15:41 CST
+
+CUDA Tests
+
+3.7 ms, 32 th / bl
+
+2 p, 18 r, 39 bl
+
+1.7 ms, 2 p, 18 r, 39 bl   32 th / bl  
+  3.1 ms  6 / 84 r
+1.1 ms, 2 p, 15 r, 21 bl   64 th / bl
+  2.8 ms  4 / 73 r
+1.0 ms, 1 p, 15 r, 11 bl  128 th / bl
+  2.3 ms  3 / 58 r
+
+Pop: 1.3
+For 2877 tacts, 2 passes, 19 total rnds; Eff 0.3713  Max Bl 9  Eff 0.3526
+DQ: 1.1
+For 2848 tacts, 1 passes, 12 total rnds; Eff 0.3697  Max Bl 11  Eff 0.3497
+
+Pop:
+For 2825 tacts, 2 p, 17 tot rnds; Eff 0.3748  Max Bl 10/12/94  Eff 0.3626
+DQ:
+For 2847 tacts, 1 p, 11 tot rnds; Eff 0.3705  Max Bl 11/12/81  Eff 0.3496
+
+Skip
+ For 2844 tacts, 1 p, 12 tot rnds; Max Bl 11/12/82 W 8112/4688  Eff 0.3506
+Don't skip
+ For 2870 tacts, 2 p, 15 tot rnds; Max Bl 10/13/74 W 7296/4155  Eff 0.3934
+
+md 0  For 2838 tacts, 1 p, 13 tot rnds; Max Bl 11/12/93 W 8384/4655  Eff 0.3385
+md 1  For 2878 tacts, 1 p, 11 tot rnds; Max Bl 11/12/81 W 8064/4647  Eff 0.3569
+md 5  For 2818 tacts, 1 p, 11 tot rnds; Max Bl 11/12/81 W 7712/4530  Eff 0.3654
+md 50 For 2856 tacts, 1 p, 11 tot rnds; Max Bl 11/12/81 W 7888/4587  Eff 0.3621
+
+:: 16 November 2009, 10:52:43 CST
+
+Sparse:
+
+1.04  For 2941 tacts, 1 p, 12 tot rnds; Max Bl 11/12/82 W 7952/4770  Eff 0.3698
+
+Dense:
+1.35  For 3022 tacts, 1 p, 11 tot rnds; Max Bl 11/12/81 W 3552/4920  Eff 0.8508
+
+
+.75  Sparse, Ball_W not pot
+.65  Dense, Ball_W not pot
+
+method=[ memcpyHtoD ] gputime=[ 4.704 ] cputime=[ 1.000 ] memTransferSize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.936 ] cputime=[ 1.000 ] memTransferSize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 9.344 ] cputime=[ 2.000 ] memTransferSize=[ 13312 ] 
+method=[ memcpyHtoD ] gputime=[ 26.400 ] cputime=[ 6.000 ] memTransferSize=[ 54272 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 81.152 ] cputime=[ 100.000 ] occupancy=[ 0.125 ] divergent_branch=[ 22 ] instructions=[ 5625 ] warp_serialize=[ 4029 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 53.504 ] cputime=[ 67.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z14pass_somethingii ] gputime=[ 28.128 ] cputime=[ 38.000 ] occupancy=[ 0.375 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 79.744 ] cputime=[ 90.000 ] occupancy=[ 0.125 ] divergent_branch=[ 22 ] instructions=[ 5627 ] warp_serialize=[ 4065 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 53.696 ] cputime=[ 63.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z14pass_somethingii ] gputime=[ 27.264 ] cputime=[ 37.000 ] occupancy=[ 0.375 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 80.224 ] cputime=[ 90.000 ] occupancy=[ 0.125 ] divergent_branch=[ 22 ] instructions=[ 5621 ] warp_serialize=[ 4028 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 53.568 ] cputime=[ 63.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z14pass_somethingii ] gputime=[ 28.032 ] cputime=[ 37.000 ] occupancy=[ 0.375 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 79.936 ] cputime=[ 90.000 ] occupancy=[ 0.125 ] divergent_branch=[ 22 ] instructions=[ 5627 ] warp_serialize=[ 4075 ] 
+method=[ _Z10pass_pairsiiii ] gputime=[ 53.888 ] cputime=[ 63.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ _Z14pass_somethingii ] gputime=[ 27.744 ] cputime=[ 37.000 ] occupancy=[ 0.375 ] divergent_branch=[ 0 ] instructions=[ 0 ] warp_serialize=[ 0 ] 
+method=[ memcpyDtoH ] gputime=[ 41.952 ] cputime=[ 75.000 ] memTransferSize=[ 128256 ] 
+
+
+char[12]: warp_serialize [ 2384 ]
+
+ws [ 3814 ]:  floats after 3-elt vectors.
+
+Make counts shorts, no padding.
+method=[ _Z10pass_pairsiiii ] gputime=[ 89.696 ] cputime=[ 99.000 ] occupancy=[ 0.125 ] divergent_branch=[ 26 ] instructions=[ 6493 ] warp_serialize=[ 5472 ] 
+
+method=[ _Z10pass_pairsiiii ] gputime=[ 105.728 ] cputime=[ 115.000 ] occupancy=[ 0.125 ] divergent_branch=[ 23 ] instructions=[ 6124 ] warp_serialize=[ 12054 ] 
+pad 16
+method=[ _Z10pass_pairsiiii ] gputime=[ 75.008 ] cputime=[ 88.000 ] occupancy=[ 0.125 ] divergent_branch=[ 23 ] instructions=[ 5645 ] warp_serialize=[ 2826 ] 
+
+short counts and m_idx, struct size 56 without pad.
+
+pad 0
+method=[ _Z10pass_pairsiiii ] gputime=[ 87.264 ] cputime=[ 97.000 ] occupancy=[ 0.125 ] divergent_branch=[ 15 ] instructions=[ 4933 ] warp_serialize=[ 11638 ] 
+
+pad 1
+method=[ _Z10pass_pairsiiii ] gputime=[ 77.216 ] cputime=[ 87.000 ] occupancy=[ 0.125 ] divergent_branch=[ 19 ] instructions=[ 4945 ] warp_serialize=[ 5322 ] 
+
+pad 4
+method=[ _Z10pass_pairsiiii ] gputime=[ 77.984 ] cputime=[ 88.000 ] occupancy=[ 0.125 ] divergent_branch=[ 19 ] instructions=[ 4937 ] warp_serialize=[ 6061 ] 
+
+pad 8
+method=[ _Z10pass_pairsiiii ] gputime=[ 205.248 ] cputime=[ 215.000 ] occupancy=[ 0.125 ] divergent_branch=[ 23 ] instructions=[ 5936 ] warp_serialize=[ 62087 ] 
+
+pad 12
+method=[ _Z10pass_pairsiiii ] gputime=[ 74.496 ] cputime=[ 85.000 ] occupancy=[ 0.125 ] divergent_branch=[ 16 ] instructions=[ 4842 ] warp_serialize=[ 4782 ] 
+
+
+Looking again at time to compute schedule:
+
+Every 10:
+ 0.81   4.5
+Every time:
+ 1.30  20.2
+Pause:
+ -----  2.4
+
+About 17.4 ms CPU for schedule.
+Paused:
+ 2.4 ms cpu
+Simulating: 4.5 - 2.4 = 2.1 for physics, including schedule.
+

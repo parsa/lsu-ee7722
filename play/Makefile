@@ -10,7 +10,7 @@ DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
 #   Execution problem occurs with --use_fast_math and certain data placement.
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
-COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v -O3	
+COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v -O3
 
 
 CC = gcc
@@ -52,8 +52,8 @@ cube5: cube5.o cube5_shader.s
 cube4.o: Makefile coord.h util.h shader.h
 
 cube4: cube4.o cube4_vshader.cc
-	cgc -profile vp40 -oglsl -entry vs_main_circle -o cube4_vshader.s \
-	 cube4_vshader.cc
+	# cgc -profile vp40 -oglsl -entry vs_main_circle -o cube4_vshader.s \
+	 # cube4_vshader.cc
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 xcube4.o: Makefile coord.h util.h shader.h

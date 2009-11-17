@@ -293,22 +293,6 @@ penetration_balls_resolve
         }
     }
 
-#if 0
-  if ( !use_prev_vel && opt_verify && b2_real && will_roll )
-    {
-      pVect appr_vel2 = ball1->velocity - ball2->velocity;
-      const double approach_speed2 = dot( appr_vel2, dist );
-
-      pVect tact1_rot_vel2 = point_rot_vel(ball1_r,dist);
-      pVect tact2_rot_vel2 = point_rot_vel(ball2_r,ndist);
-
-      pVect tan_vel2 = appr_vel2 - approach_speed2 * dist;
-      pNorm tan_vel_dir2 = tact1_rot_vel2 - tact2_rot_vel2 + tan_vel2;
-      ASSERTS( tan_vel_dir2.magnitude <= 0.0001 + 100 * dv_tolerance );
-      ball1->color_event = ball2->color_event = pColor(1,1,1);
-    }
-#endif
-
   {
     /// Torque
     //
@@ -442,15 +426,15 @@ pass_something(int read_side, int ball_count)
   CUDA_Ball_X bi = read_side ? balls_x_1 : balls_x_0;
   CUDA_Ball_X bo = read_side ? balls_x_1 : balls_x_0;
 
-
   CUDA_Ball_W ball;
 
   ball.prev_velocity = bi.prev_velocity[idx];
   ball.velocity = bi.velocity[idx] + gravity_accel_dt;
   set_f3(ball.position,bi.position[idx]);
   ball.angular_momentum = bi.angular_momentum[idx];
-  ball.collision_count = bi.collision_count[idx];
-  ball.contact_count = bi.contact_count[idx];
+  int4 tact_counts = bi.tact_counts[idx];
+  ball.collision_count = tact_counts.x;
+  ball.contact_count = tact_counts.y;
 
   platform_collision(ball);
 
@@ -462,9 +446,10 @@ pass_something(int read_side, int ball_count)
   bo.prev_velocity[idx] = ball.velocity;
   bo.angular_momentum[idx] = ball.angular_momentum;
   set_f4(bo.position[idx],ball.position);
-  bo.collision_count[idx] = ball.collision_count;
-  bo.contact_count[idx] = ball.contact_count << 8;
-  bo.debug_pair_calls[idx] = bi.debug_pair_calls[idx] << 16;
+  tact_counts.x = ball.collision_count;
+  tact_counts.y = ball.contact_count << 8;
+  tact_counts.z = tact_counts.z << 16;
+  bo.tact_counts[idx] = tact_counts;
 }
 
 __global__ void pass_pairs
@@ -508,9 +493,11 @@ pass_pairs
       ball.prev_velocity = bi.prev_velocity[m_idx];
       set_f3(ball.position,bi.position[m_idx]);
       ball.angular_momentum = bi.angular_momentum[m_idx];
-      ball.collision_count = bi.collision_count[m_idx];
-      ball.contact_count = bi.contact_count[m_idx];
-      ball.debug_pair_calls = bi.debug_pair_calls[m_idx];
+
+      int4 tact_counts = bi.tact_counts[m_idx];
+      ball.collision_count = tact_counts.x;
+      ball.contact_count = tact_counts.y;
+      ball.debug_pair_calls = tact_counts.z;
     }
 
   for ( int round=0; round<round_cnt; round++ )
@@ -520,6 +507,8 @@ pass_pairs
       if ( indices.x == indices.y ) continue;
       penetration_balls_resolve(sm_balls[indices.x],sm_balls[indices.y],true);
     }
+
+  __syncthreads();
 
   for ( int i=0; i<max_balls_per_thread; i++ )
     {
@@ -531,8 +520,11 @@ pass_pairs
 
       bo.velocity[m_idx] = ball.velocity;
       bo.angular_momentum[m_idx] = ball.angular_momentum;
-      bo.collision_count[m_idx] = ball.collision_count;
-      bo.contact_count[m_idx] = ball.contact_count;
-      bo.debug_pair_calls[m_idx] = ball.debug_pair_calls;
+
+      int4 tact_counts;
+      tact_counts.x = ball.collision_count;
+      tact_counts.y = ball.contact_count;
+      tact_counts.z = ball.debug_pair_calls;
+      bo.tact_counts[m_idx] = tact_counts;
     }
 }

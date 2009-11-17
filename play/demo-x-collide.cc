@@ -116,6 +116,7 @@
 #define GLX_GLXEXT_PROTOTYPES
 
 #include <math.h>
+#include <pthread.h>
 
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -440,7 +441,14 @@ public:
   int opt_physics_method;
   int data_location;
 
+  pthread_cond_t pt_render_cond, pt_sched_cond;
+  pthread_mutex_t pt_mutex;
+  
+  char render_sched_state;
+
   void time_step_cuda(bool need_data);
+
+  int block_size;
 
   int cuda_schedule_stale;
   cudaEvent_t frame_start_ce, frame_stop_ce;
@@ -452,6 +460,7 @@ public:
 
   void cuda_init();
   void cuda_constants_update();
+  void cuda_schedule();
   bool cpu_data_to_cuda();
   void cuda_data_to_cpu(uint which_data);
   int cuda_ball_cnt;
@@ -463,6 +472,14 @@ public:
 void
 World::init()
 {
+  {
+#   define CP(f) { const int rv=f; ASSERTS( rv == 0 ); }
+    CP(pthread_cond_init(&pt_render_cond,NULL));
+    CP(pthread_cond_init(&pt_sched_cond,NULL));
+    CP(pthread_mutex_init(&pt_mutex,NULL));
+#   undef CP
+  }
+
   data_location = DL_ALL_CPU;
   cuda_initialized = false;
   cuda_schedule_stale = 1;
@@ -531,7 +548,7 @@ World::init()
   texid_ball = pBuild_Texture_File("../gpgpu/mult.png", false,-1);
 
   opt_light_intensity = 100.2;
-  light_location = pCoor(28.2,25.8,-14.3);
+  light_location = pCoor(0,25.8,-14.3);
 
   opt_ball_mass = 0.25;
   opt_ball_radius = 2;
@@ -779,6 +796,8 @@ World::benchmark_setup(int tiers)
   opt_drip = false;
   opt_spray_on = false;
   opt_verify = false;
+  opt_mirror = false;
+  opt_shadows = false;
   //  opt_friction_roll = 0.01; opt_friction_coeff = 0.01;
   for ( float z = platform_zmin + hdeltaz; z < platform_zmax; z+= delta_z )
     for ( float x = platform_xmin + hdeltax; x < platform_xmax; x += delta_x )
@@ -789,6 +808,7 @@ World::benchmark_setup(int tiers)
           b->position = pCoor(x,y,z);
           balls += b;
         }
+  variables_update();
 }
 
 void
@@ -827,9 +847,7 @@ World::cuda_init()
   CMX_SETUP(cuda_balls,velocity);
   CMX_SETUP(cuda_balls,prev_velocity);
   CMX_SETUP(cuda_balls,angular_momentum);
-  CMX_SETUP(cuda_balls,collision_count);
-  CMX_SETUP(cuda_balls,contact_count);
-  CMX_SETUP(cuda_balls,debug_pair_calls);
+  CMX_SETUP(cuda_balls,tact_counts);
   cuda_balls.alloc_locked(cuda_ball_cnt);
   cuda_balls.ptrs_to_cuda_soa("balls_x_0","balls_x_1");
 
@@ -879,9 +897,12 @@ World::cpu_data_to_cuda()
       vec_set(cuda_balls.soa.prev_velocity[idx],ball->velocity);
       vec_set(cuda_balls.soa.velocity[idx],ball->velocity);
       vec_set(cuda_balls.soa.angular_momentum[idx],ball->angular_momentum);
-      cuda_balls.soa.collision_count[idx] = ball->collision_count;
-      cuda_balls.soa.contact_count[idx] = ball->contact_count;
-      cuda_balls.soa.debug_pair_calls[idx] = ball->debug_pair_calls;
+      int4 tact_counts;
+      tact_counts.x = ball->collision_count;
+      tact_counts.y = ball->contact_count;
+      tact_counts.z = ball->debug_pair_calls;
+      tact_counts.w = 0;
+      cuda_balls.soa.tact_counts[idx] = tact_counts;
     }
 
   cuda_balls.to_cuda();
@@ -907,18 +928,18 @@ World::cuda_data_to_cpu(uint which_data)
         {
           vec_sets3(ball->position,cuda_balls.soa.position[idx]);
           vec_set(ball->orientation,cuda_balls.soa.orientation[idx]);
-          ball->contact_count =
-            0xff & ( cuda_balls.soa.contact_count[idx] >> 8 );
+          const int4 tact_counts = cuda_balls.soa.tact_counts[idx];
+          ball->collision_count = tact_counts.x;
+          ball->contact_count = 0xff & ( tact_counts.y >> 8 );
+          ball->debug_pair_calls = tact_counts.z;
         }
       if ( mask & DL_CV_CPU )
         {
           vec_set(ball->velocity,cuda_balls.soa.velocity[idx]);
-          ball->collision_count = cuda_balls.soa.collision_count[idx];
         }
       if ( mask & DL_OT_CPU )
         {
           vec_set(ball->angular_momentum,cuda_balls.soa.angular_momentum[idx]);
-          ball->debug_pair_calls = cuda_balls.soa.debug_pair_calls[idx];
         }
     }
 }
@@ -1413,7 +1434,6 @@ public:
   int block;
   int col;
   int round;
-  int sort_idx;
 };
 
 #if 0
@@ -1500,13 +1520,431 @@ World::schedule(PStack<Contact>& pairs)
 }
 #endif
 
+void
+World::cuda_schedule()
+{
+  cuda_schedule_stale = -10;
+  cuda_data_to_cpu(DL_ALL);
+
+  double max_vsq = 0;
+
+  PSList<Ball*,double> z;
+
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      const double vsq = dot(ball->velocity,ball->velocity);
+      set_max(max_vsq,vsq);
+      ball->idx = balls.iterate_get_idx();
+      ball->prev_velocity = ball->velocity;
+      ball->prev_angular_momentum = ball->angular_momentum;
+      ball->debug_pair_calls = 0;
+      ball->contact_count = 0;
+      ball->proximity.reset();
+      z.insert(ball->position.z,ball);
+    }
+
+  const double radii =
+    sqrt(max_vsq) * ( -cuda_schedule_stale ) * delta_t / opt_ball_radius;
+
+  static double mradii = 0;
+  if ( radii > mradii )
+    {
+      mradii = radii;
+      printf("Fastest ball can travel %.3f radii\n",radii);
+    }
+
+  const float region_length =
+    ( 2.1 + min(radii,2.0) ) * opt_ball_radius;
+  const double prox_dist_sq = pow( region_length, 2 );
+
+  PStack<Contact> pairs;
+
+  z.sort();
+  for ( int idx0 = 0, idx9 = 0; idx9 < z.occ(); idx9++ )
+    {
+      Ball* const ball9 = z[idx9];
+      const float z_min = ball9->position.z - region_length;
+
+      while ( idx0 < idx9 && z[idx0]->position.z < z_min ) idx0++;
+
+      for ( int i=idx0; i<idx9; i++ )
+        {
+          Ball* const ball1 = z[i];
+
+          pNorm dist(ball1->position,ball9->position);
+          if ( dist.mag_sq > prox_dist_sq ) continue;
+
+          const int c_idx = pairs.occ();
+          new (pairs.pushi()) Contact(ball1,ball9);
+
+          ball1->proximity += c_idx;
+          ball9->proximity += c_idx;
+        }
+    }
+
+  PQueue<Ball*> work[2], neighborhood;
+  int w = 0;
+  int n = 1-w;
+
+  for ( Ball *b; balls.iterate(b); )
+    if ( b->proximity.occ() )
+      {
+        b->pass = -1;
+        b->pass_iterated = -1;
+        b->pass_todo = 0;
+        work[w] += b;
+      }
+
+  int pass_num = 0;
+  int block_num = 0;
+  int ball_count = 0;
+  const int max_rounds = 32;
+  const int ball_limit = BALLS_PER_BLOCK;
+  int total_rounds = 0;
+  int max_blocks = 0;
+  int pass_max_rounds = 0;
+  int iterations = 0;
+  const int block_cnt_limit = 2048;
+  int thd_rounds = 0;
+  int next_col[max_rounds];
+  memset(next_col,0,sizeof(next_col));
+
+  while ( true )
+    {
+      if ( !neighborhood.occ() && work[w].occ() )
+        neighborhood += work[w].pop();
+
+      if ( !neighborhood.occ() )
+        {
+          total_rounds += pass_max_rounds;
+          set_max(max_blocks,block_num+1);
+          if ( !work[n].occ() ) break;
+          pass_max_rounds = 0;
+
+          w = 1-w;  n = 1-n;
+          neighborhood += work[w].pop();
+
+          pass_num++;
+          ball_count = block_num = 0;
+          memset(next_col,0,sizeof(next_col));
+        }
+
+      ASSERTS( ball_count <= ball_limit );
+
+      if ( ball_count == ball_limit )
+        {
+          ball_count = 0;  block_num++;
+          memset(next_col,0,sizeof(next_col));
+        }
+
+      Ball* const ball1 = neighborhood.dequeue();
+      if ( ball1->pass_iterated == pass_num ) continue;
+      ball1->pass_iterated = pass_num;
+
+      if ( ball1->pass < pass_num )
+        {
+          ball1->pass = pass_num;
+          ball1->placed = false;
+          ball1->rounds = 0;
+        }
+
+      if ( ball1->placed && ball1->block != block_num )
+        {
+          if ( ball1->pass_todo <= pass_num )
+            {
+              ball1->pass_todo = pass_num + 1;
+              work[n] += ball1;
+            }
+          continue;
+        }
+
+      int placed_count = 0;
+      PQueue<int> tacts;
+      for ( int c_idx = ball1->proximity.iterate_reset();
+            ball1->proximity.iterate(c_idx); )
+        {
+          iterations++;
+          Contact* const c = &pairs[c_idx];
+          if ( c->placed ) continue;
+          Ball* const ball2 = c->other_ball(ball1);
+
+          if ( ball2->pass < pass_num )
+            {
+              ball2->pass = pass_num;
+              ball2->placed = false;
+              ball2->rounds = 0;
+            }
+
+          if ( ball2->placed && ball2->block != block_num )
+            { 
+              if ( ball1->pass_todo <= pass_num )
+                {
+                  ball1->pass_todo = pass_num + 1;
+                  work[n] += ball1;
+                }
+              continue;
+            }
+          tacts += c_idx;
+        }
+
+      const int max_dwell = 1;
+      int rounds_skipped = 0;
+      int dwell_count = 0;
+      int round = 0;
+      while ( tacts.occ() && round < max_rounds )
+        {
+          if ( next_col[round] == block_size ) break;
+          //  if ( next_col[round] == block_size ) { round++;  continue; }
+          const int c_idx = tacts.dequeue();
+          iterations++;
+          Contact* const c = &pairs[c_idx];
+          Ball* const ball2 = c->other_ball(ball1);
+
+          int dwell_limit = min(max_dwell,tacts.occ());
+          const uint32_t mask = 1 << round;
+
+          if ( ball1->rounds & mask )
+            {
+              round++;  dwell_count = 0;
+              rounds_skipped++;
+              tacts += c_idx;
+              continue;
+            }
+
+          if ( ball2->rounds & mask )
+            {
+              if ( dwell_count >= dwell_limit )
+                {
+                  round++;  dwell_count = 0;
+                  rounds_skipped++;
+                }
+              else
+                dwell_count++;
+
+              tacts += c_idx;
+              continue;
+            }
+          dwell_count = 0;
+
+          const int next_ball_count =
+            ball_count + !ball1->placed + !ball2->placed;
+          if ( next_ball_count > ball_limit )
+            {
+              work[n] += ball1;
+              continue;
+            }
+
+          if ( !ball1->placed )
+            {
+              ball1->placed = true;
+              ball1->block = block_num;
+            }
+          if ( !ball2->placed )
+            {
+              ball2->placed = true;
+              ball2->block = block_num;
+              neighborhood += ball2;
+            }
+          ball_count = next_ball_count;
+          placed_count++;
+          c->placed = true;
+          c->pass = pass_num;  c->block = block_num;
+          c->col = next_col[round]++;
+          ASSERTS( c->col < block_size );
+          c->round = round;
+          ball1->rounds |= mask;
+          ball2->rounds |= mask;
+          round++;
+          thd_rounds += rounds_skipped + 1;
+          rounds_skipped = 0;
+
+          set_max(pass_max_rounds,round);
+        }
+
+      if ( tacts.occ() ) work[n] += ball1;
+    }
+
+  PSList<Contact*,int64_t> pair_check;
+  while ( Contact* const c = pairs.iterate() )
+    pair_check.insert
+      ( 
+       c->pass * block_cnt_limit * max_rounds * block_size
+       + c->block * max_rounds * block_size
+       + c->round * block_size
+       + int64_t(c->col)
+       , 
+       c );
+  pair_check.sort();
+  for ( Ball *ball; balls.iterate(ball); ) ball->pass = -1;
+
+  while ( Contact* const c = pair_check.iterate() )  
+    {
+      const int pass = c->pass;
+      const int round = c->round;
+      const int block = c->block;
+      ASSERTS( c->placed );
+      for ( int i=0; i<2; i++ )
+        {
+          Ball* const b = i ? c->ball2 : c->ball1;
+          ASSERTS( b->pass < pass
+                   || b->block == block && b->rounds < round );
+          b->pass = pass;
+          b->block = block;
+          b->rounds = round;
+        }
+    }
+  
+  const int prefetch_rounds = int( ceil(double(ball_limit)/block_size) );
+  const int prefetch_elts_per_block = prefetch_rounds * block_size;
+
+  passes.reset();
+
+  int warp_rounds = 0;
+
+  const int warp_limit = balls.occ();
+  const int warps_per_block = block_size >> 4;
+
+  int warp_rounds_each[warp_limit];
+
+  while ( Contact* const c = pair_check.iterate() )
+    {
+      const int pass = c->pass;
+      const int round_cnt = c->round + 1;
+      const int block_cnt = c->block + 1;
+      if ( pass >= passes.occ() )
+        {
+          passes.pushi();
+          memset(warp_rounds_each,0,sizeof(warp_rounds_each));
+        }
+      Pass& p = passes[pass];
+      set_max(p.block_cnt,block_cnt);
+      set_max(p.round_cnt,round_cnt);
+      const int idx = c->block * warps_per_block + ( c->col >> 4 );
+      const int a = round_cnt - warp_rounds_each[idx];
+      if ( a > 0 )
+        {
+          warp_rounds_each[idx] = round_cnt;
+          warp_rounds += a;
+        }
+    }
+
+  const int pass_cnt = passes.occ();
+
+  int pass_blocks = 0;
+  int pass_block_rounds = 0;
+  for ( int i=0; i<pass_cnt; i++ )
+    {
+      pass_blocks += passes[i].block_cnt;
+      pass_block_rounds += passes[i].block_cnt * passes[i].round_cnt;
+    }
+
+  static int total_rounds_max = 0;
+  if ( total_rounds > total_rounds_max )
+    {
+      printf("For %d tacts, %d p, %d tot rnds; "
+             "Max Bl %d/%d/%d W %d/%d  Eff %.3f %.3f\n",
+             pairs.occ(),
+             pass_cnt,
+             total_rounds,
+             max_blocks, pass_blocks, pass_block_rounds,
+             warp_rounds << 4,
+             thd_rounds,
+             pairs.occ() / double(warp_rounds<<4),
+             pairs.occ() / double(iterations)
+             );
+      total_rounds_max = total_rounds;
+    }
+
+  int ba_size = 0;
+  int pa_size = 0;
+
+  for ( int i=0; i<pass_cnt; i++ )
+    {
+      Pass& p = passes[i];
+      p.dim_block.x = block_size;
+      p.dim_block.y = p.dim_block.z = 1;
+      p.dim_grid.x = p.block_cnt;
+      p.dim_grid.y = p.dim_grid.z = 1;
+      p.prefetch_offset = pa_size;
+      pa_size += prefetch_elts_per_block * p.block_cnt;
+      p.schedule_offset = ba_size;
+      ba_size += block_size * p.block_cnt * p.round_cnt;
+    }
+
+  big_array.realloc(ba_size);
+  big_array.ptrs_to_cuda("schedule");
+  memset(big_array.data,-1,big_array.chars);
+
+  prefetch_array.realloc(pa_size);
+  prefetch_array.ptrs_to_cuda("schedule_inputs");
+  memset(prefetch_array.data,-1,prefetch_array.chars);
+
+  int ball_sidx_next = -1;
+  int pass_curr = -1;
+  int block_curr = -1;
+
+  for ( Ball *ball; balls.iterate(ball); ) ball->pass = -1;
+
+  while ( Contact* const c = pair_check.iterate() )
+    {
+      const int pass = c->pass;
+      const int round = c->round;
+      const int block = c->block;
+      Pass& p = passes[pass];
+
+      if ( pass_curr < pass )
+        {
+          pass_curr = pass;
+          block_curr = -1;
+        }
+
+      if ( block_curr != block )
+        {
+          block_curr = block;
+          ball_sidx_next = 0;
+        }
+
+      for ( int i=0; i<2; i++ )
+        {
+          Ball* const b = i ? c->ball2 : c->ball1;
+          if ( b->pass < pass )
+            {
+              ASSERTS( ball_sidx_next < ball_limit );
+              const int idx =
+                p.prefetch_offset
+                + block * prefetch_elts_per_block
+                + ball_sidx_next;
+              ASSERTS( prefetch_array[idx] == -1 );
+              b->sm_idx = ball_sidx_next;
+              b->pass = pass;
+              b->block = block;
+              prefetch_array[ idx ] = b->idx;
+              ball_sidx_next++;
+            }
+        }
+      SM_Idx2 pair = { c->ball1->sm_idx, c->ball2->sm_idx };
+      const int ba_idx =
+        p.schedule_offset
+        + block * p.round_cnt * block_size
+        + round * block_size
+        + c->col;
+      ASSERTS( ba_idx < ba_size && ba_idx >= 0 );
+      SM_Idx2 old_pair = big_array[ba_idx];
+      ASSERTS( old_pair.x == 0xffff && old_pair.y == 0xffff );
+      big_array[ ba_idx ] = pair;
+
+    }
+  prefetch_array.to_cuda();
+  big_array.to_cuda();
+}
+
 
 void
 World::time_step_cuda(bool need_data_p)
 {
   const float deep = -100;
 
-  const bool need_data = false || need_data_p;
+  const bool need_data = need_data_p;
 
   pError_Check();
   cuda_init();
@@ -1520,7 +1958,7 @@ World::time_step_cuda(bool need_data_p)
       }
 
   const int ball_cnt = balls.occ();
-  const int block_size = 32;
+  block_size = 256;
 
   dim3 dim_grid, dim_block;
   dim_grid.x = int(ceil(double(ball_cnt)/block_size));
@@ -1528,374 +1966,12 @@ World::time_step_cuda(bool need_data_p)
   dim_block.x = block_size;
   dim_block.y = dim_block.z = 1;
 
-  const bool cuda_updated = cuda_schedule_stale > 0;
-
-  if ( cuda_updated )
-    {
-      cuda_schedule_stale = -10;
-      cuda_data_to_cpu(DL_ALL);
-
-      double max_vsq = 0;
-
-      for ( Ball *ball; balls.iterate(ball); )
-        {
-          const double vsq = dot(ball->velocity,ball->velocity);
-          set_max(max_vsq,vsq);
-          ball->idx = balls.iterate_get_idx();
-          ball->prev_velocity = ball->velocity;
-          ball->prev_angular_momentum = ball->angular_momentum;
-          ball->debug_pair_calls = 0;
-          ball->contact_count = 0;
-        }
-
-      const double radii =
-        sqrt(max_vsq) * ( -cuda_schedule_stale ) * delta_t / opt_ball_radius;
-
-      static double mradii = 0;
-      if ( radii > mradii )
-        {
-          mradii = radii;
-          printf("Fastest ball can travel %.3f radii\n",radii);
-        }
-
-      const float region_length =
-        ( 2.1 + min(radii,2.0) ) * opt_ball_radius;
-      const double prox_dist_sq = pow( region_length, 2 );
-
-      PStack<Contact> pairs;
-
-      PSList<Ball*,double> z;
-      for ( Ball *ball; balls.iterate(ball); )
-        {
-          ball->proximity.reset();
-          z.insert(ball->position.z,ball);
-        }
-      z.sort();
-      for ( int idx0 = 0, idx9 = 0; idx9 < z.occ(); idx9++ )
-        {
-          Ball* const ball9 = z[idx9];
-          const float z_min = ball9->position.z - region_length;
-
-          while ( idx0 < idx9 && z[idx0]->position.z < z_min ) idx0++;
-
-          for ( int i=idx0; i<idx9; i++ )
-            {
-              Ball* const ball1 = z[i];
-
-              pNorm dist(ball1->position,ball9->position);
-              if ( dist.mag_sq > prox_dist_sq ) continue;
-
-              const int c_idx = pairs.occ();
-              new (pairs.pushi()) Contact(ball1,ball9);
-
-              ball1->proximity += c_idx;
-              ball9->proximity += c_idx;
-            }
-        }
-
-      //  schedule(pairs);
-
-      PQueue<Ball*> work[2];
-      int w = 0;
-      int n = 1-w;
-
-      for ( Ball *b; balls.iterate(b); )
-        if ( b->proximity.occ() )
-          {
-            b->pass = -1;
-            b->pass_iterated = -1;
-            b->pass_todo = 0;
-            work[w] += b;
-          }
-
-      int pass_num = 0;
-      int block_num = 0;
-      int ball_count = 0;
-      int col_num = 0;
-      const int max_rounds = 32;
-      const int ball_limit = BALLS_PER_BLOCK;
-      int total_rounds = 0;
-      int max_blocks = 0;
-      int pass_max_rounds = 0;
-      int iterations = 0;
-      const int block_cnt_limit = 2048;
-
-      while ( true )
-        {
-          if ( !work[w].occ() )
-            {
-              total_rounds += pass_max_rounds;
-              set_max(max_blocks,block_num+1);
-              if ( !work[n].occ() ) break;
-              pass_max_rounds = 0;
-
-              w = 1-w;  n = 1-n;
-
-              pass_num++;
-              ball_count = block_num = col_num = 0;
-            }
-
-          ASSERTS( ball_count <= ball_limit );
-
-          if ( col_num == block_size || ball_count == ball_limit )
-            {
-              ball_count = 0;  col_num = 0;  block_num++;
-            }
-
-          Ball* const ball1 = work[w].pop();
-
-          if ( ball1->pass_iterated == pass_num ) continue;
-
-          ball1->pass_iterated = pass_num;
-
-          if ( ball1->pass < pass_num )
-            {
-              ball1->pass = pass_num;
-              ball1->placed = false;
-              ball1->rounds = 0;
-            }
-
-          if ( ball1->placed && ball1->block != block_num )
-            {
-              if ( ball1->pass_todo <= pass_num )
-                {
-                  ball1->pass_todo = pass_num + 1;
-                  work[n] += ball1;
-                }
-              continue;
-            }
-
-          int round = 0;
-          int placed_count = 0;
-
-          for ( int c_idx = ball1->proximity.iterate_reset();
-                ball1->proximity.iterate(c_idx); )
-            {
-              iterations++;
-              Contact* const c = &pairs[c_idx];
-              if ( c->placed ) continue;
-              Ball* const ball2 = c->other_ball(ball1);
-
-              if ( ball2->pass < pass_num )
-                {
-                  ball2->pass = pass_num;
-                  ball2->placed = false;
-                  ball2->rounds = 0;
-                }
-
-              if ( ball2->placed && ball2->block != block_num )
-                { 
-                  if ( ball1->pass_todo <= pass_num )
-                    {
-                      ball1->pass_todo = pass_num + 1;
-                      work[n] += ball1;
-                    }
-                  continue;
-                }
-
-              uint32_t mask = 0;
-              while ( round < max_rounds )
-                {
-                  mask = 1 << round;
-                  if ( !( ball1->rounds & mask || ball2->rounds & mask ) )
-                    break;
-                  iterations++;
-                  round++;
-                }
-              if ( round == max_rounds )
-                {
-                  work[n] += ball1;
-                  break;
-                }
-
-              const int next_ball_count =
-                ball_count + !ball1->placed + !ball2->placed;
-              if ( next_ball_count > ball_limit )
-                {
-                  work[n] += ball1;
-                  break;
-                }
-
-              if ( !ball1->placed )
-                {
-                  ball1->placed = true;
-                  ball1->block = block_num;
-                }
-              if ( !ball2->placed )
-                {
-                  ball2->placed = true;
-                  ball2->block = block_num;
-                  work[w].enqueue_at_head(ball2);
-                }
-              ball_count = next_ball_count;
-              placed_count++;
-              c->placed = true;
-              c->pass = pass_num;  c->block = block_num;
-              c->col = col_num; c->round = round;
-              ball1->rounds |= mask;
-              ball2->rounds |= mask;
-              round++;
-              set_max(pass_max_rounds,round);
-            }
-
-          if ( placed_count ) col_num++;
-        }
-
-      static int total_rounds_max = 0;
-      if ( total_rounds > total_rounds_max )
-        {
-          printf("For %d tacts, Number of passes %d, Total Rounds %d, "
-                 "Eff %.4f  Max Bl %d\n",
-                 pairs.occ(),
-                 pass_num,
-                 total_rounds,
-                 pairs.occ() / double(iterations),
-                 max_blocks
-                 );
-          total_rounds_max = total_rounds;
-        }
-
-      PSList<Contact*,int64_t> pair_check;
-      while ( Contact* const c = pairs.iterate() )
-        pair_check.insert
-          ( 
-           c->pass * block_cnt_limit * max_rounds * block_size
-           + c->block * max_rounds * block_size
-           + c->round * block_size
-           + int64_t(c->col) , 
-           c );
-      pair_check.sort();
-      for ( Ball *ball; balls.iterate(ball); )
-        {
-          ball->pass = -1;
-        }
-
-      while ( Contact* const c = pair_check.iterate() )  
-        {
-          const int pass = c->pass;
-          const int round = c->round;
-          const int block = c->block;
-          c->sort_idx = pair_check.iterate_get_idx();
-          ASSERTS( c->placed );
-          for ( int i=0; i<2; i++ )
-            {
-              Ball* const b = i ? c->ball2 : c->ball1;
-              ASSERTS( b->pass < pass
-                       || b->block == block && b->rounds < round );
-              b->pass = pass;
-              b->block = block;
-              b->rounds = round;
-            }
-        }
-  
-      const int prefetch_rounds = int( ceil(double(ball_limit)/block_size) );
-      const int prefetch_elts_per_block = prefetch_rounds * block_size;
-
-      passes.reset();
-
-      while ( Contact* const c = pair_check.iterate() )
-        {
-          const int pass = c->pass;
-          const int round_cnt = c->round + 1;
-          const int block_cnt = c->block + 1;
-          if ( pass >= passes.occ() ) passes.pushi();
-          Pass& p = passes[pass];
-          set_max(p.block_cnt,block_cnt);
-          set_max(p.round_cnt,round_cnt);
-        }
-
-      const int pass_cnt = passes.occ();
-
-      int ba_size = 0;
-      int pa_size = 0;
-
-      for ( int i=0; i<pass_cnt; i++ )
-        {
-          Pass& p = passes[i];
-          p.dim_block.x = block_size;
-          p.dim_block.y = p.dim_block.z = 1;
-          p.dim_grid.x = p.block_cnt;
-          p.dim_grid.y = p.dim_grid.z = 1;
-          p.prefetch_offset = pa_size;
-          pa_size += prefetch_elts_per_block * p.block_cnt;
-          p.schedule_offset = ba_size;
-          ba_size += block_size * p.block_cnt * p.round_cnt;
-        }
-
-      big_array.realloc(ba_size);
-      big_array.ptrs_to_cuda("schedule");
-      memset(big_array.data,-1,big_array.chars);
-
-      prefetch_array.realloc(pa_size);
-      prefetch_array.ptrs_to_cuda("schedule_inputs");
-      memset(prefetch_array.data,-1,prefetch_array.chars);
-
-      int ball_sidx_next = -1;
-      int pass_curr = -1;
-      int block_curr = -1;
-
-      for ( Ball *ball; balls.iterate(ball); )
-        {
-          ball->pass = -1;
-        }
-
-      while ( Contact* const c = pair_check.iterate() )
-        {
-          const int pass = c->pass;
-          const int round = c->round;
-          const int block = c->block;
-          Pass& p = passes[pass];
-
-          if ( pass_curr < pass )
-            {
-              pass_curr = pass;
-              block_curr = -1;
-            }
-
-          if ( block_curr != block )
-            {
-              block_curr = block;
-              ball_sidx_next = 0;
-            }
-
-          for ( int i=0; i<2; i++ )
-            {
-              Ball* const b = i ? c->ball2 : c->ball1;
-              if ( b->pass < pass )
-                {
-                  ASSERTS( ball_sidx_next < ball_limit );
-                  const int idx =
-                    p.prefetch_offset
-                    + block * prefetch_elts_per_block
-                    + ball_sidx_next;
-                  ASSERTS( prefetch_array[idx] == -1 );
-                  b->sm_idx = ball_sidx_next;
-                  b->pass = pass;
-                  b->block = block;
-                  prefetch_array[ idx ] = b->idx;
-                  ball_sidx_next++;
-                }
-            }
-          SM_Idx2 pair = { c->ball1->sm_idx, c->ball2->sm_idx };
-          const int ba_idx =
-            p.schedule_offset
-            + block * p.round_cnt * block_size
-            + round * block_size
-            + c->col;
-          ASSERTS( ba_idx < ba_size && ba_idx >= 0 );
-          SM_Idx2 old_pair = big_array[ba_idx];
-          ASSERTS( old_pair.x == 0xffff && old_pair.y == 0xffff );
-          big_array[ ba_idx ] = pair;
-
-        }
-      prefetch_array.to_cuda();
-      big_array.to_cuda();
-    }
+  if ( opt_debug || cuda_schedule_stale > 0 ) cuda_schedule();
 
   cuda_schedule_stale++;
 
   Ball ball_a = *balls[0];
-  Ball ball_a1 =*balls[min(1,balls.occ())];
+  Ball ball_a1 =*balls[min(1,balls.occ()-1)];
 
   CE(cudaEventRecord(frame_start_ce,0));
 
@@ -1923,7 +1999,7 @@ World::time_step_cuda(bool need_data_p)
     {
       const int px = ball->proximity.occ();
       const int ca = ball->debug_pair_calls >> 16;
-      ASSERTS( true || px == ca );
+      ASSERTS( px == ca );
     }
 
   CE(cudaEventRecord(frame_stop_ce,0));
@@ -2769,7 +2845,7 @@ World::cb_keyboard()
   case 'R': balls_remove(); break;
   case 's': balls_stop(); break;
   case 'S': balls_rot_stop(); break;
-  case 'T': benchmark_setup(); break;
+  case 'T': benchmark_setup(3); break;
   case 't': benchmark_setup(5); break;
   case 'q': opt_debug = !opt_debug; break;
   case 'v': opt_verify = !opt_verify; break;

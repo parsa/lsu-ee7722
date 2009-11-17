@@ -21,9 +21,7 @@ struct CUDA_Ball {
   float3 velocity;
   float3 prev_velocity;
   float3 angular_momentum;
-  int collision_count;
-  int contact_count;
-  uint debug_pair_calls;
+  int4 tact_counts;
 };
 
 struct CUDA_Ball_X { // X is for transpose.
@@ -32,21 +30,19 @@ struct CUDA_Ball_X { // X is for transpose.
   float3 *velocity;
   float3 *prev_velocity;
   float3 *angular_momentum;
-
-  int *collision_count;
-  int *contact_count;
-  uint *debug_pair_calls;
+  int4 *tact_counts;
 };
 
-struct __align__(64) CUDA_Ball_W { // W is for work.
+struct  CUDA_Ball_W { // W is for work.
   float3 position;
   float3 velocity;
   float3 angular_momentum;
   float3 prev_velocity;
-  int collision_count;
-  int contact_count;
-  uint debug_pair_calls;
-  int m_idx;
+  short collision_count;
+  short contact_count;
+  short debug_pair_calls;
+  short m_idx;
+  char pad[12];
 };
 
 #define BALLS_PER_BLOCK ( 16000 / sizeof(CUDA_Ball_W) )
