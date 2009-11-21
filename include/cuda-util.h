@@ -36,6 +36,43 @@
      }                                                                        \
  }
 
+///
+ /// Routines for Copying Variables to Device Memory
+///
+
+template <typename T>
+void to_dev_ds(const char* const dst_name, int idx, T src)
+{
+  T cpy = src;
+  const int offset = sizeof(void*) * idx;
+  CE(cudaMemcpyToSymbol(dst_name,&cpy,sizeof(T),offset,cudaMemcpyHostToDevice));
+}
+
+#define TO_DEV_DS(dst,src) to_dev_ds(#dst,0,src);
+#define TO_DEV_DSS(dst,src1,src2) \
+        to_dev_ds(#dst,0,src1); to_dev_ds(#dst,1,src2);
+#define TO_DEV(var) to_dev_ds<typeof var>(#var,0,var)
+#define TO_DEVF(var) to_dev_ds<float>(#var,0,float(var))
+#define TO_DEV_OM(obj,memb) to_dev_ds(#memb,0,obj.memb)
+#define TO_DEV_OM_F(obj,memb) to_dev_ds(#memb,0,float(obj.memb))
+
+///
+ /// Routines for Copying Coordinate Class Objects to CUDA Types
+///
+
+void vec_set(float4& a, pQuat b)
+{a.x = b.v.x; a.y = b.v.y; a.z = b.v.z;  a.w = b.w; }
+void vec_set(pQuat&a, float4 b)
+{a.v.x = b.x; a.v.y = b.y; a.v.z = b.z;  a.w = b.w; }
+
+void vec_set(float3& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z;}
+void vec_sets(pCoor& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z;}
+void vec_sets(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w = b.w;}
+void vec_set(pVect& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+void vec_sets3(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+void vec_sets3(float4& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+void vec_sets4(pVect& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+
 
  ///
  /// Class for managing CUDA device memory.
@@ -48,18 +85,31 @@ public:
   {
     data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;  bid = 0;
     bo_ptr = NULL;  locked = false;
+    chars_allocated_cuda = chars_allocated = 0;
   }
-  ~pCUDA_Memory()
+  ~pCUDA_Memory(){ free_memory(); }
+
+  void free_memory(){ free_memory_host();  free_memory_cuda(); }
+  void free_memory_host()
   {
-    if ( data ) if ( locked ) {CE(cudaFreeHost(data));} else { free(data); }
+    if ( !data ) return;
+    if ( locked ) {CE(cudaFreeHost(data));} else { free(data); }
+    data = NULL;
+    chars_allocated = 0;
+  }
+  void free_memory_cuda()
+  {
     if ( bid )
       {
         CE(cudaGLUnmapBufferObject(bid));
         CE(cudaGLUnregisterBufferObject(bid));
         glDeleteBuffers(1,&bid);
+        bid = 0;
       }
     if ( void* const a = dev_addr[0] ) CE(cudaFree(a));
     if ( void* const a = dev_addr[1] ) CE(cudaFree(a));
+    dev_addr[0] = dev_addr[1] = NULL;
+    chars_allocated_cuda = 0;
   }
 
   T* alloc_locked_maybe(int elements_p, bool locked_p)
@@ -67,12 +117,28 @@ public:
     if ( data ) pError_Msg("Double allocation of pCUDA_Memory.");
     elements = elements_p;
     locked = locked_p;
-    chars = elements * sizeof(T);
+    chars_allocated = chars = elements * sizeof(T);
     if ( locked )
       { CE(cudaMallocHost((void**)&data,chars)); }
     else
       { data = (T*) malloc(chars); }
     new (data) T[elements];
+    return data;
+  }
+
+  T* realloc(int nelem)
+  {
+    const int chars_needed = nelem * sizeof(T);
+    if ( chars_needed <= chars_allocated )
+      {
+        chars = chars_allocated;
+        elements = nelem;
+      }
+    else
+      {
+        free_memory_host();
+        alloc(nelem);
+      }
     return data;
   }
 
@@ -83,7 +149,7 @@ public:
   {
     if ( data ) pError_Msg("Double allocation of pCUDA_Memory.");
     elements = stack.occ();
-    chars = elements * sizeof(T);
+    chars_allocated = chars = elements * sizeof(T);
     data = stack.take_storage();
   }
 
@@ -91,16 +157,18 @@ public:
 
 private:
   void alloc_maybe() { alloc_maybe(current); }
-  void alloc_maybe(int side)
-  {
-    if ( !dev_addr[side] ) alloc_gpu_buffer(side);
-  }
+  void alloc_maybe(int side){ alloc_gpu_buffer(side); }
 
   void alloc_gpu_buffer(){ alloc_gpu_buffer(current); }
   void alloc_gpu_buffer(int side)
   {
-    ASSERTS( !dev_addr[side] );
+    if ( dev_addr[side] )
+      {
+        if ( chars_allocated_cuda >= chars ) return;
+        free_memory_cuda();
+      }
     CE(cudaMalloc(&dev_addr[side],chars));
+    chars_allocated_cuda = chars;
   }
 
   void alloc_gl_buffer()
@@ -136,7 +204,7 @@ public:
 
   void to_cuda()
   {
-    if ( !dev_addr[current] ) alloc_gpu_buffer();
+    alloc_gpu_buffer();
     CE(cudaMemcpy(dev_addr[current], data, chars, cudaMemcpyHostToDevice));
   }
 
@@ -163,9 +231,14 @@ public:
   int current;
   T *data;
   bool locked;
-  int elements, chars;
+  int elements, chars, chars_allocated, chars_allocated_cuda;
 };
 
+
+#define CMX_SETUP(mx,memb)                                                    \
+        mx.setup(sizeof(*mx.sample_soa.memb),                                 \
+                 ((char*)&mx.sample_aos.memb)- ((char*)&mx.sample_aos),       \
+                 (void**)&mx.sample_soa.memb)
 
 struct pCM_Struc_Info
 {
@@ -183,7 +256,9 @@ public:
   pCUDA_Memory_X()
     : pCM(),alloc_unit_lg(8),alloc_unit_mask((1<<alloc_unit_lg)-1)
   {
-    use_aos = false; data_aos_stale = false; soa_allocated = false;
+    use_aos = false;  disable_aos = true;
+    data_aos_stale = false;  data_soa_stale = false;
+    soa_allocated = false;
   }
   void setup(uint elt_size, int offset_aos, void **soa_elt_ptr)
   {
@@ -193,6 +268,21 @@ public:
     si->soa_cpu_base = -1;
     si->soa_elt_idx = ((void**)soa_elt_ptr) - ((void**)&sample_soa);
   }
+  void realloc(size_t nelem)
+  {
+    if ( nelem > size_t(pCM::elements) )
+      {
+        cuda_mem_all.free_memory_host();
+        pCM::free_memory_host();
+        soa_allocated = false;
+        alloc(nelem);
+        return;
+      }
+    return;
+    pCM::realloc(nelem);
+    cuda_mem_all.realloc(nelem);
+  }
+
   void alloc(size_t nelements){ pCM::alloc(nelements); }
   void alloc_soa()
   {
@@ -217,13 +307,17 @@ public:
 
   Taos& operator [] (int idx)
   {
-    if ( data_aos_stale ) soa_to_aos();
+    ASSERTS( !disable_aos );
+    soa_to_aos();
+    data_soa_stale = true; // This assumes a write.
     return pCM::data[idx];
   }
 
   void aos_to_soa()
   {
     alloc_soa();
+    if ( !data_soa_stale ) return;
+    data_soa_stale = false;
     while ( pCM_Struc_Info* const si = struc_info.iterate() )
       {
         char* const soa_cpu_base = &cuda_mem_all[si->soa_cpu_base];
@@ -236,6 +330,7 @@ public:
   }
   void soa_to_aos()
   {
+    if ( !data_aos_stale ) return;
     while ( pCM_Struc_Info* const si = struc_info.iterate() )
       {
         char* const soa_cpu_base = &cuda_mem_all[si->soa_cpu_base];
@@ -303,7 +398,9 @@ public:
   PStack<pCM_Struc_Info> struc_info;
   pCUDA_Memory<char> cuda_mem_all;
   bool use_aos;
+  bool disable_aos;
   bool data_aos_stale;
+  bool data_soa_stale;
   bool soa_allocated;
 
   Tsoa shadow_soa[2];
