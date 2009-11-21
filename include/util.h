@@ -224,14 +224,14 @@ pFrame_Timer::frame_start()
   pError_Check();
   if ( query_timer_id ) glBeginQuery(GL_TIME_ELAPSED_EXT,query_timer_id);
   pError_Check();
-  time_render_start = time_process_fp();
+  time_render_start = time_wall_fp();
   if ( frame_group_count++ >= frame_group_size ) frame_rate_group_start();
 }
 
 void
 pFrame_Timer::frame_end()
 {
-  const double time_render_elapsed = time_process_fp() - time_render_start;
+  const double time_render_elapsed = time_wall_fp() - time_render_start;
   if ( query_timer_id )
     {
       glEndQuery(GL_TIME_ELAPSED_EXT);
