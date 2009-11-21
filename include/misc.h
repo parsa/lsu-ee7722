@@ -179,7 +179,7 @@ private:
   {
     if( size )
       {
-        size = new_size ? max(new_size,size) : size << 2;
+        size = new_size ? max(new_size,size) : size << 1;
         storage = (Data*) realloc(storage, size * sizeof(storage[0]));
       }
     else
@@ -208,6 +208,7 @@ public:
   Data operator ++ (int) { fwd(); return pstack.storage[index-1]; }
   Data* ptr() { return &pstack.storage[index]; }
   Data operator -> () { return pstack.storage[index]; }
+  int get_idx() const { return index; }
 private:
   PStack<Data>& pstack;
   int index;
@@ -336,6 +337,7 @@ private:
   void init()
   {
     occupancy = size = 0;  iterator = -1;
+    head_idx = tail_idx = 0; // Pacify compiler.
     storage = NULL;
   }
 
