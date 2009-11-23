@@ -18,18 +18,18 @@ typedef ushort2 SM_Idx2;
 struct CUDA_Ball {
   float4 position;
   float4 orientation;
-  float3 velocity;
-  float3 prev_velocity;
-  float3 angular_momentum;
+  float4 velocity;
+  float4 prev_velocity;
+  float4 angular_momentum;
   int4 tact_counts;
 };
 
 struct CUDA_Ball_X { // X is for transpose.
   float4 *position;
   float4 *orientation;
-  float3 *velocity;
-  float3 *prev_velocity;
-  float3 *angular_momentum;
+  float4 *velocity;
+  float4 *prev_velocity;
+  float4 *angular_momentum;
   int4 *tact_counts;
 };
 
@@ -47,12 +47,10 @@ struct  CUDA_Ball_W { // W is for work.
 
 #define BALLS_PER_BLOCK ( 16000 / sizeof(CUDA_Ball_W) )
 
-__host__ void pass_something_launch
-(dim3 dg, dim3 db, int read_side, int ball_count);
+__host__ void pass_platform_launch(dim3 dg, dim3 db, int ball_count);
 
 __host__ void 
 pass_pairs_launch
-(dim3 dg, dim3 db, int read_side, int prefetch_offset, int schedule_offset,
- int round_cnt);
+(dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt);
 
 #endif

@@ -543,3 +543,34 @@ Paused:
  2.4 ms cpu
 Simulating: 4.5 - 2.4 = 2.1 for physics, including schedule.
 
+:: 18 November 2009, 14:50:02 CST
+
+
+ 0.76  5.7 Use separate thread to compute schedule, compute every frame.
+ 0.74  4.6 Compute at frame end if would go stale before end of next frame.
+
+:: 19 November 2009, 17:58:00 CST
+
+Check in include directory changes.
+Update keyboard commands.
+Update variables.
+Make sure balloon code still compiles.
+
+:: 20 November 2009, 16:39:27 CST
+
+
+ 0.69 4.3 Make vec3 cuda_balls members to vec4. Fix b1_placed bug.
+
+:: 20 November 2009, 18:13:42 CST
+
+Checkin for cuda-util.h
+
+New: TO_DEV_DS, etc.
+New: CMX_SETUP
+New: vec_set, etc.
+pCUDA_Memory, pCUDA_Memory_X:
+  Will now free memory on destruct.
+  New: realloc: Can now change size.
+  SOA turned off by default, and probably bitrotted.
+  Now allocate device memory just before needed rather than when alloc
+   called.
