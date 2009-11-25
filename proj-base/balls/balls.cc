@@ -20,6 +20,10 @@
 
 //    Ball friction and angular momentum modeled.
 
+//    Physics computed by CPU or by GPU/CUDA (user selectable).
+//      Demonstrates use of CUDA for GPU physics, also use of
+//      CPU multi-threading (currently only in conjunction with CUDA).
+
 //    Balls cast shadows on platform:
 //      Demonstrates use of stencils and vertex shader.
 //      A vertex shader is used to compute shadow locations.
@@ -96,7 +100,7 @@
  //  (Also see variables below.)
  //
  //  'p'    Pause simulation. (Press again to resume.)
- //  'a'    Switch physics method (CPU to GPU).
+ //  'a'    Switch physics method (CPU to GPU/CUDA).
 
  //  'd'    Toggle dripping of balls.
  //  'x'    Toggle shower of balls.
@@ -105,7 +109,7 @@
  //  'T'    Run 1-tier-of-balls benchmark.
  //  'R'    Remove all but one ball.
 
- //  'm'    Toggle reflections.
+ //  'm'    Toggle reflections on mirror tiles.
  //  'w'    Toggle shadows.
  //  'n'    Toggle visibility of platform normals.
 
@@ -150,12 +154,19 @@
  //                deformation.
  //  VAR Bounce Energy Loss
  //              - Amount of energy lost in contact.
+ //  VAR Block Size
+ //              - Size of CUDA thread block, used both for the
+ //                platform and pairs passes.
+ //  VAR Color by Block in Pass
+ //              - If opt_color_events is on, use block number
+ //                in PASS to determine color of ball.
 
 
 #define GL_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
 
 #include <math.h>
+#include <pthread.h>
 
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -174,18 +185,32 @@
 #include <gp/texture-util.h>
 #include <gp/cuda-util.h>
 #include "shapes.h"
-
+#include "balls.cuh"
 
 
 ///
 /// Main Data Structures
 ///
 //
-// class World: All data about scene.
 
-
+// Class World: All data about scene.
 class World;
 
+// Class Contact: Information about pair of nearby balls.
+class Contact;
+
+// Class Pass: Information needed for a CUDA launch for a pair pass.
+//
+class Pass {
+public:
+  Pass(){ block_cnt = 0; round_cnt = 0; }
+  dim3 dim_grid, dim_block;
+  int block_num_base, block_num_next_pass;
+  int block_cnt;
+  int round_cnt;
+  int prefetch_offset;
+  int schedule_offset;
+};
 
 // Object Holding Ball State
 //
@@ -239,15 +264,20 @@ public:
   void stop();
   void freeze();
 
-  PStack<int> proximity;
+  // Members needed for scheduling contact pairs on CUDA.
+  // Values assigned are temporary and usually change during scheduling.
+  // For example, a ball can be in multiple passes so a value of pass
+  // does not indicate that it's the only pass it can be in.
+  //
+  PStack<int> proximity;     // Nearby balls.
   int pass;
   int pass_iterated;
   int pass_todo;
   int rounds;
   bool placed;
   int block;
+  int color_block; // Block number to use for coloring ball.
   int sm_idx;
-
 };
 
 const pColor red(0.8,0.1,0.1);
@@ -267,6 +297,11 @@ const pColor* const colors[8] =
     &red, &cyan, &light_gray, &dark_gray };
 const int colors_mask = 0x7;
 
+
+// Constants for Location of Ball Data (CUDA or CPU)
+//
+// Used to decide whether to copy data to or from CUDA.
+//
 enum Data_Location
   { 
     DL_PO  = 0x1, // Position, Orientation
@@ -282,11 +317,15 @@ enum Data_Location
     DL_OT_CUDA = 0x40,
     DL_ALL_CUDA = 0x70 };
 
-enum GPU_Physics_Method
-  { GP_cpu, GP_cuda, GP_cuda_1_pass, GP_cuda_2_pass, GP_ENUM_SIZE };
-const char* const gpu_physics_method_str[] =
-  { "CPU", "CUDA", "CUDA 1 Pass", "CUDA 2 Pass" };
 
+enum GPU_Physics_Method { GP_cpu, GP_cuda, GP_ENUM_SIZE };
+const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
+
+typedef PStackIterator<Ball*> Ball_Iterator;
+
+///
+/// Main Class
+///
 
 class World {
 public:
@@ -306,12 +345,19 @@ public:
   void modelview_update();
   void time_step_cpu();
 
+  // For debugging and tuning.
+  //
+  bool opt_verify;  // If true verify correctness in certain places.
+  bool opt_debug;   // Turns something on and off. Changes frequently.
+  bool opt_debug2;  // Turns something else on and off. Changes frequently.
+  bool opt_info;    // Request info to be printed to stdout.
 
-  bool opt_verify;
-  bool opt_debug;
-
+  // Time in simulated world.
+  //
   double world_time;
 
+  // Balls being Simulated
+  //
   PStack<Ball*> balls;
 
   bool opt_spray_on;
@@ -325,9 +371,13 @@ public:
 
   int balls_occluded;
 
+  PSList<Ball*,double> balls_zsort;
+  PStack<Contact> contact_pairs;
+
   void ball_init();
   void benchmark_setup(int tiers=1);
 
+  void contact_pairs_find();
   bool penetration_balls_resolve
   (Ball *ball1, Ball *ball2, bool b2_real = true);
   void balls_render(bool do_ot);
@@ -428,25 +478,132 @@ public:
   Cone cone;                    // Used to show platform normals.
 
   int opt_physics_method;
-  int data_location;
+  int data_location;            // Is data on CPU, CUDA or both.
 
-  // Stub routines for cuda code, to be added soon.
+  /// Variables controlling CUDA schedule computation thread.
   //
-  void time_step_cuda(bool need_data){};
-  bool cuda_initialized;
-  bool cuda_constants_stale;
-  int cuda_schedule_stale;
+  pthread_cond_t pt_render_cond, pt_sched_cond;
+  pthread_mutex_t pt_mutex;
+  pthread_t pt_sched_tid;
+  void pt_sched_main();    // Entry routine for schedule thread.
+  void pt_sched_start();    // Tell schedule thread to compute a sched.
+  void pt_sched_waitfor(); // Wait for schedule thread to finish.
+  bool pt_sched_is_idle();
+  
+  char pt_render_cmd;          // Command for schedule thread.
+  bool pt_sched_waiting;       // True if sched thread waiting for cmd.
+  bool pt_sched_data_pending;  // True if sched data ready and uncollected.
+
+  ///
+  /// CUDA Routines
+  ///
+
+  void cuda_init();
+
+  // Copy constants (such as ball radius) to CUDA.
+  //
+  void cuda_constants_update();
+
+  // Advance physical state by one time step.
+  //
+  void time_step_cuda(int iters_per_frame, bool just_before_render);
+
+  int block_size;               // Number of threads to use in CUDA block.
+  int block_size_max;           // Maximum possible based on our CUDA code.
+  int opt_block_color_pass;     // Pass to use for coloring balls.
+
+  // Ball Data for CUDA
+  //
+  // This contains essential information from the Ball class
+  // and is passed to CUDA as a structure of arrays.
+  //
+  pCUDA_Memory_X<CUDA_Ball,CUDA_Ball_X> cuda_balls;
+
+  // Copy data from balls to cuda_balls, if necessary.
+  //
   bool cpu_data_to_cuda();
+
+  // Copy data from cuda_balls to balls, if necessary.
+  //
   void cuda_data_to_cpu(uint which_data);
 
+  // Compute CUDA Schedule
+  //
+  // The schedule is a list of ball pairs for each CUDA thread
+  // to handle.  
+  //
+  // This routine runs on the CPU, but in a separate thread to
+  // take advantage of multi-core CPUs.
+  //
+  void cuda_schedule(); // Compute CUDA schedule.
+
+  // When positive CUDA schedule needs to be recomputed.
+  //
+  int cuda_schedule_stale;
+
+  // Number of timesteps before CUDA schedule is stale.
+  //
+  int schedule_lifetime_steps;
+
+  // CUDA timing information, for tuning.
+  cudaEvent_t frame_start_ce, frame_stop_ce;
+
+  PStack<Pass> passes;  // Information needed to launch contact pair kernel.
+
+  // Balls needed by each block executing contact pair kernel.
+  //
+  pCUDA_Memory<int> block_balls_needed;
+
+  // Pairs of balls to handle in contact pair kernel.
+  //
+  pCUDA_Memory<SM_Idx2> cuda_tacts_schedule;
+
+  // Reset things when ball added or removed, or when switching to CPU
+  // physics.
+  //
+  void cuda_at_balls_change();
+
+  int cuda_ball_cnt;
+  bool cuda_initialized;
+  cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
+  cudaFuncAttributes cfa_platform; // Properties of code to run on device.
+  cudaFuncAttributes cfa_pairs;
+  int block_count_prev;        // Maximum number of blocks in last pairs pass.
+  int pass_count_prev;         // Number of passes.
+  int round_count_prev;        // Total number of rounds in all pairs passes.
+  bool cuda_constants_stale;   // When true, need to update constants.
 };
+
+#define CP(f) { const int rv=f; ASSERTS( rv == 0 ); }
+
+// Wrapper to call scheduler main thread in World class.
+void* pt_sched_main(void *arg){((World*)arg)->pt_sched_main();return NULL;}
 
 void
 World::init()
 {
+  /// Initialize scheduler thread, used for computing CUDA schedule.
+  //
+
+  // Initialize pthread condition variables and mutex, thread interaction.
+  //
+  CP(pthread_cond_init(&pt_render_cond,NULL));
+  CP(pthread_cond_init(&pt_sched_cond,NULL));
+  CP(pthread_mutex_init(&pt_mutex,NULL));
+  pt_sched_waiting = false;
+  pt_render_cmd = 0;
+
+
+  // Create scheduler thread and wait for it to be ready.
+  //
+  CP(pthread_create(&pt_sched_tid, NULL, ::pt_sched_main, (void*)this));
+  pt_sched_waitfor();
+
   data_location = DL_ALL_CPU;
   cuda_initialized = false;
+  cuda_schedule_stale = 1;
   opt_physics_method = GP_cpu;
+  block_size = 128;
 
   delta_t = 1.0 / 240;
 
@@ -462,6 +619,8 @@ World::init()
   opt_spray_on = false;
   opt_color_events = false;
   opt_debug = false;
+  opt_debug2 = false;
+  opt_block_color_pass = 0;
 
   // Instantiate vertex shader used for casting shadow.
   //
@@ -525,7 +684,7 @@ World::init()
   tsmin = 0.4;
 
   opt_light_intensity = 100.2;
-  light_location = pCoor(28.2,25.8,-14.3);
+  light_location = pCoor(0,25.8,-14.3);
 
   opt_ball_mass = 0.25;
   opt_ball_radius = 2;
@@ -548,6 +707,8 @@ World::init()
   variable_control.insert(opt_gravity_accel,"Gravity");
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(opt_ball_radius,"Ball Radius");
+  variable_control.insert_power_of_2(block_size,"Block Size");
+  variable_control.insert(opt_block_color_pass,"Color by Block in Pass");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
@@ -649,7 +810,7 @@ World::variables_update()
   //
   // This routine is called after user changes something.
 
-  cuda_constants_stale = true;
+  cuda_constants_stale = true;  // Force cuda variables to be updated too.
   ball_mass_inv = 1 / opt_ball_mass;
   r_inv = 1.0 / opt_ball_radius;
   const double r_sq = opt_ball_radius * opt_ball_radius;
@@ -761,10 +922,9 @@ World::modelview_update()
 void
 World::benchmark_setup(int tiers)
 {
-  // Set up an arrangement of balls intended for benchmarking.
+  // Set up an arrangement of balls intended for performance measurement.
 
-  cuda_data_to_cpu(DL_ALL);
-  data_location = DL_ALL_CPU;
+  cuda_at_balls_change();
 
   while ( balls.occ() ) delete balls.pop();
 
@@ -777,6 +937,8 @@ World::benchmark_setup(int tiers)
   opt_drip = false;
   opt_spray_on = false;
   opt_verify = false;
+  opt_mirror = false;
+  opt_shadows = false;
   //  opt_friction_roll = 0.01; opt_friction_coeff = 0.01;
   for ( float z = platform_zmin + hdeltaz; z < platform_zmax; z+= delta_z )
     for ( float x = platform_xmin + hdeltax; x < platform_xmax; x += delta_x )
@@ -787,17 +949,362 @@ World::benchmark_setup(int tiers)
           b->position = pCoor(x,y,z);
           balls += b;
         }
+  variables_update();
+}
+
+void
+World::cuda_init()
+{
+  if ( cuda_initialized ) return;
+  cuda_initialized = true;
+  cuda_constants_stale = true;
+
+  cuda_ball_cnt = 5;  // Set initial size of CUDA ball_x array.
+  schedule_lifetime_steps = 12; // Number of steps schedule good for.
+
+  // Get information about GPU and its ability to run CUDA.
+  //
+  int device_count;
+  cudaGetDeviceCount(&device_count); // Get number of GPUs.
+  ASSERTS( device_count );
+  const int dev = 0;
+  CE(cudaGetDeviceProperties(&cuda_prop,dev));
+  CE(cudaGLSetGLDevice(dev));
+  printf
+    ("GPU: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
+     cuda_prop.name, cuda_prop.clockRate/1e6,
+     int(cuda_prop.totalGlobalMem >> 20));
+  printf
+    ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %d  CONST: %d  "
+     "# REGS: %d\n",
+     cuda_prop.major, cuda_prop.minor,
+     cuda_prop.multiProcessorCount, cuda_prop.maxThreadsPerBlock,
+     int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
+     cuda_prop.regsPerBlock
+     );
+
+  // Prepare events used for timing.
+  //
+  CE(cudaEventCreate(&frame_start_ce));
+  CE(cudaEventCreate(&frame_stop_ce));
+
+  // Set up cuda_balls class.
+  //
+  // Identify structure members so they can be transposed into arrays.
+  //
+  CMX_SETUP(cuda_balls,orientation);
+  CMX_SETUP(cuda_balls,position);
+  CMX_SETUP(cuda_balls,velocity);
+  CMX_SETUP(cuda_balls,prev_velocity);
+  CMX_SETUP(cuda_balls,angular_momentum);
+  CMX_SETUP(cuda_balls,tact_counts);
+
+  // Allocate initial storage for cuda_balls.
+  //
+  cuda_balls.alloc_locked(cuda_ball_cnt);
+
+  // Send pointer to this storage to cuda.
+  //
+  cuda_balls.ptrs_to_cuda("balls_x");
+
+  // Determine resources used by each CUDA kernel.
+  // See balls-kernel.cu for code.
+  //
+  CE(cuda_get_attr_plat_pairs(&cfa_platform,&cfa_pairs));
+
+  block_size_max =
+    min(cfa_platform.maxThreadsPerBlock, cfa_pairs.maxThreadsPerBlock);
+  set_min(block_size_max,cuda_prop.maxThreadsPerBlock);
+
+  printf("CUDA Routine Resource Usage:\n");
+  printf(" pass_platform: %6zd shared, %zd const, %zd loc, %d regs; "
+         "%d max thr\n",
+         cfa_platform.sharedSizeBytes,
+         cfa_platform.constSizeBytes,
+         cfa_platform.localSizeBytes,
+         cfa_platform.numRegs,
+         cfa_platform.maxThreadsPerBlock);
+  printf(" pass_pairs: %6zd shared, %zd const, %zd loc, %d regs; %d max thr\n",
+         cfa_pairs.sharedSizeBytes,
+         cfa_pairs.constSizeBytes,
+         cfa_pairs.localSizeBytes,
+         cfa_pairs.numRegs,
+         cfa_pairs.maxThreadsPerBlock);
+}
+
+
+ ///
+ /// CUDA Scheduler Thread Routines
+ ///
+
+
+void
+World::pt_sched_main()
+{
+  /// Main Scheduler Thread Routine
+
+  // Initialize.
+  pt_sched_data_pending = false;
+
+  while ( true )
+    {
+      // Wait for a command from the render (main) thread.
+      //
+      CP(pthread_mutex_lock(&pt_mutex));
+      pt_sched_waiting = true;
+      while ( !pt_render_cmd )
+        pthread_cond_wait(&pt_sched_cond,&pt_mutex);
+
+      // Main thread has woken us up (with pthread_cond_signal),
+      // perform command we were roused for.
+      //
+      const char cmd = pt_render_cmd;
+      pt_render_cmd = 0;
+      pt_sched_waiting = false;
+      pthread_mutex_unlock(&pt_mutex);
+      // After unlocking main thread can "see" that we are awake and
+      // received the command (since it's now zero).
+
+      // Exit scheduler thread, perhaps because program is exiting.
+      //
+      if ( cmd == 'x' ) break;
+
+      // Wake up render thread.
+      //
+      if ( cmd == 'w' )
+        {
+          pthread_mutex_lock(&pt_mutex);
+          pthread_cond_signal(&pt_render_cond);
+          pthread_mutex_unlock(&pt_mutex);
+          continue;
+        }
+
+      ASSERTS( cmd == 's' );
+
+      // Compute a CUDA schedule.
+      //
+      cuda_schedule();
+    }
+}
+
+bool
+World::pt_sched_is_idle()
+{
+  /// Return true if scheduling thread is idle.
+
+  CP(pthread_mutex_lock(&pt_mutex));
+  const bool rv = pt_sched_waiting && !pt_render_cmd;
+  CP(pthread_mutex_unlock(&pt_mutex));
+  return rv;
+}
+
+void
+World::pt_sched_waitfor()
+{
+  /// Wait for schedule thread to be idle.
+
+  CP(pthread_mutex_lock(&pt_mutex));
+
+  while ( pt_sched_waiting && pt_render_cmd )
+    {
+      // Schedule thread is idle, but has work to do (pt_render_cmd),
+      // so wait for that to be finished.
+      //
+      pthread_mutex_unlock(&pt_mutex);
+      pthread_yield();
+      pthread_mutex_lock(&pt_mutex);
+    }
+
+  while ( true )
+    {
+      if ( pt_sched_waiting ) break;
+
+      // Schedule thread isn't waiting, to request a wakeup and
+      // go to sleep.
+      //
+      pt_render_cmd = 'w';
+      pthread_cond_wait(&pt_render_cond,&pt_mutex);
+    }
+  ASSERTS( !pt_render_cmd );
+  CP(pthread_mutex_unlock(&pt_mutex));
+}
+
+void
+World::pt_sched_start()
+{
+  /// Command scheduler thread to compute schedule. 
+  //
+  // Called from render (main) thread.
+
+  ASSERTS( pt_sched_waiting );
+
+  // Get data from CUDA.
+  // This can only be done from one thread, here the render thread.
+  //
+  cuda_data_to_cpu( DL_PO | DL_CV );
+
+  // Set command and then wake up scheduler thread.
+  //
+  CP(pthread_mutex_lock(&pt_mutex));
+  pt_render_cmd = 's';
+  pthread_cond_signal(&pt_sched_cond); // Wake up scheduler.
+  pt_sched_data_pending = true;
+  CP(pthread_mutex_unlock(&pt_mutex));
 }
 
 
 void
+World::cuda_at_balls_change()
+{
+  /// Reset scheduler and other CUDA data.
+  //
+  // Called when a ball is added or removed, or there is some other
+  // disrupting change.
+
+  if ( opt_physics_method == GP_cpu ) return;
+
+  // Wait for scheduler thread to finish whatever it's currently doing.
+  //
+  pt_sched_waitfor();
+
+  // Forget about the schedule it may have just finished.
+  //
+  pt_sched_data_pending = false;
+  cuda_schedule_stale = 1;
+
+  // Bring data back to CPU.
+  //
+  cuda_data_to_cpu(DL_ALL);
+  data_location = DL_ALL_CPU;
+}
+
+
+void
+World::cuda_constants_update()
+{
+  /// If necessary, copy constants to CUDA. 
+  //
+  // Performed during program initialization and after user changes to
+  // options such as ball mass.
+
+  if ( !cuda_constants_stale ) return;
+  cuda_constants_stale = false;
+
+  set_max(block_size, 1);
+  set_min(block_size, block_size_max);
+
+  // The macros below copy values to CUDA device variables with
+  // the same name.
+  //
+  TO_DEV(gravity_accel_dt);
+  TO_DEV(opt_ball_radius); TO_DEV(opt_bounce_loss);
+  TO_DEV(platform_xmin); TO_DEV(platform_xmax);
+  TO_DEV(platform_zmin); TO_DEV(platform_zmax);
+  TO_DEV(platform_xmin_mr); TO_DEV(platform_xmax_pr);
+  TO_DEV(platform_zmin_mr); TO_DEV(platform_zmax_pr);
+  TO_DEV(platform_xmid); TO_DEV(platform_xrad);
+  TO_DEVF(delta_t);
+  TO_DEVF(short_xrad_sq);
+  TO_DEVF(r_inv); TO_DEVF(two_r); TO_DEVF(two_r_sq);
+  TO_DEVF(elasticity_inv_dt); TO_DEVF(ball_mass_inv);
+  TO_DEVF(opt_friction_coeff); TO_DEVF(opt_friction_roll);
+  TO_DEVF(mo_vel_factor); TO_DEVF(v_to_do);
+}
+
+bool
+World::cpu_data_to_cuda()
+{
+  /// Copy ball data to CUDA.
+
+  ASSERTS( ( DL_ALL & ( data_location | ( data_location >> 4 ) ) ) == DL_ALL );
+
+  const int cnt = balls.occ();
+
+  // Allocate additional cuda storage, if necessary.
+  //
+  if ( cnt > cuda_ball_cnt )
+    {
+      cuda_balls.realloc(cnt);
+      cuda_balls.ptrs_to_cuda_soa("balls_x");
+      cuda_ball_cnt = cnt;
+    }
+  cuda_constants_update();
+
+  // Just return if data already has valid data.
+  //
+  if ( ( data_location & DL_ALL_CUDA ) == DL_ALL_CUDA ) return false;
+  data_location |= DL_ALL_CUDA;
+
+  // Copy CPU's ball information to arrays, in preparation for
+  // transfer to CUDA.
+  //
+  for ( int idx=0; idx<cnt; idx++ )
+    {
+      Ball* const ball = balls[idx];
+      vec_set(cuda_balls.soa.orientation[idx],ball->orientation);
+      vec_sets3(cuda_balls.soa.position[idx],ball->position);
+      vec_sets3(cuda_balls.soa.prev_velocity[idx],ball->velocity);
+      vec_sets3(cuda_balls.soa.velocity[idx],ball->velocity);
+      vec_sets3(cuda_balls.soa.angular_momentum[idx],ball->angular_momentum);
+      int4 tact_counts;
+      tact_counts.x = ball->collision_count;
+      tact_counts.y = ball->contact_count;
+      tact_counts.z = ball->debug_pair_calls;
+      tact_counts.w = 0;
+      cuda_balls.soa.tact_counts[idx] = tact_counts;
+    }
+
+  // Transfer the data.
+  cuda_balls.to_cuda();
+  return true;
+}
+
+void
 World::cuda_data_to_cpu(uint which_data)
 {
+  /// Copy ball data from CUDA.
+
   ASSERTS( ( DL_ALL & ( data_location | ( data_location >> 4 ) ) ) == DL_ALL );
   ASSERTS( which_data & DL_ALL );
+
+  // If the needed data is already on the CPU, return.
+  //
   const uint mask = which_data & ~data_location;
   if ( !mask ) return;
+
+  // Mark that the needed data is on the CPU (not yet, but it will be soon).
+  //
   data_location |= which_data;
+
+  cuda_balls.from_cuda();       // Transfer data.
+
+  const int cnt = balls.occ();
+
+  // Copy data to balls array, copying only the data that's
+  // needed and not already present.
+  //
+  for ( int idx=0; idx<cnt; idx++ )
+    {
+      Ball* const ball = balls[idx];
+      if ( mask & DL_PO_CPU )
+        {
+          vec_sets3(ball->position,cuda_balls.soa.position[idx]);
+          vec_set(ball->orientation,cuda_balls.soa.orientation[idx]);
+        }
+      if ( mask & DL_CV_CPU )
+        {
+          vec_sets4(ball->velocity,cuda_balls.soa.velocity[idx]);
+          const int4 tact_counts = cuda_balls.soa.tact_counts[idx];
+          ball->collision_count = tact_counts.x;
+          ball->contact_count = 0xff & ( tact_counts.y >> 8 );
+          ball->debug_pair_calls = tact_counts.z;
+        }
+      if ( mask & DL_OT_CPU )
+        {
+          vec_sets4
+            (ball->angular_momentum,cuda_balls.soa.angular_momentum[idx]);
+        }
+    }
 }
 
 
@@ -812,9 +1319,7 @@ int ball_serial_next = 0;
 
 Ball::Ball(World* wp):w(*wp),original(NULL)
 {
-  w.cuda_data_to_cpu(DL_ALL);
-  w.data_location = DL_ALL_CPU;
-  w.cuda_schedule_stale = 1;
+  w.cuda_at_balls_change();
 
   occluded = false;
   occlusion_query_active = false;
@@ -841,7 +1346,7 @@ Ball::~Ball()
 
   if ( original ) return;
   ASSERTS( ! ( w.data_location & DL_ALL_CUDA ) );
-  w.cuda_schedule_stale = 1;
+  ASSERTS( w.pt_sched_is_idle() );
 }
 
 bool
@@ -878,8 +1383,7 @@ void Ball::stop()
 //
 void World::balls_remove()
 {
-  cuda_data_to_cpu(DL_ALL);
-  data_location = DL_ALL_CPU;
+  cuda_at_balls_change();
   Ball* const survivor = balls.pop();
   while ( balls.occ() ) delete balls.pop();
   balls += survivor;
@@ -1026,7 +1530,6 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
   {
     /// Rolling Friction
     //
-
     // The rolling friction model used here is ad-hoc.
 
     pVect tan_b12_vel = b2_real ? 0.5 * tan_vel : pVect(0,0,0);
@@ -1118,6 +1621,7 @@ World::time_step_cpu()
 
   if ( data_location & DL_ALL_CUDA )
     {
+      pt_sched_waitfor();
       cuda_data_to_cpu(DL_ALL);
       data_location = DL_ALL_CPU;
     }
@@ -1137,21 +1641,22 @@ World::time_step_cpu()
   /// Sort balls in z in preparation for finding balls that touch.
   //
   const float region_length = two_r;
-  PSList<Ball*,double> z;
-  for ( Ball *ball; balls.iterate(ball); ) z.insert(ball->position.z,ball);
-  z.sort();
+  balls_zsort.reset();
+  for ( Ball *ball; balls.iterate(ball); )
+    balls_zsort.insert(ball->position.z,ball);
+  balls_zsort.sort();
 
   /// Apply forces for balls that are touching.
   //
-  for ( int idx0 = 0, idx9 = 0; idx9 < z.occ(); idx9++ )
+  for ( int idx0 = 0, idx9 = 0; idx9 < balls_zsort.occ(); idx9++ )
     {
-      Ball* const ball9 = z[idx9];
+      Ball* const ball9 = balls_zsort[idx9];
       const float z_min = ball9->position.z - region_length;
 
-      while ( idx0 < idx9 && z[idx0]->position.z < z_min ) idx0++;
+      while ( idx0 < idx9 && balls_zsort[idx0]->position.z < z_min ) idx0++;
 
       for ( int i=idx0; i<idx9; i++ )
-        penetration_balls_resolve(z[i],ball9);
+        penetration_balls_resolve(balls_zsort[i],ball9);
     }
 
   /// Apply gravitational force.
@@ -1277,6 +1782,702 @@ World::time_step_cpu()
 }
 
 
+class Contact {
+public:
+  Contact():ball1(NULL),ball2(NULL){};
+  Contact(Ball *ball1, Ball *ball2):
+    ball1(ball1),ball2(ball2),pass(-1){};
+  Ball* const ball1;
+  Ball* const ball2;
+  Ball* other_ball(Ball* ball) { return ball == ball1 ? ball2 : ball1; }
+  int pass;   // Index of pass_pairs launch: 0 is first, 1 is second, ..
+  int block;  // Like blockIdx, but numbering is within time step, not pass.
+  int thread; // Index of thread within block.
+  int round;  // Index within thread. Zero is 1st pair done by thd, etc.
+};
+
+void
+World::contact_pairs_find()
+{
+  /// Find pairs of balls that are in contact or soon will be.
+
+  double max_vsq = 0;
+
+  /// Sort balls in z in preparation for finding balls that touch.
+  //
+  balls_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
+  for ( Ball_Iterator ball(balls); ball; ball++ )
+    {
+      const double vsq = dot(ball->velocity,ball->velocity);
+      set_max(max_vsq,vsq);
+      balls_zsort.insert(ball->position.z,ball);
+      ball->proximity.reset();
+    }
+  balls_zsort.sort();
+
+  // The pair list should include balls that will touch within
+  // schedule_lifetime_steps (a constant); from that compute
+  // a time.
+  //
+  const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
+
+  // Compute the maximum distance (in ball radii) that a ball
+  // can travel during schedule lifetime.
+  //
+  const double radii =
+    sqrt(max_vsq) * schedule_lifetime_steps * delta_t / opt_ball_radius;
+
+  const float region_length_large =
+    ( 2.1 + min(radii,10.0) ) * opt_ball_radius;
+  const double prox_dist_l_sq = pow( region_length_large, 2 );
+  const float region_length_small = 2.1 * opt_ball_radius;
+  const double prox_dist_s_sq = pow( region_length_small, 2 );
+
+  /// Find pairs of balls that are, or might soon be, touching.
+  //
+  contact_pairs.reset();
+  for ( int idx0 = 0, idx9 = 0; idx9 < balls_zsort.occ(); idx9++ )
+    {
+      Ball* const ball9 = balls_zsort[idx9];
+      const float z_min = ball9->position.z - region_length_large;
+
+      while ( idx0 < idx9 && balls_zsort[idx0]->position.z < z_min ) idx0++;
+
+      for ( int i=idx0; i<idx9; i++ )
+        {
+          Ball* const ball1 = balls_zsort[i];
+
+          pNorm dist(ball1->position,ball9->position);
+
+          if ( dist.mag_sq > prox_dist_l_sq ) continue;
+
+          if ( dist.mag_sq > prox_dist_s_sq )
+            {
+              pVect delta_v(ball1->velocity,ball9->velocity);
+              const double delta_d = lifetime_delta_t * delta_v.mag();
+              const double dist2 = dist.magnitude - delta_d;
+              if ( dist2 > region_length_small ) continue;
+            }
+          const int c_idx = contact_pairs.occ();
+          new (contact_pairs.pushi()) Contact(ball1,ball9);
+          ball1->proximity += c_idx;
+          ball9->proximity += c_idx;
+        }
+    }
+}
+
+void
+World::cuda_schedule()
+{
+  /// Prepare CUDA Schedule for Contact Pair Handling
+  //
+  //  Each CUDA thread reads the schedule to determine which
+  //  ball pairs to handle (by calling penetration_balls_resolve).
+  //
+  //  The schedule consists of two arrays, block_balls_needed and
+  //  cuda_tacts_schedule. 
+  //
+  //  The block_balls_needed array lists all the balls needed by each
+  //  block in each pass. At the beginning of a pass threads read ball
+  //  numbers from this array and load (prefetch) data for those balls
+  //  from device memory into shared memory.
+  //
+  //  The cuda_tacts_schedule lists pairs of balls, threads
+  //  will call penetration_balls_resolve on these pairs, which
+  //  will read and write shared memory.
+  //
+  //  At the end of a pass data from shared memory is copied back
+  //  to device memory.
+
+
+  // Find pairs of balls that are in contact or might soon collide.
+  // The pairs are assigned to variable pairs and the identity of
+  // balls near to a ball are put in its proximity member.
+  //
+  contact_pairs_find();
+
+  // Prepare Ball Lists
+  //
+  // neighborhood:     Most desirable balls to schedule in the current pass.
+  // balls_todo_now:   Balls to schedule in the current pass, after neighbors.
+  // balls_todo_later: Balls to schedule in the next pass.
+  //
+  static PQueue<Ball*> balls_todo_a, balls_todo_b;
+  static PQueue<Ball*> neighborhood;
+  balls_todo_a.reset(); balls_todo_b.reset(); neighborhood.reset();
+  PQueue<Ball*> *balls_todo_now = &balls_todo_a;
+  PQueue<Ball*> *balls_todo_later = &balls_todo_b;
+
+  // Initialize ball members for scheduling, and initialize balls_todo_now.
+  //
+  for ( Ball_Iterator ball(balls); ball; ball++ )
+    {
+      ball->idx = ball.get_idx();
+      ball->color_block = -1; // Used for coloring based on block num.
+      if ( !ball->proximity.occ() ) continue;
+      ball->pass = -1;
+      ball->pass_iterated = -1;
+      ball->pass_todo = 0;
+      ball->block = -1;
+      balls_todo_later->enqueue(ball);
+    }
+
+  int block_num = -1;
+  int ball_count = -1;
+  const int max_rounds = 32;
+  const int ball_limit = BALLS_PER_BLOCK;
+  int iterations = 0;           // Used for algorithm tuning.
+  int thd_rounds = 0;           // Used for placement tuning.
+  int next_col[max_rounds];
+  bool new_pass = true;
+  bool new_block = false;
+  const int ball_idx_bits = 18;
+
+  PQueue<int> tacts;
+
+  passes.reset();
+  PSList<Ball*,uint> pref_balls;
+  const int soft_ball_limit = min(block_size,ball_limit);
+
+  while ( true )
+    {
+      // If there are no more neighbors of placed balls to
+      // work on, grab any unplaced ball.
+      //
+      if ( !neighborhood.occ() && balls_todo_now->occ() )
+        {
+          if ( ball_count >= soft_ball_limit ) new_block = true;
+          neighborhood += balls_todo_now->pop();
+        }
+
+      // Check for end of this pass.
+      //
+      if ( !neighborhood.occ() )
+        {
+          // If there is nothing in the next pass, exit the loop.
+          //
+          if ( !balls_todo_later->occ() ) break;
+
+          // Prepare for the next pass by swapping todo lists.
+          //
+          PQueue<Ball*>* const todo_x = balls_todo_now;
+          balls_todo_now = balls_todo_later; balls_todo_later = todo_x;
+
+          neighborhood += balls_todo_now->pop();
+          new_pass = true;
+        }
+
+      ASSERTS( ball_count <= ball_limit );
+
+      // If necessary, initialize a new block.
+      //
+      // A new block is prepared if the old block reached the ball limit
+      // or if this is the start of a new pass and the current block isn't
+      // empty.
+      //
+      if ( new_pass && ball_count || new_block )
+        {
+          new_block = false;
+          ball_count = 0;  block_num++;
+          bzero(next_col,sizeof(next_col));
+        }
+
+      // If necessary, initialize a new pass.
+      //
+      if ( new_pass )
+        {
+          Pass* const p = passes.pushi();
+          p->block_num_next_pass = p->block_num_base = block_num;
+          p->round_cnt = 0;
+          new_pass = false;
+        }
+
+      const int pass_num = passes.occ() - 1;
+      Pass* const p = &passes.peek();
+      const int block_num_base = p->block_num_base;
+
+      // Get a ball to consider.
+      //
+      Ball* const ball1 = neighborhood.dequeue();
+
+      // If it has already been considered for this pass, get a different one.
+      if ( ball1->pass_iterated == pass_num ) continue;
+      // Otherwise, mark this ball as now having been considered.
+      ball1->pass_iterated = pass_num;
+
+      // Check whether this ball already used in this pass.
+      //
+      const bool b1_placed = ball1->block >= block_num_base;
+
+      // Macro for adding ball to todo list.
+#define NEXT_PASS_ADD(ba)                                                     \
+      { if ( ba->pass_todo <= pass_num )                                 \
+          { ba->pass_todo = pass_num + 1; balls_todo_later->enqueue(ba); } }
+
+      // If ball used in this pass but not in this block then we have no
+      // choice but to schedule it in a future pass.
+      //
+      if ( b1_placed && ball1->block != block_num )
+        { NEXT_PASS_ADD(ball1);  continue; }
+
+      // Initialize schedule for this ball, if it's new to this block.
+      //
+      if ( !b1_placed ) ball1->rounds = 0;
+
+      // Look for balls near ball1 that have not been considered,
+      // and add suitable ones to tacts (contacts).
+      //
+      tacts.reset();
+      for ( int c_idx = ball1->proximity.iterate_reset();
+            ball1->proximity.iterate(c_idx); )
+        {
+          iterations++;
+          Contact* const c = &contact_pairs[c_idx];
+          if ( c->pass >= 0 ) continue;
+          Ball* const ball2 = c->other_ball(ball1);
+          const bool b2_placed = ball2->block >= block_num_base;
+
+          // If other ball used in this pass but not this block
+          // then we can't consider the ball1/ball2 contact in this
+          // pass, so try again in the next pass. (Either ball1 or ball2
+          // could be added, ball1 may be more efficient.)
+          //
+          if ( b2_placed && ball2->block != block_num )
+            { NEXT_PASS_ADD(ball1);  continue; }
+
+          if ( !b2_placed ) ball2->rounds = 0;
+          tacts += c_idx;
+        }
+
+      int rounds_skipped = 0;
+      int dwell_count = 0;
+      int round = 0;
+      int round_full_cnt = 0;
+      while ( tacts.occ() && round < max_rounds )
+        {
+          // If all threads are busy this round, try next round.
+          //
+          if ( next_col[round] == block_size )
+            {
+              round++;  round_full_cnt++;
+              if ( round_full_cnt > ( block_size >> 1 ) ) 
+                { new_block = true;  break; }
+              continue;
+            }
+
+          // Counter used for tuning CPU time of this scheduling algorithm.
+          iterations++;
+
+          // Get a contact pair to try.
+          //
+          const int c_idx = tacts.dequeue();
+          Contact* const c = &contact_pairs[c_idx];
+          Ball* const ball2 = c->other_ball(ball1);
+          const bool b1_placed = ball1->block >= block_num_base;
+          const bool b2_placed = ball2->block >= block_num_base;
+
+          // Bit position indicates rounds that ball is used.
+          const uint32_t mask = 1 << round;
+
+          // If ball1 used elsewhere in this round move to next round.
+          //
+          if ( ball1->rounds & mask )
+            {
+              round++;  dwell_count = 0;
+              rounds_skipped++;
+              tacts += c_idx;   // Put contact pair back in list.
+              continue;
+            }
+
+          // Check if ball2 used elsewhere in this round.
+          //
+          if ( ball2->rounds & mask )
+            {
+              // Move to next round if we've already tried scheduling
+              // other balls in this round.
+              //
+              if ( dwell_count++ >= tacts.occ() )
+                {
+                  round++;  dwell_count = 0;
+                  rounds_skipped++;
+                }
+
+              tacts += c_idx;   // Put contact pair back in list.
+              continue;
+            }
+          dwell_count = 0;
+
+          const int next_ball_count = ball_count + !b1_placed + !b2_placed;
+
+          // If this contact pair would exceed ball limit, then try again
+          // next pass.
+          //
+          if ( next_ball_count > ball_limit )
+            { NEXT_PASS_ADD(ball1); continue; }
+
+          if ( !b1_placed )
+            {
+              ball1->block = block_num;
+
+              // Add ball to prefetch list.  Used to load CUDA
+              // shared memory.
+              //
+              pref_balls.insert
+                ( ( block_num << ball_idx_bits ) | ball1->idx, ball1 );
+            }
+
+          if ( !b2_placed )
+            {
+              ball2->block = block_num;
+              pref_balls.insert
+                ( ( block_num << ball_idx_bits ) | ball2->idx, ball2 );
+
+              // Put ball2 at the head of the todo list since ball1 and ball2
+              // are likely to have common neighbors.
+              //
+              neighborhood += ball2;
+            }
+
+          ball_count = next_ball_count;
+
+          /// Scheduling of this Contact Pair Complete
+          //
+          c->pass = pass_num;
+          c->block = block_num;
+          c->thread = next_col[round]++;
+          c->round = round;
+          p->block_num_next_pass = block_num + 1;
+
+          // Update bit vectors indicating which rounds ball used.
+          ball1->rounds |= mask;
+          ball2->rounds |= mask;
+
+          round++;
+          thd_rounds += rounds_skipped + 1;
+          rounds_skipped = 0;
+          set_max(p->round_cnt,round);
+        }
+
+      // If anything is left over, re-consider ball in next pass.
+      //
+      if ( tacts.occ() ) NEXT_PASS_ADD(ball1);
+    }
+
+  const int pass_cnt = passes.occ();
+
+  // Compute number of blocks in each pass and collect tuning information.
+  //
+  int pass_blocks = 0;
+  int pass_block_rounds = 0;
+  int total_rounds = 0;
+  int max_blocks = 0;
+  while ( Pass* const p = passes.iterate() )
+    {
+      p->block_cnt = p->block_num_next_pass - p->block_num_base;
+      pass_blocks += p->block_cnt;
+      total_rounds += p->round_cnt;
+      pass_block_rounds += p->block_cnt * p->round_cnt;
+      set_max(max_blocks,p->block_cnt);
+    }
+
+  // Prepare the pair_check sorted list, which is used for scheduling,
+  // sanity checks, and collecting tuning information.
+  //
+  static PSList<Contact*,int64_t> pair_check;
+  pair_check.reset();
+  while ( Contact* const c = contact_pairs.iterate() )
+    pair_check.insert
+      ( c->block * max_rounds * block_size
+        + c->round * block_size + int64_t(c->thread) , 
+        c );
+  pair_check.sort();
+
+  // Sanity Check: Make sure ball scheduled in at most one
+  // block per pass.
+  //
+  for ( Ball_Iterator ball(balls); ball; ball++ ) ball->pass = -1;
+  while ( Contact* const c = pair_check.iterate() )  
+    {
+      const int pass = c->pass;
+      const int round = c->round;
+      const int block = c->block;
+      ASSERTS( pass >= 0 );
+      for ( int i=0; i<2; i++ )
+        {
+          Ball* const b = i ? c->ball2 : c->ball1;
+          ASSERTS( b->pass < pass
+                   || b->block == block && b->rounds < round );
+          b->pass = pass;
+          b->block = block;
+          b->rounds = round;
+        }
+    }
+
+  // Tuning Info: Determine how much each warp being used.
+  //
+  int warp_rounds = 0;
+  const int warp_lg = 5;
+  const int warps_per_block = max(1,block_size >> warp_lg);
+  const int warp_limit = ( block_num + 1 ) * warps_per_block;
+  int warp_rounds_each[warp_limit];
+  bzero(warp_rounds_each,sizeof(warp_rounds_each));
+  while ( Contact* const c = pair_check.iterate() )
+    {
+      const int round_cnt = c->round + 1;
+      const int idx = c->block * warps_per_block + ( c->thread >> warp_lg );
+      const int a = round_cnt - warp_rounds_each[idx];
+      if ( a <= 0 ) continue;
+      warp_rounds_each[idx] = round_cnt;
+      warp_rounds += a;
+    }
+
+  round_count_prev = total_rounds;
+  pass_count_prev = passes.occ();
+  static int total_rounds_max = 0;
+  if ( opt_info || total_rounds > total_rounds_max )
+    {
+      opt_info = false;
+      printf("For %d tacts, %d p, %d tot rnds; "
+             "Max Bl %d/%d/%d W %d/%d  Eff %.3f %.3f\n",
+             contact_pairs.occ(),
+             pass_cnt,
+             total_rounds,
+             max_blocks, pass_blocks, pass_block_rounds,
+             warp_rounds << warp_lg,
+             thd_rounds,
+             contact_pairs.occ() / double(warp_rounds<<warp_lg),
+             contact_pairs.occ() / double(iterations)
+             );
+      total_rounds_max = total_rounds;
+    }
+
+  // Determine size of schedule data (cuda_tacts_schedule and
+  // block_balls_needed) for each pass, and remember offsets into
+  // these arrays.
+  //
+  const int prefetch_rounds = int( ceil(double(ball_limit)/block_size) );
+  const int prefetch_elts_per_block = prefetch_rounds * block_size;
+  int ba_size = 0;
+  int pa_size = 0;
+  while ( Pass* const p = passes.iterate() )
+    {
+      p->dim_block.x = block_size;
+      p->dim_block.y = p->dim_block.z = 1;
+      p->dim_grid.x = p->block_cnt;
+      p->dim_grid.y = p->dim_grid.z = 1;
+      p->prefetch_offset = pa_size;
+      pa_size += prefetch_elts_per_block * p->block_cnt;
+      p->schedule_offset = ba_size;
+      ba_size += block_size * p->block_cnt * p->round_cnt;
+    }
+
+  // Update size of schedule arrays and initialize.
+  //
+  cuda_tacts_schedule.realloc(ba_size);
+  memset(cuda_tacts_schedule.data,-1,cuda_tacts_schedule.chars);
+  block_balls_needed.realloc(pa_size);
+  memset(block_balls_needed.data,-1,block_balls_needed.chars);
+
+  // Write schedule arrays.
+  //
+  int block_curr = -1;
+  int pbi = 0;
+  while ( Contact* const c = pair_check.iterate() )
+    {
+      const int round = c->round;
+      const int block = c->block;
+      Pass& p = passes[c->pass];
+
+      // Fill in prefetch (balls_needed) array.
+      //
+      if ( block_curr != block )
+        {
+          block_curr = block;
+          int ball_sidx_next = 0;
+          while ( pbi < pref_balls.occ() )
+            {
+              const int pb_block = pref_balls.get_key(pbi) >> ball_idx_bits;
+              if ( pb_block > block_curr ) break;
+              Ball* const b = pref_balls[pbi++];
+              const int idx = block * prefetch_elts_per_block + ball_sidx_next;
+              ASSERTS( ball_sidx_next < ball_limit );
+              ASSERTS( pb_block == block );
+              ASSERTS( block_balls_needed[idx] == -1 );
+              b->sm_idx = ball_sidx_next++;
+              block_balls_needed[ idx ] = b->idx;
+              if ( c->pass == opt_block_color_pass ) b->color_block = block;
+            }
+        }
+
+      // Fill in cuda_tacts_schedule array.
+      //
+      SM_Idx2 pair = { c->ball1->sm_idx, c->ball2->sm_idx };
+      const int ba_idx =
+        p.schedule_offset
+        + ( block - p.block_num_base ) * p.round_cnt * block_size
+        + round * block_size
+        + c->thread;
+      ASSERTS( ba_idx < ba_size && ba_idx >= 0 );
+      SM_Idx2 old_pair = cuda_tacts_schedule[ba_idx];
+      ASSERTS( old_pair.x == 0xffff && old_pair.y == 0xffff );
+      cuda_tacts_schedule[ ba_idx ] = pair;
+    }
+}
+
+void
+World::time_step_cuda(int iters_per_frame, bool just_before_render)
+{
+  /// Advance physical state by one time step using CUDA for computation.
+
+  cuda_init();
+  const int ball_cnt = balls.occ();
+
+  // Set configuration for platform pass.
+  //
+  dim3 dim_grid, dim_block;
+  dim_grid.x = int(ceil(double(ball_cnt)/block_size));
+  dim_grid.y = dim_grid.z = 1;
+  dim_block.x = block_size;
+  dim_block.y = dim_block.z = 1;
+
+  // If necessary, command scheduler thread to start working on a schedule.
+  // We rather do this at the end of the routine because if we do it
+  // here we are forced to wait.
+  //
+  if ( !pt_sched_data_pending && cuda_schedule_stale > 0 )
+    pt_sched_start();
+
+  // If a freshly computed schedule is waiting, send it to CUDA.
+  //
+  if ( pt_sched_data_pending )
+    {
+      pt_sched_waitfor();
+      if ( opt_color_events )
+        for ( Ball *b; balls.iterate(b); )
+          b->color_event =
+            b->color_block >= 0 ? *colors[b->color_block & colors_mask] : dark;
+      block_balls_needed.ptrs_to_cuda("block_balls_needed");
+      block_balls_needed.to_cuda();
+      cuda_tacts_schedule.ptrs_to_cuda("tacts_schedule");
+      cuda_tacts_schedule.to_cuda();
+      pt_sched_data_pending = false;
+      cuda_schedule_stale = -schedule_lifetime_steps;
+    }
+
+  cuda_schedule_stale++;
+
+  // Make copy of ball structures for debugging.
+  Ball ball_a = *balls[0];
+  Ball ball_a1 = *balls[min(1,balls.occ()-1)];
+
+  if ( passes.occ() ) block_count_prev = passes[0].dim_grid.x;
+
+  // Start timer. (Used for code tuning.)
+  //
+  CE(cudaEventRecord(frame_start_ce,0));
+
+  cpu_data_to_cuda();
+  data_location = DL_ALL_CUDA;
+
+  // Launch the contact pair kernel for as many passes as needed.
+  //
+  while ( Pass* const p = passes.iterate() )
+    pass_pairs_launch
+      (p->dim_grid,p->dim_block,
+       p->prefetch_offset,p->schedule_offset,p->round_cnt);
+
+  // Launch the platform kernel.
+  //
+  pass_platform_launch(dim_grid,dim_block,balls.occ());
+
+  // If data is needed to render a frame, copy from CUDA to CPU.
+  //
+  if ( just_before_render )
+    cuda_data_to_cpu(DL_ALL);
+
+  // Stop timer.
+  CE(cudaEventRecord(frame_stop_ce,0));
+  CE(cudaEventSynchronize(frame_stop_ce));
+  float cuda_time = -1.1;
+  CE(cudaEventElapsedTime(&cuda_time,frame_start_ce,frame_stop_ce));
+  frame_timer.cuda_frame_time_set(cuda_time);
+  pError_Check();
+
+  // Copy an "after" ball, for hand debugging.
+  Ball ball_b = *balls[0];
+
+  // Sanity Check: Make sure CUDA ran penetration_balls_resolve enough times.
+  //
+  if ( data_location & DL_OT_CPU )
+    for ( Ball *ball; balls.iterate(ball); )
+      {
+        // Number of balls near ball1.
+        const int px = ball->proximity.occ();
+
+        // Number of times CUDA code handled a nearby ball.
+        const int ca = ball->debug_pair_calls >> 16;
+        ASSERTS( px == ca ); // Fatal error if not equal.
+      }
+
+  // Update counter used for shower spray.
+  //
+  ball_countdown -= delta_t;
+
+  if ( ! ( data_location & DL_CV_CPU ) ) return;
+
+  if ( !just_before_render ) return;
+
+  float contact_y_max = -platform_xrad;
+
+  for ( Ball *ball; balls.iterate(ball); )
+    if ( ball->collision_count ) set_max(contact_y_max,ball->position.y);
+
+  if ( opt_drip && ( !dball || dball->collision_count ) )
+    {
+      dball = new Ball(this);
+      dball->position =
+        pCoor(30,max(20.0f,contact_y_max) + 3 * opt_ball_radius,60);
+      dball->velocity = pVect(0,0,0);
+      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
+      drip_cnt++;
+      balls += dball;
+    }
+
+  if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
+    {
+      Ball* const nball = new Ball(this);
+      double r = opt_ball_radius * 5;
+      double c = 2 * M_PI * r;
+      const double delta_theta =
+        0.0001 + 2 * M_PI / ( c / (2 * opt_ball_radius ) );
+      static double th = 0;  th += delta_theta;
+      nball->position.x = platform_xmax - r - 2 * opt_ball_radius
+        + (r+opt_ball_radius) * cos(th);
+      nball->position.z = (r+opt_ball_radius) * sin(th);
+      nball->position.y = max(20.0f,contact_y_max + 3 * opt_ball_radius);
+      nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
+      spray_cnt++;
+      balls += nball;
+      ball_countdown = 0.1;
+    }
+
+  const float deep = -100;
+  for ( Ball *ball; balls.iterate(ball); )
+    if ( ball->position.y < deep )
+      {
+        cuda_at_balls_change();
+        balls.iterate_yank(); delete ball;
+      }
+
+  if ( !opt_debug
+       && just_before_render && cuda_schedule_stale + iters_per_frame - 1 > 0 )
+      pt_sched_start();
+}
+
+
+// Return a sphere with a detail level appropriate for the ball's distance
+// from the viewer's eye.
+//
 Sphere*
 World::sphere_get(Ball *ball)
 {
@@ -1426,7 +2627,7 @@ World::render()
           if ( opt_physics_method == GP_cpu )
             time_step_cpu();
           else
-            time_step_cuda(last);
+            time_step_cuda(iter_limit,last);
 
           world_time += delta_t;
           if ( last ) break;
@@ -1528,9 +2729,8 @@ World::render()
   ogl_helper.fbprintf
     ("Shadows: %-3s ('w')  Mirror: %-3s %d "
      "Light location: [%5.1f, %5.1f, %5.1f]\n",
-     !vs_shadow->okay() ? "unavailable" : opt_shadows ? "on" : "off",
-     !vs_reflect->okay() ? "unavailable" : opt_mirror ? "on" : "off", 
-     opt_mirror_method,
+     opt_shadows ? "on" : "off",
+     opt_mirror ? "on" : "off", opt_mirror_method,
      light_location.x, light_location.y, light_location.z);
 
   Ball& ball = *balls.peek();
@@ -1543,13 +2743,25 @@ World::render()
      ball.velocity.x,ball.velocity.y,ball.velocity.z);
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Debug Option: %d ('q')  "
+    ("Physics: %s ('a')  Debug Options: %d %d ('qQ')  "
      "Physics Verification %d ('v')\n",
-     gpu_physics_method_str[opt_physics_method], opt_debug, opt_verify);
+     gpu_physics_method_str[opt_physics_method], 
+     opt_debug, opt_debug2, opt_verify);
+  if ( opt_physics_method == GP_cuda )
+    ogl_helper.fbprintf
+      ("MPs: %d  Blocks: %d  (%.1f Bl/MP)  Th/Bl: %d  WP/Bl: %.3f  "
+       "Passes: %d  Rounds: %d\n",
+       cuda_prop.multiProcessorCount,
+       block_count_prev,
+       block_count_prev / double(cuda_prop.multiProcessorCount),
+       block_size,
+       block_size / 32.0,
+       pass_count_prev, round_count_prev
+       );
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
-                      cvar->name,cvar->var[0]);
+                      cvar->name,cvar->get_val());
 
   if ( opt_mirror && vs_reflect->okay() )
     {
@@ -1833,9 +3045,9 @@ World::cb_keyboard()
       break;
     }
   case 'a':
+    if ( opt_physics_method == GP_cuda ) cuda_at_balls_change();
     opt_physics_method++;
     if ( opt_physics_method > GP_cuda ) opt_physics_method = GP_cpu;
-    opt_physics_method = GP_cpu;
     break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
@@ -1843,6 +3055,7 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'd': case 'D': opt_drip = !opt_drip; if(!opt_drip)dball=NULL; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
+  case 'i': opt_info = true; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
   case 'm': opt_mirror = !opt_mirror; break;
@@ -1853,9 +3066,10 @@ World::cb_keyboard()
   case 'R': balls_remove(); break;
   case 's': balls_stop(); break;
   case 'S': balls_rot_stop(); break;
-  case 'T': benchmark_setup(); break;
+  case 'T': benchmark_setup(1); break;
   case 't': benchmark_setup(5); break;
   case 'q': opt_debug = !opt_debug; break;
+  case 'Q': opt_debug2 = !opt_debug2; break;
   case 'v': opt_verify = !opt_verify; break;
   case 'w': opt_shadows = !opt_shadows; break;
   case 'x': opt_spray_on = !opt_spray_on; break;
@@ -1925,4 +3139,3 @@ main(int argv, char **argc)
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.render_w,&world);
 }
-

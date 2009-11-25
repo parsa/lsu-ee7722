@@ -1,4 +1,6 @@
-INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I../../include
+
+INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  \
+  -I../include -I../../include
 
 CUDAPATH = /usr/local/cuda
 
@@ -31,9 +33,10 @@ default: balls
 	$(CXX) $(CFLAGS) -c $*.cu
 
 # balls.o: demo-x-kernel.cu demo-x.cuh
-# balls-kernel.o: Makefile balls.cuh balls-kernel.cu balls.cc
+balls-kernel.o: Makefile balls.cuh balls-kernel.cu
 
-balls: balls.cc shapes.h Makefile
-	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc -o $@ $(LIBRARIES)
-	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
+
+balls: balls.cc shapes.h Makefile balls.cuh balls-kernel.o
+	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc balls-kernel.o -o $@ $(LIBRARIES)
+	$(CXX) $(CFLAGS) $@.cc -o $@-debug balls-kernel.o $(LIBRARIES)
 
