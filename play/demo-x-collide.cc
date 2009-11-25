@@ -17,6 +17,10 @@
 
 //    Ball friction and angular momentum modeled.
 
+//    Physics computed by CPU or by GPU/CUDA (user selectable).
+//      Demonstrates use of CUDA for GPU physics, also use of
+//      CPU multi-threading (currently only in conjunction with CUDA).
+
 //    Balls cast shadows on platform:
 //      Demonstrates use of stencils and vertex shader.
 //      A vertex shader is used to compute shadow locations.
@@ -56,7 +60,7 @@
  //  (Also see variables below.)
  //
  //  'p'    Pause simulation. (Press again to resume.)
- //  'a'    Switch physics method (CPU to GPU).
+ //  'a'    Switch physics method (CPU to GPU/CUDA).
 
  //  'd'    Toggle dripping of balls.
  //  'x'    Toggle shower of balls.
@@ -65,7 +69,7 @@
  //  'T'    Run 1-tier-of-balls benchmark.
  //  'R'    Remove all but one ball.
 
- //  'm'    Toggle reflections.
+ //  'm'    Toggle reflections on mirror tiles.
  //  'w'    Toggle shadows.
  //  'n'    Toggle visibility of platform normals.
 
@@ -110,6 +114,12 @@
  //                deformation.
  //  VAR Bounce Energy Loss
  //              - Amount of energy lost in contact.
+ //  VAR Block Size
+ //              - Size of CUDA thread block, used both for the
+ //                platform and pairs passes.
+ //  VAR Color by Block in Pass
+ //              - If opt_color_events is on, use block number
+ //                in PASS to determine color of ball.
 
 
 #define GL_GLEXT_PROTOTYPES
@@ -226,6 +236,7 @@ public:
   int rounds;
   bool placed;
   int block;
+  int color_block; // Block number to use for coloring ball.
   int sm_idx;
 };
 
@@ -458,6 +469,8 @@ public:
   void time_step_cuda(int iters_per_frame, bool just_before_render);
 
   int block_size;               // Number of threads to use in CUDA block.
+  int block_size_max;           // Maximum possible based on our CUDA code.
+  int opt_block_color_pass;     // Pass to use for coloring balls.
 
   // Ball Data for CUDA
   //
@@ -513,6 +526,11 @@ public:
   int cuda_ball_cnt;
   bool cuda_initialized;
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
+  cudaFuncAttributes cfa_platform; // Properties of code to run on device.
+  cudaFuncAttributes cfa_pairs;
+  int block_count_prev;        // Maximum number of blocks in last pairs pass.
+  int pass_count_prev;         // Number of passes.
+  int round_count_prev;        // Total number of rounds in all pairs passes.
   bool cuda_constants_stale;   // When true, need to update constants.
 };
 
@@ -545,6 +563,7 @@ World::init()
   cuda_initialized = false;
   cuda_schedule_stale = 1;
   opt_physics_method = GP_cpu;
+  block_size = 128;
 
   delta_t = 1.0 / 240;
 
@@ -560,6 +579,8 @@ World::init()
   opt_spray_on = false;
   opt_color_events = false;
   opt_debug = false;
+  opt_debug2 = false;
+  opt_block_color_pass = 0;
 
   // Instantiate vertex shader used for casting shadow.
   //
@@ -646,6 +667,8 @@ World::init()
   variable_control.insert(opt_gravity_accel,"Gravity");
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(opt_ball_radius,"Ball Radius");
+  variable_control.insert_power_of_2(block_size,"Block Size");
+  variable_control.insert(opt_block_color_pass,"Color by Block in Pass");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
@@ -938,6 +961,30 @@ World::cuda_init()
   // Send pointer to this storage to cuda.
   //
   cuda_balls.ptrs_to_cuda("balls_x");
+
+  // Determine resources used by each CUDA kernel.
+  // See demo-x-kernel for code.
+  //
+  CE(cuda_get_attr_plat_pairs(&cfa_platform,&cfa_pairs));
+
+  block_size_max =
+    min(cfa_platform.maxThreadsPerBlock, cfa_pairs.maxThreadsPerBlock);
+  set_min(block_size_max,cuda_prop.maxThreadsPerBlock);
+
+  printf("CUDA Routine Resource Usage:\n");
+  printf(" pass_platform: %6zd shared, %zd const, %zd loc, %d regs; "
+         "%d max thr\n",
+         cfa_platform.sharedSizeBytes,
+         cfa_platform.constSizeBytes,
+         cfa_platform.localSizeBytes,
+         cfa_platform.numRegs,
+         cfa_platform.maxThreadsPerBlock);
+  printf(" pass_pairs: %6zd shared, %zd const, %zd loc, %d regs; %d max thr\n",
+         cfa_pairs.sharedSizeBytes,
+         cfa_pairs.constSizeBytes,
+         cfa_pairs.localSizeBytes,
+         cfa_pairs.numRegs,
+         cfa_pairs.maxThreadsPerBlock);
 }
 
 
@@ -1097,6 +1144,9 @@ World::cuda_constants_update()
 
   if ( !cuda_constants_stale ) return;
   cuda_constants_stale = false;
+
+  set_max(block_size, 1);
+  set_min(block_size, block_size_max);
 
   // The macros below copy values to CUDA device variables with
   // the same name.
@@ -1818,6 +1868,8 @@ World::cuda_schedule()
   for ( Ball_Iterator ball(balls); ball; ball++ )
     {
       ball->idx = ball.get_idx();
+      ball->prev_velocity = ball->velocity;
+      ball->color_block = -1; // Used for coloring based on block num.
       if ( !ball->proximity.occ() ) continue;
       ball->pass = -1;
       ball->pass_iterated = -1;
@@ -1834,12 +1886,14 @@ World::cuda_schedule()
   int thd_rounds = 0;           // Used for placement tuning.
   int next_col[max_rounds];
   bool new_pass = true;
+  bool new_block = false;
   const int ball_idx_bits = 18;
 
   PQueue<int> tacts;
 
   passes.reset();
   PSList<Ball*,uint> pref_balls;
+  const int soft_ball_limit = min(block_size,ball_limit);
 
   while ( true )
     {
@@ -1847,7 +1901,10 @@ World::cuda_schedule()
       // work on, grab any unplaced ball.
       //
       if ( !neighborhood.occ() && balls_todo_now->occ() )
-        neighborhood += balls_todo_now->pop();
+        {
+          if ( ball_count >= soft_ball_limit ) new_block = true;
+          neighborhood += balls_todo_now->pop();
+        }
 
       // Check for end of this pass.
       //
@@ -1874,10 +1931,11 @@ World::cuda_schedule()
       // or if this is the start of a new pass and the current block isn't
       // empty.
       //
-      if ( ball_count == ball_limit || new_pass && ball_count )
+      if ( new_pass && ball_count || new_block )
         {
+          new_block = false;
           ball_count = 0;  block_num++;
-          memset(next_col,0,sizeof(next_col));
+          bzero(next_col,sizeof(next_col));
         }
 
       // If necessary, initialize a new pass.
@@ -1950,11 +2008,18 @@ World::cuda_schedule()
       int rounds_skipped = 0;
       int dwell_count = 0;
       int round = 0;
+      int round_full_cnt = 0;
       while ( tacts.occ() && round < max_rounds )
         {
           // If all threads are busy this round, try next round.
           //
-          if ( next_col[round] == block_size ){ round++;  continue; }
+          if ( next_col[round] == block_size )
+            {
+              round++;  round_full_cnt++;
+              if ( round_full_cnt > ( block_size >> 1 ) ) 
+                { new_block = true;  break; }
+              continue;
+            }
 
           // Counter used for tuning CPU time of this scheduling algorithm.
           iterations++;
@@ -2111,7 +2176,7 @@ World::cuda_schedule()
   const int warps_per_block = max(1,block_size >> warp_lg);
   const int warp_limit = ( block_num + 1 ) * warps_per_block;
   int warp_rounds_each[warp_limit];
-  memset(warp_rounds_each,0,sizeof(warp_rounds_each));
+  bzero(warp_rounds_each,sizeof(warp_rounds_each));
   while ( Contact* const c = pair_check.iterate() )
     {
       const int round_cnt = c->round + 1;
@@ -2122,6 +2187,8 @@ World::cuda_schedule()
       warp_rounds += a;
     }
 
+  round_count_prev = total_rounds;
+  pass_count_prev = passes.occ();
   static int total_rounds_max = 0;
   if ( opt_info || total_rounds > total_rounds_max )
     {
@@ -2194,6 +2261,7 @@ World::cuda_schedule()
               ASSERTS( block_balls_needed[idx] == -1 );
               b->sm_idx = ball_sidx_next++;
               block_balls_needed[ idx ] = b->idx;
+              if ( c->pass == opt_block_color_pass ) b->color_block = block;
             }
         }
 
@@ -2219,7 +2287,6 @@ World::time_step_cuda(int iters_per_frame, bool just_before_render)
 
   cuda_init();
   const int ball_cnt = balls.occ();
-  block_size = 256;
 
   // Set configuration for platform pass.
   //
@@ -2241,6 +2308,10 @@ World::time_step_cuda(int iters_per_frame, bool just_before_render)
   if ( pt_sched_data_pending )
     {
       pt_sched_waitfor();
+      if ( opt_color_events )
+        for ( Ball *b; balls.iterate(b); )
+          b->color_event =
+            b->color_block >= 0 ? *colors[b->color_block & colors_mask] : dark;
       block_balls_needed.ptrs_to_cuda("block_balls_needed");
       block_balls_needed.to_cuda();
       cuda_tacts_schedule.ptrs_to_cuda("tacts_schedule");
@@ -2254,6 +2325,8 @@ World::time_step_cuda(int iters_per_frame, bool just_before_render)
   // Make copy of ball structures for debugging.
   Ball ball_a = *balls[0];
   Ball ball_a1 = *balls[min(1,balls.occ()-1)];
+
+  if ( passes.occ() ) block_count_prev = passes[0].dim_grid.x;
 
   // Start timer. (Used for code tuning.)
   //
@@ -2846,14 +2919,25 @@ World::render()
      ball.velocity.x,ball.velocity.y,ball.velocity.z);
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Debug Option: %d %d ('qQ')  "
-     "Physics Verification %d ('v') Tact Pairs %d\n",
+    ("Physics: %s ('a')  Debug Options: %d %d ('qQ')  "
+     "Physics Verification %d ('v')\n",
      gpu_physics_method_str[opt_physics_method], 
-     opt_debug, opt_debug2, opt_verify, contact_pairs.occ());
+     opt_debug, opt_debug2, opt_verify);
+  if ( opt_physics_method == GP_cuda )
+    ogl_helper.fbprintf
+      ("MPs: %d  Blocks: %d  (%.1f Bl/MP)  Th/Bl: %d  WP/Bl: %.3f  "
+       "Passes: %d  Rounds: %d\n",
+       cuda_prop.multiProcessorCount,
+       block_count_prev,
+       block_count_prev / double(cuda_prop.multiProcessorCount),
+       block_size,
+       block_size / 32.0,
+       pass_count_prev, round_count_prev
+       );
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
-                      cvar->name,cvar->var[0]);
+                      cvar->name,cvar->get_val());
 
   if ( opt_mirror )
     {
@@ -3158,7 +3242,7 @@ World::cb_keyboard()
   case 'R': balls_remove(); break;
   case 's': balls_stop(); break;
   case 'S': balls_rot_stop(); break;
-  case 'T': benchmark_setup(3); break;
+  case 'T': benchmark_setup(1); break;
   case 't': benchmark_setup(5); break;
   case 'q': opt_debug = !opt_debug; break;
   case 'Q': opt_debug2 = !opt_debug2; break;
@@ -3231,6 +3315,3 @@ main(int argv, char **argc)
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.render_w,&world);
 }
-
-
-

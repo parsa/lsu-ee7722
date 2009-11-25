@@ -574,3 +574,9 @@ pCUDA_Memory, pCUDA_Memory_X:
   SOA turned off by default, and probably bitrotted.
   Now allocate device memory just before needed rather than when alloc
    called.
+
+
+Some more tuning of CUDA schedule.
+Optionally color ball based on block placement.
+Avoid cuda errors by using maximum number of threads for cuda routines.
+Show block size info at top of frame.

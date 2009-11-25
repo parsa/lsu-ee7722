@@ -528,9 +528,21 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt)
 // Resolve ball collisions with platform, also update ball position
 // and orientation.
 
-__global__ void pass_platform(int ball_count);
 __device__ void platform_collision(CUDA_Ball_W& ball);
+__global__ void pass_platform(int ball_count);
 
+__host__ cudaError_t
+cuda_get_attr_plat_pairs
+(struct cudaFuncAttributes *attr_platform,
+ struct cudaFuncAttributes *attr_pairs)
+{
+  // Return attributes of CUDA functions. The code needs the
+  // maximum number of threads.
+  cudaError_t e1 = cudaFuncGetAttributes(attr_platform,pass_platform);
+  if ( e1 ) return e1;
+  cudaError_t e2 = cudaFuncGetAttributes(attr_pairs,pass_pairs);
+  return e2;
+}
 
 __host__ void 
 pass_platform_launch
@@ -539,7 +551,7 @@ pass_platform_launch
   pass_platform<<<dg,db>>>(ball_count);
 }
 
-__device__ void
+__global__ void
 pass_platform(int ball_count)
 {
   /// Main CUDA routine for resolving collisions with platform and

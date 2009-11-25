@@ -49,6 +49,10 @@ struct  CUDA_Ball_W { // W is for work.
 
 __host__ void pass_platform_launch(dim3 dg, dim3 db, int ball_count);
 
+__host__ cudaError_t cuda_get_attr_plat_pairs
+(struct cudaFuncAttributes *attr_platform,
+ struct cudaFuncAttributes *attr_pairs);
+
 __host__ void 
 pass_pairs_launch
 (dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt);
