@@ -278,6 +278,8 @@ struct pVariable_Control_Elt
   float inc_factor, dec_factor;
   int *ivar;
   int inc;
+  bool power_of_2;
+  double get_val() const { return var ? *var : double(*ivar); }
 };
 
 class pVariable_Control {
@@ -302,6 +304,15 @@ public:
     elt->dec_factor = 1.0 / elt->inc_factor;
   }
 
+  void insert_power_of_2(int &var, const char *name)
+  {
+    pVariable_Control_Elt* const elt = insert_common(name);
+    elt->ivar = &var;
+    elt->inc_factor = 1;
+    elt->dec_factor = 1;
+    elt->power_of_2 = true;
+  }
+
 private:
   pVariable_Control_Elt* insert_common(const char *name)
   {
@@ -313,18 +324,22 @@ private:
     elt->name = strdup(name);
     elt->ivar = NULL;
     elt->var = NULL;
+    elt->power_of_2 = false;
     return elt;
   }
 public:
 
   void adjust_higher() {
     if ( !current ) return;
-    if ( current->var ) current->var[0] *= current->inc_factor;
+    if ( current->power_of_2 ) current->ivar[0] <<= 1;
+    else if ( current->var )   current->var[0] *= current->inc_factor;
     else                current->ivar[0] += current->inc;
   }
   void adjust_lower() {
     if ( !current ) return;
-    if ( current->var ) current->var[0] *= current->dec_factor;
+    if ( current->power_of_2 ) 
+      { if ( current->ivar[0] ) current->ivar[0] >>= 1; }
+    else if ( current->var )   current->var[0] *= current->dec_factor;
     else                current->ivar[0] -= current->inc;
   }
   void switch_var_right()
