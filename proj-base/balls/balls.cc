@@ -1832,6 +1832,7 @@ World::contact_pairs_find()
   const double prox_dist_l_sq = pow( region_length_large, 2 );
   const float region_length_small = 2.1 * opt_ball_radius;
   const double prox_dist_s_sq = pow( region_length_small, 2 );
+  const double delta_d_min = 0.1 * schedule_lifetime_steps * opt_ball_radius;
 
   /// Find pairs of balls that are, or might soon be, touching.
   //
@@ -1855,7 +1856,7 @@ World::contact_pairs_find()
             {
               pVect delta_v(ball1->velocity,ball9->velocity);
               const double delta_d = lifetime_delta_t * delta_v.mag();
-              const double dist2 = dist.magnitude - delta_d;
+              const double dist2 = dist.magnitude - max(delta_d,delta_d_min);
               if ( dist2 > region_length_small ) continue;
             }
           const int c_idx = contact_pairs.occ();
