@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2009), GPU Programming
 //
- /// Vertex Arrays, Buffer Objects
+ /// Textures, Blending, and the Alpha Test
 
 // $Id:$
 
