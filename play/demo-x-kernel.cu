@@ -76,6 +76,11 @@ __constant__ float mo_vel_factor, v_to_do;
 typedef float3 pCoor;
 typedef float3 pVect;
 
+__device__ float3 make_float3(float4 f4){return make_float3(f4.x,f4.y,f4.z);}
+__device__ float3 m3(float4 a){ return make_float3(a); }
+__device__ float3 xyz(float4 a){ return m3(a); }
+__device__ float4 m4(float3 v, float w) { return make_float4(v.x,v.y,v.z,w); }
+
 __device__ pVect operator +(pVect a,pVect b)
 { return make_float3(a.x+b.x,a.y+b.y,a.z+b.z); }
 __device__ pVect operator -(pVect a,pVect b)
@@ -112,6 +117,7 @@ mv(float x, float y, float z){ return make_float3(x,y,z); }
 
 __device__ float dot(pVect a, pVect b){ return a.x*b.x + a.y*b.y + a.z*b.z;}
 __device__ float dot(pVect a, pNorm b){ return dot(a,b.v); }
+__device__ float dot3(float4 a, float4 b){ return dot(m3(a),m3(b)); }
 
 __device__ float mag_sq(pVect v){ return dot(v,v); }
 __device__ float length(pVect a) {return sqrtf(mag_sq(a));}
@@ -153,26 +159,15 @@ struct pQuat {
 };
 
 // Make Quaternion
-__device__ pQuat mq(pNorm axis, float angle)
+__device__ float4 mq(pNorm axis, float angle)
 {
-  pQuat q;
-  q.w = cos(angle/2);
-  q.v = sin(angle/2) * axis;
-  return q;
-}
-__device__ pQuat mq(float4 a)
-{
-  pQuat q;
-  q.w = a.w; q.v.x = a.x; q.v.y = a.y; q.v.z = a.z;
-  return q;
+  return m4( sin(angle/2) * axis, cos(angle/2) );
 }
 
 // Make float4
 __device__ float4 m4(pQuat q){ return make_float4(q.v.x,q.v.y,q.v.z,q.w); }
-__device__ float3 xyz(float4 a){ return make_float3(a.x,a.y,a.z); }
+__device__ float4 m4(pNorm v, float w) { return m4(v.v,w); }
 
-
-__device__ float3 make_float3(float4 f4){return make_float3(f4.x,f4.y,f4.z);}
 
 __device__ int
 div_p2_ceil(int num, int den_lg)
@@ -190,6 +185,7 @@ cross(float3 a, float3 b)
 }
 __device__ pVect cross(pVect a, pNorm b){ return cross(a,b.v); }
 __device__ pVect cross(pNorm a, pVect b){ return cross(a.v,b); }
+__device__ pVect crossf3(float4 a, float4 b) { return cross(m3(a),m3(b)); }
 
 // Cross Product of Vectors Between Coordinates
 __device__ float3
@@ -201,12 +197,11 @@ __device__ float3
 }
 __device__ pVect cross3(pVect a, pVect b, pNorm c) { return cross3(a,b,c.v); }
 
-__device__ pQuat operator *(pQuat a, pQuat b)
+__device__ float4 quat_mult(float4 a, float4 b)
 {
-  pQuat p;
-  p.w = a.w * b.w - dot(a.v,b.v);
-  p.v = a.w * b.v + b.w * a.v + cross(a.v,b.v);
-  return p;
+  float w = a.w * b.w - dot3(a,b);
+  float3 v = a.w * m3(b) + b.w * m3(a) + crossf3(a,b);
+  return make_float4(v.x,v.y,v.z,w);
 };
 
 
@@ -586,7 +581,8 @@ pass_platform(int ball_count)
   ball.position += delta_t * ball.velocity;
   pNorm axis = mn(ball.angular_momentum);
   balls_x.orientation[idx] =
-    m4( mq(axis,delta_t * axis.magnitude) * mq(balls_x.orientation[idx]) );
+    quat_mult( balls_x.orientation[idx],
+               mq( axis, delta_t * axis.magnitude ) );
 
   /// Copy other updated data to memory.
   //
