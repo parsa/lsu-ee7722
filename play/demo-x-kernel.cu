@@ -161,7 +161,7 @@ struct pQuat {
 // Make Quaternion
 __device__ float4 mq(pNorm axis, float angle)
 {
-  return m4( sin(angle/2) * axis, cos(angle/2) );
+  return m4( sin(angle/2) * axis.v, cos(angle/2) );
 }
 
 // Make float4
@@ -581,8 +581,8 @@ pass_platform(int ball_count)
   ball.position += delta_t * ball.velocity;
   pNorm axis = mn(ball.angular_momentum);
   balls_x.orientation[idx] =
-    quat_mult( balls_x.orientation[idx],
-               mq( axis, delta_t * axis.magnitude ) );
+    quat_mult( mq( axis, delta_t * axis.magnitude ),
+               balls_x.orientation[idx] );
 
   /// Copy other updated data to memory.
   //
