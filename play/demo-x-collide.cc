@@ -1787,6 +1787,7 @@ World::contact_pairs_find()
   const double prox_dist_l_sq = pow( region_length_large, 2 );
   const float region_length_small = 2.1 * opt_ball_radius;
   const double prox_dist_s_sq = pow( region_length_small, 2 );
+  const double delta_d_min = 0.1 * schedule_lifetime_steps * opt_ball_radius;
 
   /// Find pairs of balls that are, or might soon be, touching.
   //
@@ -1810,7 +1811,7 @@ World::contact_pairs_find()
             {
               pVect delta_v(ball1->velocity,ball9->velocity);
               const double delta_d = lifetime_delta_t * delta_v.mag();
-              const double dist2 = dist.magnitude - delta_d;
+              const double dist2 = dist.magnitude - max(delta_d,delta_d_min);
               if ( dist2 > region_length_small ) continue;
             }
           const int c_idx = contact_pairs.occ();
@@ -2288,12 +2289,17 @@ World::time_step_cuda(int iters_per_frame, bool just_before_render)
   cuda_init();
   const int ball_cnt = balls.occ();
 
+  const int plat_block_size_1pmp =
+    min(64,int(ceil(double(ball_cnt) / cuda_prop.multiProcessorCount)));
+  const int plat_block_size =
+    min(plat_block_size_1pmp, cfa_platform.maxThreadsPerBlock);
+
   // Set configuration for platform pass.
   //
   dim3 dim_grid, dim_block;
-  dim_grid.x = int(ceil(double(ball_cnt)/block_size));
+  dim_grid.x = int(ceil(double(ball_cnt)/plat_block_size));
   dim_grid.y = dim_grid.z = 1;
-  dim_block.x = block_size;
+  dim_block.x = plat_block_size;
   dim_block.y = dim_block.z = 1;
 
   // If necessary, command scheduler thread to start working on a schedule.
