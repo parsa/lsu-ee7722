@@ -13,7 +13,7 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 150
+#version 150 compatibility
 
 // The _GEOMETRY_SHADER_ define is put there by code in shader.h.
 //
