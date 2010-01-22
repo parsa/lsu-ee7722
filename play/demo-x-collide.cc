@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE X70X-X (Spring 2010), GPU
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -311,6 +311,7 @@ public:
   bool opt_debug;   // Turns something on and off. Changes frequently.
   bool opt_debug2;  // Turns something else on and off. Changes frequently.
   bool opt_info;    // Request info to be printed to stdout.
+  int opt_fixed_lod;
 
   // Time in simulated world.
   //
@@ -410,6 +411,8 @@ public:
   int opt_mirror_method;
   bool opt_normals_visible;
   bool opt_color_events;
+
+  int tri_count; // For tuning, demo.
 
   pShader *vs_fixed;
   pShader *vs_shadow;
@@ -678,7 +681,9 @@ World::init()
 
   ball_countdown = 0.1;
   sphere.init(40);
+  sphere.tri_count = &tri_count;
   sphere_lite.init(4);
+  sphere_lite.tri_count = &tri_count;
 
   sphere_lod_max = 40;
   sphere_lod_min = 8;
@@ -690,7 +695,11 @@ World::init()
     {
       const int lod = sphere_lod_min + int( i * sphere_delta_lod + 0.5 );
       spheres[i].init(lod);
+      spheres[i].tri_count = &tri_count;
     }
+
+  opt_fixed_lod = -1;
+  variable_control.insert(opt_fixed_lod,"Fixed LOD",1,-1,sphere_count-1);
 
   variables_update();
   platform_update();
@@ -774,8 +783,14 @@ World::variables_update()
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
   gravity_accel_dt = delta_t * gravity_accel;
   sphere.radius = opt_ball_radius;
+  sphere.opt_render_flat = opt_debug2;
   sphere_lite.radius = opt_ball_radius;
-  for ( int i=0; i<sphere_count; i++ ) spheres[i].radius = opt_ball_radius;
+  sphere_lite.opt_render_flat = opt_debug2;
+  for ( int i=0; i<sphere_count; i++ )
+    {
+      spheres[i].radius = opt_ball_radius;
+      spheres[i].opt_render_flat = opt_debug2;
+    }
   elasticity_inv_dt = 100 * delta_t / opt_elasticity;
   if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
   ball_mo_inertia = 0.4 * opt_ball_mass * r_sq;
@@ -2666,7 +2681,8 @@ World::sphere_get(Ball *ball)
   const float dist = distance(ball->position,eye_location) - opt_ball_radius;
   const int lod_raw =
     int( 0.99 + sphere_lod_factor / dist - sphere_lod_offset );
-  const int lod = max(min(lod_raw,sphere_count-1),0);
+  const int lod =
+    opt_fixed_lod < 0 ? max(min(lod_raw,sphere_count-1),0) : opt_fixed_lod;
   return &spheres[lod];
 }
 
@@ -2684,7 +2700,8 @@ World::balls_render_simple()
       //
       if ( c > 6 ) continue;
 
-      Sphere* const s = opt_pause ? &sphere : sphere_get(ball);
+      Sphere* const s =
+        opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
 
       s->render_simple(ball->position);
     }
@@ -2758,7 +2775,8 @@ World::balls_render(bool regular)
         {
           // Get sphere with detail level appropriate for viewer distance.
           //
-          Sphere* const s = opt_pause ? &sphere : sphere_get(ball);
+          Sphere* const s = 
+            opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
 
           // Set ball's color, position, and orientation, and
           // render it.
@@ -2918,11 +2936,12 @@ World::render()
   Ball& ball = *balls.peek();
   ogl_helper.fbprintf
     ("Ball Count %4d (%4d/%4d)  Last Ball Pos  "
-     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
      balls.occ(), 
      balls.occ() - balls_occluded, balls_occluded,
      ball.position.x,ball.position.y,ball.position.z,
-     ball.velocity.x,ball.velocity.y,ball.velocity.z);
+     ball.velocity.x,ball.velocity.y,ball.velocity.z,
+     tri_count);
 
   ogl_helper.fbprintf
     ("Physics: %s ('a')  Debug Options: %d %d ('qQ')  "
@@ -2940,6 +2959,8 @@ World::render()
        block_size / 32.0,
        pass_count_prev, round_count_prev
        );
+
+  tri_count = 0;
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
