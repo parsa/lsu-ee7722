@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming -*- c++ -*-
+/// LSU EE X70X-X (Spring 2010), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -13,6 +13,7 @@ public:
   void init(int slices);
   void render();
   void render(pVect position){ center = position; render(); }
+  void render_flat();
   void render_simple(pVect position);
   void render(pVect position, pVect axisp, double anglep)
   {
@@ -37,6 +38,8 @@ public:
   pColor color;
   pMatrix rotation_matrix;
   bool default_orientation;
+  bool opt_render_flat;
+  int* tri_count; // Cumulative count of triangles rendered. 
 };
 
 void
@@ -46,6 +49,8 @@ Sphere::init(int slicesp)
   axis = pVect(0,1,0);
   angle = 0;
   radius = 2;
+  tri_count = NULL;
+  opt_render_flat = true;
   default_orientation = true;
   color = pColor(0xf9b237); // LSU Spirit Gold
   const double two_pi = 2.0 * M_PI;
@@ -107,6 +112,7 @@ Sphere::rotation_matrix_compute()
 void
 Sphere::render()
 {
+  if ( opt_render_flat ) { render_flat(); return; }
   glColor3fv(color);
   glMatrixMode(GL_MODELVIEW);
 
@@ -128,6 +134,36 @@ Sphere::render()
   glDisableClientState(GL_NORMAL_ARRAY);
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glPopMatrix();
+  if ( tri_count ) *tri_count += points_bo.elements;
+}
+
+void
+Sphere::render_flat()
+{
+  glColor3fv(color);
+  glMatrixMode(GL_MODELVIEW);
+
+  glPushMatrix();
+  glTranslatef(center.x,center.y,center.z);
+  glScalef(radius,radius,radius);
+  if ( !default_orientation ) glMultTransposeMatrixf(rotation_matrix);
+
+  glBegin(GL_TRIANGLES);
+  for ( int i=0; i<points_bo.elements-2; i++ )
+    {
+      pCoor p1(points_bo[i]);
+      pCoor p2(points_bo[i+1]);
+      pCoor p3(points_bo[i+2]);
+      pVect n(p3,p2,p1);
+      glNormal3fv(n);
+      glTexCoord2fv(&tex_coord_bo[i<<1]);   glVertex3fv(p1);
+      glTexCoord2fv(&tex_coord_bo[(i+1)<<1]); glVertex3fv(p2);
+      glTexCoord2fv(&tex_coord_bo[(i+2)<<1]); glVertex3fv(p3);
+    }
+  glEnd();
+
+  glPopMatrix();
+  if ( tri_count ) *tri_count += points_bo.elements;
 }
 
 void
@@ -145,6 +181,7 @@ Sphere::render_simple(pVect position)
   glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
+  if ( tri_count ) *tri_count += points_bo.elements;
 }
 
 
