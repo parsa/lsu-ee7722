@@ -277,7 +277,7 @@ struct pVariable_Control_Elt
   float *var;
   float inc_factor, dec_factor;
   int *ivar;
-  int inc;
+  int inc, min, max;
   bool power_of_2;
   double get_val() const { return var ? *var : double(*ivar); }
 };
@@ -289,11 +289,14 @@ public:
     size = 0;  storage = (pVariable_Control_Elt*)malloc(0); current = NULL;
     inc_factor_def = pow(10,1.0/45);
   }
-  void insert(int &var, const char *name, int inc = 1)
+  void insert(int &var, const char *name, int inc = 1,
+              int min = 0, int max = 0x7fffffff )
   {
     pVariable_Control_Elt* const elt = insert_common(name);
     elt->ivar = &var;
     elt->inc = 1;
+    elt->min = min;
+    elt->max = max;
   }
 
   void insert(float &var, const char *name, float inc_factor = 0)
@@ -333,14 +336,22 @@ public:
     if ( !current ) return;
     if ( current->power_of_2 ) current->ivar[0] <<= 1;
     else if ( current->var )   current->var[0] *= current->inc_factor;
-    else                current->ivar[0] += current->inc;
+    else                
+      {
+        current->ivar[0] += current->inc;
+        set_min(current->ivar[0],current->max);
+      }
   }
   void adjust_lower() {
     if ( !current ) return;
     if ( current->power_of_2 ) 
       { if ( current->ivar[0] ) current->ivar[0] >>= 1; }
     else if ( current->var )   current->var[0] *= current->dec_factor;
-    else                current->ivar[0] -= current->inc;
+    else
+      {
+        current->ivar[0] -= current->inc;
+        set_max(current->ivar[0],current->min);
+      }
   }
   void switch_var_right()
   {
