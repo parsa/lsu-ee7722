@@ -4,13 +4,21 @@
 ##
 ## $Id:$
 
-INCLUDE =
+COURSE_INCLUDE_DIR = ../include
+
+INCLUDE = -I$(COURSE_INCLUDE_DIR)
 LIBDIR  =
 
 PROG_NAMES = demo-3-textures demo-2-transfer demo-0-hello \
-	demo-5-fshader
+	demo-5-fshader demo-1-geom
 
 default: $(PROG_NAMES)
+
+INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
+	        gl-buffer.h texture-util.h 
+
+INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
+	 Makefile
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g 
 COMPILERFLAGS = -Wall
@@ -22,7 +30,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 
-$(OBJ_NAMES): ../include/util.h ../include/coord.h Makefile
+$(OBJ_NAMES): $(INCLUDES)
 
 $(PROG_NAMES): %: %.o Makefile
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)

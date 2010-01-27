@@ -27,8 +27,8 @@
 #include <stdlib.h>
 #include <deque>
 
-#include "frame_buffer.h"
-#include "coord.h"
+#include <gp/coord.h>
+#include <gp/util.h>
 
 #if 0
  /// Vertex Object
@@ -92,7 +92,7 @@ insert_tetrahedron(pCoor& loc, float size)
 
 
 void
-render_light(pFrame_Buffer &frame_buffer)
+render_light(pOpenGL_Helper &frame_buffer)
 {
   // This routine will be called automatically each time the frame
   // buffer needs to be painted.
@@ -495,7 +495,7 @@ render_light(pFrame_Buffer &frame_buffer)
 int
 main(int argc, char **argv)
 {
-  pFrame_Buffer frame_buffer(argc,argv);
+  pOpenGL_Helper frame_buffer(argc,argv);
   frame_buffer.show(render_light);
   return 0;
 }
