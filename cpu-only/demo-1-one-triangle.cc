@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2010), Graphics Processors
+/// LSU EE 7700-1 (Sp 2010), GPU Microarchitecture
 //
  /// CPU-Only Demo 1: One Triangle
 
