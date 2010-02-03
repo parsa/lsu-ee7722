@@ -75,6 +75,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
   pMatrix_Translate center_eye(-6,-10,0);
 
 
+
   // Perspective projection, transformation to clip coordinates.
   //
   // Transform eye coordinates to clip coordinates: each visible
@@ -82,15 +83,23 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
 
   pMatrix_Frustum frustum(12,20,1,20);
 
+  pCoor cx1 = frustum * center_eye * c0;
+
+
   // Transform to window coordinates.
   //
   // Transform device coordinates (homogenized clip coordinates) to
   // window coordinates: x in [0,win_width) and y in [0,win_height).
 
   pMatrix_Translate center_window(1,1,0);
+
+  pCoor cx2 = center_window * frustum * center_eye * c0;
+
   pMatrix_Scale scale(win_width/2);
 
   pMatrix transform = scale * center_window * frustum * center_eye;
+
+  pCoor cx3 = transform * c0;
 
   //
   // Apply transformation to transform triangle coordinates from

@@ -4,7 +4,9 @@
 ##
 ## $Id:$
 
-INCLUDE =
+COURSE_INCLUDE_DIR = ../include
+
+INCLUDE = -I$(COURSE_INCLUDE_DIR)
 LIBDIR  =
 
 PROG_NAMES = simple demo-1-one-triangle demo-2-many-triangles \
@@ -21,7 +23,7 @@ endif
 default: $(PROG_NAMES)
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3  $(CFLAGSMAGIK)
-COMPILERFLAGS = -Wall -O3
+COMPILERFLAGS = -Wall 
 CC = gcc
 CXX = g++
 CXXFLAGS = $(CFLAGS)
@@ -29,7 +31,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt $(LDFLAGSMAGIK)
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 
-$(OBJ_NAMES): frame_buffer.h coord.h Makefile
+$(OBJ_NAMES): frame_buffer.h coord.h Makefile $(COURSE_INCLUDE_DIR)/misc.h
 
 $(PROG_NAMES): %: %.o Makefile
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)

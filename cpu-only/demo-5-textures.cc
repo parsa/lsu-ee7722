@@ -900,9 +900,9 @@ render_light(pFrame_Buffer &frame_buffer)
                   // Determine texture's s (x)  and t (y) coordinates.
                   //
                   const int tex_x =
-                    (wrapu(interp_line.s)-0.0001) * c0w.texture->width;
+                    int((wrapu(interp_line.s)-0.0001) * c0w.texture->width);
                   const int tex_y =
-                    (wrapu(interp_line.t)-0.0001) * c0w.texture->height;
+                    int((wrapu(interp_line.t)-0.0001) * c0w.texture->height);
 
                   // Read texel from image.
                   //

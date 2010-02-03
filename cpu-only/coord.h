@@ -383,7 +383,7 @@ public:
     if ( fabs(dot(dir_to,pVect(0,1,0))) > 0.9999 )
       {
         pVect axis(dir_from, dir_to);
-        const int len = axis.normalize();
+        const double len = axis.normalize();
         set_rotation(axis,asin(len));
       }
     else

@@ -33,7 +33,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
   ///
 
   const int win_width = frame_buffer.get_width();
-  const int win_height = frame_buffer.get_height();
+  // const int win_height = frame_buffer.get_height();
   int32_t* const f_buffer = frame_buffer.get_buffer();
 
   ///

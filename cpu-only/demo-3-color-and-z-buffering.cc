@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <deque>
 
+#include <gp/misc.h>
 #include "frame_buffer.h"
 #include "coord.h"
 
@@ -57,8 +58,14 @@ public:
 // Declare vertex list types so that many vertices can easily be
 // operated on.
 //
-typedef std::deque<pVertex*> pVertex_List;
-typedef pVertex_List::iterator pVertex_Iterator;
+class pVertex_List : public PStack<pVertex> {
+public:
+  pVertex_List():PStack<pVertex>(){};
+  void append_vertex(float x, float y, float z, uint32_t color)
+  {
+    new (pushi()) pVertex(x,y,z,color);
+  }
+};
 
  /// Vertex Sort
 //
@@ -66,10 +73,10 @@ typedef pVertex_List::iterator pVertex_Iterator;
 //
 class pSortVertices {
 public:
-  pSortVertices(pVertex_Iterator& ci)
-  {
+pSortVertices(pVertex *u1, pVertex *u2, pVertex *u3)
+{
     rv_idx = 0;
-    for ( int i=0; i<3; i++ ) v[i] = ci[i];
+    v[0] = u1;  v[1] = u2;  v[2] = u3;
     swap(0,1); swap(0,2); swap(1,2);
   }
   operator pVertex& () { return *v[rv_idx++]; }
@@ -147,9 +154,7 @@ public:
 
   uint32_t color()
   {
-    return ( ( clampi(red,0,255) << 0 )
-             | ( clampi(green,0,255) << 8 )
-             | ( clampi(blue,0,255) << 16 ) );
+    return ( ( int(red) << 0 ) | ( int(green) << 8 ) | ( int(blue) << 16 ) );
   }
   float d_red, d_green, d_blue, d_x, d_z, red, green, blue, x, z;
   int xi, xi_last, yi, yi_last;
@@ -200,7 +205,7 @@ render_z_color(pFrame_Buffer &frame_buffer)
 
   float y = 0;
   float z = -1;
-  int32_t color = 0xf9b237; // LSU Spirit Gold
+  int32_t color_red = 0xff0000;
   for ( int i = 0; i < pattern_levels; i++ )
     {
       const float next_y = y + pattern_pitch_y;
@@ -210,11 +215,11 @@ render_z_color(pFrame_Buffer &frame_buffer)
         {
           // Add a multicolored triangle to list.
           //
-          vtx_list.push_back( new pVertex( x, y, z, color ) );
+          vtx_list.append_vertex( x, y, z, color_red );
           x += pattern_half_pitch_x;
-          vtx_list.push_back( new pVertex( x, next_y, next_z, color) );
+          vtx_list.append_vertex( x, next_y, next_z, color_red );
           x += pattern_half_pitch_x;
-          vtx_list.push_back( new pVertex( x, y, z, color ) );
+          vtx_list.append_vertex( x, y, z, color_red );
         }
       y = next_y;
       z = next_z;
@@ -222,9 +227,9 @@ render_z_color(pFrame_Buffer &frame_buffer)
 
   // Add another triangle, one that passes through grid.
   //
-  vtx_list.push_back( new pVertex( 3, -3, -1, 0xff0000 ) );
-  vtx_list.push_back( new pVertex( 0, 5, -5, 0xff00 ) );
-  vtx_list.push_back( new pVertex( 9, 6, -9, 0xff ) );
+  vtx_list.append_vertex( 3, -3, -1, 0xff0000  );
+  vtx_list.append_vertex( 0, 5, -5, 0xff00  );
+  vtx_list.append_vertex( 9, 6, -9, 0xff );
 
   ///
   /// Rendering Pipeline Starts Here
@@ -252,19 +257,22 @@ render_z_color(pFrame_Buffer &frame_buffer)
   ///
   /// Transform Coordinates
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const v = vtx_list.iterate() )
     {
-      pVertex& v = **ci;  // Get reference to current vertex
-      v *= transform;
-      v.homogenize();
+      *v *= transform;
+      v->homogenize();
     }
 
   ///
   /// Rasterize Primitives
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci += 3 )
+  while ( true )
     {
-      pSortVertices sort(ci); // Sort next 3 items in list.
+      pVertex* const u0 = vtx_list.iterate();
+      if ( !u0 ) break;
+      pVertex* const u1 = vtx_list.iterate();
+      pVertex* const u2 = vtx_list.iterate();
+      pSortVertices sort(u0,u1,u2); // Sort next 3 items in list.
       pVertex& c0w = sort;    // Coordinate with smallest y.
       pVertex& c1w = sort;
       pVertex& c2w = sort;    // Coordinate with largest y.
@@ -332,11 +340,6 @@ render_z_color(pFrame_Buffer &frame_buffer)
           fb_line_idx += win_width;
         }
     }
-
-  // A paint routine is no place for a memory leak!
-  //
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
-    delete *ci;
   free(z_buffer);
 }
 

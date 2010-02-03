@@ -30,6 +30,7 @@
 
 #include "frame_buffer.h"
 #include "coord.h"
+#include <gp/misc.h>
 
 
  /// Vertex Object
@@ -51,8 +52,14 @@ public:
 // Declare vertex list types so that many vertices can easily be
 // operated on.
 //
-typedef std::deque<pVertex*> pVertex_List;
-typedef pVertex_List::iterator pVertex_Iterator;
+class pVertex_List : public PStack<pVertex> {
+public:
+  pVertex_List():PStack<pVertex>(){};
+  void append_vertex(float x, float y, float z, uint32_t color)
+  {
+    new (pushi()) pVertex(x,y,z,color);
+  }
+};
 
  /// Vertex Sort
 //
@@ -60,10 +67,10 @@ typedef pVertex_List::iterator pVertex_Iterator;
 //
 class pSortVertices {
 public:
-  pSortVertices(pVertex_Iterator& ci)
-  {
+pSortVertices(pVertex *u1, pVertex *u2, pVertex *u3)
+{
     rv_idx = 0;
-    for ( int i=0; i<3; i++ ) v[i] = ci[i];
+    v[0] = u1;  v[1] = u2;  v[2] = u3;
     swap(0,1); swap(0,2); swap(1,2);
   }
   operator pVertex& () { return *v[rv_idx++]; }
@@ -195,7 +202,7 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
   //
   frame_buffer.fbprintf("Use arrow keys to tilt road.\n");
 
-  const int32_t color_red = 0xff0000;
+  const int32_t color_red = 0xff;
   const int32_t color_green = 0xff00;
 
   float y = 0;
@@ -211,11 +218,11 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
 
           // Add a red triangle to list.
           //
-          vtx_list.push_back( new pVertex( x, y, z, color_red ) );
+          vtx_list.append_vertex( x, y, z, color_red );
           x += pattern_half_pitch_x;
-          vtx_list.push_back( new pVertex( x, next_y, next_z, color_red ) );
+          vtx_list.append_vertex( x, next_y, next_z, color_red );
           x += pattern_half_pitch_x;
-          vtx_list.push_back( new pVertex( x, y, z, color_red ) );
+          vtx_list.append_vertex( x, y, z, color_red );
         }
 
       y = next_y;
@@ -224,9 +231,9 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
 
   // Add another triangle, a green one that passes through grid.
   //
-  vtx_list.push_back( new pVertex( 3, -3, -1, color_green  ) );
-  vtx_list.push_back( new pVertex( 0, 5, -5, color_green  ) );
-  vtx_list.push_back( new pVertex( 9, 6, -9, color_green ) );
+  vtx_list.append_vertex( 3, -3, -1, color_green  );
+  vtx_list.append_vertex( 0, 5, -5, color_green  );
+  vtx_list.append_vertex( 9, 6, -9, color_green );
 
   ///
   /// Rendering Pipeline Starts Here
@@ -247,19 +254,22 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
   ///
   /// Transform Coordinates
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const v = vtx_list.iterate() )
     {
-      pVertex& v = **ci;  // Get reference to current vertex
-      v *= transform;
-      v.homogenize();
+      *v *= transform;
+      v->homogenize();
     }
 
   ///
   /// Rasterize Primitives
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci += 3 )
+  while ( true )
     {
-      pSortVertices sort(ci); // Sort next 3 items in list.
+      pVertex* const u0 = vtx_list.iterate();
+      if ( !u0 ) break;
+      pVertex* const u1 = vtx_list.iterate();
+      pVertex* const u2 = vtx_list.iterate();
+      pSortVertices sort(u0,u1,u2); // Sort next 3 items in list.
       pVertex& c0w = sort;    // Coordinate with smallest y.
       pVertex& c1w = sort;
       pVertex& c2w = sort;    // Coordinate with largest y.
@@ -319,11 +329,6 @@ render_many_triangles(pFrame_Buffer &frame_buffer)
           fb_line_idx += win_width;
         }
     }
-
-  // A paint routine is no place for a memory leak!
-  //
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
-    delete *ci;
 }
 
 int
