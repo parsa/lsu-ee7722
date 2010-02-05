@@ -58,8 +58,8 @@
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
-#include <deque>
 
+#include <gp/misc.h>
 #include "frame_buffer.h"
 #include "coord.h"
 
@@ -189,8 +189,26 @@ public:
 // Declare vertex list types so that many vertices can easily be
 // operated on.
 //
-typedef std::deque<pVertex*> pVertex_List;
-typedef pVertex_List::iterator pVertex_Iterator;
+class pVertex_List : public PStack<pVertex> {
+public:
+  pVertex_List():PStack<pVertex>(){};
+  pVertex* append_vertex_get_ptr(pCoor c, pVect& n, uint32_t color)
+  {
+    /// Warning: Return pointer can become invalid at next append.
+    append_vertex(c,n,color);
+    return &peek();
+  }
+  int append_vertex(pCoor c, pVect& n, uint32_t color)
+  {
+    new (pushi()) pVertex(c,n,color);
+    return occ() - 1;
+  }
+  int append_vertex(float x, float y, float z, uint32_t color)
+  {
+    new (pushi()) pVertex(x,y,z,color);
+    return occ() - 1;
+  }
+};
 
  /// Vertex Sort
 //
@@ -198,10 +216,10 @@ typedef pVertex_List::iterator pVertex_Iterator;
 //
 class pSortVertices {
 public:
-  pSortVertices(pVertex_Iterator& ci)
+  pSortVertices(pVertex *u1, pVertex *u2, pVertex *u3)
   {
     rv_idx = 0;
-    for ( int i=0; i<3; i++ ) v[i] = ci[i];
+    v[0] = u1;  v[1] = u2;  v[2] = u3;
     swap(0,1); swap(0,2); swap(1,2);
   }
   operator pVertex& () { return *v[rv_idx++]; }
@@ -401,9 +419,9 @@ insert_tetrahedron(pVertex_List& vtx_list, pCoor& loc, float size)
   pVect n;
 # define TRI(va,vb,vc) \
   n = cross(va,vb,vc); \
-  vtx_list.push_back( new pVertex(va,n,c1) ); \
-  vtx_list.push_back( new pVertex(vb,n,c2) ); \
-  vtx_list.push_back( new pVertex(vc,n,c2) );
+  vtx_list.append_vertex(va,n,c1); \
+  vtx_list.append_vertex(vb,n,c2); \
+  vtx_list.append_vertex(vc,n,c2);
   TRI(v0,v1,v2); TRI(v0,v2,v3); TRI(v0,v3,v1);
 # undef TRI
 }
@@ -415,25 +433,25 @@ insert_triangle_or_rectangle
  bool triangle, float s, float t, float width, float height)
 {
   pVect n(w,h);
-  pVertex *vtx = new pVertex(v,n,c);
-  vtx->s = s;  vtx->t = t;   vtx_list.push_back(vtx);
+  pVertex *vtx = vtx_list.append_vertex_get_ptr(v,n,c);
+  vtx->s = s;  vtx->t = t;
 
-  vtx = new pVertex(v+h,n,c);
-  vtx->s = s;  vtx->t = t+height;   vtx_list.push_back(vtx);
+  vtx = vtx_list.append_vertex_get_ptr(v+h,n,c);
+  vtx->s = s;  vtx->t = t+height;
 
-  vtx = new pVertex(v+w,n,c);
-  vtx->s = s+width;  vtx->t = t;   vtx_list.push_back(vtx);
+  vtx = vtx_list.append_vertex_get_ptr(v+w,n,c);
+  vtx->s = s+width;  vtx->t = t;
 
   if ( triangle ) return;
 
-  vtx = new pVertex(v+w,n,c);
-  vtx->s = s+width;  vtx->t = t;   vtx_list.push_back(vtx);
+  vtx = vtx_list.append_vertex_get_ptr(v+w,n,c);
+  vtx->s = s+width;  vtx->t = t;
 
-  vtx = new pVertex(v+h,n,c);
-  vtx->s = s;  vtx->t = t+height;   vtx_list.push_back(vtx);
+  vtx = vtx_list.append_vertex_get_ptr(v+h,n,c);
+  vtx->s = s;  vtx->t = t+height;
 
-  vtx = new pVertex(v+h+w,n,c);
-  vtx->s = s+width;  vtx->t = t+height;   vtx_list.push_back(vtx);
+  vtx = vtx_list.append_vertex_get_ptr(v+h+w,n,c);
+  vtx->s = s+width;  vtx->t = t+height;
 
 }
 
@@ -614,13 +632,11 @@ render_light(pFrame_Buffer &frame_buffer)
   // Insert big purple triangle into the vertex list.
   //
   {
-    pVertex* const v0 = new pVertex( 1.5, 0, -3.2, color_purple );
-    pVertex* const v1 = new pVertex( 0, 5, -5, color_purple );
-    pVertex* const v2 = new pVertex( 9, 6, -9, color_purple );
-    v0->normal = v1->normal = v2->normal = cross(*v0,*v1,*v2);
-    vtx_list.push_back( v0 );
-    vtx_list.push_back( v1 );
-    vtx_list.push_back( v2 );
+    const int v0 = vtx_list.append_vertex( 1.5, 0, -3.2, color_purple );
+    const int v1 = vtx_list.append_vertex( 0, 5, -5, color_purple );
+    const int v2 = vtx_list.append_vertex( 9, 6, -9, color_purple );
+    vtx_list[v0].normal = vtx_list[v1].normal = vtx_list[v2].normal
+      = cross(vtx_list[v0],vtx_list[v1],vtx_list[v2]);
   }
 
   // Optionally apply texture to tube.
@@ -669,41 +685,45 @@ render_light(pFrame_Buffer &frame_buffer)
               marker_target += M_PI_2;
             }
 
-          pVertex* const v0 =
-            new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
+          const int v0 =
+            vtx_list.append_vertex
+            ( x_shift + r * cos(theta), r * sin(theta), z, color );
           if ( !opt_triangle_normal )
-            v0->normal = pVect(-cos(theta),-sin(theta),0);
+            vtx_list[v0].normal = pVect(-cos(theta),-sin(theta),0);
 
           // Add texture coordinates (called s and t) to vertex.
           //
-          v0->s = theta / M_PI; v0->t = z / 2;
+          vtx_list[v0].s = theta / M_PI;  
+          vtx_list[v0].t = z / 2;
 
           theta += delta_theta;
-          pVertex* const v1 =
-            new pVertex( x_shift + r * cos(theta), r * sin(theta), z1, color);
+          const int v1 =
+            vtx_list.append_vertex
+            ( x_shift + r * cos(theta), r * sin(theta), z1, color);
           if ( !opt_triangle_normal )
-            v1->normal = pVect(-cos(theta),-sin(theta),0);
+            vtx_list[v1].normal = pVect(-cos(theta),-sin(theta),0);
 
           // Add texture coordinates (called s and t) to vertex.
           //
-          v1->s = theta / M_PI; v1->t = z1 / 2;
+          vtx_list[v1].s = theta / M_PI;  
+          vtx_list[v1].t = z1 / 2;
 
           theta += delta_theta;
-          pVertex* const v2 =
-            new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
+          const int v2 =
+            vtx_list.append_vertex
+            ( x_shift + r * cos(theta), r * sin(theta), z, color );
           if ( !opt_triangle_normal )
-            v2->normal = pVect(-cos(theta),-sin(theta),0);
+            vtx_list[v2].normal = pVect(-cos(theta),-sin(theta),0);
 
           // Add texture coordinates (called s and t) to vertex.
           //
-          v2->s = theta / M_PI; v2->t = z / 2;
+          vtx_list[v2].s = theta / M_PI;  
+          vtx_list[v2].t = z / 2;
 
           if ( opt_triangle_normal )
-            v0->normal = v1->normal = v2->normal = cross(*v0,*v1,*v2);
+            vtx_list[v0].normal = vtx_list[v1].normal = vtx_list[v2].normal
+              = cross(vtx_list[v0],vtx_list[v1],vtx_list[v2]);
 
-          vtx_list.push_back( v0 );
-          vtx_list.push_back( v1 );
-          vtx_list.push_back( v2 );
         }
       z = next_z;
     }
@@ -762,13 +782,12 @@ render_light(pFrame_Buffer &frame_buffer)
   ///
   /// Transform Coordinates and Normals from Object Space to Eye Space
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const v = vtx_list.iterate() )
     {
-      pVertex& v = **ci;
-      v *= object_to_eye;
-      v.normal *= normal_to_eye;
-      v.normal.normalize();
-      v.homogenize();
+      *v *= object_to_eye;
+      v->normal *= normal_to_eye;
+      v->normal.normalize();
+      v->homogenize();
     }
 
   // Convert light location to eye space.
@@ -779,9 +798,9 @@ render_light(pFrame_Buffer &frame_buffer)
   ///
   /// Apply Lighting to Vertices
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const vptr = vtx_list.iterate() )
     {
-      pVertex& v = **ci;
+      pVertex& v = *vptr;
       const bool vertex_no_lighting = v.color & 0x1000000;
       if ( vertex_no_lighting ) continue;
 
@@ -831,20 +850,23 @@ render_light(pFrame_Buffer &frame_buffer)
   ///
   /// Transform Coordinates from Eye Space to Window Space
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const v = vtx_list.iterate() )
     {
-      pVertex& v = **ci;
-      v *= eye_to_window;
-      v.homogenize_keep_w();
+      *v *= eye_to_window;
+      v->homogenize_keep_w();
     }
 
-
+    
   ///
   /// Rasterize Primitives
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci += 3 )
+  while ( true )
     {
-      pSortVertices sort(ci); // Sort next 3 items in list.
+      pVertex* const u0 = vtx_list.iterate();
+      if ( !u0 ) break;
+      pVertex* const u1 = vtx_list.iterate();
+      pVertex* const u2 = vtx_list.iterate();
+      pSortVertices sort(u0,u1,u2); // Sort next 3 items in list.
       pVertex& c0w = sort;    // Coordinate with smallest y.
       pVertex& c1w = sort;
       pVertex& c2w = sort;    // Coordinate with largest y.
@@ -953,11 +975,6 @@ render_light(pFrame_Buffer &frame_buffer)
         }
     }
 
-  // A paint routine is no place for a memory leak!
-  // (And excessive dynamic memory allocation, but this is only a demo.)
-  //
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
-    delete *ci;
   free(z_buffer);
 }
 

@@ -12,6 +12,10 @@
 //   bright light in the tube that can dimmed, brightened, and moved
 //   around.
 
+//   The code has the following known flaws:
+//       Interpolation gives very out-of-range pixel coordinates for
+//         triangles of certain geometry.
+
  /// To compile and run:
 //
 //     make
@@ -55,8 +59,8 @@
 #include <stdio.h>
 #include <strings.h>
 #include <stdlib.h>
-#include <deque>
 
+#include <gp/misc.h>
 #include "frame_buffer.h"
 #include "coord.h"
 
@@ -94,8 +98,20 @@ public:
 // Declare vertex list types so that many vertices can easily be
 // operated on.
 //
-typedef std::deque<pVertex*> pVertex_List;
-typedef pVertex_List::iterator pVertex_Iterator;
+class pVertex_List : public PStack<pVertex> {
+public:
+  pVertex_List():PStack<pVertex>(){};
+  int append_vertex(pCoor& c, pVect& n, uint32_t color)
+  {
+    new (pushi()) pVertex(c,n,color);
+    return occ() - 1;
+  }
+  int append_vertex(float x, float y, float z, uint32_t color)
+  {
+    new (pushi()) pVertex(x,y,z,color);
+    return occ() - 1;
+  }
+};
 
  /// Vertex Sort
 //
@@ -103,10 +119,10 @@ typedef pVertex_List::iterator pVertex_Iterator;
 //
 class pSortVertices {
 public:
-  pSortVertices(pVertex_Iterator& ci)
+  pSortVertices(pVertex *u1, pVertex *u2, pVertex *u3)
   {
     rv_idx = 0;
-    for ( int i=0; i<3; i++ ) v[i] = ci[i];
+    v[0] = u1;  v[1] = u2;  v[2] = u3;
     swap(0,1); swap(0,2); swap(1,2);
   }
   operator pVertex& () { return *v[rv_idx++]; }
@@ -144,11 +160,13 @@ public:
   void set(pVertex& v0, pVertex& v1, int ymin, int ymax)
   {
     const float y_range_inv = 1.0 / ( v1.y - v0.y );
-    yi_last = ymax < int(v1.y) ? ymax : int(v1.y);
+    const int v1yi = int(v1.y);
+    yi_last = ymax < v1yi ? ymax : v1yi;
     const float pre_y = float(ymin) - v0.y;
     const bool scissor = pre_y > 0.0;
     yi = scissor ? ymin : int(v0.y);
-    const float y_range_part_inv = 1.0 / ( v1.y - yi );
+    const int y_range_part_i = v1yi - yi;
+    const float y_range_part_inv = 1.0 / y_range_part_i;
 #define DELTA(item) \
     const float dtrue_##item = (v1.item - v0.item) * y_range_inv; \
     item = v0.item + ( scissor ? pre_y * dtrue_##item : 0.0 ); \
@@ -166,7 +184,7 @@ public:
     const float pre_x = float(xmin) - vmin.x;
     const bool scissor = pre_x > 0.0;
     xi = scissor ? xmin : int(vmin.x);
-    const float x_range_part_inv = 1.0 / ( vmax.x - xi );
+    const float x_range_part_inv = 1.0 / ( int(vmax.x) - xi );
 #define DELTA(item) \
     const float dtrue_##item = (vmax.item - vmin.item) * x_range_inv; \
     item = vmin.item + ( scissor ? pre_x * dtrue_##item : 0.0 ); \
@@ -210,9 +228,9 @@ insert_tetrahedron(pVertex_List& vtx_list, pCoor& loc, float size)
   pVect n;
 # define TRI(va,vb,vc) \
   n = cross(va,vb,vc); \
-  vtx_list.push_back( new pVertex(va,n,c1) ); \
-  vtx_list.push_back( new pVertex(vb,n,c2) ); \
-  vtx_list.push_back( new pVertex(vc,n,c2) );
+  vtx_list.append_vertex(va,n,c1); \
+  vtx_list.append_vertex(vb,n,c2); \
+  vtx_list.append_vertex(vc,n,c2);
   TRI(v0,v1,v2); TRI(v0,v2,v3); TRI(v0,v3,v1);
 # undef TRI
 }
@@ -376,13 +394,11 @@ render_light(pFrame_Buffer &frame_buffer)
   // Insert big purple triangle into the vertex list.
   //
   {
-    pVertex* const v0 = new pVertex( 1.5, 0, -3.2, color_purple );
-    pVertex* const v1 = new pVertex( 0, 5, -5, color_purple );
-    pVertex* const v2 = new pVertex( 9, 6, -9, color_purple );
-    v0->normal = v1->normal = v2->normal = cross(*v0,*v1,*v2);
-    vtx_list.push_back( v0 );
-    vtx_list.push_back( v1 );
-    vtx_list.push_back( v2 );
+    const int v0 = vtx_list.append_vertex( 1.5, 0, -3.2, color_purple );
+    const int v1 = vtx_list.append_vertex( 0, 5, -5, color_purple );
+    const int v2 = vtx_list.append_vertex( 9, 6, -9, color_purple );
+    vtx_list[v0].normal = vtx_list[v1].normal = vtx_list[v2].normal
+      = cross(vtx_list[v0],vtx_list[v1],vtx_list[v2]);
   }
 
   //
@@ -427,29 +443,30 @@ render_light(pFrame_Buffer &frame_buffer)
               marker_target += M_PI_2;
             }
 
-          pVertex* const v0 =
-            new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
+          const int v0 =
+            vtx_list.append_vertex
+            ( x_shift + r * cos(theta), r * sin(theta), z, color );
           if ( !opt_triangle_normal )
-            v0->normal = pVect(-cos(theta),-sin(theta),0);
+            vtx_list[v0].normal = pVect(-cos(theta),-sin(theta),0);
 
           theta += delta_theta;
-          pVertex* const v1 =
-            new pVertex( x_shift + r * cos(theta), r * sin(theta), z1, color);
+          const int v1 =
+            vtx_list.append_vertex
+            ( x_shift + r * cos(theta), r * sin(theta), z1, color);
           if ( !opt_triangle_normal )
-            v1->normal = pVect(-cos(theta),-sin(theta),0);
+            vtx_list[v1].normal = pVect(-cos(theta),-sin(theta),0);
 
           theta += delta_theta;
-          pVertex* const v2 =
-            new pVertex( x_shift + r * cos(theta), r * sin(theta), z, color );
+          const int v2 =
+            vtx_list.append_vertex
+            ( x_shift + r * cos(theta), r * sin(theta), z, color );
           if ( !opt_triangle_normal )
-            v2->normal = pVect(-cos(theta),-sin(theta),0);
+            vtx_list[v2].normal = pVect(-cos(theta),-sin(theta),0);
 
           if ( opt_triangle_normal )
-            v0->normal = v1->normal = v2->normal = cross(*v0,*v1,*v2);
+            vtx_list[v0].normal = vtx_list[v1].normal = vtx_list[v2].normal
+              = cross(vtx_list[v0],vtx_list[v1],vtx_list[v2]);
 
-          vtx_list.push_back( v0 );
-          vtx_list.push_back( v1 );
-          vtx_list.push_back( v2 );
         }
       z = next_z;
     }
@@ -508,13 +525,12 @@ render_light(pFrame_Buffer &frame_buffer)
   ///
   /// Transform Coordinates and Normals from Object Space to Eye Space
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const v = vtx_list.iterate() )
     {
-      pVertex& v = **ci;
-      v *= object_to_eye;
-      v.normal *= normal_to_eye;
-      v.normal.normalize();
-      v.homogenize();
+      *v *= object_to_eye;
+      v->normal *= normal_to_eye;
+      v->normal.normalize();
+      v->homogenize();
     }
 
   // Convert light location to eye space.
@@ -525,9 +541,9 @@ render_light(pFrame_Buffer &frame_buffer)
   ///
   /// Apply Lighting to Vertices
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const vptr = vtx_list.iterate() )
     {
-      pVertex& v = **ci;
+      pVertex& v = *vptr;
       const bool vertex_no_lighting = v.color & 0x1000000;
       if ( vertex_no_lighting ) continue;
 
@@ -577,20 +593,23 @@ render_light(pFrame_Buffer &frame_buffer)
   ///
   /// Transform Coordinates from Eye Space to Window Space
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
+  while ( pVertex* const v = vtx_list.iterate() )
     {
-      pVertex& v = **ci;
-      v *= eye_to_window;
-      v.homogenize_keep_w();
+      *v *= eye_to_window;
+      v->homogenize_keep_w();
     }
 
 
   ///
   /// Rasterize Primitives
   ///
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci += 3 )
+  while ( true )
     {
-      pSortVertices sort(ci); // Sort next 3 items in list.
+      pVertex* const u0 = vtx_list.iterate();
+      if ( !u0 ) break;
+      pVertex* const u1 = vtx_list.iterate();
+      pVertex* const u2 = vtx_list.iterate();
+      pSortVertices sort(u0,u1,u2); // Sort next 3 items in list.
       pVertex& c0w = sort;    // Coordinate with smallest y.
       pVertex& c1w = sort;
       pVertex& c2w = sort;    // Coordinate with largest y.
@@ -667,8 +686,6 @@ render_light(pFrame_Buffer &frame_buffer)
   // A paint routine is no place for a memory leak!
   // (And excessive dynamic memory allocation, but this is only a demo.)
   //
-  for ( pVertex_Iterator ci = vtx_list.begin(); ci < vtx_list.end(); ci++ )
-    delete *ci;
   free(z_buffer);
 }
 
