@@ -1,4 +1,4 @@
-### LSU EE 7700-1 (Sp 2009), Graphics Processors
+### LSU EE 7700-1 (Sp 2010), GPU Microarchitecture
 ##
 ##  Makefile for cpu-only demo programs.
 ##
