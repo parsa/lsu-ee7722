@@ -38,11 +38,14 @@
   '((t (:family "helv" :weight bold :height 1.5)))
   "Assembler comment heading face.")
 (defface asm-comment-sub-heading-face
-  '((t (:family "helv" :weight bold :inherit 'font-lock-comment-face)))
+  '((t (:family "helv" :weight bold :inherit font-lock-comment-face)))
   "Assembler comment sub-heading face.")
 (defface asm-directive-face
   '((t (:foreground "navy" :slant italic)))
   "Assembler directive face.")
+(defface asm-memory-space-face
+  '((t (:foreground "dark olive green" :slant normal)))
+  "Assembler memory space face. (For CUDA memory/register categories.")
 (defface asm-constant-radix-face
   '((t (:foreground "gray60")))
   "Assembler radix indicator face.")
@@ -56,7 +59,7 @@
     '((t (:foreground "magenta4")))
     "Face for highlighting digit groups in numbers.")
 (defface asm-pseudo-instruction-face
-  '((t (:inherit 'font-lock-keyword-face :slant italic)))
+  '((t (:inherit font-lock-keyword-face :slant italic)))
   "Face for highlighting assembler pseudo instructions.")
 (defface asm-heading-example-face
   '((t (:foreground "ForestGreen" :weight bold)))
@@ -77,7 +80,6 @@
 (defvar ia32-all-instr-regexp
   "\\<\\(movl\\|pushl\\|call\\|jmp\\)\\>"
   "IA-32 Instruction Regexps")
-
 (when nil
   (regexp-opt 
    (list
@@ -208,6 +210,41 @@
   "Regexp matching MIPS pseudoinstructions as defined by SPIM.")
 
 
+;;
+;; PTX
+;;
+
+(when nil
+  (regexp-opt
+   (list 
+
+    "add" "sub" "addc" "subc" "mul" "mad" "mul24" "mad24" "sad" "div"
+    "div.sat"
+    "rem" "abs" "neg" "min" "max" 
+
+    "setp.eq" "setp.ne" "setp.lt" "setp.le" "setp.gt" "setp.ge"
+    "setp.lo" "setp.ls" "setp.hi" "setp.hs" "setp.equ" "setp.neu"
+    "setp.ltu" "setp.leu" "setp.gtu" "setp.geu" "setp.num" "setp.nan"
+
+    "set.eq" "set.ne" "set.lt" "set.le" "set.gt" "set.ge" "set.lo"
+    "set.ls" "set.hi" "set.hs" "set.equ" "set.neu" "set.ltu" "set.leu"
+    "set.gtu" "set.geu" "set.num" "set.nan"
+
+    "selp" "slct" "and" "or"
+    "xor" "not" "cnot" "shl" "shr" "mov" "ld" "ld.volatile" "st" "cvt"
+    "tex.1d" "tex.2d" "tex.3d"
+    "bra" "bra.uni"
+    "call" "call.uni" "ret" "ret.uni" "exit" "bar.sync" "atom" "red"
+    "vote.all" "vote.any" "vote.uni"
+    "rcp" "sqrt" "rsqrt"
+    "sin" "cos" "lg2" "ex2" "trap" "brkpt"
+
+    ) 'words))
+
+(defvar ptx-all-instr-regexp
+  "\\<\\(a\\(?:bs\\|ddc?\\|nd\\|tom\\)\\|b\\(?:ar\\.sync\\|r\\(?:a\\(?:\\.uni\\)?\\|kpt\\)\\)\\|c\\(?:all\\(?:\\.uni\\)?\\|not\\|os\\|vt\\)\\|div\\(?:\\.sat\\)?\\|ex\\(?:2\\|it\\)\\|l\\(?:d\\(?:\\.volatile\\)?\\|g2\\)\\|m\\(?:a\\(?:d24\\|[dx]\\)\\|in\\|ov\\|ul\\(?:24\\)?\\)\\|n\\(?:eg\\|ot\\)\\|or\\|r\\(?:cp\\|e\\(?:t\\.uni\\|[dmt]\\)\\|sqrt\\)\\|s\\(?:ad\\|e\\(?:lp\\|t\\(?:\\.\\(?:equ?\\|g\\(?:[et]u\\|[et]\\)\\|h[is]\\|l\\(?:[et]u\\|[eost]\\)\\|n\\(?:an\\|eu?\\|um\\)\\)\\|p\\.\\(?:equ?\\|g\\(?:[et]u\\|[et]\\)\\|h[is]\\|l\\(?:[et]u\\|[eost]\\)\\|n\\(?:an\\|eu?\\|um\\)\\)\\)\\)\\|h[lr]\\|in\\|lct\\|qrt\\|t\\|ubc?\\)\\|t\\(?:ex\\.\\(?:[123]d\\)\\|rap\\)\\|vote\\.\\(?:a\\(?:ll\\|ny\\)\\|uni\\)\\|xor\\)\\>"
+  "Regexp matching PTX instructions.")
+
 
 (setq asm-markup-extra-font-lock-keywords
       '(
@@ -256,60 +293,133 @@
 (defun asm-mode-prefs ()
   "Assembler mode settings for SPARC or MIPS.
 Called before asm-mode initializes."
-  (if (save-excursion
-        (goto-char (point-min))
-        (not (or
-         (looking-at "#")
-         (re-search-forward "\\<addi\\>" 20000 t))))
+
+  (cond
+   ((save-excursion
+      ;; PTX (NVIDIA CUDA)
+      (goto-char (point-min))
+      (or
+       (string-match "\\.ptx$" (buffer-file-name))
+       (re-search-forward "\\/cuda\\/" 1000 t)))
+    (setq asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list
+            (cons (concat "[^._]" ptx-all-instr-regexp)
+                  font-lock-keyword-face))
+
+           '(
+             ;; Line Labels (PTX)
+             ("\\$L[_A-Z0-9a-z]+" . font-lock-constant-face)
+
+             ;; Line Labels (Decuda)
+             ("^label[0-9]+:" . font-lock-constant-face)
+             ("\\.label \\(label[0-9]+\\)" (1 font-lock-constant-face))
+
+             ;; Instruction Modifiers
+             ("\\.[busf]\\(8\\|16\\|32\\|64\\)\\>" . font-lock-type-face)
+             ("\\.pred\\>" . font-lock-type-face)
+             ("\\<\\(ld\\|ld\\.volatile\\|st\\)\\.\\(param\\|const\\|shared\\|global\\)"
+              (2 'asm-memory-space-face))
+             ("\\.\\(r[nzmp]i?\\)\\>" . font-lock-keyword-face)
+             ("\\<\\(ld\\|st\\)\\.\\(local\\)"
+              (2 font-lock-warning-face))
+
+             ;; Decuda Instructions
+             ("\\(movsh\\|join\\.label\\|nop\\)" . font-lock-keyword-face)
+
+             ; Predicated Instruction Prefix
+             ("\\(@!?\\)[%$]p[0-9]" (1 font-lock-keyword-face))
+
+             ;; Alignment, Vector
+             ("\\.\\(align\\|v2\\|v4\\)\\>"
+              (1 (list font-lock-type-face 'italic)))
+
+             ;; Assembler Directives
+             ("\\.\\(loc\\|file\\|version\\|target\\)\\>"
+              (1 'asm-directive-face))
+
+             ;; Register/Memory Space Definitions
+             ("^\\s +\\.\\(const\\|tex\\|reg\\|shared\\|local\\|param\\)\\>"
+              (1 'asm-memory-space-face))
+
+             ;; Decuda Register/Memory Space Definitions
+             ("^#?\\.\\([ls]mem\\|reg\\|bar\\|constseg\\)\\>"
+              (1 'asm-memory-space-face))
+
+             ("\\<\\(c[01]\\|g\\|s\\)\\["
+              (1 (list font-lock-keyword-face 'italic)))
+
+             ;; Code Entry Point
+             ("\\.\\(entry\\)\\>\\s +\\(\\(\\sw\\|\\s_\\)+\\)"
+              (1 'asm-directive-face)
+              (2 font-lock-function-name-face))
+
+             ;; Registers
+             ("\\(\\%\\|\\$\\)\\(tex[0-9]+\\|ofs[0-3]\\|p[0-9]+\\|fd?[0-9]+\\|pm[0-3]\\|r[hd]?[0-9]+\\|clock\\|tid\\|ntid\\|laneid\\|warpid\\|ctaid\\|nctaid\\|smid\\|nsmid\\|gridid\\)\\>"
+              (1 font-lock-string-face)
+              (2 font-lock-variable-name-face) )
+
+             ))))
+
+   ((save-excursion
       ;; SPARC
-      (setq asm-comment-char ?!
-            asm-font-lock-keywords
-            (append
-             asm-markup-extra-font-lock-keywords
-             (list
-              (cons sparc-all-instr-regexp font-lock-keyword-face))
-              '(
-                ("^[ \t]*\\.section.*" . font-lock-heading-face)
-                ("^\\(\\(\\sw\\|\\s_\\)+\\)\\>:?[\t]*\\(\\sw+\\)?"
-                 (1 font-lock-function-name-face)
-                 (3 font-lock-keyword-face nil t))
-                ("^\\s *\.L[A-Z0-9a-z]*:" . font-lock-function-name-face)
-                ("^\\.stabn 68,[^,]*,\\([^,]+\\),"
-                 (0 font-lock-string-face) (1 font-lock-heading-face t))
-                ; ("^\\s +\\(\\(\\sw\\|\\s_\\)+\\)" 1 font-lock-keyword-face)
+      (goto-char (point-min))
+      (or
+       (re-search-forward "\\<save[ \t]+%sp\\>" 50000 t)))
+    (setq asm-comment-char ?!
+          asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list
+            (cons sparc-all-instr-regexp font-lock-keyword-face))
+           '(
+             ("^[ \t]*\\.section.*" . font-lock-heading-face)
+             ("^\\(\\(\\sw\\|\\s_\\)+\\)\\>:?[\t]*\\(\\sw+\\)?"
+              (1 font-lock-function-name-face)
+              (3 font-lock-keyword-face nil t))
+             ("^\\s *\.L[A-Z0-9a-z]*:" . font-lock-function-name-face)
+             ("^\\.stabn 68,[^,]*,\\([^,]+\\),"
+              (0 font-lock-string-face) (1 font-lock-heading-face t))
+             ;; ("^\\s +\\(\\(\\sw\\|\\s_\\)+\\)" 1 font-lock-keyword-face)
 
-                ;; Comment used as a heading.
-                ("^!! \\(.*\\)"
-                 (1 'asm-comment-heading-face t t))
+             ;; Comment used as a heading.
+             ("^!! \\(.*\\)"
+              (1 'asm-comment-heading-face t t))
 
-                ;; Comment used as a sub heading.
-                ("^\\s-+!! \\(.*\\)"
-                 (1 'asm-comment-sub-heading-face t t))
+             ;; Comment used as a sub heading.
+             ("^\\s-+!! \\(.*\\)"
+              (1 'asm-comment-sub-heading-face t t))
 
-                ;; Literal Directives
-                ("\\.\\(asci?iz?\\|byte\\|double\\|float\\||half\\|word\\)\\>"
-                (1 (list font-lock-type-face 'italic)))
+             ;; Literal Directives
+             ("\\.\\(asci?iz?\\|byte\\|double\\|float\\||half\\|word\\)\\>"
+              (1 (list font-lock-type-face 'italic)))
 
-                ;; SPIM Assembler Directives
-                ("\\.\\(align\\|file\\)\\>"
-                 (1 'asm-directive-face))
+             ;; SPIM Assembler Directives
+             ("\\.\\(align\\|file\\)\\>"
+              (1 'asm-directive-face))
 
-                ;; SPIM Assembler Directives
-                ("\\.\\(extern\\|global\\)\\>\\s +\\(\\(\\sw\\|\\s_\\)+\\)"
-                 (1 'asm-directive-face)
-                 (2 font-lock-function-name-face)
-                 )
+             ;; SPIM Assembler Directives
+             ("\\.\\(extern\\|global\\)\\>\\s +\\(\\(\\sw\\|\\s_\\)+\\)"
+              (1 'asm-directive-face)
+              (2 font-lock-function-name-face)
+              )
 
-                ;; Segment Directives
-                ("\\.\\([rk]?o?data\\|[rk]?text\\)\\>"
-                 (1 (list 'asm-directive-face 'bold)))
+             ;; Segment Directives
+             ("\\.\\([rk]?o?data\\|[rk]?text\\)\\>"
+              (1 (list 'asm-directive-face 'bold)))
 
-                ("\\(\\%\\)\\([ioglf][12]?[0-9]\\|[iogl]3[01]\\|f[3-6][0-9]\\|[sf]p\\|[fi]cc\\)\\>"
-                 (1 font-lock-string-face)
-                 (2 font-lock-variable-name-face) )
+             ("\\(\\%\\)\\([ioglf][12]?[0-9]\\|[iogl]3[01]\\|f[3-6][0-9]\\|[sf]p\\|[fi]cc\\)\\>"
+              (1 font-lock-string-face)
+              (2 font-lock-variable-name-face) )
 
-                )))
-    ;; SPIM (for MIPS)
+             ))))
+
+   ((save-excursion
+      (goto-char (point-min))
+      (or (looking-at "#")
+          (re-search-forward "\\<addi\\>" 20000 t)))
+    ;; MIPS
     (setq asm-comment-char ?#
           asm-font-lock-keywords
           (append
@@ -356,7 +466,7 @@ Called before asm-mode initializes."
 
              ;; Line number stab info.
              ("^\\.stabn 68,[^,]*,\\([^,]+\\),"
-              (0 font-lock-string-face) (1 font-lock-heading-face t)))))))
+              (0 font-lock-string-face) (1 font-lock-heading-face t))))))))
 
 (defun asm-mode-prefs-2 ()
   "Preferences for assembler mode.
