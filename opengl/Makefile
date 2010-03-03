@@ -10,7 +10,7 @@ INCLUDE = -I$(COURSE_INCLUDE_DIR)
 LIBDIR  =
 
 PROG_NAMES = demo-3-textures demo-2-transfer demo-0-hello \
-	demo-5-fshader demo-1-geom
+	demo-5-fshader demo-1-geom demo-1-4-lighting
 
 default: $(PROG_NAMES)
 
@@ -36,5 +36,4 @@ $(PROG_NAMES): %: %.o Makefile
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 .cc.o:
-	$(CXX) $(CFLAGS) -fverbose-asm -S $*.cc
-	$(CXX) $(CFLAGS) -c $*.s
+	$(CXX) $(CFLAGS) -c $*.cc
