@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2009), Graphics Processors
+/// LSU EE 7700-1 (Sp 2010), GPU Microarchitecture
 //
  /// Minimal OpenGL Program
 
@@ -48,7 +48,7 @@
 // something which is done through the window system API.
 
 // Glut (gl utility toolkit) allows one to start OpenGL with a
-// frame buffer on both Unix Systems (Linux,Solaris,Mac OS X, etc.)
+// frame buffer on both Unix Systems (Linux, Solaris, Mac OS X, etc.)
 // and MS Windows systems.
 
 // Glut is intended for quick demos, not complete applications.
