@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2009), Graphics Processors
+/// LSU EE 7700-1 (Sp 2010), GPU Microarchitecture
 //
  /// Texturing Demonstration
 
@@ -122,9 +122,9 @@
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
-#include "../include/util.h"
-#include "../include/coord.h"
-#include "image.h"
+#include <gp/util.h>
+#include <gp/coord.h>
+#include <gp/texture-util.h>
 
 
  ///

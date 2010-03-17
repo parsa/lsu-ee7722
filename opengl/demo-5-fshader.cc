@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Spring 2009), Graphics Processors
+/// LSU EE 7700-1 (Spring 2010), GPU Microarchitecture
 //
  /// Fragment Shader / Phong Shading Demonstration
 
@@ -132,9 +132,9 @@
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
-#include "../include/util.h"
-#include "../include/coord.h"
-#include "../include/shader.h"
+#include <gp/util.h>
+#include <gp/coord.h>
+#include <gp/shader.h>
 
 
 // Display a tetrahedron, used to indicate light position.
