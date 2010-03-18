@@ -14,11 +14,14 @@ COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v
 OPTFLAGS = -O3
 
 CC = gcc
-CXX = $(CUDAPATH)/bin/nvcc
+#CXX = $(CUDAPATH)/bin/nvcc -L/usr/local/cuda/lib64 
+CXX = $(CUDAPATH)/bin/nvcc 
 
 .SUFFIXES: .cu .cuh
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing \
+  -Xcompiler -Wno-parentheses
+
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
@@ -36,7 +39,7 @@ default: balls
 balls-kernel.o: Makefile balls.cuh balls-kernel.cu
 
 
-balls: balls.cc shapes.h Makefile balls.cuh balls-kernel.o
+balls: balls.cc shapes.h tiles.h Makefile balls.cuh balls-kernel.o
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc balls-kernel.o -o $@ $(LIBRARIES)
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug balls-kernel.o $(LIBRARIES)
 

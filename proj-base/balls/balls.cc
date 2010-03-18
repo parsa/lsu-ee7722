@@ -323,6 +323,10 @@ const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
 
 typedef PStackIterator<Ball*> Ball_Iterator;
 
+
+ /// TEMPORARY:  Include code for rectangular-object physics.
+#include "tiles.h"
+
 ///
 /// Main Class
 ///
@@ -410,6 +414,15 @@ public:
   double v_to_do;
   double r_inv;
   double short_xrad_sq;
+
+  /// TEMPORARY: Declare container for tiles.
+  Tile_Manager tile_manager;
+  /// Spinner, a moving object made from a tile.
+  Tile *spinner;
+  double spinner_omega, spinner_angle;
+  pCoor spinner_center;
+  pVect spinner_x, spinner_y, spinner_axis;
+
 
   /// Tiled platform for ball.
   //
@@ -739,6 +752,41 @@ World::init()
   variables_update();
   platform_update();
   modelview_update();
+
+  /// TEMPORARY:
+  //
+  {
+    //  Use tiles to construct a staircase.
+    //
+    const int step_count = 10;
+    const float x2 = platform_xmax - 0.1 * platform_xrad;
+    const float x1 = platform_xmid + 0.1 * platform_xrad;
+    const float step_size = ( x2 - x1 ) / step_count;
+    const pVect step_hor(step_size,0,0);
+    const pVect step_ver(0,step_size,0);
+    const pVect step_wid(0,0,50);
+    const pCoor step_start(x1,-platform_xrad*0.9,-50);
+    pColor step_color(0.5,0.5,0.5);
+    for ( int i=0; i<step_count; i++ )
+      {
+        const pCoor step_ll = step_start + i * ( step_hor + step_ver );
+        tile_manager.new_tile(step_ll,step_hor,step_wid,step_color);
+        tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
+      }
+
+    // Use tile to make a spinning thing.
+    //
+    spinner_angle = 0;
+    spinner_omega = -3;
+    spinner_center = pCoor(0,-platform_xrad+12,50);
+    spinner_x = pVect(10,0,0);
+    spinner_axis = pVect(0,0,10);
+    spinner_y = spinner_x.mag() * pNorm(cross(spinner_x,spinner_axis));
+    spinner = tile_manager.new_tile
+      (spinner_center,spinner_x,spinner_axis,pColor(0,0,0.8));
+
+    variables_update();  // Yes, wasteful here, but need it for a _dt.
+  }
 
   /// Initialize Ball Positions
   //
@@ -1619,6 +1667,14 @@ World::time_step_cpu()
 {
   const float deep = -100;
 
+  /// TEMPORARY
+  //
+  // Update spinner position.
+  spinner_angle += spinner_omega * delta_t;
+  pVect spinner_dir_cur =
+    cos(spinner_angle) * spinner_x + sin(spinner_angle) * spinner_y;
+  spinner->set(spinner_center,spinner_dir_cur,spinner_axis);
+
   if ( data_location & DL_ALL_CUDA )
     {
       pt_sched_waitfor();
@@ -1662,6 +1718,23 @@ World::time_step_cpu()
   /// Apply gravitational force.
   //
   for ( Ball *ball; balls.iterate(ball); ) ball->velocity += gravity_accel_dt;
+
+  /// TEMPORARY
+  //
+  // Apply force for tile contact.
+  //
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      while ( Tile* const tile = tile_manager.iterate() )
+        {
+          pCoor tact;
+          if ( !tile_ball_collide(tile,ball,tact,opt_ball_radius) ) continue;
+          pball->position = tact;
+          pball->angular_momentum = pVect(0,0,0);
+          pball->velocity = pVect(0,0,0);
+          penetration_balls_resolve(ball,pball,false);
+        }
+    }
 
   /// Apply force for platform contact.
   //
@@ -2492,6 +2565,10 @@ World::sphere_get(Ball *ball)
 void
 World::balls_render_simple()
 {
+  /// TEMPORARY
+  // Render tiles.
+  tile_manager.render_simple();
+
   // Render balls without textures. Intended for casting shadows.
 
   for ( Ball *ball; balls.iterate(ball); )
@@ -2512,6 +2589,9 @@ World::balls_render_simple()
 void
 World::balls_render(bool regular)
 {
+  /// TEMPORARY
+  // Render tiles.
+  tile_manager.render_simple();
 
   // Sort balls by distance from user's eye.
   // This is needed for the occlusion test.
