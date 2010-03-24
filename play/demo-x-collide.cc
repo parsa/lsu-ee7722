@@ -71,6 +71,7 @@
 
  //  'm'    Toggle reflections on mirror tiles.
  //  'w'    Toggle shadows.
+ //  'W'    Toggle visibility of shadow volumes.
  //  'n'    Toggle visibility of platform normals.
 
  //  's'    Stop balls linear motion.
@@ -283,6 +284,8 @@ const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
 
 typedef PStackIterator<Ball*> Ball_Iterator;
 
+#include "tiles.h"
+
 ///
 /// Main Class
 ///
@@ -299,6 +302,8 @@ public:
 
   static void render_w(void *moi){ ((World*)moi)->render(); }
   void render();
+  void render_objects(bool attempt_occlusion_test);
+  void render_shadow_volumes(pCoor light_pos);
   void cb_keyboard();
 
   void variables_update();
@@ -341,7 +346,7 @@ public:
   void contact_pairs_find();
   bool penetration_balls_resolve
   (Ball *ball1, Ball *ball2, bool b2_real = true);
-  void balls_render(bool do_ot);
+  void balls_render(bool attempt_ot);
   void balls_render_simple();
   void balls_remove();
   void balls_stop();
@@ -372,6 +377,12 @@ public:
   double r_inv;
   double short_xrad_sq;
 
+  Tile_Manager tile_manager;
+  Tile *spinner;
+  double spinner_omega, spinner_omega_dt, spinner_angle;
+  pCoor spinner_center;
+  pVect spinner_x, spinner_y, spinner_axis;
+
   /// Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
@@ -383,6 +394,8 @@ public:
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
   int platform_even_vtx_cnt, platform_odd_vtx_cnt;
+
+  pColor mirror_tint;           // Color of mirrored tiles.
 
   // Re-Computed Constants
   //
@@ -407,6 +420,7 @@ public:
 
 
   bool opt_shadows;
+  bool opt_shadow_volumes;
   bool opt_mirror;
   int opt_mirror_method;
   bool opt_normals_visible;
@@ -577,6 +591,7 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
   opt_shadows = true;
+  opt_shadow_volumes = false;
   opt_mirror = true;
   opt_mirror_method = 0;
   opt_spray_on = false;
@@ -584,6 +599,8 @@ World::init()
   opt_debug = false;
   opt_debug2 = false;
   opt_block_color_pass = 0;
+
+  mirror_tint = lsu_spirit_purple * 0.5;
 
   // Instantiate vertex shader used for casting shadow.
   //
@@ -705,6 +722,36 @@ World::init()
   platform_update();
   modelview_update();
 
+  {
+    const int step_count = 10;
+    const float x2 = platform_xmax - 0.1 * platform_xrad;
+    const float x1 = platform_xmid + 0.1 * platform_xrad;
+    const float step_size = ( x2 - x1 ) / step_count;
+    const pVect step_hor(step_size,0,0);
+    const pVect step_ver(0,step_size,0);
+    const pVect step_wid(0,0,50);
+    const pCoor step_start(x1,-platform_xrad*0.9,-50);
+    pColor step_color(0.5,0.5,0.5);
+    for ( int i=0; i<step_count; i++ )
+      {
+        const pCoor step_ll = step_start + i * ( step_hor + step_ver );
+        tile_manager.new_tile(step_ll,step_hor,step_wid,step_color);
+        tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
+      }
+
+    spinner_angle = 0;
+    spinner_omega = -1;
+    spinner_center = pCoor(0,-platform_xrad+10.01,50);
+    spinner_x = pVect(20,0,0);
+    spinner_axis = pVect(0,0,20);
+    spinner_y = spinner_x.mag() * pNorm(cross(spinner_x,spinner_axis));
+    spinner = tile_manager.new_tile
+      (spinner_center + 0.5 * spinner_x,
+       spinner_x,spinner_axis,pColor(0,0,0.8));
+
+    variables_update();
+
+  }
   /// Initialize Ball Positions
   //
   //  Code below places balls in one of several ways.
@@ -783,13 +830,13 @@ World::variables_update()
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
   gravity_accel_dt = delta_t * gravity_accel;
   sphere.radius = opt_ball_radius;
-  sphere.opt_render_flat = opt_debug2;
+  sphere.opt_render_flat = false;
   sphere_lite.radius = opt_ball_radius;
-  sphere_lite.opt_render_flat = opt_debug2;
+  sphere_lite.opt_render_flat = false;
   for ( int i=0; i<sphere_count; i++ )
     {
       spheres[i].radius = opt_ball_radius;
-      spheres[i].opt_render_flat = opt_debug2;
+      spheres[i].opt_render_flat = false;
     }
   elasticity_inv_dt = 100 * delta_t / opt_elasticity;
   if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
@@ -801,6 +848,9 @@ World::variables_update()
   platform_zmin_mr = platform_zmin - opt_ball_radius;
   platform_xmax_pr = platform_xmax + opt_ball_radius;
   platform_zmax_pr = platform_zmax + opt_ball_radius;
+
+  spinner_omega_dt = spinner_omega * delta_t;
+
 }
 
 void
@@ -1544,7 +1594,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
         pVect ch_tact1_rot_vel = ball1->point_rot_vel(dist);
         pVect ch_tact1_roll_vel = ch_tact1_rot_vel + tan_b12_vel;
         const double magloss = tact1_roll_vel.mag() - ch_tact1_roll_vel.mag();
-        ASSERTS( magloss >= -10.0 );
+        ASSERTS( true || magloss >= -10.0 );
       }
   }
 
@@ -1589,6 +1639,12 @@ World::time_step_cpu()
 {
   const float deep = -100;
 
+  spinner_angle += spinner_omega_dt;
+  pVect spinner_dir_cur =
+    cos(spinner_angle) * spinner_x + sin(spinner_angle) * spinner_y;
+  spinner->set
+    (spinner_center - 0.5 * spinner_dir_cur, spinner_dir_cur,spinner_axis);
+
   if ( data_location & DL_ALL_CUDA )
     {
       pt_sched_waitfor();
@@ -1632,6 +1688,21 @@ World::time_step_cpu()
   /// Apply gravitational force.
   //
   for ( Ball *ball; balls.iterate(ball); ) ball->velocity += gravity_accel_dt;
+
+  /// Apply force for tile contact.
+  //
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      while ( Tile* const tile = tile_manager.iterate() )
+        {
+          pCoor tact;
+          if ( !tile_ball_collide(tile,ball,tact,opt_ball_radius) ) continue;
+          pball->position = tact;
+          pball->angular_momentum = pVect(0,0,0);
+          pball->velocity = pVect(0,0,0);
+          penetration_balls_resolve(ball,pball,false);
+        }
+    }
 
   /// Apply force for platform contact.
   //
@@ -2691,6 +2762,8 @@ World::balls_render_simple()
 {
   // Render balls without textures. Intended for casting shadows.
 
+  tile_manager.render_simple();
+
   for ( Ball *ball; balls.iterate(ball); )
     {
       const int c = ball->contact_count;
@@ -2708,9 +2781,8 @@ World::balls_render_simple()
 }
 
 void
-World::balls_render(bool regular)
+World::balls_render(bool attempt_ot)
 {
-
   // Sort balls by distance from user's eye.
   // This is needed for the occlusion test.
   //
@@ -2752,7 +2824,7 @@ World::balls_render(bool regular)
       
       // Decide whether to perform an occlusion test.
       //
-      const bool do_ot = regular && ball->occlusion_countdown-- == 0;
+      const bool do_ot = attempt_ot && ball->occlusion_countdown-- == 0;
 
       // Don't render this ball because it hasn't resulted in
       // anything being written to the frame buffer more than
@@ -2791,6 +2863,136 @@ World::balls_render(bool regular)
           glEndQuery(GL_SAMPLES_PASSED);
         }
     }
+}
+
+void
+World::render_shadow_volumes(pCoor light_pos)
+{
+  // Render objects' shadow volumes.
+
+  // Make sure that only stencil buffer written.
+  //
+  glColorMask(false,false,false,false);
+  glDepthMask(false);
+
+  // Don't waste time computing lighting.
+  //
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
+
+  // Set up stencil test to count shadow volume surfaces: plus 1 for
+  // entering the shadow volume, minus 1 for leaving the shadow
+  // volume.
+  //
+  glEnable(GL_STENCIL_TEST);
+  // sfail, dfail, dpass
+  glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
+  glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
+  glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
+
+  if ( opt_shadow_volumes )
+    {
+      // Make shadow volumes visible.
+
+      glColorMask(true,true,true,true);
+      glColor3f(0.8,0,0);
+    }
+
+  // Render balls' shadow volumes.
+  //
+  for ( Ball *ball; balls.iterate(ball); )
+    {
+      Sphere* const s = 
+        opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
+      s->light_pos = light_pos;
+      if ( opt_debug2 )
+        s->render_shadow_volume2(ball->position);
+      else
+        s->render_shadow_volume(ball->position);
+    }
+
+  // Render tiles' shadow volumes.
+  //
+  tile_manager.render_shadow_volume(light_pos);
+
+  // Restore assumed state.
+  //
+  glColorMask(true,true,true,true);
+  glDepthMask(true);
+}
+
+void
+World::render_objects(bool attempt_ot)
+{
+  // Render objects normally.
+
+  const float shininess_ball = 20;
+  pColor spec_color(0.2,0.2,0.2);
+
+  glEnable(GL_LIGHTING);
+  glEnable(GL_TEXTURE_2D);
+
+  //
+  // Render Balls
+  //
+
+  // Set up cool specular lighting parameters.
+  //
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
+  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
+  glEnable(GL_COLOR_SUM);
+
+  glBindTexture(GL_TEXTURE_2D,texid_ball);
+
+  // Render each ball.
+  //
+  balls_render(attempt_ot);
+
+  glDisable(GL_COLOR_SUM);
+  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
+
+  // Render each tile.
+  //
+  tile_manager.render();
+
+  //
+  // Render Platform
+  //
+
+  // Set up attribute (vertex, normal, etc.) arrays.
+  //
+  glBindTexture(GL_TEXTURE_2D,texid_plat);
+  platform_tile_coords.bind();
+  glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  platform_tile_norms.bind();
+  glNormalPointer(GL_FLOAT,sizeof(platform_tile_norms.data[0]), 0);
+  glEnableClientState(GL_NORMAL_ARRAY);
+  platform_tex_coords.bind();
+  glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+  // Write lighter-colored, textured tiles.
+  //
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
+  glColor3f(0.35,0.35,0.35);
+  glDrawArrays(GL_QUADS,0,platform_even_vtx_cnt);
+
+  // Write darker-colored, untextured, mirror tiles.
+  //
+  glEnable(GL_BLEND);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
+  glDisable(GL_TEXTURE_2D);
+  glColor3fv(mirror_tint);
+  glDrawArrays(GL_QUADS,platform_even_vtx_cnt,platform_odd_vtx_cnt);
+
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
 
@@ -3003,6 +3205,11 @@ World::render()
       glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
 
+      glEnable(GL_BLEND);
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFunc(GL_CONSTANT_ALPHA,GL_ZERO); // src, dst
+      glBlendColor(0,0,0,0.5);
+
       // Use a shader that reflects objects.
       //
       vs_reflect->use();
@@ -3019,6 +3226,7 @@ World::render()
       glUniformMatrix4fv(sun_world_to_clip, 1, true, modelview_projection);
 
       balls_render(false);
+      tile_manager.render();
 
       // Change back to fixed functionality (no user shader).
       //
@@ -3028,171 +3236,85 @@ World::render()
       glDisable(GL_STENCIL_TEST);
     }
 
-  if ( opt_shadows )
-    {
-      //
-      // Write framebuffer stencil with shadow.
-      //
 
-      // Use shader that maps vertices to platform surface.
-      //
-      vs_shadow->use();
+  // At this point, frame buffer contains only object reflections.
 
-      // Prepare constants for shader.
-      //
-      pCoor axis_e = modelview * pCoor(platform_xmid,0,0);
-      pCoor pt1 = modelview * pCoor(0,0,0);
-      pCoor pt2 = modelview * pCoor(0,0,1);
-      pNorm axis_ne(pt1,pt2);
-      glUniform4fv(sun_axis_e, 1, axis_e); // Point on axis in eye space.
-      glUniform3fv(sun_axis_ne, 1, axis_ne); // Axis direction in eye space.
-      glUniform1f(sun_platform_xrad_sq, platform_xrad * platform_xrad);
-
-      // Turn off features that are time consuming and not needed
-      // for writing the stencil buffer.
-      //
-      glDisable(GL_LIGHTING);
-      glDisable(GL_TEXTURE_2D);
-
-      // Set up stencil test for writing shadow.
-      //
-      glEnable(GL_STENCIL_TEST);
-      glDepthFunc(GL_NEVER);
-      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
-
-      // Prepare for writing shadow from light 0.
-      //
-      glStencilFunc(GL_NEVER,2,-1); // ref, mask
-      glUniform1i(sun_light_num,0);
-
-      balls_render_simple();
-
-      // Prepare for writing shadow from light 1
-      //
-      glStencilOp(GL_INCR,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
-      glStencilFunc(GL_EQUAL,1,1); // ref, mask
-      glUniform1i(sun_light_num,1);
-
-      balls_render_simple();
-
-      vs_fixed->use();
-
-      // Restore some settings.
-      //
-      glEnable(GL_LIGHTING);
-      glDisable(GL_STENCIL_TEST);
-      glDepthFunc(GL_LESS);
-    }
-
-  glColor3f(0.5,0,0);
-
-  // Setup texture for platform.
-  //
-  glBindTexture(GL_TEXTURE_2D,texid_plat);
-
-  // Blend dark tiles with existing ball reflection.
-  //
-  glEnable(GL_STENCIL_TEST);
+  glDisable(GL_BLEND);
   glBlendEquation(GL_FUNC_ADD);
-  glBlendFunc(GL_CONSTANT_ALPHA,GL_ONE_MINUS_CONSTANT_ALPHA); // src, dst
-  glBlendColor(0,0,0,0.5);
+  glBlendFunc(GL_ONE,GL_ONE);
 
-  glDepthFunc(GL_ALWAYS);
-
-  glEnable(GL_TEXTURE_2D);
-  platform_tex_coords.bind();
-  glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-  platform_tile_coords.bind();
-  glVertexPointer
-    (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
-  glEnableClientState(GL_VERTEX_ARRAY);
-  platform_tile_norms.bind();
-  glNormalPointer
-    (GL_FLOAT,sizeof(platform_tile_norms.data[0]), 0);
-  glEnableClientState(GL_NORMAL_ARRAY);
-
-  glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
-
-  for ( int pass = 0;  pass < (opt_shadows?4:1);  pass++ )
+  if ( !opt_shadows )
     {
-      switch ( pass ) {
-      case 0:
-        // Prepare to write unshadowed parts of frame buffer.
-        //
-        glEnable(GL_LIGHT0);
-        glEnable(GL_LIGHT1);
-        glStencilFunc(GL_EQUAL,0,3);
-        break;
-      case 1:
-        // Write parts in which light 0 shadowed.
-        //
-        glDisable(GL_LIGHT0);
-        glEnable(GL_LIGHT1);
-        glStencilFunc(GL_EQUAL,2,3);
-        break;
-      case 2:
-        // Write parts in which light 1 shadowed.
-        //
-        glEnable(GL_LIGHT0);
-        glDisable(GL_LIGHT1);
-        glStencilFunc(GL_EQUAL,1,3);
-        break;
-      case 3:
-        // Write parts in which light 0 and light 1 shadowed.
-        //
-        glDisable(GL_LIGHT0);
-        glDisable(GL_LIGHT1);
-        glStencilFunc(GL_EQUAL,3,3);
-        break;
-      }
-
-      glEnable(GL_TEXTURE_2D);
-
-      // Write lighter-colored, textured tiles.
       //
-      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
-      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
-      glColor3f(0.35,0.35,0.35);
-      glDrawArrays(GL_QUADS,0,platform_even_vtx_cnt);
-
-      // Write darker-colored, untextured, mirror tiles.
+      /// Render objects in just a single pass, no shadows.
       //
-      glEnable(GL_BLEND);
-      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
-      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
-      glDisable(GL_TEXTURE_2D);
-      glColor3fv(lsu_spirit_purple);
-      glDrawArrays(GL_QUADS,platform_even_vtx_cnt,platform_odd_vtx_cnt);
-      glDisable(GL_BLEND);
+
+      glEnable(GL_LIGHT1);
+      glEnable(GL_LIGHT0);
+
+      render_objects(true);
     }
+  else
+    {
+      //
+      /// Render objects and the shadows they cast.
+      //
 
-  glEnable(GL_LIGHT0);
-  glEnable(GL_LIGHT1);
+      //
+      // First pass, render using only ambient light.
+      //
+      glDisable(GL_LIGHT1);
+      glDisable(GL_LIGHT0);
 
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_NORMAL_ARRAY);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
-  glDisable(GL_STENCIL_TEST);
-  glDepthFunc(GL_LESS);
+      // Send balls, tiles, and platform to opengl.
+      // Do occlusion test too.
+      //
+      render_objects(true);
 
-  // Finally, Render Balls
-  //
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
-  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
-  glEnable(GL_COLOR_SUM);
+      //
+      // Second pass, add on light0.
+      //
 
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D,texid_ball);
+      // Turn off ambient light, turn on light 0.
+      //
+      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
+      glEnable(GL_LIGHT0);
 
-  balls_render(true);
+      // Write stencil with shadow locations based on shadow volumes
+      // cast by light0 (light_location).  Shadowed locations will
+      // have a positive stencil value.
+      //
+      glClear(GL_STENCIL_BUFFER_BIT);
+      render_shadow_volumes(light_location);
 
-  glDisable(GL_TEXTURE_2D);
-  glDisable(GL_COLOR_SUM);
-  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
+      // Use stencil test to prevent writes to shaded areas.
+      //
+      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+      glStencilFunc(GL_EQUAL,0,-1); // ref, mask
+
+      // Allow pixels to be re-written.
+      //
+      glDepthFunc(GL_LEQUAL);
+
+      // Render, but don't do occlusion test again.
+      //
+      render_objects(false);
+
+      //
+      // Third pass, add on light1.
+      //
+
+      glDisable(GL_LIGHT0);
+      glEnable(GL_LIGHT1);
+
+      glClear(GL_STENCIL_BUFFER_BIT);
+      render_shadow_volumes(light1_location);
+
+      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+      glStencilFunc(GL_EQUAL,0,-1); // ref, mask
+
+      render_objects(false);
+    }
 
   // Maybe render platform normals.
   //
@@ -3275,6 +3397,7 @@ World::cb_keyboard()
   case 'Q': opt_debug2 = !opt_debug2; break;
   case 'v': opt_verify = !opt_verify; break;
   case 'w': opt_shadows = !opt_shadows; break;
+  case 'W': opt_shadow_volumes = !opt_shadow_volumes; break;
   case 'x': opt_spray_on = !opt_spray_on; break;
   case 'X':
     {

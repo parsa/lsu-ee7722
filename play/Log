@@ -580,3 +580,8 @@ Some more tuning of CUDA schedule.
 Optionally color ball based on block placement.
 Avoid cuda errors by using maximum number of threads for cuda routines.
 Show block size info at top of frame.
+
+::  9 December 2009, 15:59:21 CST
+
+ 0.496  3.58
+ 0.493  3.58 Remove local memory accesses.

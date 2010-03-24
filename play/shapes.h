@@ -11,6 +11,7 @@ class Sphere {
 public:
   Sphere(){};
   void init(int slices);
+  void shadow_volume_init(int slices);
   void render();
   void render(pVect position){ center = position; render(); }
   void render_flat();
@@ -27,10 +28,15 @@ public:
     default_orientation = false;
     render();
   }
+
+  void render_shadow_volume(pCoor position);
+  void render_shadow_volume2(pCoor position);
   void rotation_matrix_compute();
   int slices;
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<float> tex_coord_bo;
+  pBuffer_Object<pVect> shadow_volume_points_bo;
+  pCoor light_pos;
   pCoor center;
   pVect axis, axis_prepared;
   double angle, angle_prepared;
@@ -45,7 +51,11 @@ public:
 void
 Sphere::init(int slicesp)
 {
-  slices = slicesp;
+  // Compute vertex and texture coordinates of primitives tessellating
+  // a unit-radius sphere. Place coordinates in buffer object using
+  // pBuffer_Object objects. Also initialize other variables.
+  
+  slices = slicesp;             // Amount of detail.
   axis = pVect(0,1,0);
   angle = 0;
   radius = 2;
@@ -94,6 +104,7 @@ Sphere::init(int slicesp)
   points_bo.to_gpu();
   tex_coord_bo.take(tex_coord,GL_STATIC_DRAW);
   tex_coord_bo.to_gpu();
+  shadow_volume_init(slicesp);
 }
 
 void
@@ -140,6 +151,9 @@ Sphere::render()
 void
 Sphere::render_flat()
 {
+  // Render using normal based on triangle normal, rather than sphere normal.
+  // Used to emphasize tessellation.
+
   glColor3fv(color);
   glMatrixMode(GL_MODELVIEW);
 
@@ -184,6 +198,79 @@ Sphere::render_simple(pVect position)
   if ( tri_count ) *tri_count += points_bo.elements;
 }
 
+void
+Sphere::shadow_volume_init(int pieces)
+{
+}
+
+void
+Sphere::render_shadow_volume2(pCoor center)
+{
+}
+
+#if 1
+void
+Sphere::render_shadow_volume(pCoor center)
+{
+  // Compute shadow volume of sphere, and render it.
+
+  const int pieces = slices;   // Number of faces needed for the shadow volume.
+  const double delta_theta = 2 * M_PI / pieces;
+  pVect l_to_c(light_pos,center);
+  const float l_to_c_mag_sq = dot(l_to_c,l_to_c);
+  const float l_to_c_mag = sqrt(l_to_c_mag_sq);
+
+  // Note: a limb is the outline of a sphere visible from some position,
+  // in this case the light position. (It is not the same as the
+  // circumference unless the position is at infinite distance.)
+
+  const float limb_distance_sq = l_to_c_mag_sq-radius*radius;
+  const float limb_distance = sqrt(limb_distance_sq);
+
+  // The shadow volume is enclosed by two disks. Disk 1 cuts the
+  // sphere, and its circumference is the limb. Disk 2 is at a
+  // distance height (some large number) from the light. Variable
+  // names ending in 1 refer to disk 1, those ending in 2 refer to
+  // disk 2.
+
+  const float height = 1000;
+  const float center1_distance = limb_distance_sq / l_to_c_mag;
+  pVect center1 = light_pos + center1_distance / l_to_c_mag * l_to_c;
+  const float r1 = limb_distance * radius/l_to_c_mag;
+
+  // Find two orthogonal vectors (norm and binorm) in disk 1's plane,
+  // and set them up for computing disk 1 coordinates.
+  //
+  pVect plus_a = l_to_c.y == 0 && l_to_c.z == 0 ? pVect(0,1,0) : pVect(1,0,0);
+  pNorm norm1 = cross(l_to_c,plus_a);
+  pNorm binorm1 = cross(norm1,l_to_c);
+  pVect norms1 = r1 * norm1;
+  pVect binorms1 = r1 * binorm1;
+
+  // Compute center and orthogonal vectors for disk 1.
+  //
+  const float ratio = height / limb_distance;
+  pCoor center2 = light_pos + ratio * l_to_c;
+  const float r2 = r1 * ratio;
+  pVect norms2 = r2 * norm1;
+  pVect binorms2 = r2 * binorm1;
+
+  // Send primitives to OpenGL
+  //
+  glBegin(GL_QUAD_STRIP);
+  for ( int i=0; i<=pieces; i++ )
+    {
+      const double theta = i * delta_theta;
+      const float co = cos(theta);
+      const float si = sin(theta);
+      pCoor c1 = center1 + co * norms1 + si * binorms1;
+      pCoor c2 = center2 + co * norms2 + si * binorms2;
+      glVertex3fv(c2);
+      glVertex3fv(c1);
+    }
+  glEnd();
+}
+#endif
 
 class Cone {
 public:

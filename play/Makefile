@@ -74,6 +74,7 @@ cube: cube.o
 
 demo-x-collide.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
 demo-x-collide.o: demo-x-collide.cc shapes.h demo-x-kernel.cu demo-x.cuh
+demo-x-collide.o: tiles.h
 
 demo-x-kernel.o: Makefile demo-x.cuh demo-x-kernel.cu demo-x-collide.cc
 
