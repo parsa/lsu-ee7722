@@ -9,7 +9,7 @@
 //   Demonstrate Several Graphical and Simulation Techniques.
 //   Base for course projects.
 
-// Image: http://www.ece.lsu.edu/koppel/gpup/2009/balls.png
+// Image: http://www.ece.lsu.edu/koppel/gpup/code/gpup/balls.png
 
 
 /// What Code Does
@@ -113,6 +113,8 @@
  //  'w'    Toggle shadows.
  //  'W'    Toggle visibility of shadow volumes.
  //  'n'    Toggle visibility of platform normals.
+
+ //  'Q'    Toggle between inefficient shadow volume and Sp 2010 hw2 solution.
 
  //  's'    Stop balls linear motion.
  //  'S'    Stop balls rotational motion.
