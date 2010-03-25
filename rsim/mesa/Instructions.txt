@@ -5,18 +5,23 @@ mesa benchmark, and to view the results of simulation.
 
 ** The Mesa benchmark
 
-See XXXX
+See http://www.spec.org/cpu2000/CFP2000/177.mesa/docs/177.mesa.html
 
 
 ** The RSIML Simulator
 
-Visit XXX see the RSIML readme, and to check out your own copy
-XXXX. Note that documentation is incomplete and out of date.
+
+Visit http://www.ece.lsu.edu/koppel/work/rsiml/ for some
+documentation, and to check out your own copy use an svn client to
+pull from https://svn.ece.lsu.edu/svn/dmk/trunk/rsiml (or a Web
+browser to just view files). The README.lsu has additional
+background. Note that documentation is incomplete and out of date.
 
 
 ** The PSE Visualization Tool
 
-See XXX.
+See http://www.ece.lsu.edu/ee4720/proc.html#entry9 . If this link
+becomes stale, look for PSE instructions on that page.
 
 
 * Contents
