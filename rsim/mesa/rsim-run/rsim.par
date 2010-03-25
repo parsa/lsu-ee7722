@@ -1,0 +1,142 @@
+# RSIML Configuration Parameter File
+#
+# Use the rsiml option -C to specify the location of this file.
+#
+# For example,
+#
+# rsim -f ../r5/mesa.core -3 /dev/null -C rsim.par -n -i 4 -a 64 -m 32 -L 3 -H 16,16 -- -frames 4 -meshfile mesa.in -ppmfile mesa.ppm
+
+
+# Specify branch predictor. Available predictors:
+#   gshare, yags, ez (bimodal), ezpro, hybrid
+bp_method yags
+bp_ghr_length 16
+
+# Number of functional units of each type.
+#
+numalus               4
+numfpus               2
+numaddrs              2
+
+# Number of post-commit stores.
+#
+dcache_store_buffer_size 64
+
+
+# Major cache size parameters. Cache size itself is in kibibytes.
+# L2 latency is sum of tag and data latency.
+linesize              64
+l1size   128
+l1assoc               2
+l2size   8192
+l2assoc               16
+l2taglatency          8
+l2datalatency         8
+
+memorylatency         300
+
+
+
+# Amount of benchmark to simulate in detail.
+# The entire benchmark is simulated if ss_sample_size >= ss_sample_period
+#
+ss_sample_period    250000000
+ss_sample_size       2500000
+ss_warmup_size        50000
+
+
+ds_segment_period  301000
+ds_segment_duration 2000
+#ds_segment_offset 5000
+ds_segment_period_unit commit
+
+
+buswidth              64
+buscycle              1
+busarbdelay           1
+dircycle              3
+dirpacketcreate       12
+dirpacketcreateaddtl  6
+
+mshrcoal 16
+
+num_nodes 1
+
+l1type                WB
+
+# Specify line size using a computed value.
+#
+# Variable 6 is the line size log-base-2, while the RTI
+# linesize is the line size. The computed expression takes a power of
+# two. (Even if a non-power-of-2 linesize were specified, RSIML would
+# round it to a power of 2.)
+#
+
+l1taglatency          1
+# Total capacity, kibibytes.
+wrbbufextra           0
+regwindows           32
+
+l1ports               4
+
+# Size of Queues (Maximum number of entries.)
+port_sz_l1_wb_req     2
+port_sz_wb_l1_rep     2
+port_sz_wb_l2_req     2
+port_sz_l2_wb_rep     2
+port_sz_l1_l2_req     2
+port_sz_l2_l1_rep     2
+
+port_sz_l2_bus_req  64
+port_sz_bus_l2_rep  64
+
+id_to_sched_cycles    7
+
+jtb_lg                14
+jp_method             1
+
+vp_mode                0
+vp_confidence          2
+vp_table_lg            10
+vp_random 0
+
+icache_line_lg         6
+icache_sets_lg         11
+icache_assoc           5
+
+fetch_method           1
+duper_block            0
+super_threshold        7
+mbp_tree_height        1
+mbp_bac_lg             14
+mbp_xor_addr           1
+mbp_cache_ports        1
+
+bp_ij_bits             0
+bp_ret_bits            0
+
+ras_size               8
+
+sin_stats_blockers     20
+sin_stats_ctis         20
+
+watch_syscalls 0
+
+mbp_bac_entry_size     1000
+mbp_bac_rename_limit   10000
+
+issue_queue_alu_size   64
+issue_queue_fpu_size   64
+
+pf_level               0
+pf_prefetch_hw_scheme  0
+pf_sequential_degree   3
+
+mt_thread_limit        1
+
+maxstack 10000
+
+# If >0, show profile file names, etc. If >1, show profile headers.
+profile_verbose        0
+
+

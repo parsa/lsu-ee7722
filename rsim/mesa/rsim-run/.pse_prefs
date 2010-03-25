@@ -1,0 +1,9 @@
+
+# If 0, instructions in PED plot wrap from bottom to top.
+rtiv_plot_ped_clipped 0
+
+# Width of disassembly pane.
+rtiv_disassembly_pane_width 417
+
+# Height of annotation message pane (on segment plots).
+rtiv_annotation_message_pane_height 150
