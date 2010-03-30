@@ -653,8 +653,8 @@ World::init()
 
   // Platform and Ball Textures
   //
-  texid_plat = pBuild_Texture_File("../gpup/gpup.png", false, 255);
-  texid_ball = pBuild_Texture_File("../gpgpu/mult.png", false, -1);
+  texid_plat = pBuild_Texture_File("gp.png", false, 255);
+  texid_ball = pBuild_Texture_File("mult.png", false, -1);
 
   // Limits of texture coordinates for platform tiles.
   //
