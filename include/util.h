@@ -398,6 +398,11 @@ class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
   {
+    animation_frame_count = 0;
+    animation_qscale = 5;  // Quality, 1-31; 1 is best.
+    animation_video_count = 0; // Number of videos generated.
+    animation_frame_rate = 60;
+    animation_record = false;
     glut_font_idx = 2;
     opengl_helper_self_ = this;
     width = height = 0;
@@ -411,6 +416,7 @@ public:
   void rate_set(double frames_per_second)
   {
     frame_period = 1.0 / frames_per_second;
+    animation_frame_rate = int(0.5 + frames_per_second);
   }
 
   double next_frame_time, frame_period;
@@ -509,6 +515,15 @@ public:
       glutBitmapString
         ((void*)glut_fonts[glut_font_idx],(unsigned char*)str->s);  
     user_frame_text.reset();
+
+    const int64_t now = int64_t( time_wall_fp() * 2 );
+    if ( now & 1 && animation_record )
+      {
+        glWindowPos2i(10,10);
+        glutBitmapString
+          ((void*)glut_fonts[glut_font_idx], (unsigned char*)"REC");
+      }
+
     glEnable(GL_DEPTH_TEST);
   }
 
@@ -549,6 +564,10 @@ private:
     frame_print_calls = 0;
     user_display_func(user_display_data);
     user_text_reprint();
+
+    if ( animation_record || animation_frame_count ) 
+      animation_grab_frame();
+
     cb_keyboard();
   }
 
@@ -572,21 +591,93 @@ private:
     if ( !key ) return;
     if ( keyboard_key == FB_KEY_F12 ) { write_img(); return; }
     if ( keyboard_key == FB_KEY_F11 ) { cycle_font(); return; }
+    if ( keyboard_key == FB_KEY_F10 )
+      { 
+        animation_record = !animation_record; 
+        printf("Animation recording %s\n",
+               animation_record ? "starting, press F10 to stop." : "ending");
+        return;
+      }
     glutPostRedisplay();
+  }
+
+  Image* image_new(int format)
+  {
+    glReadBuffer(GL_FRONT_LEFT);
+    const int size = width * height;
+    int bsize;
+    const char* im_format;
+    switch ( format ){
+    case GL_RGBA: bsize = size * 4; im_format = "RGBA"; break;
+    case GL_RGB: bsize = size * 3; im_format = "RGB"; break;
+    default: bsize = 0; im_format = ""; ASSERTS( false );
+    }
+    char* const pb = (char*) malloc(bsize);
+    glReadPixels(0,0,width,height,format,GL_UNSIGNED_BYTE,pb);
+    Image* const image = new Image( width, height, im_format, CharPixel, pb);
+    image->flip();
+    free(pb);
+    return image;
   }
 
   void write_img()
   {
     pStringF file_name("%s.png",exe_file_name);
-    glReadBuffer(GL_FRONT_LEFT);
-    const int size = width * height;
-    const int bsize = size * 4;
-    char* const pbuffer = (char*) malloc(bsize);
-    glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,pbuffer);
-    Image image( width, height, "RGBA", CharPixel, pbuffer);
-    image.flip();
-    image.write(file_name.s);
-    free(pbuffer);
+    Image* const image = image_new(GL_RGBA);
+    image->write(file_name.s);
+    delete image;
+  }
+
+public:
+  bool animation_record;
+  int animation_qscale;
+  int animation_frame_rate;
+private:
+  int animation_frame_count;
+  int animation_video_count;
+
+  void animation_grab_frame()
+  {
+    if ( animation_frame_count > 6000 ) animation_record = false;
+    const char* const ifmt = "tiff";
+    if ( !animation_record )
+      {
+        if ( !animation_frame_count ) return;
+        pStringF video_file_name
+          ("%s-%d.mp4", exe_file_name, animation_video_count);
+        animation_video_count++;
+        // http://www.ffmpeg.org/ffmpeg-doc.html
+        // -b BITRATE
+        // -vframes NUM
+        // -r FPS
+        // -pass [1|2]
+        // -qscale NUM   Quality, 1-31; 1 is best.
+        PSplit dir_pieces(__FILE__,'/');
+        if ( dir_pieces.occ() > 1 ) dir_pieces.pop();
+        pString this_dir(dir_pieces.joined_copy());
+        pStringF ffmpeg_path("%s/bin/ffmpeg",this_dir.s);
+        pStringF ffmpeg_cmd
+          ("%s -r %d -qscale %d -i /tmp/frame%%04d.%s "
+           "-vframes %d  -y %s",
+           ffmpeg_path.s,
+           animation_frame_rate,
+           animation_qscale,
+           ifmt, animation_frame_count >> 1, video_file_name.s);
+        animation_frame_count = 0;
+        system(ffmpeg_cmd.s);
+        printf("Generated video, filename %s, using:\n%s\n",
+               video_file_name.s, ffmpeg_cmd.s);
+        printf("Copy, edit, paste command above to regenerate video, \n");
+        printf("visit http://www.ffmpeg.org/ffmpeg-doc.html for more info.\n");
+        
+        return;
+      }
+    Image* const image = image_new(GL_RGB);
+    pStringF image_path("/tmp/frame%04d.%s",animation_frame_count,ifmt);
+    animation_frame_count++;
+    image->depth(8);
+    image->write(image_path.s);
+    delete image;
   }
 
 private:
