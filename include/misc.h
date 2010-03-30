@@ -377,9 +377,9 @@ private:
 
 class PSplit {
 public:
-  PSplit(const char *string, char delimiter,
+  PSplit(const char *string, char delimiterp,
          int piece_limit = 0, int options = 0):
-    queue(),free_at_destruct(!(options & DontFree)), delimiter(delimiter)
+    queue(),free_at_destruct(!(options & DontFree)), delimiter(delimiterp)
   {
     const char *start = string;
     if( start )
@@ -496,7 +496,7 @@ public:
   Key get_key(int idx) {return stack.get_storage()[idx].key; }
 
   int key_order(int k1, int k2){ return k1-k2; }
-  int key_order(uint32_t k1, uint32_t k2)
+  int key_order(uint k1, uint k2)
   { return k1 > k2 ? 1 : k1 == k2 ? 0 : -1; }
   int key_order(const char *k1, const char *k2){ return strcmp(k1,k2); }
 
@@ -614,7 +614,7 @@ public:
 
   typedef int (*Comp_Function)(const void*,const void*);
   Comp_Function get_comp(double *dummy){ return comp_num; }
-  Comp_Function get_comp(uint32_t *dummy){ return comp_num; }
+  Comp_Function get_comp(uint *dummy){ return comp_num; }
   Comp_Function get_comp(int32_t *dummy){ return comp_num; }
   Comp_Function get_comp(int64_t *dummy){ return comp_num; }
   Comp_Function get_comp(char** ){ return comp_str; }

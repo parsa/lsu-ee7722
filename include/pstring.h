@@ -87,11 +87,11 @@ public:
     va_list ap2;  va_copy(ap2,ap);
     char maybe[200];
     int buf_limit = sizeof(maybe) - 1;
-    int size = ::vsnprintf(maybe,buf_limit,fmt,ap);
+    int final_size = ::vsnprintf(maybe,buf_limit,fmt,ap);
 
-    if( size <= buf_limit ){ operator += (maybe);  return s; }
+    if( final_size <= buf_limit ){ operator += (maybe);  return s; }
 
-    char *buffer = new char[size+1];
+    char *buffer = new char[final_size+1];
     ::vsprintf(buffer,fmt,ap2);
     va_end(ap2);
 

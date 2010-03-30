@@ -15,6 +15,7 @@
 #define COORD_H
 
 #include <math.h>
+#include "misc.h"
 
 class pMatrix;
 class pCoor;

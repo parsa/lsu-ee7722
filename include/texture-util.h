@@ -33,14 +33,28 @@ public:
   };
   void color_invert()
   {
+    using namespace Magick;
+    for ( int i = 0; i < size; i++ )
+      {
+        PixelPacket& p = pp[i];
+        p.red = MaxRGB - p.red;
+        p.blue = MaxRGB - p.blue;
+        p.green = MaxRGB - p.green;
+      }
+  }
+
+  void gray_to_alpha()
+  {
+    using namespace Magick;
     for ( int i = 0; i < size; i++ )
       {
         PixelPacket& p = pp[i];
         const int sum = p.red + p.blue + p.green;
         p.opacity = (typeof p.opacity)( MaxRGB - sum * 0.3333333 );
-        p.red = p.blue = p.green = MaxRGB;
+        p.red = p.blue = p.green = 0;
       }
   }
+
   Image image;
   PixelPacket *pp;
   bool image_loaded;
