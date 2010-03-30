@@ -656,20 +656,23 @@ private:
         if ( dir_pieces.occ() > 1 ) dir_pieces.pop();
         pString this_dir(dir_pieces.joined_copy());
         pStringF ffmpeg_path("%s/bin/ffmpeg",this_dir.s);
+        pStringF ffplay_path("%s/bin/ffplay",this_dir.s);
         pStringF ffmpeg_cmd
           ("%s -r %d -qscale %d -i /tmp/frame%%04d.%s "
            "-vframes %d  -y %s",
            ffmpeg_path.s,
            animation_frame_rate,
            animation_qscale,
-           ifmt, animation_frame_count >> 1, video_file_name.s);
-        animation_frame_count = 0;
+           ifmt, animation_frame_count, video_file_name.s);
         system(ffmpeg_cmd.s);
-        printf("Generated video, filename %s, using:\n%s\n",
+        printf("Generated video from %d frames, filename %s, using:\n%s\n",
+               animation_frame_count,
                video_file_name.s, ffmpeg_cmd.s);
         printf("Copy, edit, paste command above to regenerate video, \n");
         printf("visit http://www.ffmpeg.org/ffmpeg-doc.html for more info.\n");
-        
+        printf("Use the following command to view:\n%s %s\n",
+               ffplay_path.s, video_file_name.s);
+        animation_frame_count = 0;
         return;
       }
     Image* const image = image_new(GL_RGB);
