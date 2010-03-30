@@ -247,7 +247,8 @@ public:
 
   float radius, radius_sq, radius_inv;
   float density;
-  float mass, mass_inv;
+  float mass;
+  float mass_inv;
   float fdt_to_do;
 
   float short_xrad_sq;
@@ -368,6 +369,7 @@ public:
   void variables_update();
   void modelview_update();
   void time_step_cpu();
+  void balls_add(float contact_y_max);
 
   // For debugging and tuning.
   //
@@ -419,6 +421,7 @@ public:
   float opt_elasticity;
   float opt_friction_coeff;
   float opt_friction_roll;
+  int opt_time_step_factor;
 
   // Pre-computed values.
   //
@@ -627,8 +630,6 @@ World::init()
   opt_physics_method = GP_cpu;
   block_size = 128;
 
-  delta_t = 1.0 / 240;
-
   frame_timer.work_unit_set("Steps / s");
   world_time = 0;
   opt_gravity_accel = 9.8;
@@ -724,7 +725,9 @@ World::init()
   spray_run = 8;
   dball = NULL;
   opt_verify = true;
+  opt_time_step_factor = 6;
 
+  variable_control.insert(opt_time_step_factor,"Time Step Factor",1,1);
   variable_control.insert(opt_ball_density,"Ball Density");
   variable_control.insert(opt_elasticity,"Elasticity");
   variable_control.insert(opt_friction_coeff,"Sliding Friction");
@@ -873,7 +876,7 @@ World::variables_update()
   // Updated pre-computed constants.
   //
   // This routine is called after user changes something.
-
+  delta_t = 1.0 / ( 60 * opt_time_step_factor );
   cuda_constants_stale = true;  // Force cuda variables to be updated too.
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
   gravity_accel_dt = delta_t * gravity_accel;
@@ -1045,8 +1048,9 @@ World::cuda_init()
   CMX_SETUP(cuda_balls,position);
   CMX_SETUP(cuda_balls,velocity);
   CMX_SETUP(cuda_balls,prev_velocity);
-  //  CMX_SETUP(cuda_balls,omega);
+  CMX_SETUP(cuda_balls,omega);
   CMX_SETUP(cuda_balls,tact_counts);
+  CMX_SETUP(cuda_balls,ball_props);
 
   // Allocate initial storage for cuda_balls.
   //
@@ -1300,13 +1304,19 @@ World::cpu_data_to_cuda()
       vec_sets3(cuda_balls.soa.position[idx],ball->position);
       vec_sets3(cuda_balls.soa.prev_velocity[idx],ball->velocity);
       vec_sets3(cuda_balls.soa.velocity[idx],ball->velocity);
-      //  vec_sets3(cuda_balls.soa.angular_momentum[idx],ball->angular_momentum);
+      vec_sets3(cuda_balls.soa.omega[idx],ball->omega);
       int4 tact_counts;
       tact_counts.x = ball->collision_count;
       tact_counts.y = ball->contact_count;
       tact_counts.z = ball->debug_pair_calls;
       tact_counts.w = 0;
       cuda_balls.soa.tact_counts[idx] = tact_counts;
+      float4 ball_props;
+      ball_props.x = ball->radius;
+      ball_props.y = ball->mass_inv;
+      ball_props.z = ball->fdt_to_do;
+      ball_props.w = 0;
+      cuda_balls.soa.ball_props[idx] = ball_props;
     }
 
   // Transfer the data.
@@ -1357,7 +1367,7 @@ World::cuda_data_to_cpu(uint which_data)
       if ( mask & DL_OT_CPU )
         {
           vec_sets4
-            (ball->omega,cuda_balls.soa.angular_momentum[idx]);
+            (ball->omega,cuda_balls.soa.omega[idx]);
         }
     }
 }
@@ -1611,8 +1621,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
     if ( b2_real ) ball2->omega -= ball2->fdt_to_do * fdt_v;
   }
 
-#if 0
-  {
+  if(0){
     /// Rolling Friction
     //
     // The rolling friction model used here is ad-hoc.
@@ -1656,7 +1665,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
     ball1->apply_tan_force_dt(dist,0.4 * ball1->mass * lost_vel);
     if ( b2_real ) ball2->apply_tan_force_dt(dist, 0.4*ball2->mass * lost_vel);
 
-    if ( opt_verify )
+    if ( false && opt_verify )
       {
         pVect ch_tact1_rot_vel = ball1->point_rot_vel(dist);
         pVect ch_tact1_roll_vel = ch_tact1_rot_vel + tan_b12_vel;
@@ -1664,7 +1673,6 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
         ASSERTS( magloss >= -10.0 );
       }
   }
-#endif
 
   return true;
 }
@@ -1702,6 +1710,65 @@ Ball::apply_tan_force_dt(pNorm tact_dir, pVect force_dt)
 }
 
 
+void
+World::balls_add(float contact_y_max)
+{
+  /// If dripping is on, release a new ball if last one hit something.
+  //
+  if ( opt_drip && ( !dball || dball->collision_count ) )
+    {
+      dball = new Ball(this);
+      dball->position =
+        pCoor(30,max(20.0f,contact_y_max) + 3 * opt_ball_radius,60);
+      dball->velocity = pVect(0,0,0);
+      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
+      drip_cnt++;
+      balls += dball;
+    }
+
+  /// If spray is on, release a new ball if it's time.
+  //
+  ball_countdown -= delta_t;
+  if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
+    {
+      Ball* const nball = new Ball(this);
+      const double min_radius = 0.8;
+      const double max_rad = 2 * opt_ball_radius;
+      const double dr = max_rad - min_radius;
+      const double radius = min_radius + dr * random()/(0.0+RAND_MAX);
+      nball->set_radius(radius);
+      const double r = 10;
+      const double delta_theta = 0.001 + asin(radius/r);
+      static double th = 0;  
+      th += delta_theta;
+      nball->position.x = platform_xmax - r - 2 * opt_ball_radius
+        + (r+max_rad) * cos(th);
+      nball->position.z = (r+max_rad) * sin(th);
+      th += delta_theta;
+      nball->position.y = 20.0 + 3 * max_rad;
+      nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
+      spray_cnt++;
+
+      int close_count = 0;
+
+      for ( Ball *ball; balls.iterate(ball) && close_count == 0; )
+        {
+          const double radii = nball->radius + ball->radius;
+          pNorm dist(ball->position,nball->position);
+          if ( dist.mag_sq <= radii * radii ) close_count++;
+        }
+
+      if ( close_count )
+        {
+          balls.iterate_reset();
+          delete nball;
+          return;
+        }
+
+      balls += nball;
+      ball_countdown = 0.1;
+    }
+}
 
 void
 World::time_step_cpu()
@@ -1862,44 +1929,7 @@ World::time_step_cpu()
         contact_y_max = ball->position.y;
     }
 
-  /// If dripping is on, release a new ball if last one hit something.
-  //
-  if ( opt_drip && ( !dball || dball->collision_count ) )
-    {
-      dball = new Ball(this);
-      dball->position =
-        pCoor(30,max(20.0f,contact_y_max) + 3 * opt_ball_radius,60);
-      dball->velocity = pVect(0,0,0);
-      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
-      drip_cnt++;
-      balls += dball;
-    }
-
-  /// If spray is on, release a new ball if it's time.
-  //
-  ball_countdown -= delta_t;
-  if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
-    {
-      Ball* const nball = new Ball(this);
-      const double min_radius = 0.8;
-      const double max_rad = 2 * opt_ball_radius;
-      const double dr = max_rad - min_radius;
-      const double radius = min_radius + dr * random()/(0.0+RAND_MAX);
-      nball->set_radius(radius);
-      const double r = 10;
-      const double delta_theta = 0.001 + asin(radius/r);
-      static double th = 0;  
-      th += delta_theta;
-      nball->position.x = platform_xmax - r - 2 * opt_ball_radius
-        + (r+max_rad) * cos(th);
-      nball->position.z = (r+max_rad) * sin(th);
-      th += delta_theta;
-      nball->position.y = min(100.0,max(20.0,contact_y_max + 3 * max_rad)); 
-      nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
-      spray_cnt++;
-      balls += nball;
-      ball_countdown = 0.1;
-    }
+  balls_add(contact_y_max);
 }
 
 
@@ -1924,6 +1954,12 @@ World::contact_pairs_find()
 
   double max_vsq = 0;
 
+  // The pair list should include balls that will touch within
+  // schedule_lifetime_steps (a constant); from that compute
+  // a time.
+  //
+  const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
+
   /// Sort balls in z in preparation for finding balls that touch.
   //
   balls_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
@@ -1931,49 +1967,37 @@ World::contact_pairs_find()
     {
       const double vsq = dot(ball->velocity,ball->velocity);
       set_max(max_vsq,vsq);
-      balls_zsort.insert(ball->position.z,ball);
+      const float max_z =
+        ball->position.z + max(0.0,fabs(ball->velocity.z)) * lifetime_delta_t
+        + ball->radius;
+      balls_zsort.insert(max_z,ball);
       ball->proximity.reset();
     }
   balls_zsort.sort();
 
-  // The pair list should include balls that will touch within
-  // schedule_lifetime_steps (a constant); from that compute
-  // a time.
-  //
-  const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
-
-  // Compute the maximum distance (in ball radii) that a ball
-  // can travel during schedule lifetime.
-  //
-  const double radii =
-    sqrt(max_vsq) * schedule_lifetime_steps * delta_t / opt_ball_radius;
-
-  const float region_length_large =
-    ( 2.1 + min(radii,10.0) ) * opt_ball_radius;
-  const double prox_dist_l_sq = pow( region_length_large, 2 );
-  const float region_length_small = 2.1 * opt_ball_radius;
-  const double prox_dist_s_sq = pow( region_length_small, 2 );
   const double delta_d_min = 0.1 * schedule_lifetime_steps * opt_ball_radius;
 
   /// Find pairs of balls that are, or might soon be, touching.
   //
   contact_pairs.reset();
-  for ( int idx0 = 0, idx9 = 0; idx9 < balls_zsort.occ(); idx9++ )
+  for ( int idx9 = 0; idx9 < balls_zsort.occ(); idx9++ )
     {
       Ball* const ball9 = balls_zsort[idx9];
-      const float z_min = ball9->position.z - region_length_large;
+      const float z_min = ball9->position.z
+        + min(0.0,-fabs(ball9->velocity.z)) * lifetime_delta_t
+        - ball9->radius;
 
-      while ( idx0 < idx9 && balls_zsort[idx0]->position.z < z_min ) idx0++;
-
-      for ( int i=idx0; i<idx9; i++ )
+      for ( int i=idx9-1; i>=0 && balls_zsort.get_key(i) >= z_min; i-- )
         {
           Ball* const ball1 = balls_zsort[i];
 
           pNorm dist(ball1->position,ball9->position);
+          const float region_length_small =
+            1.1 * ( ball1->radius + ball9->radius );
 
-          if ( dist.mag_sq > prox_dist_l_sq ) continue;
+          //  if ( dist.mag_sq > prox_dist_l_sq ) continue;
 
-          if ( dist.mag_sq > prox_dist_s_sq )
+          if ( dist.mag_sq > region_length_small * region_length_small )
             {
               pVect delta_v(ball1->velocity,ball9->velocity);
               const double delta_d = lifetime_delta_t * delta_v.mag();
@@ -2555,34 +2579,7 @@ World::time_step_cuda(int iters_per_frame, bool just_before_render)
   for ( Ball *ball; balls.iterate(ball); )
     if ( ball->collision_count ) set_max(contact_y_max,ball->position.y);
 
-  if ( opt_drip && ( !dball || dball->collision_count ) )
-    {
-      dball = new Ball(this);
-      dball->position =
-        pCoor(30,max(20.0f,contact_y_max) + 3 * opt_ball_radius,60);
-      dball->velocity = pVect(0,0,0);
-      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
-      drip_cnt++;
-      balls += dball;
-    }
-
-  if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
-    {
-      Ball* const nball = new Ball(this);
-      double r = opt_ball_radius * 5;
-      double c = 2 * M_PI * r;
-      const double delta_theta =
-        0.0001 + 2 * M_PI / ( c / (2 * opt_ball_radius ) );
-      static double th = 0;  th += delta_theta;
-      nball->position.x = platform_xmax - r - 2 * opt_ball_radius
-        + (r+opt_ball_radius) * cos(th);
-      nball->position.z = (r+opt_ball_radius) * sin(th);
-      nball->position.y = max(20.0f,contact_y_max + 3 * opt_ball_radius);
-      nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
-      spray_cnt++;
-      balls += nball;
-      ball_countdown = 0.1;
-    }
+  balls_add(contact_y_max);
 
   const float deep = -100;
   for ( Ball *ball; balls.iterate(ball); )
@@ -2874,7 +2871,8 @@ World::render()
       /// Advance simulation state by wall clock time.
       //
       const double elapsed_time = time_now - world_time;
-      const int iter_limit = min(10, int ( 0.5 + elapsed_time / delta_t));
+      const int iter_limit =
+        min( opt_time_step_factor * 3, int ( 0.5 + elapsed_time / delta_t));
       for ( int iter=0; true; iter++ )
         {
           const bool last = iter == iter_limit - 1;
@@ -3222,7 +3220,6 @@ World::cb_keyboard()
     if ( opt_physics_method == GP_cuda ) cuda_at_balls_change();
     opt_physics_method++;
     if ( opt_physics_method > GP_cuda ) opt_physics_method = GP_cpu;
-    opt_physics_method = GP_cpu;
     break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;

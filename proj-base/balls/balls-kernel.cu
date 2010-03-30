@@ -55,18 +55,13 @@ __constant__ SM_Idx2 *tacts_schedule;
 
 
 __constant__ float3 gravity_accel_dt;
-__constant__ float opt_ball_radius, opt_bounce_loss;
+__constant__ float opt_bounce_loss;
 __constant__ float opt_friction_coeff, opt_friction_roll;
 __constant__ float platform_xmin, platform_xmax;
 __constant__ float platform_zmin, platform_zmax;
-__constant__ float platform_xmin_mr, platform_xmax_pr;
-__constant__ float platform_zmin_mr, platform_zmax_pr;
 __constant__ float platform_xmid, platform_xrad;
 __constant__ float delta_t;
-__constant__ float short_xrad_sq;
-__constant__ float r_inv, two_r, two_r_sq;
-__constant__ float elasticity_inv_dt, ball_mass_inv;
-__constant__ float mo_vel_factor, v_to_do;
+__constant__ float elasticity_inv_dt;
 
 
 ///
@@ -216,28 +211,42 @@ __device__ pQuat operator *(pQuat a, pQuat b)
 // See balls.cc for details.
 
 __device__ pVect
-point_rot_vel(CUDA_Ball_W ball, pNorm direction)
+point_rot_vel(CUDA_Ball_W& ball, pNorm direction)
 {
-  return opt_ball_radius * cross( ball.angular_momentum, direction );
+  /// Return velocity of point on surface of ball.
+  //
+  return ball.radius * cross( ball.omega, direction );
+}
+
+__device__ float
+get_fdt_to_do(CUDA_Ball_W& ball)
+{
+  return 2.5 * ball.mass_inv / ball.radius;
 }
 
 __device__ void
-apply_tan_do(CUDA_Ball_W& ball, pNorm tact_dir, pVect force)
+apply_tan_do(CUDA_Ball_W& ball, pNorm tact_dir, pVect tan_delta_omega)
 {
-  pVect axis_torque = cross( tact_dir, force );
-  ball.angular_momentum += axis_torque;
+  /// Change rotation rate based on..
+  //
+  pVect delta_omega_axis = cross(tact_dir, tan_delta_omega);
+  ball.omega += delta_omega_axis;
 }
 
 __device__ void
-apply_deltao(CUDA_Ball_W& ball, pNorm tact_dir, pNorm force_dir, double deltao)
+apply_tan_force_dt
+(CUDA_Ball_W& ball, pNorm tact_dir, pNorm force_dir, double force_dt)
 {
-  apply_tan_do(ball, tact_dir, deltao * force_dir );
+  /// Change rotation rate due to force_dt at tact_dir in direction force_dir.
+  //
+  pVect delta_omega_tan = get_fdt_to_do(ball) * force_dt * force_dir;
+  apply_tan_do(ball, tact_dir, delta_omega_tan);
 }
 
 __device__ void
-apply_tan_dv(CUDA_Ball_W& ball, pNorm tact_dir, pVect force)
+apply_tan_force_dt(CUDA_Ball_W& ball, pNorm tact_dir, pVect force_dt)
 {
-  apply_tan_do(ball, tact_dir, r_inv * force);
+  apply_tan_do(ball, tact_dir, get_fdt_to_do(ball) * force_dt );
 }
 
 
@@ -273,16 +282,15 @@ penetration_balls_resolve
   //
   if ( b2_real ) { ball1->debug_pair_calls++;  ball2->debug_pair_calls++; }
 
-  // Return if balls aren't touching.  Note avoidance of square root.
-  //
-  if ( dist.mag_sq >= two_r_sq ) return;
+  const float radii_sum = ball1->radius + ball2->radius;
+
+  if ( dist.magnitude >= radii_sum ) return;
 
   // Update counters used for optimization (contact_count) and
   // to decide when to release new balls (collision_count).
   //
-  ball1->collision_count++;  ball1->contact_count++;
-  if ( b2_real ) { ball2->collision_count++; ball2->contact_count++; }
-
+  ball1->collision_count++; ball1->contact_count++; 
+  if ( b2_real ) {ball2->collision_count++; ball2->contact_count++;}
 
   /// WARNING:  This doesn't work: somefunc(-dist); 
   pNorm ndist = -dist;
@@ -290,27 +298,29 @@ penetration_balls_resolve
   // Compute relative (approach) velocity.
   //
   pVect prev_appr_vel = ball1->prev_velocity - ball2->prev_velocity;
-  const double prev_approach_speed = dot( prev_appr_vel, dist );
+  const float prev_approach_speed = dot( prev_appr_vel, dist );
 
-  const double loss_factor = 1 - opt_bounce_loss;
+  const float loss_factor = 1 - opt_bounce_loss;
 
   // Compute change in speed based on how close balls touching, ignoring
   // energy loss.
   //
-  const double appr_deltas_no_loss =
-    ( two_r - dist.magnitude ) * elasticity_inv_dt * ball_mass_inv;
+  const float appr_force_dt_no_loss =
+    ( radii_sum - dist.magnitude ) * elasticity_inv_dt;
 
   // Change in speed accounting for energy loss. Only applied when
   // balls separating.
   //
-  const double appr_deltas =
+  const float appr_force_dt =
     prev_approach_speed > 0
-    ? appr_deltas_no_loss : loss_factor * appr_deltas_no_loss;
+    ? appr_force_dt_no_loss : loss_factor * appr_force_dt_no_loss;
+
+  const float appr_deltas_1 = appr_force_dt * ball1->mass_inv;
 
   /// Update Linear Velocity
   //
-  ball1->velocity -= appr_deltas * dist;
-  if ( b2_real ) ball2->velocity += appr_deltas * dist;
+  ball1->velocity -= appr_deltas_1 * dist;
+  if ( b2_real ) ball2->velocity += appr_force_dt * ball2->mass_inv * dist;
 
   // Find speed on surface of balls at point of contact.
   //
@@ -325,42 +335,49 @@ penetration_balls_resolve
 
   // Find change in velocity due to friction.
   //
-  const double fric_dv_potential =
-    fabs(appr_deltas_no_loss) * opt_friction_coeff;
-  const double dv_limit_raw = tact_vel_dir.magnitude * mo_vel_factor;
-  const double dv_limit = b2_real ? dv_limit_raw : 2 * dv_limit_raw;
+  const double fric_force_dt_potential =
+    appr_force_dt_no_loss * opt_friction_coeff;
+
+  const double mass_inv_sum =
+    b2_real ? ball1->mass_inv + ball2->mass_inv : ball1->mass_inv;
+
+  const double force_dt_limit =
+    tact_vel_dir.magnitude / ( 3.5 * mass_inv_sum );
 
   // If true, surfaces are not sliding or will stop sliding after
   // frictional forces applied. (If a ball surface isn't sliding
   // against another surface than it must be rolling.)
   //
-  const bool will_roll = dv_limit <= fric_dv_potential;
-  const double sliding_fric_deltav =
-    will_roll ? dv_limit : fric_dv_potential;
+  const bool will_roll = force_dt_limit <= fric_force_dt_potential;
+
+  const double sliding_fric_force_dt =
+    will_roll ? force_dt_limit : fric_force_dt_potential;
 
   const double dv_tolerance = 0.000001;
 
-  if ( sliding_fric_deltav > dv_tolerance )
+  const double sliding_fric_dv_1 = sliding_fric_force_dt * ball1->mass_inv;
+
+  if ( sliding_fric_dv_1 > dv_tolerance )
     {
-      // Apply frictional force.
-
-      // Compute change in angular momentum due to friction.
-      //
-      const double fric_deltao = sliding_fric_deltav * v_to_do;
-
-      // Apply torque (resulting in angular momentum change) and
+      // Apply tangential force (resulting in angular momentum change) and
       // linear force (resulting in velocity change).
       //
-      apply_deltao(ball1_r,dist,tact_vel_dir,-fric_deltao);
-      ball1->velocity -= sliding_fric_deltav * tact_vel_dir;
-
-      // Ditto for the other ball, if it's real.
-      if ( b2_real )
-        {
-          apply_deltao(ball2_r,dist,tact_vel_dir,-fric_deltao);
-          ball2->velocity += sliding_fric_deltav * tact_vel_dir;
-        }
+      apply_tan_force_dt(ball1_r,dist,tact_vel_dir,-sliding_fric_force_dt);
+      ball1->velocity -= sliding_fric_dv_1 * tact_vel_dir;
     }
+
+  const double sliding_fric_dv_2 = sliding_fric_force_dt * ball2->mass_inv;
+
+  if ( b2_real && sliding_fric_dv_2 > dv_tolerance )
+    {
+      // Apply frictional forces for ball 2.
+      //
+      apply_tan_force_dt(ball2_r,ndist,tact_vel_dir,sliding_fric_force_dt);
+      ball2->velocity += sliding_fric_dv_2 * tact_vel_dir;;
+    }
+
+  const float fdt_to_do_1 = get_fdt_to_do(ball1_r);
+  const float fdt_to_do_2 = get_fdt_to_do(ball2_r);
 
   {
     /// Torque
@@ -370,15 +387,18 @@ penetration_balls_resolve
     // other. (For example, if one ball is spinning on top of
     // another.)
     //
-    const double appr_omega =
-      dot(ball1->angular_momentum,dist) - dot(ball2->angular_momentum,dist);
-    const double fric_deltao_pot = fric_dv_potential * v_to_do;
+    const double appr_omega = dot(ball2->omega,dist) - dot(ball1->omega,dist);
+    const double fdt_to_do_sum =
+      b2_real ? fdt_to_do_1 + fdt_to_do_2 : fdt_to_do_1;
+    const double fdt_limit = fabs(appr_omega) / fdt_to_do_sum;
     const bool rev = appr_omega < 0;
-    const double fric_deltao = min(fabs(appr_omega),fric_deltao_pot);
-    pVect delta_am = rev ? -fric_deltao * dist : fric_deltao * dist;
-    ball1->angular_momentum -= delta_am;
-    if ( b2_real ) ball2->angular_momentum += delta_am;
+    const double fdt_raw = min(fdt_limit,fric_force_dt_potential);
+    const pVect fdt_v = ( rev ? -fdt_raw : fdt_raw ) * dist;
+    ball1->omega += fdt_to_do_1 * fdt_v;
+    if ( b2_real ) ball2->omega -= fdt_to_do_2 * fdt_v;
   }
+
+  return;
 
   {
     /// Rolling Friction
@@ -386,21 +406,22 @@ penetration_balls_resolve
     // The rolling friction model used here is ad-hoc.
 
     pVect tan_b12_vel = b2_real ? 0.5 * tan_vel : zero_vec;
-    const double torque_limit_sort_of = appr_deltas_no_loss
-      * sqrt( opt_ball_radius - 0.25 * dist.mag_sq * r_inv );
+    const double torque_limit_sort_of = appr_force_dt_no_loss
+      * sqrt( radii_sum - dist.mag_sq / radii_sum );
+      //  * sqrt( ball1->radius - 0.25 * dist.mag_sq * r_inv );
 
     pVect tact1_rot_vel = point_rot_vel(ball1_r,dist);
     pVect tact1_roll_vel = tact1_rot_vel + tan_b12_vel;
     pNorm tact1_roll_vel_dir = mn(tact1_roll_vel);
     pVect lost_vel = zero_vec;
 
-    const double rfric_loss1 =
-      torque_limit_sort_of *
+    const double rfric_loss_dv_1 =
+      torque_limit_sort_of * 2.5 * ball1->mass_inv *
       ( tact1_roll_vel_dir.magnitude * opt_friction_roll /
         ( 1 + tact1_roll_vel_dir.magnitude * opt_friction_roll ) );
     
     pVect lost_vel1 =
-      min(tact1_roll_vel_dir.magnitude, rfric_loss1) * tact1_roll_vel_dir;
+      min(tact1_roll_vel_dir.magnitude, rfric_loss_dv_1) * tact1_roll_vel_dir;
 
     lost_vel = -lost_vel1;
     
@@ -409,18 +430,20 @@ penetration_balls_resolve
         pVect tact2_rot_vel = point_rot_vel(ball2_r,ndist);
         pVect tact2_roll_vel = tact2_rot_vel - tan_b12_vel;
         pNorm tact2_roll_vel_dir = mn(tact2_roll_vel);
-        const double rfric_loss2 =
-          torque_limit_sort_of *
+        const double rfric_loss_dv_2 =
+          torque_limit_sort_of * 2.5 * ball2->mass_inv *
           ( tact2_roll_vel_dir.magnitude * opt_friction_roll /
             ( 1 + tact2_roll_vel_dir.magnitude * opt_friction_roll ) );
         pVect lost_vel2 =
-          min(tact2_roll_vel_dir.magnitude, rfric_loss2 ) * tact2_roll_vel_dir;
+          min(tact2_roll_vel_dir.magnitude, rfric_loss_dv_2 )
+          * tact2_roll_vel_dir;
 
         lost_vel += lost_vel2;
       }
 
-    apply_tan_dv(ball1_r,dist,lost_vel);
-    if ( b2_real ) apply_tan_dv(ball2_r,dist,lost_vel);
+    apply_tan_force_dt(ball1_r,dist,0.4 / ball1->mass_inv * lost_vel);
+    if ( b2_real )
+      apply_tan_force_dt(ball2_r,dist, 0.4/ ball2->mass_inv * lost_vel);
   }
 }
 
@@ -472,7 +495,10 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt)
       ball.velocity = xyz(balls_x.velocity[m_idx]);
       ball.prev_velocity = xyz(balls_x.prev_velocity[m_idx]);
       ball.position = xyz(balls_x.position[m_idx]);
-      ball.angular_momentum = xyz(balls_x.angular_momentum[m_idx]);
+      ball.omega = xyz(balls_x.omega[m_idx]);
+      float4 ball_props = balls_x.ball_props[m_idx];
+      ball.radius = ball_props.x;
+      ball.mass_inv = ball_props.y;
 
       int4 tact_counts = balls_x.tact_counts[m_idx];
       ball.collision_count = tact_counts.x;
@@ -510,7 +536,7 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt)
       if ( m_idx < 0 ) continue;
 
       set_f4(balls_x.velocity[m_idx], ball.velocity);
-      set_f4(balls_x.angular_momentum[m_idx], ball.angular_momentum);
+      set_f4(balls_x.omega[m_idx], ball.omega);
 
       int4 tact_counts;
       tact_counts.x = ball.collision_count;
@@ -572,10 +598,13 @@ pass_platform(int ball_count)
   ball.prev_velocity = xyz(balls_x.prev_velocity[idx]);
   ball.velocity = xyz(balls_x.velocity[idx]) + gravity_accel_dt;
   set_f3(ball.position,balls_x.position[idx]);
-  set_f3(ball.angular_momentum, balls_x.angular_momentum[idx]);
+  set_f3(ball.omega, balls_x.omega[idx]);
   int4 tact_counts = balls_x.tact_counts[idx];
   ball.collision_count = tact_counts.x;
   ball.contact_count = tact_counts.y;
+  float4 ball_props = balls_x.ball_props[idx];
+  ball.radius = ball_props.x;
+  ball.mass_inv = ball_props.y;
 
   /// Handle Ball/Platform Collision
   //
@@ -584,7 +613,7 @@ pass_platform(int ball_count)
   /// Update Position and Orientation
   //
   ball.position += delta_t * ball.velocity;
-  pNorm axis = mn(ball.angular_momentum);
+  pNorm axis = mn(ball.omega);
   balls_x.orientation[idx] =
     m4( mq(axis,delta_t * axis.magnitude) * mq(balls_x.orientation[idx]) );
 
@@ -592,7 +621,7 @@ pass_platform(int ball_count)
   //
   set_f4(balls_x.velocity[idx], ball.velocity);
   set_f4(balls_x.prev_velocity[idx], ball.velocity);
-  set_f4(balls_x.angular_momentum[idx], ball.angular_momentum);
+  set_f4(balls_x.omega[idx], ball.omega);
   set_f4(balls_x.position[idx],ball.position);
   tact_counts.x = ball.collision_count;
   tact_counts.y = ball.contact_count << 8;
@@ -606,16 +635,18 @@ platform_collision(CUDA_Ball_W& ball)
   /// Check if ball in contact with platform, if so apply forces.
 
   pCoor pos = ball.position;
+  const float r = ball.radius;
   bool collision_possible =
-    pos.y < opt_ball_radius
-    && pos.x >= platform_xmin_mr && pos.x <= platform_xmax_pr
-    && pos.z >= platform_zmin_mr && pos.z <= platform_zmax_pr;
+    pos.y < r
+    && pos.x >= platform_xmin - r && pos.x <= platform_xmax + r
+    && pos.z >= platform_zmin - r && pos.z <= platform_zmax + r;
 
   if ( !collision_possible ) return;
 
   CUDA_Ball_W pball;
 
   pCoor axis = mc(platform_xmid,0,pos.z);
+  const float short_xrad = platform_xrad - r;
 
   // Test for different ways ball can touch platform. If contact
   // is found find position of an artificial platform ball (pball)
@@ -629,41 +660,41 @@ platform_collision(CUDA_Ball_W& ball)
       //
       pCoor tact
         = mc(pos.x > platform_xmid ? platform_xmax : platform_xmin, 0, pos.z);
-      pVect pos_tact = tact - pos;
-      float tact_dir_mag_sq = mag_sq(pos_tact);
-      if ( tact_dir_mag_sq >= two_r_sq ) return;
-      pball.position =
-        tact + opt_ball_radius / sqrt(tact_dir_mag_sq) * pos_tact;
+      pNorm tact_dir = mn(pos,tact);
+      if ( tact_dir.mag_sq >= r * r ) return;
+      pball.position = tact + r * tact_dir;
     }
   else if ( pos.z > platform_zmax || pos.z < platform_zmin )
     {
       // Possible contact with side (curved) edges of platform.
       //
       pNorm ball_dir = mn(axis,pos);
-      if ( ball_dir.mag_sq <= short_xrad_sq ) return;
+      if ( ball_dir.magnitude <= platform_xrad ) return;
       const float zedge =
         pos.z > platform_zmax ? platform_zmax : platform_zmin;
       pCoor axis_edge = mc(platform_xmid,0,zedge);
       pCoor tact = axis_edge + platform_xrad * ball_dir;
       pNorm tact_dir = mn(pos,tact);
-      if ( tact_dir.mag_sq >= two_r_sq ) return;
-      pball.position = tact + opt_ball_radius * tact_dir;
+      if ( tact_dir.mag_sq >= r * r ) return;
+      pball.position = tact + r * tact_dir;
     }
   else
     {
       // Possible contact with surface of platform.
       //
       pNorm tact_dir = mn(axis,pos);
-      if ( tact_dir.mag_sq <= short_xrad_sq ) return;
-      pball.position = axis + (opt_ball_radius+platform_xrad) * tact_dir;
+      if ( tact_dir.mag_sq <= short_xrad * short_xrad ) return;
+      pball.position = axis + (r+platform_xrad) * tact_dir;
     }
 
   // Finish initializing platform ball, and call routine to
   // resolve penetration.
   //
   pVect zero_vec = mv(0,0,0);
-  pball.angular_momentum = zero_vec;
+  pball.omega = zero_vec;
   pball.prev_velocity = pball.velocity = zero_vec;
+  pball.radius = ball.radius;
+  pball.mass_inv = ball.mass_inv;
   penetration_balls_resolve(ball,pball,false);
 }
 

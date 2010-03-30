@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE X70X-X (Sp 2010), GPU Microarchitecture
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -20,8 +20,9 @@ struct CUDA_Ball {
   float4 orientation;
   float4 velocity;
   float4 prev_velocity;
-  float4 angular_momentum;
+  float4 omega;
   int4 tact_counts;
+  float4 ball_props;
 };
 
 struct CUDA_Ball_X { // X is for transpose.
@@ -29,20 +30,22 @@ struct CUDA_Ball_X { // X is for transpose.
   float4 *orientation;
   float4 *velocity;
   float4 *prev_velocity;
-  float4 *angular_momentum;
+  float4 *omega;
   int4 *tact_counts;
+  float4 *ball_props;
 };
 
 struct  CUDA_Ball_W { // W is for work.
   float3 position;
   float3 velocity;
-  float3 angular_momentum;
+  float3 omega;
   float3 prev_velocity;
   short collision_count;
   short contact_count;
   short debug_pair_calls;
   short m_idx;
-  char pad[12];
+  float radius, mass_inv;
+  char pad[4];
 };
 
 #define BALLS_PER_BLOCK ( 16000 / sizeof(CUDA_Ball_W) )
