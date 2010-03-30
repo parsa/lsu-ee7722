@@ -13,29 +13,30 @@ public:
   void init(int slices);
   void shadow_volume_init(int slices);
   void render();
-  void render(pVect position){ center = position; render(); }
+  void render(float radiusp, pVect position)
+  { radius = radiusp;  center = position; render(); }
   void render_flat();
-  void render_simple(pVect position);
-  void render(pVect position, pVect axisp, double anglep)
+  void render_simple(float radius, pVect position);
+  void render(float radiusp, pVect position, pVect axisp, double anglep)
   {
-    center = position; axis = axisp;  angle = anglep;
+    radius = radius; center = position; axis = axisp;  angle = anglep;
     rotation_matrix_compute();
     render();
   }
-  void render(pVect position, pMatrix orientation)
+  void render(float radiusp, pVect position, pMatrix orientation)
   {
+    radius = radiusp;
     center = position;  rotation_matrix = orientation;  axis = pVect(0,0,0);
     default_orientation = false;
     render();
   }
 
-  void render_shadow_volume(pCoor position);
-  void render_shadow_volume2(pCoor position);
+  void render_shadow_volume(float radius, pCoor position);
+  void render_shadow_volume2(float radius, pCoor position);
   void rotation_matrix_compute();
   int slices;
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<float> tex_coord_bo;
-  pBuffer_Object<pVect> shadow_volume_points_bo;
   pCoor light_pos;
   pCoor center;
   pVect axis, axis_prepared;
@@ -60,7 +61,7 @@ Sphere::init(int slicesp)
   angle = 0;
   radius = 2;
   tri_count = NULL;
-  opt_render_flat = true;
+  opt_render_flat = false;
   default_orientation = true;
   color = pColor(0xf9b237); // LSU Spirit Gold
   const double two_pi = 2.0 * M_PI;
@@ -181,8 +182,9 @@ Sphere::render_flat()
 }
 
 void
-Sphere::render_simple(pVect position)
+Sphere::render_simple(float radiusp, pVect position)
 {
+  radius = radiusp;
   glMatrixMode(GL_MODELVIEW);
 
   glPushMatrix();
@@ -204,15 +206,17 @@ Sphere::shadow_volume_init(int pieces)
 }
 
 void
-Sphere::render_shadow_volume2(pCoor center)
+Sphere::render_shadow_volume2(float radiusp, pCoor center)
 {
 }
 
 #if 1
 void
-Sphere::render_shadow_volume(pCoor center)
+Sphere::render_shadow_volume(float radiusp, pCoor center)
 {
   // Compute shadow volume of sphere, and render it.
+
+  radius = radiusp;
 
   const int pieces = slices;   // Number of faces needed for the shadow volume.
   const double delta_theta = 2 * M_PI / pieces;
