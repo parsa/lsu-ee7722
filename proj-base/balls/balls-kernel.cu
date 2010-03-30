@@ -647,6 +647,7 @@ platform_collision(CUDA_Ball_W& ball)
 
   pCoor axis = mc(platform_xmid,0,pos.z);
   const float short_xrad = platform_xrad - r;
+  const float short_xrad_sq = short_xrad * short_xrad;
 
   // Test for different ways ball can touch platform. If contact
   // is found find position of an artificial platform ball (pball)
@@ -669,7 +670,7 @@ platform_collision(CUDA_Ball_W& ball)
       // Possible contact with side (curved) edges of platform.
       //
       pNorm ball_dir = mn(axis,pos);
-      if ( ball_dir.magnitude <= platform_xrad ) return;
+      if ( ball_dir.mag_sq <= short_xrad_sq ) return;
       const float zedge =
         pos.z > platform_zmax ? platform_zmax : platform_zmin;
       pCoor axis_edge = mc(platform_xmid,0,zedge);
@@ -683,7 +684,7 @@ platform_collision(CUDA_Ball_W& ball)
       // Possible contact with surface of platform.
       //
       pNorm tact_dir = mn(axis,pos);
-      if ( tact_dir.mag_sq <= short_xrad * short_xrad ) return;
+      if ( tact_dir.mag_sq <= short_xrad_sq ) return;
       pball.position = axis + (r+platform_xrad) * tact_dir;
     }
 
