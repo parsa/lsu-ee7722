@@ -613,6 +613,7 @@ private:
     default: bsize = 0; im_format = ""; ASSERTS( false );
     }
     char* const pb = (char*) malloc(bsize);
+    glPixelStorei(GL_PACK_ALIGNMENT,1);
     glReadPixels(0,0,width,height,format,GL_UNSIGNED_BYTE,pb);
     Image* const image = new Image( width, height, im_format, CharPixel, pb);
     image->flip();
