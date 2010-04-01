@@ -77,8 +77,8 @@ Limitations
 
 class Tile {
 public:
-  Tile(){}
-  Tile(pCoor ll, pVect up, pVect rt){set(ll,up,rt);}
+  Tile():marker(NULL){}
+  Tile(pCoor ll, pVect up, pVect rt):marker(NULL){set(ll,up,rt);}
   void set(pCoor ll, pVect up, pVect rt)
   {
     pt_ll = ll;
@@ -100,6 +100,7 @@ public:
   pColor color;
   float width, height;
   Ball *ball_tested;
+  void *marker;
 };
 
 class Tile_Manager {

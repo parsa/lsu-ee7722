@@ -202,6 +202,8 @@ class World;
 // Class Contact: Information about pair of nearby balls.
 class Contact;
 
+class Tile;
+
 // Class Pass: Information needed for a CUDA launch for a pair pass.
 //
 class Pass {
@@ -299,6 +301,22 @@ public:
   int sm_idx;
 };
 
+class Wheel {
+public:
+  Wheel(World* w):w(*w){};
+  void init(pCoor center, pVect axis, double r_inner, double blade_len);
+  void variables_update();
+  void spin();
+  void collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo);
+  double theta, omega;
+  PStack<Tile*> tiles;
+  pCoor center;
+  pNorm axis_dir;
+  float base_moment_of_inertia_inv, moment_of_inertia_inv;
+  World& w;
+};
+
+
 const pColor red(0.8,0.1,0.1);
 const pColor green(0.1,0.8,0.1);
 const pColor blue(0.1,0.1,0.8);
@@ -369,6 +387,7 @@ public:
   void variables_update();
   void modelview_update();
   void time_step_cpu();
+  bool sphere_empty(pCoor center, float radius);
   void balls_add(float contact_y_max);
 
   // For debugging and tuning.
@@ -392,6 +411,7 @@ public:
 
   bool opt_drip;
   int drip_cnt, drip_run;
+  pCoor drip_location;
   Ball *dball;
   Ball* pball;
 
@@ -432,13 +452,9 @@ public:
 
   /// TEMPORARY: Declare container for tiles.
   Tile_Manager tile_manager;
-  /// Spinner, a moving object made from a tile.
-  Tile *spinner;
-  double spinner_omega, spinner_omega_dt, spinner_angle;
-  bool opt_spinner;
-  pCoor spinner_center;
-  pVect spinner_x, spinner_y, spinner_axis;
 
+  Wheel* wheel;
+  float opt_wheel_tile_density; // Per area, for computing moment of inertia.
 
   /// Tiled platform for ball.
   //
@@ -459,7 +475,8 @@ public:
 
   pCoor light_location;
   float opt_light_intensity;
-  enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
+  enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_Drip, MI_COUNT } 
+    opt_move_item;
   bool opt_pause;
 
   pCoor eye_location;
@@ -645,7 +662,6 @@ World::init()
   opt_debug = false;
   opt_debug2 = false;
   opt_block_color_pass = 0;
-  opt_spinner = true;
 
   mirror_tint = lsu_spirit_purple * 0.5;
 
@@ -726,9 +742,10 @@ World::init()
   dball = NULL;
   opt_verify = true;
   opt_time_step_factor = 6;
+  opt_wheel_tile_density = 0.01;
 
-  variable_control.insert(opt_time_step_factor,"Time Step Factor",1,1);
   variable_control.insert(opt_ball_density,"Ball Density");
+  variable_control.insert(opt_wheel_tile_density,"Tile Density");
   variable_control.insert(opt_elasticity,"Elasticity");
   variable_control.insert(opt_friction_coeff,"Sliding Friction");
   variable_control.insert(opt_friction_roll,"Rolling Friction");
@@ -738,6 +755,7 @@ World::init()
   variable_control.insert(opt_ball_radius,"Ball Radius");
   variable_control.insert_power_of_2(block_size,"Block Size");
   variable_control.insert(opt_block_color_pass,"Color by Block in Pass");
+  variable_control.insert(opt_time_step_factor,"Time Step Factor",1,1);
 
   opt_move_item = MI_Eye;
   opt_pause = false;
@@ -745,6 +763,8 @@ World::init()
   pball = new Ball(this); 
   pball->prev_velocity = pVect(0,0,0);
   pball->set_radius(1);
+
+  drip_location = pCoor(30,20,60);
 
   ball_countdown = 0.1;
   sphere.init(40);
@@ -766,9 +786,14 @@ World::init()
       spheres[i].init(lod);
     }
 
+
+  wheel = new Wheel(this);
+
   variables_update();
   platform_update();
   modelview_update();
+
+  wheel->init(pCoor(0.6 * platform_xrad,-10,65), pVect(0,0,-10),3,8);
 
   /// TEMPORARY:
   //
@@ -791,22 +816,9 @@ World::init()
         tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
       }
 
-    // Use tile to make a spinning thing.
-    //
-    spinner_angle = 0;
-    spinner_omega = -1;
-    spinner_center = pCoor(0,-platform_xrad+10.01,50);
-    spinner_x = pVect(20,0,0);
-    spinner_axis = pVect(0,0,20);
-    spinner_y = spinner_x.mag() * pNorm(cross(spinner_x,spinner_axis));
-    spinner = tile_manager.new_tile
-      (spinner_center + 0.5 * spinner_x,
-       spinner_x,spinner_axis,pColor(0,0,0.8));
-    opt_spinner = true;
-
     variables_update();
-
   }
+
   /// Initialize Ball Positions
   //
   //  Code below places balls in one of several ways.
@@ -882,7 +894,7 @@ World::variables_update()
   gravity_accel_dt = delta_t * gravity_accel;
   elasticity_inv_dt = 100 * delta_t / opt_elasticity;
   if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
-  spinner_omega_dt = spinner_omega * delta_t;
+  wheel->variables_update();
 }
 
 void
@@ -1372,6 +1384,99 @@ World::cuda_data_to_cpu(uint which_data)
     }
 }
 
+void 
+Wheel::init(pCoor centerp, pVect axis, double r_inner, double blade_len)
+{
+  center = centerp;
+  axis_dir = axis;
+  const int slices = 10;
+  const double r_outer = r_inner + blade_len;
+  pVect y_axis(0,1,0);
+  pNorm x_axis = cross(axis,y_axis);
+  const double wheel_width = axis_dir.magnitude;
+
+  const double r_inner_sq = r_inner * r_inner;
+  const double r_outer_sq = r_outer * r_outer;
+
+  const double base_moment_of_inertia_rim =
+    r_inner_sq *
+    wheel_width * 2 * M_PI * r_inner;
+  const double base_moment_of_inertia_blades =
+    slices * wheel_width *
+    (1.0/3) * ( r_outer_sq * r_outer - r_inner_sq * r_inner );
+  
+  base_moment_of_inertia_inv =
+    1.0 / ( base_moment_of_inertia_rim + base_moment_of_inertia_blades );
+
+  moment_of_inertia_inv =
+    base_moment_of_inertia_inv / w.opt_wheel_tile_density;
+
+  omega = 0;
+  theta = 0;
+
+  const double delta_theta = 2 * M_PI / slices;
+  pColor wheel_color(0,0.8,0);
+  for ( int i=0; i<slices; i++ )
+    {
+      const double theta_1 = i * delta_theta;
+      const double theta_2 = (i+1) * delta_theta;
+      pCoor pt1 = center + cos(theta_1) * r_inner * x_axis
+        + sin(theta_1) * r_inner * y_axis;
+      pVect pt1o = cos(theta_1) * blade_len * x_axis
+        + sin(theta_1) * blade_len * y_axis;
+      pCoor pt2 = center + cos(theta_2) * r_inner * x_axis
+        + sin(theta_2) * r_inner * y_axis;
+      pVect pt12(pt1,pt2);
+      tiles += w.tile_manager.new_tile(pt1,pt12,axis,wheel_color);
+      tiles += w.tile_manager.new_tile(pt1,pt1o,axis,wheel_color);
+    }
+  for ( Tile *tile; tiles.iterate(tile); ) tile->marker = this;
+}
+
+void
+Wheel::variables_update()
+{
+  moment_of_inertia_inv =
+    base_moment_of_inertia_inv / w.opt_wheel_tile_density;
+}
+
+void
+Wheel::spin()
+{
+  const float friction_torque = 10;
+  const float friction_delta_omega = 
+    friction_torque * moment_of_inertia_inv * w.delta_t;
+  if ( fabs(omega) <= friction_delta_omega )
+    omega = 0;
+  else if ( omega > 0 )
+    omega -= friction_delta_omega;
+  else
+    omega += friction_delta_omega;
+
+  const double delta_theta = omega * w.delta_t;
+  pMatrix_Translate tr_center(-center);
+  pMatrix_Translate tr_restore(center);
+  pMatrix_Rotation tr_rotate(axis_dir,delta_theta);
+  pMatrix transform = tr_restore * tr_rotate * tr_center;
+  for ( Tile *tile; tiles.iterate(tile); )
+    {
+      pCoor ll = transform * tile->pt_ll;
+      pCoor pt_ul = transform * tile->pt_ul;
+      pCoor pt_lr = transform * tile->pt_lr;
+      tile->set(ll,pt_ul-ll,pt_lr-ll);
+    }
+}
+
+void
+Wheel::collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo)
+{
+  if ( tile->marker != this ) return;
+  pVect to_center(center,tact);
+  // Formula below needs to be checked.
+  const float torque = dot(axis_dir,cross(to_center,delta_mo));
+  omega -= torque * moment_of_inertia_inv;
+}
+
 
 ///
 /// Physical Simulation Code
@@ -1710,6 +1815,18 @@ Ball::apply_tan_force_dt(pNorm tact_dir, pVect force_dt)
 }
 
 
+bool
+World::sphere_empty(pCoor center, float radius)
+{
+  for ( Ball_Iterator ball(balls); ball; ball++ )
+    {
+      const double radii = radius + ball->radius;
+      pNorm dist(ball->position,center);
+      if ( dist.mag_sq <= radii * radii ) return false;
+    }
+  return true;
+}
+
 void
 World::balls_add(float contact_y_max)
 {
@@ -1717,9 +1834,9 @@ World::balls_add(float contact_y_max)
   //
   if ( opt_drip && ( !dball || dball->collision_count ) )
     {
+      if ( !sphere_empty(drip_location,opt_ball_radius) ) return;
       dball = new Ball(this);
-      dball->position =
-        pCoor(30,max(20.0f,contact_y_max) + 3 * opt_ball_radius,60);
+      dball->position = drip_location + pVect(0,dball->radius,0);
       dball->velocity = pVect(0,0,0);
       dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
       drip_cnt++;
@@ -1731,40 +1848,28 @@ World::balls_add(float contact_y_max)
   ball_countdown -= delta_t;
   if ( opt_spray_on && ball_countdown <= 0 || balls.occ() == 0 )
     {
-      Ball* const nball = new Ball(this);
       const double min_radius = 0.8;
       const double max_rad = 2 * opt_ball_radius;
       const double dr = max_rad - min_radius;
       const double radius = min_radius + dr * random()/(0.0+RAND_MAX);
-      nball->set_radius(radius);
       const double r = 10;
       const double delta_theta = 0.001 + asin(radius/r);
       static double th = 0;  
       th += delta_theta;
-      nball->position.x = platform_xmax - r - 2 * opt_ball_radius
-        + (r+max_rad) * cos(th);
-      nball->position.z = (r+max_rad) * sin(th);
+      pCoor position
+        ( platform_xmax - r - 2 * opt_ball_radius + (r+max_rad) * cos(th),
+          20.0 + 3 * max_rad,
+          (r+max_rad) * sin(th) );
+
       th += delta_theta;
-      nball->position.y = 20.0 + 3 * max_rad;
+
+      if ( !sphere_empty(position,radius) ) return;
+
+      Ball* const nball = new Ball(this);
+      nball->position = position;
+      nball->set_radius(radius);
       nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
       spray_cnt++;
-
-      int close_count = 0;
-
-      for ( Ball *ball; balls.iterate(ball) && close_count == 0; )
-        {
-          const double radii = nball->radius + ball->radius;
-          pNorm dist(ball->position,nball->position);
-          if ( dist.mag_sq <= radii * radii ) close_count++;
-        }
-
-      if ( close_count )
-        {
-          balls.iterate_reset();
-          delete nball;
-          return;
-        }
-
       balls += nball;
       ball_countdown = 0.1;
     }
@@ -1775,17 +1880,7 @@ World::time_step_cpu()
 {
   const float deep = -100;
 
-  /// TEMPORARY
-  //
-  // Update spinner position.
-  if ( opt_spinner )
-    {
-      spinner_angle += spinner_omega_dt;
-      pVect spinner_dir_cur =
-        cos(spinner_angle) * spinner_x + sin(spinner_angle) * spinner_y;
-      spinner->set
-        (spinner_center - 0.5 * spinner_dir_cur, spinner_dir_cur,spinner_axis);
-    }
+  wheel->spin();
 
   if ( data_location & DL_ALL_CUDA )
     {
@@ -1842,7 +1937,10 @@ World::time_step_cpu()
           pball->position = tact_pos + pball->radius * tact_dir;
           pball->omega = pVect(0,0,0);
           pball->velocity = pVect(0,0,0);
+          pVect vbefore = ball->velocity;
           penetration_balls_resolve(ball,pball,false);
+          pVect delta_mo = ball->mass * ( ball->velocity - vbefore );
+          wheel->collect_tile_force(tile,tact_pos,delta_mo);
         }
     }
 
@@ -2870,6 +2968,8 @@ World::render()
     {
       /// Advance simulation state by wall clock time.
       //
+      if ( ogl_helper.animation_record )
+        world_time = time_now - ogl_helper.frame_period;
       const double elapsed_time = time_now - world_time;
       const int iter_limit =
         min( opt_time_step_factor * 3, int ( 0.5 + elapsed_time / delta_t));
@@ -3225,9 +3325,9 @@ World::cb_keyboard()
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'c': case 'C': opt_color_events = !opt_color_events; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
-  case 'd': case 'D': opt_drip = !opt_drip; if(!opt_drip)dball=NULL; break;
+  case 'd': opt_drip = !opt_drip; if(!opt_drip)dball=NULL; break;
+  case 'D': opt_move_item = MI_Drip; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
-  case 'h': opt_spinner = !opt_spinner; break;
   case 'i': opt_info = true; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
@@ -3289,13 +3389,15 @@ World::cb_keyboard()
         fabs(eye_direction.y) > 0.99
         ? 0 : atan2(eye_direction.x,-eye_direction.z);
       pMatrix_Rotation rotall(pVect(0,1,0),-angle);
-      adjustment *= rotall;
+      if ( opt_move_item == MI_Eye )
+        adjustment *= rotall;
 
       switch ( opt_move_item ){
       case MI_Ball: balls.peek()->translate(adjustment); break;
       case MI_Ball_V: balls.peek()->push(adjustment); break;
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
+      case MI_Drip: drip_location += adjustment; break;
       default: break;
       }
       modelview_update();
