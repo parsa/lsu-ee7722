@@ -84,7 +84,7 @@ public:
   pCUDA_Memory()
   {
     data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;  bid = 0;
-    bo_ptr = NULL;  locked = false;
+    bo_ptr = NULL;  locked = false;  elements = 0;
     chars_allocated_cuda = chars_allocated = 0;
   }
   ~pCUDA_Memory(){ free_memory(); }
