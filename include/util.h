@@ -128,6 +128,18 @@ lprint_attribute(int token, const char *name)
 class pOpenGL_Helper;
 pOpenGL_Helper* opengl_helper_self_ = NULL;
 
+
+struct pTimer_Info {
+  pString label;
+  bool timing;
+  bool per_frame;
+  int end_count;
+  double start;
+  double duration;
+  double frac;
+  double last;
+};
+
 class pFrame_Timer {
 public:
   pFrame_Timer():inited(false),work_description(NULL)
@@ -145,6 +157,11 @@ public:
     work_description = strdup(description);
   }
   void work_amt_set(int amt){ work_accum += amt; }
+  int user_timer_per_start_define(const char *label)
+  { return user_timer_define(label,false); }
+  int user_timer_define(const char *label, bool per_frame = true);
+  void user_timer_start(int timer_id);
+  void user_timer_end(int timer_id);
   void init();
   void frame_start();
   void frame_end();
@@ -177,6 +194,8 @@ private:
   GLuint query_timer_id;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
+
+  PStack<pTimer_Info> timer_info;
 };
 
 void
@@ -194,6 +213,40 @@ pFrame_Timer::init()
 #endif
 }
 
+int 
+pFrame_Timer::user_timer_define(const char *label, bool per_frame)
+{
+  const int timer_id = timer_info.occ();
+  pTimer_Info* const ti = timer_info.pushi();
+  ti->label = label;
+  ti->timing = false;
+  ti->duration = 0;
+  ti->end_count = 0;
+  ti->per_frame = per_frame;
+  return timer_id;
+}
+
+void
+pFrame_Timer::user_timer_start(int timer_id)
+{
+  pTimer_Info* const ti = &timer_info[timer_id];
+  ASSERTS( !ti->timing );
+  ti->timing = true;
+  ti->start = time_wall_fp();
+}
+
+void
+pFrame_Timer::user_timer_end(int timer_id)
+{
+  pTimer_Info* const ti = &timer_info[timer_id];
+  if ( !ti->timing ) return;
+  ASSERTS( ti->timing );
+  ti->timing = false;
+  ti->end_count++;
+  ti->duration += time_wall_fp() - ti->start;
+}
+
+
 void
 pFrame_Timer::frame_rate_group_start()
 {
@@ -202,6 +255,16 @@ pFrame_Timer::frame_rate_group_start()
   const double last_frame_count_inv = 1.0 / last_frame_count;
   frame_group_start_time = time_wall_fp();
   const double group_duration = frame_group_start_time - last_wall_time;
+  const double group_duration_inv = 1.0 / group_duration;
+
+  while ( pTimer_Info* const ti = timer_info.iterate() )
+    {
+      ti->frac = ti->duration * group_duration_inv;
+      ti->last = ti->per_frame
+        ? ti->duration * last_frame_count_inv
+        : ti->duration / max(1,ti->end_count);
+      ti->duration = 0;  ti->end_count = 0;
+    }
 
   gpu_tlast = 1e-9 * gpu_tsum_ns * last_frame_count_inv;
   cpu_tlast = cpu_tsum * last_frame_count_inv;
@@ -269,6 +332,10 @@ pFrame_Timer::frame_end()
 
   if ( work_description )
     frame_rate_text.sprintf("  %s %.3f", work_description, work_rate);
+
+  while ( pTimer_Info* const ti = timer_info.iterate() )
+    frame_rate_text.sprintf
+      ("  %s %.2f ms (%.1f%%)", ti->label.s, 1000 * ti->last, 100 * ti->frac);
 }
 
 struct pVariable_Control_Elt
