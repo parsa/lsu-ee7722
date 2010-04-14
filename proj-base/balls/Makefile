@@ -6,11 +6,9 @@ CUDAPATH = /usr/local/cuda
 
 # -Xnvopencc -LIST:source=on
 
-# --use_fast_math  bug:
-#   Execution problem occurs with --use_fast_math and certain data placement.
-
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
-COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v
+COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v \
+   -Xcompiler -Wno-unused-function -use_fast_math -keep
 OPTFLAGS = -O3
 
 CC = gcc
