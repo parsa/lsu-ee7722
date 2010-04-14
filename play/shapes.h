@@ -32,11 +32,12 @@ public:
   }
 
   void render_shadow_volume(float radius, pCoor position);
-  void render_shadow_volume2(float radius, pCoor position);
   void rotation_matrix_compute();
   int slices;
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<float> tex_coord_bo;
+  pBuffer_Object<pVect> shadow_volume_points_bo;
+
   pCoor light_pos;
   pCoor center;
   pVect axis, axis_prepared;
@@ -203,78 +204,63 @@ Sphere::render_simple(float radiusp, pVect position)
 void
 Sphere::shadow_volume_init(int pieces)
 {
-}
-
-void
-Sphere::render_shadow_volume2(float radiusp, pCoor center)
-{
-}
-
-#if 1
-void
-Sphere::render_shadow_volume(float radiusp, pCoor center)
-{
-  // Compute shadow volume of sphere, and render it.
-
-  radius = radiusp;
-
-  const int pieces = slices;   // Number of faces needed for the shadow volume.
   const double delta_theta = 2 * M_PI / pieces;
-  pVect l_to_c(light_pos,center);
-  const float l_to_c_mag_sq = dot(l_to_c,l_to_c);
-  const float l_to_c_mag = sqrt(l_to_c_mag_sq);
+  const float height = 100;
+  PStack<pVect> coords;
+  pVect norm1(1,0,0);
+  pVect binorm1(0,1,0);
+  pVect norm2(height,0,0);
+  pVect binorm2(0,height,0);
+  const pVect center1(0,0,1);
+  const pVect center2(0,0,height);
 
-  // Note: a limb is the outline of a sphere visible from some position,
-  // in this case the light position. (It is not the same as the
-  // circumference unless the position is at infinite distance.)
-
-  const float limb_distance_sq = l_to_c_mag_sq-radius*radius;
-  const float limb_distance = sqrt(limb_distance_sq);
-
-  // The shadow volume is enclosed by two disks. Disk 1 cuts the
-  // sphere, and its circumference is the limb. Disk 2 is at a
-  // distance height (some large number) from the light. Variable
-  // names ending in 1 refer to disk 1, those ending in 2 refer to
-  // disk 2.
-
-  const float height = 1000;
-  const float center1_distance = limb_distance_sq / l_to_c_mag;
-  pVect center1 = light_pos + center1_distance / l_to_c_mag * l_to_c;
-  const float r1 = limb_distance * radius/l_to_c_mag;
-
-  // Find two orthogonal vectors (norm and binorm) in disk 1's plane,
-  // and set them up for computing disk 1 coordinates.
-  //
-  pVect plus_a = l_to_c.y == 0 && l_to_c.z == 0 ? pVect(0,1,0) : pVect(1,0,0);
-  pNorm norm1 = cross(l_to_c,plus_a);
-  pNorm binorm1 = cross(norm1,l_to_c);
-  pVect norms1 = r1 * norm1;
-  pVect binorms1 = r1 * binorm1;
-
-  // Compute center and orthogonal vectors for disk 1.
-  //
-  const float ratio = height / limb_distance;
-  pCoor center2 = light_pos + ratio * l_to_c;
-  const float r2 = r1 * ratio;
-  pVect norms2 = r2 * norm1;
-  pVect binorms2 = r2 * binorm1;
-
-  // Send primitives to OpenGL
-  //
-  glBegin(GL_QUAD_STRIP);
   for ( int i=0; i<=pieces; i++ )
     {
       const double theta = i * delta_theta;
       const float co = cos(theta);
       const float si = sin(theta);
-      pCoor c1 = center1 + co * norms1 + si * binorms1;
-      pCoor c2 = center2 + co * norms2 + si * binorms2;
-      glVertex3fv(c2);
-      glVertex3fv(c1);
+      pVect c1 = center1 + co * norm1 + si * binorm1;
+      pVect c2 = center2 + co * norm2 + si * binorm2;
+      coords += c1;
+      coords += c2;
     }
-  glEnd();
+  shadow_volume_points_bo.take(coords,GL_STATIC_DRAW);
+  shadow_volume_points_bo.to_gpu();
 }
-#endif
+
+void
+Sphere::render_shadow_volume(float radiusp, pCoor center)
+{
+  radius = radiusp;
+  const float radius_loose = radius * 1.001;
+  pNorm l_to_c_dir(light_pos,center);
+  const float limb_distance_sq = l_to_c_dir.mag_sq-radius_loose*radius_loose;
+  const float limb_distance = sqrt(limb_distance_sq);
+  const float center1_distance = limb_distance_sq / l_to_c_dir.magnitude;
+  const float r1 = limb_distance * radius_loose/l_to_c_dir.magnitude;
+
+  pMatrix scale1;
+  scale1.set_identity();
+  scale1.rc(0,0) = r1;
+  scale1.rc(1,1) = r1;
+  scale1.rc(2,2) = center1_distance;
+  pMatrix_Rotation_Shortest rot(pVect(0,0,1),l_to_c_dir);
+  pMatrix_Translate tr(light_pos);
+
+  pMatrix transform = tr * rot * scale1;
+
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glMultTransposeMatrixf(transform);
+
+  shadow_volume_points_bo.bind();
+  glVertexPointer(3,GL_FLOAT,0,0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glPopMatrix();
+}
+
 
 class Cone {
 public:

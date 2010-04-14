@@ -2,6 +2,8 @@ INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I../include
 LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
+CUDAPATH2 = /usr/local/cuda23
+CUDAPATH2 = /usr/local/cuda-2.3
 DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
 
 # -Xnvopencc -LIST:source=on
@@ -10,27 +12,33 @@ DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
 #   Execution problem occurs with --use_fast_math and certain data placement.
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
-COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v -O3
+COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
+ --ptxas-options=-v  -use_fast_math -keep
 
 
 CC = gcc
-CXX = $(CUDAPATH)/bin/nvcc
+CXX = $(CUDAPATH)/bin/nvcc -O3
 
 .SUFFIXES: .cu .cuh
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
 
-default: demo-x-collide
+default: demo-x-collide cube4
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
 
 .cu.o:
 	$(CXX) $(CFLAGS) -c $*.cu
+	$(CUDA2) -cubin -arch sm_10 $*.ptx -o foo.cubin	
+	$(DECUDA) -p -o $*.cubin.ptx foo.cubin
+
+#	/usr/local/cuda-2.3/bin/ptxas -arch sm_10 $*.ptx -o foo.cubin
+
 #	$(DECUDA) -p -o $*.cubin.ptx $*.sm_10.cubin 
 
 

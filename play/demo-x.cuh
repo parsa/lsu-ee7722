@@ -13,6 +13,9 @@
 #ifndef DEMO_X_CUH
 #define DEMO_X_CUH
 
+enum Phys_Type { PT_Unset =0, PT_Ball=1, PT_Tile=2, PT_ENUM_SIZE=3 };
+
+
 typedef ushort2 SM_Idx2;
 
 struct CUDA_Ball {
@@ -35,20 +38,43 @@ struct CUDA_Ball_X { // X is for transpose.
   float4 *ball_props;
 };
 
-struct  CUDA_Ball_W { // W is for work.
+struct CUDA_Ball_W { // W is for work.
   float3 position;
   float3 velocity;
   float3 omega;
   float3 prev_velocity;
-  short collision_count;
+  float radius, mass_inv;
+  float pad;
+};
+
+struct CUDA_Tile_W {
+  float3 pt_ll; // A corner called lower-left but it doesn't have to be.
+  float width, height;
+  float torque;
+  float3 norm_rt, norm_up;
+  float3 normal;
+};
+
+struct CUDA_Phys_W { // W is for work.
+  union {
+    CUDA_Ball_W ball;
+    CUDA_Tile_W tile;
+  };
+  char pt_type;
+  char part_of_wheel;
   short contact_count;
   short debug_pair_calls;
   short m_idx;
-  float radius, mass_inv;
-  char pad[4];
 };
 
-#define BALLS_PER_BLOCK ( 16000 / sizeof(CUDA_Ball_W) )
+struct CUDA_Wheel {
+  float3 center;
+  float3 axis_dir;
+  float *omega;
+  float moment_of_inertia_inv;
+  float friction_torque;
+  int idx_start, idx_stop;
+};
 
 __host__ void pass_platform_launch(dim3 dg, dim3 db, int ball_count);
 
@@ -58,6 +84,7 @@ __host__ cudaError_t cuda_get_attr_plat_pairs
 
 __host__ void 
 pass_pairs_launch
-(dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt);
+(dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt,
+ int max_balls_per_thread, int balls_per_block_max);
 
 #endif
