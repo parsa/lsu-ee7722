@@ -126,7 +126,8 @@ public:
     return data;
   }
 
-  T* realloc(int nelem)
+  T* realloc_locked(int nelem){ return realloc(nelem,true); }
+  T* realloc(int nelem, bool locked_p = false)
   {
     const int chars_needed = nelem * sizeof(T);
     if ( chars_needed <= chars_allocated )
@@ -137,7 +138,7 @@ public:
     else
       {
         free_memory_host();
-        alloc(nelem);
+        alloc_locked_maybe(nelem,locked_p);
       }
     return data;
   }
