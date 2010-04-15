@@ -178,6 +178,7 @@ public:
   int block_num_base, block_num_next_pass;
   int block_cnt;
   int round_cnt;
+  int thread_num_max;           // Maximum thread number of any block.
   int thread_cnt_max;           // Maximum number of threads used in any block.
   int prefetch_offset;
   int schedule_offset;
@@ -230,7 +231,6 @@ public:
   //
   PStack<int> proximity;     // Nearby phys objects.
   int pass;
-  int pass_iterated;
   int pass_todo;
   int rounds;
   bool placed;
@@ -667,7 +667,7 @@ public:
   //
   void time_step_cuda(int iters_per_frame, bool just_before_render);
 
-  int block_size;               // Number of threads to use in CUDA block.
+  int opt_block_size;           // Number of threads to use in CUDA block.
   int block_size_max;           // Maximum possible based on our CUDA code.
   int opt_block_color_pass;     // Pass to use for coloring balls.
   dim3 dim_grid, dim_block;     // Dimensions for platform pass.
@@ -770,7 +770,7 @@ World::init()
   cuda_initialized = false;
   cuda_schedule_stale = 1;
   opt_physics_method = GP_cuda;
-  block_size = 128;
+  opt_block_size = 128;
 
   frame_timer.work_unit_set("Steps / s");
   world_time = 0;
@@ -851,7 +851,7 @@ World::init()
   opt_time_step_factor = 6;
   opt_wheel_tile_density = 0.01;
 
-  variable_control.insert_power_of_2(block_size,"Block Size");
+  variable_control.insert_power_of_2(opt_block_size,"Block Size");
   variable_control.insert(opt_block_color_pass,"Color by Block in Pass");
   variable_control.insert(opt_ball_density,"Ball Density");
   variable_control.insert(opt_wheel_tile_density,"Tile Density");
@@ -1378,8 +1378,8 @@ World::cuda_constants_update()
   if ( !cuda_constants_stale ) return;
   cuda_constants_stale = false;
 
-  set_max(block_size, 1);
-  set_min(block_size, block_size_max);
+  set_max(opt_block_size, 1);
+  set_min(opt_block_size, block_size_max);
 
   // The macros below copy values to CUDA device variables with
   // the same name.
@@ -2383,27 +2383,32 @@ World::contact_pairs_find()
   phys_zsort.sort();
   contact_pairs.reset();
 
-  const int n = opt_debug2 ? 4: 1;
+  const int n = false && opt_debug2 ? 4: 1;
   const int ball_cnt = phys_zsort.occ();
   const int chunk = int(ceil(double(ball_cnt) / n));
+  const bool single_proc = n == 1;
   Pairs_Chunk_Info info[n];
   int start = 0;
   for ( int i=0; i<n; i++ )
     {
       Pairs_Chunk_Info* const ci = &info[i];
       ci->tnum = i;
-      ci->single_proc = n == 1;
+      ci->single_proc = single_proc;
       ci->world = this;
       ci->start = start;
       start += chunk;
       ci->stop = min(ball_cnt,start);
-      CP(pthread_create
-         (&ci->thread, NULL, ::contact_pairs_find_chunk, (void*) ci));
+      if ( single_proc )
+        contact_pairs_find_chunk(ci);
+      else
+        CP(pthread_create
+           (&ci->thread, NULL, ::contact_pairs_find_chunk, (void*) ci));
     }
+
+  if ( single_proc ) return;
 
   for ( int i=0; i<n; i++ ) CP(pthread_join(info[i].thread,NULL)); 
 
-  if ( n > 1 )
   for ( int i=0; i<n; i++ )
     while ( Contact* const c = info[i].contact_pairs.iterate() )
       {
@@ -2464,7 +2469,6 @@ World::contact_pairs_find_chunk(Pairs_Chunk_Info *info)
             }
           else
             {
-              if ( opt_debug ) continue;
               Ball* const ball = ball1 ? ball1 : ball9;
               Tile* const tile = tile1 ? tile1 : tile9;
               const float delta_s = 
@@ -2524,6 +2528,8 @@ World::cuda_schedule()
 
   frame_timer.user_timer_start(timer_id_sched);
 
+  const int block_size = opt_block_size;
+
   // Find pairs of phys that are in contact or might soon be.
   // The pairs are assigned to variable pairs and the identity of
   // phys near to a ball are put in its proximity member.
@@ -2550,7 +2556,6 @@ World::cuda_schedule()
       phys->color_block = -1; // Used for coloring based on block num.
       if ( !phys->proximity.occ() ) continue;
       phys->pass = -1;
-      phys->pass_iterated = -1;
       phys->pass_todo = 0;
       phys->block = -1;
       physs_todo_later->enqueue(phys);
@@ -2564,9 +2569,6 @@ World::cuda_schedule()
   const int ball_limit = balls_per_block_max;
   int iterations = 0;           // Used for algorithm tuning.
   int thd_rounds = 0;           // Used for placement tuning.
-  const int max_code_paths = 3;
-  int next_thd[max_code_paths][max_rounds];
-  bool new_pass = true;
   bool new_block = false;
   const int ball_idx_bits = 18;
 
@@ -2574,21 +2576,28 @@ World::cuda_schedule()
 # define WARP_SIZE (1<<WARP_LG)
 # define WARP_MASK (WARP_SIZE-1)  
 
+  const int warp_per_block = ( block_size + WARP_MASK ) >> WARP_LG;
+  const int max_code_paths = 3;
+  const int cp_limit = min(warp_per_block,max_code_paths);
+  const int round_retry_limit = max( block_size >> 2, 4 );
+  int next_thd[cp_limit+1][max_rounds];
+
   // Return next thread to use for a given contact pair code path and
   // round. To avoid branch divergence, contact pairs with different
   // code paths are placed in different warps.
   //
-#define next_thd_get(code_path,round)                                         \
-  ({ if ( ( next_thd[code_path][round] & WARP_MASK ) == 0                     \
-          && ( next_thd[code_path][round] = next_thd[0][round] += WARP_SIZE ) \
-          >= block_size ) next_thd[code_path][round] = -1;                    \
-    next_thd[code_path][round]++; })
+# define next_thd_get(code_path,round)                                        \
+  ({ int& cthd = next_thd[min(code_path,cp_limit)][round];                    \
+     if ( ( cthd & WARP_MASK ) == 0 ) {                                       \
+       cthd = next_thd[0][round]; next_thd[0][round] += WARP_SIZE; }          \
+     cthd >= block_size ? -1 : cthd++; })
 
   PQueue<int> tacts;
 
   passes_next->reset();
   PSList<Phys*,uint> pref_balls;
   int soft_ball_limit = 0;
+  int new_seed_ball_limit = 0;
 
   while ( true )
     {
@@ -2597,13 +2606,25 @@ World::cuda_schedule()
       //
       if ( !neighborhood.occ() && physs_todo_now->occ() )
         {
-          if ( ball_count > 30 ) new_block = true;
-          neighborhood += physs_todo_now->pop();
+          Pass* const p = &passes_next->peek();
+          const int block_num_base = p->block_num_base;
+
+          while ( physs_todo_now->occ() )
+            {
+              Phys* const phys = physs_todo_now->dequeue();
+              const bool placed = phys->block >= block_num_base;
+              if ( placed ) continue;
+              if ( ball_count > new_seed_ball_limit ) new_block = true;
+              neighborhood += phys;
+              break;
+            }
         }
+
+      const bool new_pass = !neighborhood.occ();
 
       // Check for end of this pass.
       //
-      if ( !neighborhood.occ() )
+      if ( new_pass )
         {
           // If there is nothing in the next pass, exit the loop.
           //
@@ -2614,8 +2635,7 @@ World::cuda_schedule()
           PQueue<Phys*>* const todo_x = physs_todo_now;
           physs_todo_now = physs_todo_later; physs_todo_later = todo_x;
 
-          neighborhood += physs_todo_now->pop();
-          new_pass = true;
+          neighborhood += physs_todo_now->dequeue();
         }
 
       ASSERTS( ball_count <= ball_limit );
@@ -2640,13 +2660,13 @@ World::cuda_schedule()
           Pass* const p = passes_next->pushi();
           p->block_num_next_pass = p->block_num_base = block_num;
           p->ball_cnt = 0;
-          p->thread_cnt_max = 0;
+          p->thread_num_max = 0;
           p->balls_per_block_max = 0;
           p->round_cnt = 0;
-          new_pass = false;
           soft_ball_limit =
             passes_next->occ() == 1 ?
-            min(2 * block_size, ball_limit ) : ball_limit;
+            min(max(8, 2 * block_size), ball_limit ) : ball_limit;
+          new_seed_ball_limit = min(30,soft_ball_limit-2);
         }
 
       const int pass_num = passes_next->occ() - 1;
@@ -2656,11 +2676,6 @@ World::cuda_schedule()
       // Get a phys to consider.
       //
       Phys* const phys1 = neighborhood.dequeue();
-
-      // If it has already been considered for this pass, get a different one.
-      if ( phys1->pass_iterated == pass_num ) continue;
-      // Otherwise, mark this ball as now having been considered.
-      phys1->pass_iterated = pass_num;
 
       // Check whether this ball already used in this pass.
       //
@@ -2768,9 +2783,9 @@ World::cuda_schedule()
           if ( thd < 0 )
             {
               round++;  round_full_cnt++;
-              if ( round_full_cnt > ( block_size >> 2 ) ) 
-                { new_block = true;  break; }
               tacts += c_idx;   // Put contact pair back in list.
+              if ( round_full_cnt > round_retry_limit )
+                { new_block = true;  break; }
               continue;
             }
 
@@ -2807,7 +2822,7 @@ World::cuda_schedule()
           c->pass = pass_num;
           c->block = block_num;
           c->thread = thd;
-          set_max(p->thread_cnt_max,c->thread);
+          set_max(p->thread_num_max,c->thread);
           c->round = round;
           p->block_num_next_pass = block_num + 1;
 
@@ -2834,6 +2849,7 @@ World::cuda_schedule()
   int max_blocks = 0;
   while ( Pass* const p = passes_next->iterate() )
     {
+      p->thread_cnt_max = p->thread_num_max + 1;
       p->block_cnt = p->block_num_next_pass - p->block_num_base;
       p->balls_per_thread_max =
         int( ceil( p->balls_per_block_max * block_size_inv ) );
@@ -3782,11 +3798,11 @@ World::render()
          cuda_prop.multiProcessorCount,
          block_count_prev,
          block_count_prev / double(cuda_prop.multiProcessorCount),
-         block_size,
-         block_size / 32.0,
+         opt_block_size,
+         opt_block_size / 32.0,
          passes_curr->occ(), round_count_prev,
          ceil(block_count_prev / double(cuda_prop.multiProcessorCount))
-         * ceil(block_size / 32.0)
+         * ceil(opt_block_size / 32.0)
          * round_count_prev
          );
 
