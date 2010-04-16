@@ -1,8 +1,10 @@
-/// LSU EE X70X-X (Spring 2010),  GPU Course
+/// LSU EE 7700-1 (Spring 2010),  GPU Course
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
 // $Id:$
+
+/// This file set up for Spring 2010 Homework 3
 
 /// Purpose
 //
@@ -233,6 +235,7 @@ public:
   // pass does not indicate that it's the only pass it can be in.
   //
   PStack<int> proximity;     // Nearby phys objects.
+  int proximity_cnt;         // S10 HW3: Number of nearby physs.
   int pass;
   int pass_todo;
   int rounds;
@@ -489,6 +492,13 @@ public:
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
 
+
+  /// Added for Spring 2010 Homework 3
+  bool opt_cuda_prox;           // If true use cuda to compute proximity cnt.
+  int proximity_cnt_errors;
+  void cuda_contact_pairs_find();
+  
+
   static void render_w(void *moi){ ((World*)moi)->render(); }
   void render();
   void render_objects(bool attempt_occlusion_test);
@@ -545,7 +555,6 @@ public:
   void benchmark_setup(int tiers=1);
 
   void contact_pairs_find();
-  void contact_pairs_find_chunk(Pairs_Chunk_Info *ci);
   bool penetration_balls_resolve
   (Ball *ball1, Ball *ball2, bool b2_real = true);
   void balls_render(bool attempt_ot);
@@ -1330,6 +1339,9 @@ World::pt_sched_start()
   // This can only be done from one thread, here the render thread.
   //
   cuda_data_to_cpu( DL_PO | DL_CV );
+
+  // Spring 2010 HW 3
+  if ( opt_cuda_prox ) cuda_contact_pairs_find();
 
   // Set command and then wake up scheduler thread.
   //
@@ -2354,19 +2366,23 @@ World::contact_pairs_find()
   //
   const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
 
-  frame_timer.user_timer_start(timer_id_spart);
-
   /// Sort phys in z in preparation for finding phys in proximity.
   //
-  phys_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
-  for ( Phys_Iterator ball(physs); ball; ball++ )
+  if ( !opt_cuda_prox )
     {
-      const float max_z = ball->max_z_get(lifetime_delta_t);
-      phys_zsort.insert(max_z,ball);
-      ball->proximity.reset();
+      phys_zsort.reset();
+      for ( Phys_Iterator ball(physs); ball; ball++ )
+        {
+          const float max_z = ball->max_z_get(lifetime_delta_t);
+          phys_zsort.insert(max_z,ball);
+          ball->proximity.reset();
+        }
+      phys_zsort.sort();
     }
-  phys_zsort.sort();
+
   contact_pairs.reset();
+
+  frame_timer.user_timer_start(timer_id_spart);
 
   const double delta_d_min = 0.1 * schedule_lifetime_steps * opt_ball_radius;
 
@@ -2427,7 +2443,45 @@ World::contact_pairs_find()
         }
     }
 
+  proximity_cnt_errors = 0;
+  if ( opt_cuda_prox )
+    for ( Phys_Iterator phys(physs); phys; phys++ )
+      if ( phys->proximity.occ() != phys->proximity_cnt )
+        proximity_cnt_errors++;
+  
   frame_timer.user_timer_end(timer_id_spart);
+}
+
+
+void
+World::cuda_contact_pairs_find()
+{
+  /// Added for Spring 2010 Homework 3
+
+  /// Find pairs of phys that are in proximity: in contact now or maybe soon.
+
+  // The pair list should include phys that may touch within
+  // schedule_lifetime_steps (a constant); from that compute
+  // a time.
+  //
+  const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
+
+  /// Sort phys in z in preparation for finding phys in proximity.
+  //
+  phys_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
+  for ( Phys_Iterator ball(physs); ball; ball++ )
+    {
+      const float max_z = ball->max_z_get(lifetime_delta_t);
+      phys_zsort.insert(max_z,ball);
+      ball->proximity.reset();
+      ball->proximity_cnt = 0;
+    }
+  phys_zsort.sort();
+
+  // Host-side CUDA code to determine proximity count goes here.
+  // Also edit balls-kernel.cu and balls.cuh.
+  
+
 }
 
 void
@@ -3459,6 +3513,10 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
+  ogl_helper.fbprintf("F2010 HW3: CUDA Prox %d ('F4' to change), Errors %d\n",
+                      opt_cuda_prox, proximity_cnt_errors);
+
+  if ( 0 )
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
      "Eye direction: [%+.2f, %+.2f, %+.2f]\n",
@@ -3513,9 +3571,6 @@ World::render()
             int(0.99999 + double(p->block_cnt)/cuda_prop.multiProcessorCount);
           const int active_warps_per_block =
             int( 0.99999 + p->thread_cnt_max / 32.0 );
-          pass_txt.sprintf
-            ("%3d / %3d / %3d / %4d  ",
-             p->block_cnt, p->thread_cnt_max, p->round_cnt, p->ball_cnt);
           cp_txt.sprintf(" %2d * %2d * %2d + ",
                          blocks_per_mp, active_warps_per_block, p->round_cnt);
           time_total += blocks_per_mp * active_warps_per_block * p->round_cnt;
@@ -3523,7 +3578,6 @@ World::render()
 
       ogl_helper.fbprintf("Time %3d: %s\n",
                           time_total, cp_txt.s);
-      ogl_helper.fbprintf("Other data: %s\n", pass_txt.s);
 
       ogl_helper.fbprintf
         ("Platform Block cnt/size: %d / %d\n",
@@ -3742,6 +3796,7 @@ World::cb_keyboard()
   case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
+  case FB_KEY_F4: opt_cuda_prox = !opt_cuda_prox; break;
   case FB_KEY_F8:
     {
       opt_elasticity = 10;
