@@ -307,48 +307,46 @@ tile_ball_collide
   if ( ( dist_ht < 0 || dist_ht > tile.height ) 
        && ( dist_wd < 0 || dist_wd > tile.width) )
     {
-      pCoor ref_pt;
-
       // We need to place the pseudo ball based upon the vector from
       // ball position to the corner. First step is to figure out which
       // corner.
 
       if ( dist_ht < 0 && dist_wd < 0 ) 
         {
-          ref_pt = tile.pt_ll;
+          tact_pos = tile.pt_ll;
         }
       else if ( dist_ht < 0 && dist_wd > tile.width ) 
         {
-          ref_pt = pt_lr;
+          tact_pos = pt_lr;
         }
       else if ( dist_ht > tile.height && dist_wd < 0 ) 
         {
-          ref_pt = pt_ul;
+          tact_pos = pt_ul;
         }
       else 
         {
-          ref_pt = pt_ur;
+          tact_pos = pt_ur;
         }
+    }
+  else
+    {
+      // Else the ball is touching an edge
 
-      tact_pos = ref_pt;
-      tact_dir = normalize(mv(ball.position,ref_pt));
-      return true;
+      const bool tact_horiz = dist_ht < 0 || dist_ht > tile.height;
+      const pVect corner_to_tact =
+        tact_horiz ? dist_wd * tile.norm_rt : dist_ht * tile.norm_up;
+      const pCoor ref_pt =
+        tact_horiz ? ( dist_ht < 0 ? tile.pt_ll : pt_ul ) :
+        ( dist_wd < 0 ? tile.pt_ll : pt_lr );
+
+      // Find the closest edge point of the tile to the ball
+      tact_pos = ref_pt + corner_to_tact;
     }
 
-  // Else the ball is touching an edge
+  pNorm ball_to_tact_dir = mn(ball.position,tact_pos);
+  tact_dir = ball_to_tact_dir.v;
 
-  const bool tact_horiz = dist_ht < 0 || dist_ht > tile.height;
-  const pVect corner_to_tact =
-    tact_horiz ? dist_wd * tile.norm_rt : dist_ht * tile.norm_up;
-  const pCoor ref_pt =
-    tact_horiz ? ( dist_ht < 0 ? tile.pt_ll : pt_ul ) :
-    ( dist_wd < 0 ? tile.pt_ll : pt_lr );
-
-  // Find the closest edge point of the tile to the ball
-  tact_pos = ref_pt + corner_to_tact;
-  tact_dir = normalize(mv(ball.position,tact_pos));
-
-  return true;
+  return ball_to_tact_dir.magnitude <= radius;
 }
 
 __device__ void

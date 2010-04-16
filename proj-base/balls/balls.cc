@@ -927,7 +927,8 @@ World::init()
     const pVect step_hor(step_size,0,0);
     const pVect step_ver(0,step_size,0);
     const pVect step_wid(0,0,5);
-    const pCoor step_start(x1,-platform_xrad*0.9,-50);
+    //  const pCoor step_start(x1,-platform_xrad*0.9,-50);
+    const pCoor step_start(x1,-platform_xrad*0.9,0);
     pColor step_color(0.5,0.5,0.5);
     for ( int i=0; i<step_count; i++ )
       {
