@@ -2385,8 +2385,6 @@ World::contact_pairs_find()
 
   frame_timer.user_timer_start(timer_id_spart);
 
-  const double delta_d_min = 0.1 * schedule_lifetime_steps * opt_ball_radius;
-
   /// Find pairs of balls that are, or might soon be, touching.
   //
   for ( int idx9 = 0; idx9 < phys_zsort.occ(); idx9++ )
@@ -2416,8 +2414,7 @@ World::contact_pairs_find()
                 {
                   pVect delta_v = ball9->velocity - ball1->velocity;
                   const double delta_d = lifetime_delta_t * delta_v.mag();
-                  const double dist2 =
-                    dist.magnitude - max(delta_d,delta_d_min);
+                  const double dist2 = dist.magnitude - delta_d;
                   if ( dist2 > region_length_small ) continue;
                 }
               propa = prop1;
@@ -2428,8 +2425,7 @@ World::contact_pairs_find()
             {
               Ball* const ball = ball1 ? ball1 : ball9;
               Tile* const tile = tile1 ? tile1 : tile9;
-              const float delta_s = 
-                max(delta_d_min,ball->velocity.mag() * lifetime_delta_t);
+              const float delta_s = ball->velocity.mag() * lifetime_delta_t;
               if ( !tile_sphere_intersect
                    (tile, ball->position, ball->radius + delta_s) ) continue;
               propa = tile;
