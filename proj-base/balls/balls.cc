@@ -2414,7 +2414,7 @@ World::contact_pairs_find()
 
               if ( dist.mag_sq > region_length_small * region_length_small )
                 {
-                  pVect delta_v(ball1->velocity,ball9->velocity);
+                  pVect delta_v = ball9->velocity - ball1->velocity;
                   const double delta_d = lifetime_delta_t * delta_v.mag();
                   const double dist2 =
                     dist.magnitude - max(delta_d,delta_d_min);
