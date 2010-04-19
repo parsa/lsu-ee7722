@@ -65,6 +65,7 @@ __constant__ float platform_zmin, platform_zmax;
 __constant__ float platform_xmid, platform_xrad;
 __constant__ float delta_t;
 __constant__ float elasticity_inv_dt;
+__constant__ bool opt_debug, opt_debug2;
 
 __constant__ CUDA_Wheel wheel;
 extern __shared__ float block_torque_dt[];

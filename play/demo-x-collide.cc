@@ -851,6 +851,8 @@ World::init()
   opt_time_step_factor = 6;
   opt_wheel_tile_density = 0.01;
 
+  variable_control.insert(schedule_lifetime_steps,"Sched Life",1,1);
+
   variable_control.insert_power_of_2(opt_block_size,"Block Size");
   variable_control.insert(opt_block_color_pass,"Color by Block in Pass");
   variable_control.insert(opt_ball_density,"Ball Density");
@@ -928,6 +930,15 @@ World::init()
       }
 
     variables_update();
+  }
+
+  if(0){
+    pCoor far_corner(-platform_xrad,0,platform_zmin);
+    pVect forward(0,0,platform_zmax-platform_zmin);
+    pVect across(2 * platform_xrad,0,0);
+    pVect down(0, -2 * platform_xrad,0);
+    tile_manager.new_tile(far_corner,across,down);
+    tile_manager.new_tile(far_corner+forward,across,down);
   }
 
   /// Initialize Ball Positions
@@ -1392,6 +1403,8 @@ World::cuda_constants_update()
   TO_DEVF(delta_t);
   TO_DEVF(elasticity_inv_dt); 
   TO_DEVF(opt_friction_coeff); TO_DEVF(opt_friction_roll);
+  TO_DEV(opt_debug);
+  TO_DEV(opt_debug2);
 }
 
 bool
@@ -2424,7 +2437,6 @@ void
 World::contact_pairs_find_chunk(Pairs_Chunk_Info *info)
 {
   const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
-  const double delta_d_min = 0.1 * schedule_lifetime_steps * opt_ball_radius;
   const bool single_proc = info->single_proc;
   PStack<Contact>& cpairs = single_proc ? contact_pairs : info->contact_pairs;
 
@@ -2453,14 +2465,13 @@ World::contact_pairs_find_chunk(Pairs_Chunk_Info *info)
             {
               pNorm dist(ball1->position,ball9->position);
               const float region_length_small =
-                1.1 * ( ball1->radius + ball9->radius );
+                1.1f * ( ball1->radius + ball9->radius );
 
               if ( dist.mag_sq > region_length_small * region_length_small )
                 {
-                  pVect delta_v(ball1->velocity,ball9->velocity);
+                  pVect delta_v = ball9->velocity - ball1->velocity;
                   const double delta_d = lifetime_delta_t * delta_v.mag();
-                  const double dist2 =
-                    dist.magnitude - max(delta_d,delta_d_min);
+                  const double dist2 = dist.magnitude - delta_d;
                   if ( dist2 > region_length_small ) continue;
                 }
               propa = prop1;
@@ -2471,8 +2482,7 @@ World::contact_pairs_find_chunk(Pairs_Chunk_Info *info)
             {
               Ball* const ball = ball1 ? ball1 : ball9;
               Tile* const tile = tile1 ? tile1 : tile9;
-              const float delta_s = 
-                max(delta_d_min,ball->velocity.mag() * lifetime_delta_t);
+              const float delta_s = ball->velocity.mag() * lifetime_delta_t;
               if ( !tile_sphere_intersect
                    (tile, ball->position, ball->radius + delta_s) ) continue;
               propa = tile;
