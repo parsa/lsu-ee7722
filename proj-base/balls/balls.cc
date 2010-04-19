@@ -927,8 +927,7 @@ World::init()
     const pVect step_hor(step_size,0,0);
     const pVect step_ver(0,step_size,0);
     const pVect step_wid(0,0,5);
-    //  const pCoor step_start(x1,-platform_xrad*0.9,-50);
-    const pCoor step_start(x1,-platform_xrad*0.9,0);
+    const pCoor step_start(x1,-platform_xrad*0.9,-50);
     pColor step_color(0.5,0.5,0.5);
     for ( int i=0; i<step_count; i++ )
       {
@@ -1342,7 +1341,8 @@ World::pt_sched_start()
   cuda_data_to_cpu( DL_PO | DL_CV );
 
   // Spring 2010 HW 3
-  if ( opt_cuda_prox ) cuda_contact_pairs_find();
+  if ( opt_cuda_prox ) 
+    cuda_contact_pairs_find();
 
   // Set command and then wake up scheduler thread.
   //
@@ -2444,12 +2444,28 @@ World::contact_pairs_find()
         }
     }
 
-  proximity_cnt_errors = 0;
-  if ( opt_cuda_prox )
+  {
+    /// Spring 2010 HW3:  Determine error in proximity count.
+
+    int proximity_cnt_total_1 = 0;
+    int proximity_cnt_total_1t = 0;
+    int proximity_cnt_total_2 = 0;
+
     for ( Phys_Iterator phys(physs); phys; phys++ )
-      if ( phys->proximity.occ() != phys->proximity_cnt )
-        proximity_cnt_errors++;
-  
+      {
+        proximity_cnt_total_1 += phys->proximity.occ();
+        if ( phys->phys_type == PT_Tile )
+          proximity_cnt_total_1t += phys->proximity.occ();
+        if ( opt_cuda_prox )
+          proximity_cnt_total_2 += phys->proximity_cnt;
+      }
+
+    const int prox_expected =
+      ( proximity_cnt_total_1 >> 1 ) - proximity_cnt_total_1t;
+
+    proximity_cnt_errors = prox_expected - proximity_cnt_total_2;
+  }
+
   frame_timer.user_timer_end(timer_id_spart);
 }
 
@@ -2475,6 +2491,7 @@ World::cuda_contact_pairs_find()
       const float max_z = ball->max_z_get(lifetime_delta_t);
       phys_zsort.insert(max_z,ball);
       ball->proximity.reset();
+      ball->idx = ball.get_idx();
       ball->proximity_cnt = 0;
     }
   phys_zsort.sort();
