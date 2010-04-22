@@ -86,6 +86,7 @@ public:
     data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;  bid = 0;
     bo_ptr = NULL;  locked = false;  elements = 0;
     chars_allocated_cuda = chars_allocated = 0;
+    dev_ptr_name[0] = "";  dev_ptr_name[1] = "";
   }
   ~pCUDA_Memory(){ free_memory(); }
 
@@ -109,6 +110,7 @@ public:
     if ( void* const a = dev_addr[0] ) CE(cudaFree(a));
     if ( void* const a = dev_addr[1] ) CE(cudaFree(a));
     dev_addr[0] = dev_addr[1] = NULL;
+    dev_ptr_name[0] = "";  dev_ptr_name[1] = "";    
     chars_allocated_cuda = 0;
   }
 
@@ -192,6 +194,8 @@ public:
   void ptrs_to_cuda_side(const char *dev_name, int side)
   {
     void* const dev_addr = get_dev_addr(side);
+    if ( dev_ptr_name[side] == dev_name ) return;
+    dev_ptr_name[side] = dev_name;
     CE(cudaMemcpyToSymbol
        (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
   }
@@ -228,6 +232,7 @@ public:
 
   // Stuff below should be private to avoid abuse.
   void *dev_addr[2], *bo_ptr;
+  pString dev_ptr_name[2];
   GLuint bid;
   int current;
   T *data;
@@ -260,6 +265,7 @@ public:
     use_aos = false;  disable_aos = true;
     data_aos_stale = false;  data_soa_stale = false;
     soa_allocated = false;
+    dev_ptr_name[0] = "";  dev_ptr_name[1] = "";
   }
   void setup(uint elt_size, int offset_aos, void **soa_elt_ptr)
   {
@@ -276,6 +282,7 @@ public:
         cuda_mem_all.free_memory_host();
         pCM::free_memory_host();
         soa_allocated = false;
+        dev_ptr_name[0] = "";  dev_ptr_name[1] = "";
         alloc(nelem);
         return;
       }
@@ -368,6 +375,8 @@ public:
     alloc_soa();
     void** soa = (void**)&shadow_soa[side];
     char* const dev_base = (char*) cuda_mem_all.get_dev_addr(side);
+    if ( dev_ptr_name[side] == dev_name ) return;
+    dev_ptr_name[side] = dev_name;
     while ( pCM_Struc_Info* const si = struc_info.iterate() )
       soa[si->soa_elt_idx] = dev_base + si->soa_cpu_base;
     CE(cudaMemcpyToSymbol
@@ -398,6 +407,7 @@ public:
   const int alloc_unit_lg, alloc_unit_mask;
   PStack<pCM_Struc_Info> struc_info;
   pCUDA_Memory<char> cuda_mem_all;
+  pString dev_ptr_name[2];
   bool use_aos;
   bool disable_aos;
   bool data_aos_stale;
