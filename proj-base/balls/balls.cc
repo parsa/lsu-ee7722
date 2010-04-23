@@ -4,7 +4,7 @@
 
 // $Id:$
 
-/// This file set up for Spring 2010 Homework 3
+/// This file set up for Spring 2010 Homework 4
 
 /// Purpose
 //
@@ -243,6 +243,10 @@ public:
   int block;
   int color_block; // Block number to use for coloring ball.
   int sm_idx;      // Index into CUDA shared memory array.
+
+  // Spring 2010 HW 4:
+  int prox_check;               // Used for correctness verification.
+  int z_idx;                    // This balls z-sort index.
 };
 
 
@@ -315,7 +319,7 @@ public:
   void collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo);
   float friction_torque;
   double theta, omega, torque_dt;
-  bool cpu_stale, cuda_constants_stale;
+  bool cpu_data_stale, cuda_constants_stale, cuda_data_stale;
   pCUDA_Memory<float> cuda_omega;
   PStack<Tile*> tiles;
   pCoor center;
@@ -493,11 +497,11 @@ public:
   pFrame_Timer frame_timer;
 
 
-  /// Added for Spring 2010 Homework 3
-  bool opt_cuda_prox;           // If true use cuda to compute proximity cnt.
-  int proximity_cnt_errors;
+  /// Added for Spring 2010 Homework 4
+  bool opt_cuda_prox;           // If true use cuda to compute proximity.
+  int contact_pairs_proximity_check
+  (int zidx, double lifetime_delta_t, bool verify);
   void cuda_contact_pairs_find();
-  
 
   static void render_w(void *moi){ ((World*)moi)->render(); }
   void render();
@@ -676,7 +680,7 @@ public:
 
   // Advance physical state by one time step.
   //
-  void time_step_cuda(int iters_per_frame, bool just_before_render);
+  void time_step_cuda(int iter, int iters_per_frame);
 
   int opt_block_size;           // Number of threads to use in CUDA block.
   int block_size_max;           // Maximum possible based on our CUDA code.
@@ -748,6 +752,26 @@ public:
   int block_count_prev;        // Maximum number of blocks in last pairs pass.
   int round_count_prev;        // Total number of rounds in all pairs passes.
   bool cuda_constants_stale;   // When true, need to update constants.
+
+  /// HW4 CODE
+
+  pCUDA_Memory<int> z_sort_indices;
+  pCUDA_Memory<float> z_sort_z_max;
+  pCUDA_Memory<uint8_t> cuda_prox;
+
+  // Add your own code to read and write this storage to help
+  // in debugging.
+  pCUDA_Memory<float3> pass_sched_debug;
+
+  // Number of pairs that CPU checks for proximity.
+  int prox_test_per_ball;
+  int prox_test_per_ball_prev;  // A copy of above.
+
+  // Number of balls for which CUDA could not compute proximity.
+  int cuda_prox_full, cuda_prox_full_prev;
+
+  int timer_id_cuda_prox;
+  int ball_cnt_sched;
 };
 
 #define CP(f) { const int rv=f; ASSERTS( rv == 0 ); }
@@ -758,6 +782,8 @@ void* pt_sched_main(void *arg){((World*)arg)->pt_sched_main();return NULL;}
 void
 World::init()
 {
+  opt_cuda_prox = true;
+
   /// Initialize scheduler thread, used for computing CUDA schedule.
   //
 
@@ -1178,8 +1204,9 @@ World::cuda_init()
   CE(cudaEventCreate(&frame_start_ce));
   CE(cudaEventCreate(&frame_stop_ce));
 
+  timer_id_cuda_prox = frame_timer.user_timer_per_start_define("CUDA Prox");
   timer_id_sched = frame_timer.user_timer_per_start_define("Sched");
-  timer_id_spart = frame_timer.user_timer_per_start_define("SPart");
+  timer_id_spart = frame_timer.user_timer_per_start_define("CPU Prox");
 
   // Set up cuda_balls class.
   //
@@ -1341,8 +1368,11 @@ World::pt_sched_start()
   cuda_data_to_cpu( DL_PO | DL_CV );
 
   // Spring 2010 HW 3
-  if ( opt_cuda_prox ) 
-    cuda_contact_pairs_find();
+  if ( opt_cuda_prox )
+    {
+      cpu_data_to_cuda();  // In case new balls were added.
+      cuda_contact_pairs_find();
+    }
 
   // Set command and then wake up scheduler thread.
   //
@@ -1367,6 +1397,8 @@ World::cuda_at_balls_change()
   // Wait for scheduler thread to finish whatever it's currently doing.
   //
   pt_sched_waitfor();
+
+  if ( wheel ) wheel->cuda_constants_stale = true;
 
   // Forget about the schedule it may have just finished.
   //
@@ -1405,6 +1437,9 @@ World::cuda_constants_update()
   TO_DEVF(delta_t);
   TO_DEVF(elasticity_inv_dt); 
   TO_DEVF(opt_friction_coeff); TO_DEVF(opt_friction_roll);
+
+  TO_DEV(opt_debug);
+  TO_DEV(opt_debug2);
 }
 
 bool
@@ -1452,6 +1487,7 @@ World::cpu_data_to_cuda()
         {
           vec_set(cuda_balls.soa.orientation[idx],ball->orientation);
           vec_sets3(cuda_balls.soa.position[idx],ball->position);
+          cuda_balls.soa.position[idx].w = ball->radius;
           vec_sets3(cuda_balls.soa.prev_velocity[idx],ball->velocity);
           vec_sets3(cuda_balls.soa.velocity[idx],ball->velocity);
           vec_sets3(cuda_balls.soa.omega[idx],ball->omega);
@@ -1558,7 +1594,8 @@ World::cuda_data_to_cpu(uint which_data)
 void 
 Wheel::init(pCoor centerp, pVect axis, double r_inner, double blade_len)
 {
-  cpu_stale = false;
+  cpu_data_stale = false;
+  cuda_data_stale = true;
   cuda_constants_stale = true;
   center = centerp;
   axis_dir = axis;
@@ -1615,11 +1652,9 @@ Wheel::init(pCoor centerp, pVect axis, double r_inner, double blade_len)
 void
 Wheel::to_cuda()
 {
-  from_cuda();
-  cpu_stale = true;
-
   if ( cuda_constants_stale )
     {
+      from_cuda();
       cuda_constants_stale = false;
       CUDA_Wheel wheel;
       vec_set(wheel.center,center);
@@ -1637,16 +1672,21 @@ Wheel::to_cuda()
       TO_DEV(wheel);
     }
 
-  cuda_omega[0] = omega;
-  cuda_omega.to_cuda();
+  if ( cuda_data_stale )
+    {
+      cuda_omega[0] = omega;
+      cuda_omega.to_cuda();
+      cuda_data_stale = false;
+    }
 
+  cpu_data_stale = true;
 }
 
 void
 Wheel::from_cuda()
 {
-  if ( !cpu_stale ) return;
-  cpu_stale = false;
+  if ( !cpu_data_stale ) return;
+  cpu_data_stale = false;
   cuda_omega.from_cuda();
   omega = cuda_omega[0];
 }
@@ -1663,6 +1703,7 @@ void
 Wheel::spin()
 {
   from_cuda();
+  cuda_data_stale = true;
 
   // Change in spin due to ball contact torques (torque_dt).
   //
@@ -2356,20 +2397,267 @@ public:
   int round;  // Index within thread. Zero is 1st pair done by thd, etc.
 };
 
-void
-World::contact_pairs_find()
+int
+World::contact_pairs_proximity_check
+(int idx9, double lifetime_delta_t, bool verify)
 {
-  /// Find pairs of phys that are in proximity: in contact now or maybe soon.
+  /// Find pairs of balls that are, or might soon be, touching.
+  //
+  Phys* const phys9 = phys_zsort[idx9];
+  Ball* const ball9 = BALL(phys9);
+  Tile* const tile9 = TILE(phys9);
+  const float z_min = phys9->min_z_get(lifetime_delta_t);
+
+  int prox_count9 = 0;          // Used for verification.
+
+  // Mark physs in proximity to phys9 using proximity data that is
+  // already present.
+  //
+  if ( verify )
+    {
+      for ( int c_idx = phys9->proximity.iterate_reset();
+            phys9->proximity.iterate(c_idx); )
+        {
+          Contact* const c = &contact_pairs[c_idx];
+          Phys* const pother = c->other_phys(phys9);
+          pother->prox_check = idx9;
+        }
+    }
+
+  // Look at physs that can overlap phys9 in the z axis, and check if
+  // they might truly overlap (are in proximity when all three axes
+  // considered).
+  //
+  for ( int i=idx9-1; i>=0 && phys_zsort.get_key(i) >= z_min; i-- )
+    {
+      Phys* const phys1 = phys_zsort[i];
+      Ball* const ball1 = BALL(phys1);
+      Tile* const tile1 = TILE(phys1);
+      Phys *physa, *physb;
+
+      // The kind of computation needed to resolve contact. This
+      // is used for scheduling so that all threads in a warp perform
+      // the same kind of computation.
+      int code_path = 0;
+
+      if ( tile1 && tile9 ) continue;
+      if ( !verify ) prox_test_per_ball++;
+
+      if ( ball1 && ball9 )
+        {
+          pNorm dist(ball1->position,ball9->position);
+          const float region_length_small =
+            1.1 * ( ball1->radius + ball9->radius );
+
+          // Determine if balls in proximity, try to do so
+          // without having to take square roots.
+          //
+          if ( dist.mag_sq > region_length_small * region_length_small )
+            {
+              // Need to take square roots. (delta_v.mag and dist.magnitude).
+              pVect delta_v = ball9->velocity - ball1->velocity;
+              const double delta_d = lifetime_delta_t * delta_v.mag();
+              const double dist2 = dist.magnitude - delta_d;
+              if ( dist2 > region_length_small ) continue;
+            }
+          physa = phys1;
+          physb = phys9;
+          code_path = 1;
+        }
+      else
+        {
+          Ball* const ball = ball1 ? ball1 : ball9;
+          Tile* const tile = tile1 ? tile1 : tile9;
+          const float delta_s = ball->velocity.mag() * lifetime_delta_t;
+          if ( !tile_sphere_intersect
+               (tile, ball->position, ball->radius + delta_s) ) continue;
+          physa = tile;
+          physb = ball;
+          code_path = 2;
+        }
+
+      if ( verify )
+        {
+          ASSERTS( phys1->prox_check == idx9 );
+          prox_count9++;
+          continue;
+        }
+
+      // Determine the index of the next Contact object.
+      const int c_idx = contact_pairs.occ();
+
+      // Allocate a new Contact object in contact_pairs list and call
+      // Contact constructor on it.
+      new (contact_pairs.pushi()) Contact(physa,physb,code_path);
+
+      // Append the index of the new Contact object to the proximity
+      // lists of both physs.  Note that '+=' does a list append, it
+      // does not perform arithmetic addition.
+      phys1->proximity += c_idx;
+      phys9->proximity += c_idx;
+    }
+
+  return prox_count9;
+}
+
+
+void
+World::cuda_contact_pairs_find()
+{
+  /// Added for Spring 2010 Homework 4
+
+  /// Find pairs of phys that are in proximity: in contact now or may be so soon.
 
   // The pair list should include phys that may touch within
   // schedule_lifetime_steps (a constant); from that compute
   // a time.
   //
   const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
+  const bool debug = false;
+
+  frame_timer.user_timer_start(timer_id_cuda_prox);
 
   /// Sort phys in z in preparation for finding phys in proximity.
   //
-  if ( !opt_cuda_prox )
+  phys_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
+  for ( Phys_Iterator ball(physs); ball; ball++ )
+    {
+      // Get maximum z value that phys could occupy.
+      const float max_z = ball->max_z_get(lifetime_delta_t);
+
+      // Add a pointer to the ball to a sorted list class using
+      // max_z as a sort key.
+      phys_zsort.insert(max_z,ball);
+
+      // Set a ball index. This isn't the best place to do this.
+      // The ball index refers to the position in the physs array
+      // on the CPU and the balls_x arrays on the GPU.
+      ball->idx = ball.get_idx();
+    }
+  phys_zsort.sort();
+
+  // Store number of balls for a sanity check (ball_cnt_sched). 
+  ball_cnt_sched = physs.occ();
+  const int ball_cnt = ball_cnt_sched;
+
+  // Update storage on GPU if number of balls has changed.
+  //
+  if ( ball_cnt != z_sort_indices.elements )
+    {
+      z_sort_indices.realloc(ball_cnt);
+      z_sort_indices.ptrs_to_cuda("z_sort_indices");
+      z_sort_z_max.realloc(ball_cnt);
+      z_sort_z_max.ptrs_to_cuda("z_sort_z_max");
+      cuda_prox.realloc( ball_cnt * cuda_prox_per_ball );
+      cuda_prox.ptrs_to_cuda("cuda_prox");
+    }
+
+  // Block size chosen to maximize multiprocessor utilization
+  // or is set to 32, whichever is larger.
+  // HW 4 note: The block size chosen here may not be the best.
+  //
+  dim3 dim_grid, dim_block;
+  const int plat_block_size_1pmp =
+    max(32,int(ceil(double(ball_cnt) / cuda_prop.multiProcessorCount)));
+  const int plat_block_size =
+    min(plat_block_size_1pmp, cfa_platform.maxThreadsPerBlock);
+
+  dim_grid.x = int(ceil(double(ball_cnt)/plat_block_size));
+  dim_grid.y = dim_grid.z = 1;
+  dim_block.x = plat_block_size;
+  dim_block.y = dim_block.z = 1;
+
+  if ( debug )
+    {
+      // Allocate storage on cuda that might be handy for debugging.
+      pass_sched_debug.realloc(ball_cnt);
+      pass_sched_debug.ptrs_to_cuda("pass_sched_debug");
+    }
+
+  // Initialize array of indices to send to CUDA.
+  //
+  for ( int i=0; i<ball_cnt; i++ )
+    {
+      Phys* const phys9 = phys_zsort[i];
+      z_sort_indices[i] = phys9->phys_type == PT_Ball ? phys9->idx : -1;
+      z_sort_z_max[i] = phys_zsort.get_key(i);
+
+      // Reset proximity list. Won't be populated until contact_pairs_find
+      // is called.
+      phys9->proximity.reset();
+
+      // Initialize debug array. Change initialization to whatever you want.
+      if ( debug ) pass_sched_debug[i].x = 7700.1;
+    }
+
+  // Send indices and z_max values to CUDA, and maybe debug data.
+  z_sort_indices.to_cuda();
+  z_sort_z_max.to_cuda();
+  if ( debug ) pass_sched_debug.to_cuda();
+
+  // Determine memory address on GPU of position and velocity arrays.
+  // These values are not currently used but might come in handy for
+  // setting up the texture cache.
+  //
+  char* const position_array_dev =
+    cuda_balls.cuda_mem_all.get_dev_addr() +
+    ( ((char*)&cuda_balls.soa.position[0]) - cuda_balls.cuda_mem_all.data );
+  char* const velocity_array_dev =
+    cuda_balls.cuda_mem_all.get_dev_addr() +
+    ( ((char*)&cuda_balls.soa.velocity[0]) - cuda_balls.cuda_mem_all.data );
+
+  // Launch the sched kernel.  Despite its name, all it does is
+  // determine which balls are in proximity.  Just balls, it skips
+  // tiles.
+  //
+  pass_sched_launch(dim_grid,dim_block, ball_cnt, lifetime_delta_t);
+
+  // Move data back from CUDA.  This cannot be done in contact_pairs_find
+  // because that code runs in another thread. (All CUDA calls must
+  // be in the same thread.)  The data returned from CUDA will be
+  // unpacked in routine contact_pairs_find.
+  //
+  cuda_prox.from_cuda();
+
+  // Return debug data to CUDA. This is only of value if code
+  // has been added to balls-kernel.cu to write this storage.
+  //
+  if ( debug ) pass_sched_debug.from_cuda();
+
+  frame_timer.user_timer_end(timer_id_cuda_prox);
+}
+
+void
+World::contact_pairs_find()
+{
+  /// Find pairs of phys that are in proximity: in contact now or maybe soon.
+
+  //  If opt_cuda_prox is false, then this routine will find all
+  //  proximity pairs. Otherwise, it will read the pairs discovered
+  //  by the CUDA code and compute proximity for balls that the CUDA
+  //  could not handle. (See pass_sched in balls-kernel.cu.)
+
+  //  Compute the amount of time over which proximity should be
+  //  valid. 
+
+  const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
+  const int ball_cnt = physs.occ();
+
+  // Used for performance tuning. Incremented for each pair the
+  // CPU code examines.
+  prox_test_per_ball = 0;
+
+  // Make sure ball count hasn't changed. If it did then the
+  // proximity data will be invalid.
+  ASSERTS( !opt_cuda_prox || ball_cnt == ball_cnt_sched );
+
+  const bool cpu_computes_prox = !opt_cuda_prox;
+
+  frame_timer.user_timer_start(timer_id_spart);
+
+  /// Sort phys in z in preparation for finding phys in proximity.
+  //
+  if ( cpu_computes_prox )
     {
       phys_zsort.reset();
       for ( Phys_Iterator ball(physs); ball; ball++ )
@@ -2383,120 +2671,104 @@ World::contact_pairs_find()
 
   contact_pairs.reset();
 
-  frame_timer.user_timer_start(timer_id_spart);
-
-  /// Find pairs of balls that are, or might soon be, touching.
+  /// Unpack proximity values computed on CUDA.
   //
-  for ( int idx9 = 0; idx9 < phys_zsort.occ(); idx9++ )
+  if ( !cpu_computes_prox )
     {
-      Phys* const prop9 = phys_zsort[idx9];
-      Ball* const ball9 = BALL(prop9);
-      Tile* const tile9 = TILE(prop9);
-      const float z_min = prop9->min_z_get(lifetime_delta_t);
-
-      for ( int i=idx9-1; i>=0 && phys_zsort.get_key(i) >= z_min; i-- )
+      cuda_prox_full = 0;
+      int prox_count_cuda_total = 0;
+      int prox_count_check_total = 0;
+      for ( int i=0; i<ball_cnt; i++ )
         {
-          Phys* const prop1 = phys_zsort[i];
-          Ball* const ball1 = BALL(prop1);
-          Tile* const tile1 = TILE(prop1);
-          Phys *propa, *propb;
-          int code_path = 0;
+          // The code in pass_sched writes cuda_prox as an array
+          // of type Prox_Offsets (a 64 bit integer, unless it's changed).
+          // This code reads the memory as an array of characters.
 
-          if ( tile1 && tile9 ) continue;
+          // Compute the cuda_prox index for ball i in z-sort order.
+          const int pi = i * cuda_prox_per_ball;
 
-          if ( ball1 && ball9 )
+          // If CUDA could not do this phys, compute proximity here.
+          //
+          if ( cuda_prox[pi] == 255 )
             {
-              pNorm dist(ball1->position,ball9->position);
-              const float region_length_small =
-                1.1 * ( ball1->radius + ball9->radius );
-
-              if ( dist.mag_sq > region_length_small * region_length_small )
-                {
-                  pVect delta_v = ball9->velocity - ball1->velocity;
-                  const double delta_d = lifetime_delta_t * delta_v.mag();
-                  const double dist2 = dist.magnitude - delta_d;
-                  if ( dist2 > region_length_small ) continue;
-                }
-              propa = prop1;
-              propb = prop9;
-              code_path = 1;
-            }
-          else
-            {
-              Ball* const ball = ball1 ? ball1 : ball9;
-              Tile* const tile = tile1 ? tile1 : tile9;
-              const float delta_s = ball->velocity.mag() * lifetime_delta_t;
-              if ( !tile_sphere_intersect
-                   (tile, ball->position, ball->radius + delta_s) ) continue;
-              propa = tile;
-              propb = ball;
-              code_path = 2;
+              // CUDA code could not compute proximity for this phys.
+              //
+              contact_pairs_proximity_check(i,lifetime_delta_t,false);
+              if ( cuda_prox[pi+1] == 'f' ) cuda_prox_full++;
+              continue;
             }
 
-          const int c_idx = contact_pairs.occ();
-          new (contact_pairs.pushi()) Contact(propa,propb,code_path);
-          prop1->proximity += c_idx;
-          prop9->proximity += c_idx;
+          // Create Contact structures and place in physs proximity members.
+          //
+          Phys* const phys9 = phys_zsort[i];
+          int prox_count_cuda = 0;
+          for ( int j=pi; j<pi+cuda_prox_per_ball; j++ )
+            {
+              // Get the difference in z-sort index for a ball in
+              // the proximity list.
+              //
+              const uint8_t offset = cuda_prox[j];
+
+              // Check for the end of list marker.
+              if ( offset == 0 ) break;
+
+              // Compute the z-sort index for the ball.
+              //
+              const int zidx = i - offset;
+              ASSERTS( zidx >= 0 );
+
+              // Get a pointer to the ball itself.
+              //
+              Phys* const phys1 = phys_zsort[zidx];
+
+              // Determine the index of the next free Contact object.
+              const int c_idx = contact_pairs.occ();
+
+              // Allocate a new Contact object in contact_pairs list and call
+              // Contact constructor on it.
+              new (contact_pairs.pushi()) Contact(phys9,phys1,1);
+
+              // Append the index of the new Contact object to the
+              // proximity lists of both physs. Note that '+=' does a
+              // list append, it does not perform arithmetic addition.
+              phys1->proximity += c_idx;
+              phys9->proximity += c_idx;
+              prox_count_cuda++;
+            }
+
+          if ( !opt_verify ) continue;
+
+          // Verify CUDA proximity pairs. The verification is time
+          // consuming, so it should only be done for testing.
+          //
+          const int prox_count_check =
+            contact_pairs_proximity_check(i,lifetime_delta_t,true);
+          prox_count_check_total += prox_count_check;
+          prox_count_cuda_total += prox_count_cuda;
         }
+
+      // Tiny differences in floating-point calculation can result
+      // in differences in proximity count. Therefore forgive small
+      // differences.
+      //
+      const int error_tolerance = ( prox_count_check_total >> 8 ) + 10;
+      ASSERTS( !opt_verify
+               || ( abs( prox_count_check_total - prox_count_cuda_total )
+                    < error_tolerance ) );
+      cuda_prox_full_prev = cuda_prox_full;
     }
 
-  {
-    /// Spring 2010 HW3:  Determine error in proximity count.
+  /// Compute proximity on CPU.
+  //
+  if ( cpu_computes_prox )
+    for ( int idx9 = 0; idx9 < phys_zsort.occ(); idx9++ )
+      contact_pairs_proximity_check(idx9,lifetime_delta_t,false);
 
-    int proximity_cnt_total_1 = 0;
-    int proximity_cnt_total_1t = 0;
-    int proximity_cnt_total_2 = 0;
-
-    for ( Phys_Iterator phys(physs); phys; phys++ )
-      {
-        proximity_cnt_total_1 += phys->proximity.occ();
-        if ( phys->phys_type == PT_Tile )
-          proximity_cnt_total_1t += phys->proximity.occ();
-        if ( opt_cuda_prox )
-          proximity_cnt_total_2 += phys->proximity_cnt;
-      }
-
-    const int prox_expected =
-      ( proximity_cnt_total_1 >> 1 ) - proximity_cnt_total_1t;
-
-    proximity_cnt_errors = prox_expected - proximity_cnt_total_2;
-  }
+  prox_test_per_ball_prev = prox_test_per_ball;
 
   frame_timer.user_timer_end(timer_id_spart);
 }
 
-
-void
-World::cuda_contact_pairs_find()
-{
-  /// Added for Spring 2010 Homework 3
-
-  /// Find pairs of phys that are in proximity: in contact now or maybe soon.
-
-  // The pair list should include phys that may touch within
-  // schedule_lifetime_steps (a constant); from that compute
-  // a time.
-  //
-  const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
-
-  /// Sort phys in z in preparation for finding phys in proximity.
-  //
-  phys_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
-  for ( Phys_Iterator ball(physs); ball; ball++ )
-    {
-      const float max_z = ball->max_z_get(lifetime_delta_t);
-      phys_zsort.insert(max_z,ball);
-      ball->proximity.reset();
-      ball->idx = ball.get_idx();
-      ball->proximity_cnt = 0;
-    }
-  phys_zsort.sort();
-
-  // Host-side CUDA code to determine proximity count goes here.
-  // Also edit balls-kernel.cu and balls.cuh.
-  
-
-}
 
 void
 World::cuda_schedule()
@@ -3023,9 +3295,11 @@ World::cuda_schedule()
 }
 
 void
-World::time_step_cuda(int iters_per_frame, bool just_before_render)
+World::time_step_cuda(int iter, int iters_per_frame)
 {
   /// Advance physical state by one time step using CUDA for computation.
+
+  const bool just_before_render = iter + 1 == iters_per_frame;
 
   cuda_init();
   const int ball_cnt = physs.occ();
@@ -3066,7 +3340,6 @@ World::time_step_cuda(int iters_per_frame, bool just_before_render)
       cuda_tacts_schedule.to_cuda();
       pt_sched_data_pending = false;
       cuda_schedule_stale = -schedule_lifetime_steps;
-      if ( wheel ) wheel->cuda_constants_stale = true; // Only if idx changed.
     }
 
   cuda_schedule_stale++;
@@ -3428,16 +3701,14 @@ World::render()
       const double elapsed_time = time_now - world_time;
       const int iter_limit =
         min( opt_time_step_factor * 3, int ( 0.5 + elapsed_time / delta_t));
-      for ( int iter=0; true; iter++ )
+      for ( int iter=0; iter < iter_limit; iter++ )
         {
-          const bool last = iter == iter_limit - 1;
           if ( opt_physics_method == GP_cpu )
             time_step_cpu();
           else
-            time_step_cuda(iter_limit,last);
+            time_step_cuda(iter,iter_limit);
 
           world_time += delta_t;
-          if ( last ) break;
         }
       frame_timer.work_amt_set(iter_limit);
     }
@@ -3527,9 +3798,6 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
-  ogl_helper.fbprintf("F2010 HW3: CUDA Prox %d ('F4' to change), Errors %d\n",
-                      opt_cuda_prox, proximity_cnt_errors);
-
   if ( 0 )
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
@@ -3555,11 +3823,18 @@ World::render()
      ball.velocity.x,ball.velocity.y,ball.velocity.z,
      tri_count);
 
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
   ogl_helper.fbprintf
     ("Physics: %s ('a')  Debug Options: %d %d ('qQ')  "
-     "Physics Verification %d ('v')\n",
-     gpu_physics_method_str[opt_physics_method], 
-     opt_debug, opt_debug2, opt_verify);
+     "Physics Verification %s ('v')\n",
+     opt_physics_method != GP_cuda
+     ? BLINK(gpu_physics_method_str[opt_physics_method],"      ") 
+     : gpu_physics_method_str[opt_physics_method], 
+     opt_debug, opt_debug2,
+     opt_verify ? BLINK("On ","   ") : "Off");
+
   if ( opt_physics_method == GP_cuda && cuda_initialized )
     {
       ogl_helper.fbprintf
@@ -3604,6 +3879,14 @@ World::render()
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->get_val());
+
+
+  ogl_helper.fbprintf("F2010 HW4: CUDA Prox %s ('F4' to change) "
+                      "CPU test/ball: %.3f total %d,  Full %d\n",
+                      opt_cuda_prox ? "On" : BLINK("Off","   "),
+                      double(prox_test_per_ball_prev) / physs.occ(),
+                      prox_test_per_ball_prev,
+                      cuda_prox_full_prev);
 
   // Sort balls by distance from user's eye.
   // This is needed for the occlusion test.
