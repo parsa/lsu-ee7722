@@ -1,0 +1,43149 @@
+
+	.section	".text",#alloc,#execinstr
+	.align	8
+	.skip	16
+
+	! block 0
+	.type	alloc_instruction,#function
+alloc_instruction:
+	save	%sp,-120,%sp
+
+	! block 1
+.L13:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L14:
+.L16:
+
+! File dlist.c:
+!    1	/* $Id: dlist.c,v 1.35 1997/10/29 01:29:09 brianp Exp $ */
+!    2	
+!    3	/*
+!    4	 * Mesa 3-D graphics library
+!    5	 * Version:  2.5
+!    6	 * Copyright (C) 1995-1997  Brian Paul
+!    7	 *
+!    8	 * This library is free software; you can redistribute it and/or
+!    9	 * modify it under the terms of the GNU Library General Public
+!   10	 * License as published by the Free Software Foundation; either
+!   11	 * version 2 of the License, or (at your option) any later version.
+!   12	 *
+!   13	 * This library is distributed in the hope that it will be useful,
+!   14	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+!   15	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+!   16	 * Library General Public License for more details.
+!   17	 *
+!   18	 * You should have received a copy of the GNU Library General Public
+!   19	 * License along with this library; if not, write to the Free
+!   20	 * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!   21	 */
+!   22	
+!   24	/*
+!   25	 * $Log: dlist.c,v $
+!   26	 * Revision 1.35  1997/10/29 01:29:09  brianp
+!   27	 * added GL_EXT_point_parameters extension from Daniel Barrero
+!   28	 *
+!   29	 * Revision 1.34  1997/10/02 00:48:29  brianp
+!   30	 * removed the EXEC() macro stuff, it caused bugs in gl_save_Color*()
+!   31	 *
+!   32	 * Revision 1.33  1997/09/27 00:13:44  brianp
+!   33	 * added GL_EXT_paletted_texture extension
+!   34	 *
+!   35	 * Revision 1.32  1997/09/23 00:57:52  brianp
+!   36	 * removed list>MAX_DISPLAYLISTS test
+!   37	 *
+!   38	 * Revision 1.31  1997/09/22 02:33:58  brianp
+!   39	 * display lists now implemented with hash table
+!   40	 *
+!   41	 * Revision 1.30  1997/07/24 01:25:01  brianp
+!   42	 * changed precompiled header symbol from PCH to PC_HEADER
+!   43	 *
+!   44	 * Revision 1.29  1997/07/09 01:26:12  brianp
+!   45	 * fixed glDrawPixels() GL_COMPILE_AND_EXECUTE infinite loop (Renaud Cazoulat)
+!   46	 *
+!   47	 * Revision 1.28  1997/06/24 01:13:26  brianp
+!   48	 * initialize image RefCount to 1 for gl_save_TexSubImage[123]D()
+!   49	 *
+!   50	 * Revision 1.27  1997/06/20 01:57:57  brianp
+!   51	 * added gl_save_Color4ubv()
+!   52	 *
+!   53	 * Revision 1.26  1997/06/06 02:59:19  brianp
+!   54	 * renamed destroy_list() to gl_destroy_list()
+!   55	 *
+!   56	 * Revision 1.25  1997/05/28 03:24:22  brianp
+!   57	 * added precompiled header (PCH) support
+!   58	 *
+!   59	 * Revision 1.24  1997/05/27 03:13:41  brianp
+!   60	 * removed some debugging code
+!   61	 *
+!   62	 * Revision 1.23  1997/04/30 21:36:22  brianp
+!   63	 * added casts to gl_TexImage[123]D() calls
+!   64	 *
+!   65	 * Revision 1.22  1997/04/28 23:40:47  brianp
+!   66	 * added #include "rect.h"
+!   67	 *
+!   68	 * Revision 1.21  1997/04/24 01:50:53  brianp
+!   69	 * optimized glColor3f, glColor3fv, glColor4fv
+!   70	 *
+!   71	 * Revision 1.20  1997/04/24 00:30:17  brianp
+!   72	 * optimized glTexCoord2() code
+!   73	 *
+!   74	 * Revision 1.19  1997/04/21 01:21:33  brianp
+!   75	 * added gl_save_Rectf()
+!   76	 *
+!   77	 * Revision 1.18  1997/04/20 16:18:15  brianp
+!   78	 * added glOrtho and glFrustum API pointers
+!   79	 *
+!   80	 * Revision 1.17  1997/04/16 23:55:33  brianp
+!   81	 * added optimized glTexCoord2f code
+!   82	 *
+!   83	 * Revision 1.16  1997/04/14 22:18:23  brianp
+!   84	 * added optimized glVertex3fv code
+!   85	 *
+!   86	 * Revision 1.15  1997/04/14 02:00:39  brianp
+!   87	 * #include "texstate.h" instead of "texture.h"
+!   88	 *
+!   89	 * Revision 1.14  1997/04/07 02:58:49  brianp
+!   90	 * added gl_save_Vertex[23]f() and related code
+!   91	 *
+!   92	 * Revision 1.13  1997/04/01 04:26:02  brianp
+!   93	 * added code for glLoadIdentity(), changed #include's
+!   94	 *
+!   95	 * Revision 1.12  1997/02/27 19:58:08  brianp
+!   96	 * call gl_problem() instead of gl_warning()
+!   97	 *
+!   98	 * Revision 1.11  1997/02/09 18:50:18  brianp
+!   99	 * added GL_EXT_texture3D support
+!  100	 *
+!  101	 * Revision 1.10  1997/01/29 18:51:30  brianp
+!  102	 * small MEMCPY call change for Acorn compiler, per Graham Jones
+!  103	 *
+!  104	 * Revision 1.9  1997/01/09 21:25:28  brianp
+!  105	 * set reference count to one for texture images in display lists
+!  106	 *
+!  107	 * Revision 1.8  1996/12/11 20:19:11  brianp
+!  108	 * abort display list execution if invalid opcode found
+!  109	 *
+!  110	 * Revision 1.7  1996/12/09 21:39:23  brianp
+!  111	 * compare list to MAX_DISPLAYLISTS in gl_IsList()
+!  112	 *
+!  113	 * Revision 1.6  1996/12/04 22:14:27  brianp
+!  114	 * improved the mesa_print_display_list() debug function
+!  115	 *
+!  116	 * Revision 1.5  1996/11/07 04:12:45  brianp
+!  117	 * texture images are now gl_image structs, not gl_texture_image structs
+!  118	 *
+!  119	 * Revision 1.4  1996/10/16 00:59:12  brianp
+!  120	 * fixed bug in gl_save_Lightfv()
+!  121	 * execution of OPCODE_EDGE_FLAG used enum value instead of boolean
+!  122	 *
+!  123	 * Revision 1.3  1996/09/27 01:26:08  brianp
+!  124	 * removed unused variables
+!  125	 *
+!  126	 * Revision 1.2  1996/09/19 00:54:43  brianp
+!  127	 * fixed bug in gl_save_Rotatef() when in GL_COMPILE_AND_EXECUTE mode
+!  128	 *
+!  129	 * Revision 1.1  1996/09/13 01:38:16  brianp
+!  130	 * Initial revision
+!  131	 *
+!  132	 */
+!  133	
+!  135	#ifdef PC_HEADER
+!  136	#include "all.h"
+!  137	#else
+!  138	#include <assert.h>
+!  139	#include <stdio.h>
+!  140	#include <stdlib.h>
+!  141	#include <string.h>
+!  142	#include "accum.h"
+!  143	#include "alpha.h"
+!  144	#include "attrib.h"
+!  145	#include "bitmap.h"
+!  146	#include "blend.h"
+!  147	#include "clip.h"
+!  148	#include "colortab.h"
+!  149	#include "context.h"
+!  150	#include "copypix.h"
+!  151	#include "depth.h"
+!  152	#include "drawpix.h"
+!  153	#include "enable.h"
+!  154	#include "eval.h"
+!  155	#include "feedback.h"
+!  156	#include "fog.h"
+!  157	#include "hash.h"
+!  158	#include "image.h"
+!  159	#include "light.h"
+!  160	#include "lines.h"
+!  161	#include "dlist.h"
+!  162	#include "logic.h"
+!  163	#include "macros.h"
+!  164	#include "masking.h"
+!  165	#include "matrix.h"
+!  166	#include "misc.h"
+!  167	#include "pixel.h"
+!  168	#include "points.h"
+!  169	#include "polygon.h"
+!  170	#include "rastpos.h"
+!  171	#include "rect.h"
+!  172	#include "scissor.h"
+!  173	#include "stencil.h"
+!  174	#include "texobj.h"
+!  175	#include "teximage.h"
+!  176	#include "texstate.h"
+!  177	#include "types.h"
+!  178	#include "vb.h"
+!  179	#include "vbfill.h"
+!  180	#include "winpos.h"
+!  181	#endif
+!  182	
+!  185	/*
+!  186	Functions which aren't compiled but executed immediately:
+!  187		glIsList
+!  188		glGenLists
+!  189		glDeleteLists
+!  190		glEndList
+!  191		glFeedbackBuffer
+!  192		glSelectBuffer
+!  193		glRenderMode
+!  194		glReadPixels
+!  195		glPixelStore
+!  196		glFlush
+!  197		glFinish
+!  198		glIsEnabled
+!  199		glGet*
+!  200	
+!  201	Functions which cause errors if called while compiling a display list:
+!  202		glNewList
+!  203	*/
+!  204	
+!  207	/*
+!  208	 * Display list instructions are stored as sequences of "nodes".  Nodes
+!  209	 * are allocated in blocks.  Each block has BLOCK_SIZE nodes.  Blocks
+!  210	 * are linked together with a pointer.
+!  211	 */
+!  212	
+!  214	/* How many nodes to allocate at a time: */
+!  215	#define BLOCK_SIZE 500
+!  216	
+!  218	/*
+!  219	 * Display list opcodes.
+!  220	 *
+!  221	 * The fact that these identifiers are assigned consecutive
+!  222	 * integer values starting at 0 is very important, see InstSize array usage)
+!  223	 */
+!  224	typedef enum {
+!  225		OPCODE_ACCUM,
+!  226		OPCODE_ALPHA_FUNC,
+!  227	        OPCODE_BEGIN,
+!  228	        OPCODE_BIND_TEXTURE,
+!  229		OPCODE_BITMAP,
+!  230		OPCODE_BLEND_COLOR,
+!  231		OPCODE_BLEND_EQUATION,
+!  232		OPCODE_BLEND_FUNC,
+!  233	        OPCODE_CALL_LIST,
+!  234	        OPCODE_CALL_LIST_OFFSET,
+!  235		OPCODE_CLEAR,
+!  236		OPCODE_CLEAR_ACCUM,
+!  237		OPCODE_CLEAR_COLOR,
+!  238		OPCODE_CLEAR_DEPTH,
+!  239		OPCODE_CLEAR_INDEX,
+!  240		OPCODE_CLEAR_STENCIL,
+!  241	        OPCODE_CLIP_PLANE,
+!  242		OPCODE_COLOR_3F,
+!  243		OPCODE_COLOR_4F,
+!  244		OPCODE_COLOR_4UB,
+!  245		OPCODE_COLOR_MASK,
+!  246		OPCODE_COLOR_MATERIAL,
+!  247		OPCODE_COLOR_TABLE,
+!  248		OPCODE_COLOR_SUB_TABLE,
+!  249		OPCODE_COPY_PIXELS,
+!  250	        OPCODE_COPY_TEX_IMAGE1D,
+!  251	        OPCODE_COPY_TEX_IMAGE2D,
+!  252	        OPCODE_COPY_TEX_IMAGE3D,
+!  253	        OPCODE_COPY_TEX_SUB_IMAGE1D,
+!  254	        OPCODE_COPY_TEX_SUB_IMAGE2D,
+!  255	        OPCODE_COPY_TEX_SUB_IMAGE3D,
+!  256		OPCODE_CULL_FACE,
+!  257		OPCODE_DEPTH_FUNC,
+!  258		OPCODE_DEPTH_MASK,
+!  259		OPCODE_DEPTH_RANGE,
+!  260		OPCODE_DISABLE,
+!  261		OPCODE_DRAW_BUFFER,
+!  262		OPCODE_DRAW_PIXELS,
+!  263	        OPCODE_EDGE_FLAG,
+!  264		OPCODE_ENABLE,
+!  265	        OPCODE_END,
+!  266		OPCODE_EVALCOORD1,
+!  267		OPCODE_EVALCOORD2,
+!  268		OPCODE_EVALMESH1,
+!  269		OPCODE_EVALMESH2,
+!  270		OPCODE_EVALPOINT1,
+!  271		OPCODE_EVALPOINT2,
+!  272		OPCODE_FOG,
+!  273		OPCODE_FRONT_FACE,
+!  274		OPCODE_FRUSTUM,
+!  275		OPCODE_HINT,
+!  276		OPCODE_INDEX,
+!  277		OPCODE_INDEX_MASK,
+!  278		OPCODE_INIT_NAMES,
+!  279		OPCODE_LIGHT,
+!  280		OPCODE_LIGHT_MODEL,
+!  281		OPCODE_LINE_STIPPLE,
+!  282		OPCODE_LINE_WIDTH,
+!  283		OPCODE_LIST_BASE,
+!  284		OPCODE_LOAD_IDENTITY,
+!  285		OPCODE_LOAD_MATRIX,
+!  286		OPCODE_LOAD_NAME,
+!  287		OPCODE_LOGIC_OP,
+!  288		OPCODE_MAP1,
+!  289		OPCODE_MAP2,
+!  290		OPCODE_MAPGRID1,
+!  291		OPCODE_MAPGRID2,
+!  292		OPCODE_MATERIAL,
+!  293		OPCODE_MATRIX_MODE,
+!  294		OPCODE_MULT_MATRIX,
+!  295	        OPCODE_NORMAL,
+!  296		OPCODE_ORTHO,
+!  297		OPCODE_PASSTHROUGH,
+!  298		OPCODE_PIXEL_MAP,
+!  299		OPCODE_PIXEL_TRANSFER,
+!  300		OPCODE_PIXEL_ZOOM,
+!  301		OPCODE_POINT_SIZE,
+!  302	        OPCODE_POINT_PARAMETERS,
+!  303		OPCODE_POLYGON_MODE,
+!  304	        OPCODE_POLYGON_STIPPLE,
+!  305		OPCODE_POLYGON_OFFSET,
+!  306		OPCODE_POP_ATTRIB,
+!  307		OPCODE_POP_MATRIX,
+!  308		OPCODE_POP_NAME,
+!  309		OPCODE_PRIORITIZE_TEXTURE,
+!  310		OPCODE_PUSH_ATTRIB,
+!  311		OPCODE_PUSH_MATRIX,
+!  312		OPCODE_PUSH_NAME,
+!  313		OPCODE_RASTER_POS,
+!  314		OPCODE_RECTF,
+!  315		OPCODE_READ_BUFFER,
+!  316	        OPCODE_SCALE,
+!  317		OPCODE_SCISSOR,
+!  318		OPCODE_SHADE_MODEL,
+!  319		OPCODE_STENCIL_FUNC,
+!  320		OPCODE_STENCIL_MASK,
+!  321		OPCODE_STENCIL_OP,
+!  322		OPCODE_TEXCOORD2,
+!  323		OPCODE_TEXCOORD4,
+!  324	        OPCODE_TEXENV,
+!  325	        OPCODE_TEXGEN,
+!  326	        OPCODE_TEXPARAMETER,
+!  327		OPCODE_TEX_IMAGE1D,
+!  328		OPCODE_TEX_IMAGE2D,
+!  329		OPCODE_TEX_IMAGE3D,
+!  330		OPCODE_TEX_SUB_IMAGE1D,
+!  331		OPCODE_TEX_SUB_IMAGE2D,
+!  332		OPCODE_TEX_SUB_IMAGE3D,
+!  333	        OPCODE_TRANSLATE,
+!  334	        OPCODE_VERTEX2,
+!  335	        OPCODE_VERTEX3,
+!  336	        OPCODE_VERTEX4,
+!  337		OPCODE_VIEWPORT,
+!  338		OPCODE_WINDOW_POS,
+!  339		/* The following two are meta instructions */
+!  340		OPCODE_CONTINUE,
+!  341		OPCODE_END_OF_LIST
+!  342	} OpCode;
+!  343	
+!  345	/*
+!  346	 * Each instruction in the display list is stored as a sequence of
+!  347	 * contiguous nodes in memory.
+!  348	 * Each node is the union of a variety of datatypes.
+!  349	 */
+!  350	typedef union node {
+!  351		OpCode		opcode;
+!  352		GLboolean	b;
+!  353		GLbitfield	bf;
+!  354		GLubyte		ub;
+!  355		GLshort		s;
+!  356		GLushort	us;
+!  357		GLint		i;
+!  358		GLuint		ui;
+!  359		GLenum		e;
+!  360		GLfloat		f;
+!  361		GLvoid		*data;
+!  362		void		*next;	/* If prev node's opcode==OPCODE_CONTINUE */
+!  363	} Node;
+!  364	
+!  367	/* Number of nodes of storage needed for each instruction: */
+!  368	static GLuint InstSize[ OPCODE_END_OF_LIST+1 ];
+!  369	
+!  371	/* Used while a display list is under construction: */
+!  372	static Node *CurrentListPtr;	/* Head of list being compiled */
+!  373	static GLuint CurrentListNum;	/* Number of the list being compiled */
+!  374	static Node *CurrentBlock;	/* Pointer to current block of nodes */
+!  375	static GLuint CurrentPos;	/* Index into current block of nodes */
+!  376	
+!  380	/**********************************************************************/
+!  381	/*****                           Private                          *****/
+!  382	/**********************************************************************/
+!  383	
+!  385	/*
+!  386	 * Allocate space for a display list instruction.
+!  387	 * Input:  opcode - type of instruction
+!  388	 *         argcount - number of arguments following the instruction
+!  389	 * Return: pointer to first node in the instruction
+!  390	 */
+!  391	static Node *alloc_instruction( GLcontext *ctx, OpCode opcode, GLint argcount )
+!  392	{
+!  393	   Node *n, *newblock;
+!  394	   GLuint count = InstSize[opcode];
+
+	ld	[%fp+72],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	st	%l0,[%fp-16]
+
+	! block 3
+.L17:
+
+!  396	   assert( count == argcount+1 );
+
+	ld	[%fp-16],%l1
+	ld	[%fp+76],%l0
+	add	%l0,1,%l0
+	cmp	%l1,%l0
+	be	.L19
+	nop
+
+	! block 4
+.L20:
+	sethi	%hi(.L21),%l0
+	or	%l0,%lo(.L21),%l0
+	add	%l0,20,%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	__assert
+	mov	396,%o2
+	ba	.L18
+	nop
+
+	! block 5
+.L19:
+	mov	1,%l0
+	ba	.L23
+	st	%l0,[%fp-20]
+
+	! block 6
+.L18:
+	st	%g0,[%fp-20]
+
+	! block 7
+.L23:
+.L24:
+.L26:
+
+!  398	   if (CurrentPos + count + 2 > BLOCK_SIZE) {
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentPos),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentPos)],%l0
+	ld	[%fp-16],%l1
+	add	%l0,%l1,%l0
+	add	%l0,2,%l0
+	cmp	%l0,500
+	bleu	.L25
+	nop
+
+	! block 8
+.L27:
+.L28:
+.L29:
+.L30:
+
+!  399	      /* This block is full.  Allocate a new block and chain to it */
+!  400	      n = CurrentBlock + CurrentPos;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentBlock),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentBlock)],%l2
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentPos),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentPos)],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-8]
+
+	! block 9
+.L31:
+
+!  401	      n[0].opcode = OPCODE_CONTINUE;
+
+	mov	114,%l1
+	ld	[%fp-8],%l0
+	st	%l1,[%l0+0]
+
+	! block 10
+.L32:
+
+!  402	      newblock = (Node *) malloc( sizeof(Node) * BLOCK_SIZE );
+
+	call	malloc
+	mov	2000,%o0
+	st	%o0,[%fp-12]
+
+	! block 11
+.L33:
+.L35:
+
+!  403	      if (!newblock) {
+
+	ld	[%fp-12],%l0
+	cmp	%l0,%g0
+	bne	.L34
+	nop
+
+	! block 12
+.L36:
+.L37:
+.L38:
+.L39:
+
+!  404	         gl_error( ctx, GL_OUT_OF_MEMORY, "Building display list" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L40),%l1
+	or	%l1,%lo(.L40),%l1
+	mov	%l0,%o0
+	mov	1285,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 13
+.L41:
+
+!  405	         return NULL;
+
+	ba	.L12
+	st	%g0,[%fp-4]
+
+	! block 14
+.L42:
+.L43:
+.L34:
+.L44:
+.L45:
+
+!  406	      }
+!  407	      n[1].next = (Node *) newblock;
+
+	ld	[%fp-12],%l1
+	ld	[%fp-8],%l0
+	st	%l1,[%l0+4]
+
+	! block 15
+.L46:
+
+!  408	      CurrentBlock = newblock;
+
+	ld	[%fp-12],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentBlock),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.CurrentBlock)]
+
+	! block 16
+.L47:
+
+!  409	      CurrentPos = 0;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentPos),%l0
+	st	%g0,[%l0+%lo($XAa59JCQsd3LGqK.CurrentPos)]
+
+	! block 17
+.L48:
+.L49:
+.L25:
+.L50:
+.L51:
+
+!  410	   }
+!  411	
+!  412	   n = CurrentBlock + CurrentPos;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentBlock),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentBlock)],%l2
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentPos),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentPos)],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-8]
+
+	! block 18
+.L52:
+
+!  413	   CurrentPos += count;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentPos),%l2
+	ld	[%l2+%lo($XAa59JCQsd3LGqK.CurrentPos)],%l0
+	ld	[%fp-16],%l1
+	add	%l0,%l1,%l0
+	st	%l0,[%l2+%lo($XAa59JCQsd3LGqK.CurrentPos)]
+
+	! block 19
+.L53:
+
+!  415	   n[0].opcode = opcode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-8],%l0
+	st	%l1,[%l0+0]
+
+	! block 20
+.L54:
+
+!  417	   return n;
+
+	ld	[%fp-8],%l0
+	ba	.L12
+	st	%l0,[%fp-4]
+
+	! block 21
+
+	! block 22
+.L55:
+.L56:
+.L12:
+	ld	[%fp-4],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	alloc_instruction,(.-alloc_instruction)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+	.type	make_empty_list,#function
+make_empty_list:
+	save	%sp,-104,%sp
+
+	! block 1
+.L59:
+.L60:
+.L62:
+
+! File dlist.c:
+!  418	}
+!  419	
+!  422	/*
+!  423	 * Make an empty display list.  This is used by glGenLists() to
+!  424	 * reserver display list IDs.
+!  425	 */
+!  426	static Node *make_empty_list( void )
+!  427	{
+!  428	   Node *n = (Node *) malloc( sizeof(Node) );
+
+	call	malloc
+	mov	4,%o0
+	st	%o0,[%fp-8]
+
+	! block 2
+.L63:
+
+!  429	   n[0].opcode = OPCODE_END_OF_LIST;
+
+	mov	115,%l1
+	ld	[%fp-8],%l0
+	st	%l1,[%l0+0]
+
+	! block 3
+.L64:
+
+!  430	   return n;
+
+	ld	[%fp-8],%l0
+	ba	.L58
+	st	%l0,[%fp-4]
+
+	! block 4
+
+	! block 5
+.L65:
+.L66:
+.L58:
+	ld	[%fp-4],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	make_empty_list,(.-make_empty_list)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_destroy_list
+	.type	gl_destroy_list,#function
+gl_destroy_list:
+	save	%sp,-120,%sp
+
+	! block 1
+.L69:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L70:
+.L72:
+
+! File dlist.c:
+!  431	}
+!  432	
+!  435	/*
+!  436	 * Destroy all nodes in a display list.
+!  437	 * Input:  list - display list number
+!  438	 */
+!  439	void gl_destroy_list( GLcontext *ctx, GLuint list )
+!  440	{
+!  441	   Node *n, *block;
+!  442	   GLboolean done;
+!  443	
+!  444	   block = (Node *) HashLookup(ctx->Shared->DisplayList, list);
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	HashLookup
+	mov	%l1,%o1
+	st	%o0,[%fp-8]
+
+	! block 3
+.L73:
+
+!  445	   n = block;
+
+	ld	[%fp-8],%l0
+	st	%l0,[%fp-4]
+
+	! block 4
+.L74:
+
+!  447	   done = block ? GL_FALSE : GL_TRUE;
+
+	ld	[%fp-8],%l0
+	cmp	%g0,%l0
+
+	! block 5
+.L76:
+
+	! block 6
+.L75:
+
+	! block 7
+.L77:
+	subx	%g0,-1,%l0
+	st	%l0,[%fp-16]
+	ld	[%fp-16],%l0
+	stb	%l0,[%fp-9]
+
+	! block 8
+.L78:
+.L82:
+
+!  448	   while (!done) {
+
+	ldub	[%fp-9],%l0
+	cmp	%l0,%g0
+	bne	.L81
+	nop
+
+	! block 9
+.L83:
+.L79:
+.L84:
+.L85:
+.L86:
+.L89:
+
+!  449	      switch (n[0].opcode) {
+
+	ba	.L88
+	nop
+
+	! block 10
+.L90:
+.L91:
+.L92:
+.L93:
+
+!  450		 /* special cases first */
+!  451		 case OPCODE_MAP1:
+!  452		    gl_free_control_points( ctx, n[1].e, (GLfloat *) n[6].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+24],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_free_control_points
+	mov	%l0,%o2
+
+	! block 11
+.L94:
+
+!  453		    n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 12
+.L95:
+
+!  454		    break;
+
+	ba	.L87
+	nop
+
+	! block 13
+.L96:
+.L97:
+
+!  455		 case OPCODE_MAP2:
+!  456		    gl_free_control_points( ctx, n[1].e, (GLfloat *) n[10].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+40],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_free_control_points
+	mov	%l0,%o2
+
+	! block 14
+.L98:
+
+!  457		    n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 15
+.L99:
+
+!  458		    break;
+
+	ba	.L87
+	nop
+
+	! block 16
+.L100:
+.L101:
+
+!  459		 case OPCODE_DRAW_PIXELS:
+!  460		    free( n[5].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%l0
+	call	free
+	mov	%l0,%o0
+
+	! block 17
+.L102:
+
+!  461		    n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 18
+.L103:
+
+!  462		    break;
+
+	ba	.L87
+	nop
+
+	! block 19
+.L104:
+.L105:
+
+!  463		 case OPCODE_BITMAP:
+!  464		    gl_free_image( (struct gl_image *) n[7].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+28],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 20
+.L106:
+
+!  465		    n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 21
+.L107:
+
+!  466		    break;
+
+	ba	.L87
+	nop
+
+	! block 22
+.L108:
+.L109:
+
+!  467	         case OPCODE_COLOR_TABLE:
+!  468	            gl_free_image( (struct gl_image *) n[3].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 23
+.L110:
+
+!  469	            n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 24
+.L111:
+
+!  470	            break;
+
+	ba	.L87
+	nop
+
+	! block 25
+.L112:
+.L113:
+
+!  471	         case OPCODE_COLOR_SUB_TABLE:
+!  472	            gl_free_image( (struct gl_image *) n[3].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 26
+.L114:
+
+!  473	            n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 27
+.L115:
+
+!  474	            break;
+
+	ba	.L87
+	nop
+
+	! block 28
+.L116:
+.L117:
+
+!  475	         case OPCODE_POLYGON_STIPPLE:
+!  476	            free( n[1].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	call	free
+	mov	%l0,%o0
+
+	! block 29
+.L118:
+
+!  477		    n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 30
+.L119:
+
+!  478	            break;
+
+	ba	.L87
+	nop
+
+	! block 31
+.L120:
+.L121:
+
+!  479		 case OPCODE_TEX_IMAGE1D:
+!  480	            gl_free_image( (struct gl_image *) n[8].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+32],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 32
+.L122:
+
+!  481	            n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 33
+.L123:
+
+!  482		    break;
+
+	ba	.L87
+	nop
+
+	! block 34
+.L124:
+.L125:
+
+!  483		 case OPCODE_TEX_IMAGE2D:
+!  484	            gl_free_image( (struct gl_image *) n[9].data );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+36],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 35
+.L126:
+
+!  485	            n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 36
+.L127:
+
+!  486		    break;
+
+	ba	.L87
+	nop
+
+	! block 37
+.L128:
+.L129:
+.L130:
+
+!  487	         case OPCODE_TEX_SUB_IMAGE1D:
+!  488	            {
+!  489	               struct gl_image *image;
+!  490	               image = (struct gl_image *) n[7].data;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+28],%l0
+	st	%l0,[%fp-20]
+
+	! block 38
+.L131:
+
+!  491	               gl_free_image( image );
+
+	ld	[%fp-20],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 39
+.L132:
+.L133:
+
+!  492	            }
+!  493	            break;
+
+	ba	.L87
+	nop
+
+	! block 40
+.L134:
+.L135:
+.L136:
+
+!  494	         case OPCODE_TEX_SUB_IMAGE2D:
+!  495	            {
+!  496	               struct gl_image *image;
+!  497	               image = (struct gl_image *) n[9].data;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+36],%l0
+	st	%l0,[%fp-20]
+
+	! block 41
+.L137:
+
+!  498	               gl_free_image( image );
+
+	ld	[%fp-20],%l0
+	call	gl_free_image
+	mov	%l0,%o0
+
+	! block 42
+.L138:
+.L139:
+
+!  499	            }
+!  500	            break;
+
+	ba	.L87
+	nop
+
+	! block 43
+.L140:
+.L141:
+
+!  501		 case OPCODE_CONTINUE:
+!  502		    n = (Node *) n[1].next;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	st	%l0,[%fp-4]
+
+	! block 44
+.L142:
+
+!  503		    free( block );
+
+	ld	[%fp-8],%l0
+	call	free
+	mov	%l0,%o0
+
+	! block 45
+.L143:
+
+!  504		    block = n;
+
+	ld	[%fp-4],%l0
+	st	%l0,[%fp-8]
+
+	! block 46
+.L144:
+
+!  505		    break;
+
+	ba	.L87
+	nop
+
+	! block 47
+.L145:
+.L146:
+
+!  506		 case OPCODE_END_OF_LIST:
+!  507		    free( block );
+
+	ld	[%fp-8],%l0
+	call	free
+	mov	%l0,%o0
+
+	! block 48
+.L147:
+
+!  508		    done = GL_TRUE;
+
+	mov	1,%l0
+	stb	%l0,[%fp-9]
+
+	! block 49
+.L148:
+
+!  509		    break;
+
+	ba	.L87
+	nop
+
+	! block 50
+.L149:
+.L150:
+
+!  510		 default:
+!  511		    /* Most frequent case */
+!  512		    n += InstSize[n[0].opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%l2+0],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 51
+.L151:
+
+!  513		    break;
+
+	ba	.L87
+	nop
+
+	! block 52
+.L152:
+.L153:
+.L88:
+.L154:
+	ld	[%fp-4],%l0
+	ld	[%l0+0],%l0
+	cmp	%l0,79
+	bge	.L_y0
+	nop
+
+	! block 53
+	cmp	%l0,37
+	bge	.L_y1
+	nop
+
+	! block 54
+	cmp	%l0,22
+	bge	.L_y2
+	nop
+
+	! block 55
+	cmp	%l0,4
+	be	.L104
+	nop
+
+	! block 56
+	ba	.L149
+	nop
+
+	! block 57
+.L_y2:
+	be	.L108
+	nop
+
+	! block 58
+	cmp	%l0,23
+	be	.L112
+	nop
+
+	! block 59
+	ba	.L149
+	nop
+
+	! block 60
+.L_y1:
+	cmp	%l0,63
+	bge	.L_y3
+	nop
+
+	! block 61
+	cmp	%l0,37
+	be	.L100
+	nop
+
+	! block 62
+	ba	.L149
+	nop
+
+	! block 63
+.L_y3:
+	be	.L92
+	nop
+
+	! block 64
+	cmp	%l0,64
+	be	.L96
+	nop
+
+	! block 65
+	ba	.L149
+	nop
+
+	! block 66
+.L_y0:
+	cmp	%l0,105
+	bge	.L_y4
+	nop
+
+	! block 67
+	cmp	%l0,102
+	bge	.L_y5
+	nop
+
+	! block 68
+	cmp	%l0,79
+	be	.L116
+	nop
+
+	! block 69
+	ba	.L149
+	nop
+
+	! block 70
+.L_y5:
+	be	.L120
+	nop
+
+	! block 71
+	cmp	%l0,103
+	be	.L124
+	nop
+
+	! block 72
+	ba	.L149
+	nop
+
+	! block 73
+.L_y4:
+	cmp	%l0,114
+	bge	.L_y6
+	nop
+
+	! block 74
+	cmp	%l0,105
+	be	.L128
+	nop
+
+	! block 75
+	cmp	%l0,106
+	be	.L134
+	nop
+
+	! block 76
+	ba	.L149
+	nop
+
+	! block 77
+.L_y6:
+	be	.L140
+	nop
+
+	! block 78
+	cmp	%l0,115
+	be	.L145
+	nop
+
+	! block 79
+	ba	.L149
+	nop
+
+	! block 80
+.L155:
+.L87:
+.L156:
+.L157:
+.L158:
+.L159:
+	ldub	[%fp-9],%l0
+	cmp	%l0,%g0
+	be	.L79
+	nop
+
+	! block 81
+.L160:
+.L81:
+.L161:
+.L162:
+
+!  514	      }
+!  515	   }
+!  516	
+!  517	   HashRemove(ctx->Shared->DisplayList, list);
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	HashRemove
+	mov	%l1,%o1
+
+	! block 82
+.L163:
+.L164:
+.L68:
+	jmp	%i7+8
+	restore
+	.size	gl_destroy_list,(.-gl_destroy_list)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+	.type	translate_id,#function
+translate_id:
+	save	%sp,-128,%sp
+
+	! block 1
+.L167:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L168:
+.L170:
+.L173:
+
+! File dlist.c:
+!  518	}
+!  519	
+!  522	/*
+!  523	 * Translate the nth element of list from type to GLuint.
+!  524	 */
+!  525	static GLuint translate_id( GLsizei n, GLenum type, const GLvoid *list )
+!  526	{
+!  527	   GLbyte *bptr;
+!  528	   GLubyte *ubptr;
+!  529	   GLshort *sptr;
+!  530	   GLushort *usptr;
+!  531	   GLint *iptr;
+!  532	   GLuint *uiptr;
+!  533	   GLfloat *fptr;
+!  534	
+!  535	   switch (type) {
+
+	ba	.L172
+	nop
+
+	! block 3
+.L174:
+.L175:
+.L176:
+.L177:
+
+!  536	      case GL_BYTE:
+!  537	         bptr = (GLbyte *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-8]
+
+	! block 4
+.L178:
+
+!  538	         return (GLuint) *(bptr+n);
+
+	ld	[%fp-8],%l0
+	ld	[%fp+68],%l1
+	ldsb	[%l0+%l1],%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 5
+.L179:
+.L180:
+
+!  539	      case GL_UNSIGNED_BYTE:
+!  540	         ubptr = (GLubyte *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-12]
+
+	! block 6
+.L181:
+
+!  541	         return (GLuint) *(ubptr+n);
+
+	ld	[%fp-12],%l0
+	ld	[%fp+68],%l1
+	ldub	[%l0+%l1],%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 7
+.L182:
+.L183:
+
+!  542	      case GL_SHORT:
+!  543	         sptr = (GLshort *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-16]
+
+	! block 8
+.L184:
+
+!  544	         return (GLuint) *(sptr+n);
+
+	ld	[%fp-16],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,1,%l1
+	ldsh	[%l2+%l1],%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 9
+.L185:
+.L186:
+
+!  545	      case GL_UNSIGNED_SHORT:
+!  546	         usptr = (GLushort *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-20]
+
+	! block 10
+.L187:
+
+!  547	         return (GLuint) *(usptr+n);
+
+	ld	[%fp-20],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,1,%l1
+	lduh	[%l2+%l1],%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 11
+.L188:
+.L189:
+
+!  548	      case GL_INT:
+!  549	         iptr = (GLint *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-24]
+
+	! block 12
+.L190:
+
+!  550	         return (GLuint) *(iptr+n);
+
+	ld	[%fp-24],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 13
+.L191:
+.L192:
+
+!  551	      case GL_UNSIGNED_INT:
+!  552	         uiptr = (GLuint *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-28]
+
+	! block 14
+.L193:
+
+!  553	         return (GLuint) *(uiptr+n);
+
+	ld	[%fp-28],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 15
+.L194:
+.L195:
+
+!  554	      case GL_FLOAT:
+!  555	         fptr = (GLfloat *) list;
+
+	ld	[%fp+76],%l0
+	st	%l0,[%fp-32]
+
+	! block 16
+.L196:
+
+!  556	         return (GLuint) *(fptr+n);
+
+	ld	[%fp-32],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%f4
+	st	%f4,[%sp+68]
+	call	__ftou
+	ld	[%sp+68],%o0
+	ba	.L166
+	st	%o0,[%fp-4]
+
+	! block 17
+.L197:
+.L198:
+
+!  557	      case GL_2_BYTES:
+!  558	         ubptr = ((GLubyte *) list) + 2*n;
+
+	ld	[%fp+76],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,1,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-12]
+
+	! block 18
+.L199:
+
+!  559	         return (GLuint) *ubptr * 256 + (GLuint) *(ubptr+1);
+
+	ld	[%fp-12],%l1
+	ldub	[%l1+0],%l0
+	sll	%l0,8,%l0
+	ldub	[%l1+1],%l1
+	add	%l0,%l1,%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 19
+.L200:
+.L201:
+
+!  560	      case GL_3_BYTES:
+!  561	         ubptr = ((GLubyte *) list) + 3*n;
+
+	ld	[%fp+76],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,1,%l1
+	add	%l0,%l1,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-12]
+
+	! block 20
+.L202:
+
+!  562	         return (GLuint) *ubptr * 65536
+!  563	              + (GLuint) *(ubptr+1) * 256
+!  564	              + (GLuint) *(ubptr+2);
+
+	ld	[%fp-12],%l3
+	ldub	[%l3+0],%l0
+	sll	%l0,16,%l2
+	ldub	[%l3+1],%l0
+	sll	%l0,8,%l1
+	add	%l2,%l1,%l0
+	ldub	[%l3+2],%l1
+	add	%l0,%l1,%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 21
+.L203:
+.L204:
+
+!  565	      case GL_4_BYTES:
+!  566	         ubptr = ((GLubyte *) list) + 4*n;
+
+	ld	[%fp+76],%l2
+	ld	[%fp+68],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-12]
+
+	! block 22
+.L205:
+
+!  567	         return (GLuint) *ubptr * 16777216
+!  568	              + (GLuint) *(ubptr+1) * 65536
+!  569	              + (GLuint) *(ubptr+2) * 256
+!  570	              + (GLuint) *(ubptr+3);
+
+	ld	[%fp-12],%l3
+	ldub	[%l3+0],%l0
+	sll	%l0,24,%l2
+	ldub	[%l3+1],%l0
+	sll	%l0,16,%l1
+	add	%l2,%l1,%l2
+	ldub	[%l3+2],%l0
+	sll	%l0,8,%l1
+	add	%l2,%l1,%l0
+	ldub	[%l3+3],%l1
+	add	%l0,%l1,%l0
+	ba	.L166
+	st	%l0,[%fp-4]
+
+	! block 23
+.L206:
+.L207:
+
+!  571	      default:
+!  572	         return 0;
+
+	ba	.L166
+	st	%g0,[%fp-4]
+
+	! block 24
+.L208:
+.L209:
+.L172:
+.L210:
+	ld	[%fp+72],%l0
+	sethi	%hi(0x1400),%l1
+	sub	%l0,%l1,%l0
+	cmp	%l0,9
+	bgu	.L206
+	nop
+
+	! block 25
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y7-40),%l0
+	or	%l0,%lo(.L_y7-40),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 26
+.L211:
+.L212:
+
+	! block 27
+.L213:
+.L214:
+.L166:
+	ld	[%fp-4],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	translate_id,(.-translate_id)
+
+	.word	.L176
+	.word	.L179
+	.word	.L182
+	.word	.L185
+	.word	.L188
+	.word	.L191
+	.word	.L194
+	.word	.L197
+	.word	.L200
+	.word	.L203
+.L_y7:
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_init_lists
+	.type	gl_init_lists,#function
+gl_init_lists:
+	save	%sp,-104,%sp
+
+	! block 1
+.L217:
+.L218:
+.L221:
+.L223:
+
+! File dlist.c:
+!  573	   }
+!  574	}
+!  575	
+!  579	/**********************************************************************/
+!  580	/*****                        Public                              *****/
+!  581	/**********************************************************************/
+!  582	
+!  583	void gl_init_lists( void )
+!  584	{
+!  585	   static int init_flag = 0;
+!  586	
+!  587	   if (init_flag==0) {
+
+	sethi	%hi($XBa59JCQsd3LGqK.gl_init_lists.init_flag),%l0
+	ld	[%l0+%lo($XBa59JCQsd3LGqK.gl_init_lists.init_flag)],%l0
+	cmp	%l0,0
+	bne	.L222
+	nop
+
+	! block 2
+.L224:
+.L225:
+.L226:
+.L227:
+
+!  588	      CurrentListPtr = CurrentBlock = NULL;
+
+	st	%g0,[%fp-4]
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentBlock),%l0
+	st	%g0,[%l0+%lo($XAa59JCQsd3LGqK.CurrentBlock)]
+	ld	[%fp-4],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListPtr),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.CurrentListPtr)]
+
+	! block 3
+.L228:
+
+!  589	      CurrentListNum = 0;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListNum),%l0
+	st	%g0,[%l0+%lo($XAa59JCQsd3LGqK.CurrentListNum)]
+
+	! block 4
+.L229:
+
+!  591	      InstSize[OPCODE_ACCUM] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize)]
+
+	! block 5
+.L230:
+
+!  592	      InstSize[OPCODE_ALPHA_FUNC] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+4),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+4)]
+
+	! block 6
+.L231:
+
+!  593	      InstSize[OPCODE_BEGIN] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+8),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+8)]
+
+	! block 7
+.L232:
+
+!  594	      InstSize[OPCODE_BIND_TEXTURE] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+12),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+12)]
+
+	! block 8
+.L233:
+
+!  595	      InstSize[OPCODE_BITMAP] = 8;
+
+	mov	8,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+16),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+16)]
+
+	! block 9
+.L234:
+
+!  596	      InstSize[OPCODE_BLEND_COLOR] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+20),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+20)]
+
+	! block 10
+.L235:
+
+!  597	      InstSize[OPCODE_BLEND_EQUATION] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+24),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+24)]
+
+	! block 11
+.L236:
+
+!  598	      InstSize[OPCODE_BLEND_FUNC] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+28),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+28)]
+
+	! block 12
+.L237:
+
+!  599	      InstSize[OPCODE_CALL_LIST] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+32),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+32)]
+
+	! block 13
+.L238:
+
+!  600	      InstSize[OPCODE_CALL_LIST_OFFSET] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+36),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+36)]
+
+	! block 14
+.L239:
+
+!  601	      InstSize[OPCODE_CLEAR] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+40),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+40)]
+
+	! block 15
+.L240:
+
+!  602	      InstSize[OPCODE_CLEAR_ACCUM] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+44),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+44)]
+
+	! block 16
+.L241:
+
+!  603	      InstSize[OPCODE_CLEAR_COLOR] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+48),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+48)]
+
+	! block 17
+.L242:
+
+!  604	      InstSize[OPCODE_CLEAR_DEPTH] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+52),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+52)]
+
+	! block 18
+.L243:
+
+!  605	      InstSize[OPCODE_CLEAR_INDEX] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+56),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+56)]
+
+	! block 19
+.L244:
+
+!  606	      InstSize[OPCODE_CLEAR_STENCIL] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+60),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+60)]
+
+	! block 20
+.L245:
+
+!  607	      InstSize[OPCODE_CLIP_PLANE] = 6;
+
+	mov	6,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+64),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+64)]
+
+	! block 21
+.L246:
+
+!  608	      InstSize[OPCODE_COLOR_3F] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+68),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+68)]
+
+	! block 22
+.L247:
+
+!  609	      InstSize[OPCODE_COLOR_4F] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+72),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+72)]
+
+	! block 23
+.L248:
+
+!  610	      InstSize[OPCODE_COLOR_4UB] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+76),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+76)]
+
+	! block 24
+.L249:
+
+!  611	      InstSize[OPCODE_COLOR_MASK] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+80),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+80)]
+
+	! block 25
+.L250:
+
+!  612	      InstSize[OPCODE_COLOR_MATERIAL] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+84),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+84)]
+
+	! block 26
+.L251:
+
+!  613	      InstSize[OPCODE_COLOR_TABLE] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+88),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+88)]
+
+	! block 27
+.L252:
+
+!  614	      InstSize[OPCODE_COLOR_SUB_TABLE] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+92),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+92)]
+
+	! block 28
+.L253:
+
+!  615	      InstSize[OPCODE_COPY_PIXELS] = 6;
+
+	mov	6,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+96),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+96)]
+
+	! block 29
+.L254:
+
+!  616	      InstSize[OPCODE_COPY_TEX_IMAGE1D] = 8;
+
+	mov	8,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+100),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+100)]
+
+	! block 30
+.L255:
+
+!  617	      InstSize[OPCODE_COPY_TEX_IMAGE2D] = 9;
+
+	mov	9,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+104),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+104)]
+
+	! block 31
+.L256:
+
+!  618	      InstSize[OPCODE_COPY_TEX_SUB_IMAGE1D] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+112),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+112)]
+
+	! block 32
+.L257:
+
+!  619	      InstSize[OPCODE_COPY_TEX_SUB_IMAGE2D] = 9;
+
+	mov	9,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+116),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+116)]
+
+	! block 33
+.L258:
+
+!  620	      InstSize[OPCODE_COPY_TEX_SUB_IMAGE3D] = 10;
+
+	mov	10,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+120),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+120)]
+
+	! block 34
+.L259:
+
+!  621	      InstSize[OPCODE_CULL_FACE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+124),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+124)]
+
+	! block 35
+.L260:
+
+!  622	      InstSize[OPCODE_DEPTH_FUNC] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+128),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+128)]
+
+	! block 36
+.L261:
+
+!  623	      InstSize[OPCODE_DEPTH_MASK] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+132),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+132)]
+
+	! block 37
+.L262:
+
+!  624	      InstSize[OPCODE_DEPTH_RANGE] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+136),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+136)]
+
+	! block 38
+.L263:
+
+!  625	      InstSize[OPCODE_DISABLE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+140),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+140)]
+
+	! block 39
+.L264:
+
+!  626	      InstSize[OPCODE_DRAW_BUFFER] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+144),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+144)]
+
+	! block 40
+.L265:
+
+!  627	      InstSize[OPCODE_DRAW_PIXELS] = 6;
+
+	mov	6,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+148),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+148)]
+
+	! block 41
+.L266:
+
+!  628	      InstSize[OPCODE_ENABLE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+156),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+156)]
+
+	! block 42
+.L267:
+
+!  629	      InstSize[OPCODE_EDGE_FLAG] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+152),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+152)]
+
+	! block 43
+.L268:
+
+!  630	      InstSize[OPCODE_END] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+160),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+160)]
+
+	! block 44
+.L269:
+
+!  631	      InstSize[OPCODE_EVALCOORD1] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+164),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+164)]
+
+	! block 45
+.L270:
+
+!  632	      InstSize[OPCODE_EVALCOORD2] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+168),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+168)]
+
+	! block 46
+.L271:
+
+!  633	      InstSize[OPCODE_EVALMESH1] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+172),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+172)]
+
+	! block 47
+.L272:
+
+!  634	      InstSize[OPCODE_EVALMESH2] = 6;
+
+	mov	6,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+176),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+176)]
+
+	! block 48
+.L273:
+
+!  635	      InstSize[OPCODE_EVALPOINT1] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+180),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+180)]
+
+	! block 49
+.L274:
+
+!  636	      InstSize[OPCODE_EVALPOINT2] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+184),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+184)]
+
+	! block 50
+.L275:
+
+!  637	      InstSize[OPCODE_FOG] = 6;
+
+	mov	6,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+188),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+188)]
+
+	! block 51
+.L276:
+
+!  638	      InstSize[OPCODE_FRONT_FACE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+192),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+192)]
+
+	! block 52
+.L277:
+
+!  639	      InstSize[OPCODE_FRUSTUM] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+196),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+196)]
+
+	! block 53
+.L278:
+
+!  640	      InstSize[OPCODE_HINT] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+200),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+200)]
+
+	! block 54
+.L279:
+
+!  641	      InstSize[OPCODE_INDEX] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+204),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+204)]
+
+	! block 55
+.L280:
+
+!  642	      InstSize[OPCODE_INDEX_MASK] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+208),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+208)]
+
+	! block 56
+.L281:
+
+!  643	      InstSize[OPCODE_INIT_NAMES] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+212),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+212)]
+
+	! block 57
+.L282:
+
+!  644	      InstSize[OPCODE_LIGHT] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+216),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+216)]
+
+	! block 58
+.L283:
+
+!  645	      InstSize[OPCODE_LIGHT_MODEL] = 6;
+
+	mov	6,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+220),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+220)]
+
+	! block 59
+.L284:
+
+!  646	      InstSize[OPCODE_LINE_STIPPLE] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+224),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+224)]
+
+	! block 60
+.L285:
+
+!  647	      InstSize[OPCODE_LINE_WIDTH] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+228),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+228)]
+
+	! block 61
+.L286:
+
+!  648	      InstSize[OPCODE_LIST_BASE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+232),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+232)]
+
+	! block 62
+.L287:
+
+!  649	      InstSize[OPCODE_LOAD_IDENTITY] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+236),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+236)]
+
+	! block 63
+.L288:
+
+!  650	      InstSize[OPCODE_LOAD_MATRIX] = 17;
+
+	mov	17,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+240),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+240)]
+
+	! block 64
+.L289:
+
+!  651	      InstSize[OPCODE_LOAD_NAME] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+244),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+244)]
+
+	! block 65
+.L290:
+
+!  652	      InstSize[OPCODE_LOGIC_OP] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+248),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+248)]
+
+	! block 66
+.L291:
+
+!  653	      InstSize[OPCODE_MAP1] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+252),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+252)]
+
+	! block 67
+.L292:
+
+!  654	      InstSize[OPCODE_MAP2] = 11;
+
+	mov	11,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+256),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+256)]
+
+	! block 68
+.L293:
+
+!  655	      InstSize[OPCODE_MAPGRID1] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+260),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+260)]
+
+	! block 69
+.L294:
+
+!  656	      InstSize[OPCODE_MAPGRID2] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+264),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+264)]
+
+	! block 70
+.L295:
+
+!  657	      InstSize[OPCODE_MATERIAL] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+268),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+268)]
+
+	! block 71
+.L296:
+
+!  658	      InstSize[OPCODE_MATRIX_MODE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+272),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+272)]
+
+	! block 72
+.L297:
+
+!  659	      InstSize[OPCODE_MULT_MATRIX] = 17;
+
+	mov	17,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+276),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+276)]
+
+	! block 73
+.L298:
+
+!  660	      InstSize[OPCODE_NORMAL] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+280),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+280)]
+
+	! block 74
+.L299:
+
+!  661	      InstSize[OPCODE_ORTHO] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+284),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+284)]
+
+	! block 75
+.L300:
+
+!  662	      InstSize[OPCODE_PASSTHROUGH] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+288),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+288)]
+
+	! block 76
+.L301:
+
+!  663	      InstSize[OPCODE_PIXEL_MAP] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+292),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+292)]
+
+	! block 77
+.L302:
+
+!  664	      InstSize[OPCODE_PIXEL_TRANSFER] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+296),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+296)]
+
+	! block 78
+.L303:
+
+!  665	      InstSize[OPCODE_PIXEL_ZOOM] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+300),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+300)]
+
+	! block 79
+.L304:
+
+!  666	      InstSize[OPCODE_POINT_SIZE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+304),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+304)]
+
+	! block 80
+.L305:
+
+!  667	      InstSize[OPCODE_POINT_PARAMETERS] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+308),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+308)]
+
+	! block 81
+.L306:
+
+!  668	      InstSize[OPCODE_POLYGON_MODE] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+312),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+312)]
+
+	! block 82
+.L307:
+
+!  669	      InstSize[OPCODE_POLYGON_STIPPLE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+316),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+316)]
+
+	! block 83
+.L308:
+
+!  670	      InstSize[OPCODE_POLYGON_OFFSET] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+320),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+320)]
+
+	! block 84
+.L309:
+
+!  671	      InstSize[OPCODE_POP_ATTRIB] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+324),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+324)]
+
+	! block 85
+.L310:
+
+!  672	      InstSize[OPCODE_POP_MATRIX] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+328),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+328)]
+
+	! block 86
+.L311:
+
+!  673	      InstSize[OPCODE_POP_NAME] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+332),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+332)]
+
+	! block 87
+.L312:
+
+!  674	      InstSize[OPCODE_PRIORITIZE_TEXTURE] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+336),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+336)]
+
+	! block 88
+.L313:
+
+!  675	      InstSize[OPCODE_PUSH_ATTRIB] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+340),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+340)]
+
+	! block 89
+.L314:
+
+!  676	      InstSize[OPCODE_PUSH_MATRIX] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+344),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+344)]
+
+	! block 90
+.L315:
+
+!  677	      InstSize[OPCODE_PUSH_NAME] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+348),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+348)]
+
+	! block 91
+.L316:
+
+!  678	      InstSize[OPCODE_RASTER_POS] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+352),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+352)]
+
+	! block 92
+.L317:
+
+!  679	      InstSize[OPCODE_RECTF] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+356),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+356)]
+
+	! block 93
+.L318:
+
+!  680	      InstSize[OPCODE_READ_BUFFER] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+360),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+360)]
+
+	! block 94
+.L319:
+
+!  681	      InstSize[OPCODE_SCALE] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+364),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+364)]
+
+	! block 95
+.L320:
+
+!  682	      InstSize[OPCODE_SCISSOR] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+368),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+368)]
+
+	! block 96
+.L321:
+
+!  683	      InstSize[OPCODE_STENCIL_FUNC] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+376),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+376)]
+
+	! block 97
+.L322:
+
+!  684	      InstSize[OPCODE_STENCIL_MASK] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+380),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+380)]
+
+	! block 98
+.L323:
+
+!  685	      InstSize[OPCODE_STENCIL_OP] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+384),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+384)]
+
+	! block 99
+.L324:
+
+!  686	      InstSize[OPCODE_SHADE_MODEL] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+372),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+372)]
+
+	! block 100
+.L325:
+
+!  687	      InstSize[OPCODE_TEXCOORD2] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+388),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+388)]
+
+	! block 101
+.L326:
+
+!  688	      InstSize[OPCODE_TEXCOORD4] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+392),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+392)]
+
+	! block 102
+.L327:
+
+!  689	      InstSize[OPCODE_TEXENV] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+396),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+396)]
+
+	! block 103
+.L328:
+
+!  690	      InstSize[OPCODE_TEXGEN] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+400),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+400)]
+
+	! block 104
+.L329:
+
+!  691	      InstSize[OPCODE_TEXPARAMETER] = 7;
+
+	mov	7,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+404),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+404)]
+
+	! block 105
+.L330:
+
+!  692	      InstSize[OPCODE_TEX_IMAGE1D] = 9;
+
+	mov	9,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+408),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+408)]
+
+	! block 106
+.L331:
+
+!  693	      InstSize[OPCODE_TEX_IMAGE2D] = 10;
+
+	mov	10,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+412),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+412)]
+
+	! block 107
+.L332:
+
+!  694	      InstSize[OPCODE_TEX_IMAGE3D] = 11;
+
+	mov	11,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+416),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+416)]
+
+	! block 108
+.L333:
+
+!  695	      InstSize[OPCODE_TEX_SUB_IMAGE1D] = 8;
+
+	mov	8,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+420),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+420)]
+
+	! block 109
+.L334:
+
+!  696	      InstSize[OPCODE_TEX_SUB_IMAGE2D] = 10;
+
+	mov	10,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+424),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+424)]
+
+	! block 110
+.L335:
+
+!  697	      InstSize[OPCODE_TEX_SUB_IMAGE3D] = 12;
+
+	mov	12,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+428),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+428)]
+
+	! block 111
+.L336:
+
+!  698	      InstSize[OPCODE_TRANSLATE] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+432),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+432)]
+
+	! block 112
+.L337:
+
+!  699	      InstSize[OPCODE_VERTEX2] = 3;
+
+	mov	3,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+436),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+436)]
+
+	! block 113
+.L338:
+
+!  700	      InstSize[OPCODE_VERTEX3] = 4;
+
+	mov	4,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+440),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+440)]
+
+	! block 114
+.L339:
+
+!  701	      InstSize[OPCODE_VERTEX4] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+444),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+444)]
+
+	! block 115
+.L340:
+
+!  702	      InstSize[OPCODE_VIEWPORT] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+448),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+448)]
+
+	! block 116
+.L341:
+
+!  703	      InstSize[OPCODE_WINDOW_POS] = 5;
+
+	mov	5,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+452),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+452)]
+
+	! block 117
+.L342:
+
+!  704	      InstSize[OPCODE_CONTINUE] = 2;
+
+	mov	2,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+456),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+456)]
+
+	! block 118
+.L343:
+
+!  705	      InstSize[OPCODE_END_OF_LIST] = 1;
+
+	mov	1,%l1
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize+460),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.InstSize+460)]
+
+	! block 119
+.L344:
+.L345:
+.L222:
+.L346:
+.L347:
+
+!  706	   }
+!  707	   init_flag = 1;
+
+	mov	1,%l1
+	sethi	%hi($XBa59JCQsd3LGqK.gl_init_lists.init_flag),%l0
+	st	%l1,[%l0+%lo($XBa59JCQsd3LGqK.gl_init_lists.init_flag)]
+
+	! block 120
+.L348:
+.L349:
+.L216:
+	jmp	%i7+8
+	restore
+	.size	gl_init_lists,(.-gl_init_lists)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_list_index
+	.type	gl_list_index,#function
+gl_list_index:
+	save	%sp,-104,%sp
+
+	! block 1
+.L352:
+.L353:
+.L355:
+
+! File dlist.c:
+!  708	}
+!  709	
+!  712	/*
+!  713	 * Return the name of the display list currently being compiled.  This
+!  714	 * function is only called by glGet().
+!  715	 */
+!  716	GLint gl_list_index( void )
+!  717	{
+!  718	   return CurrentListNum;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListNum),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentListNum)],%l0
+	ba	.L351
+	st	%l0,[%fp-4]
+
+	! block 2
+
+	! block 3
+.L356:
+.L357:
+.L351:
+	ld	[%fp-4],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	gl_list_index,(.-gl_list_index)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Accum
+	.type	gl_save_Accum,#function
+gl_save_Accum:
+	save	%sp,-104,%sp
+
+	! block 1
+.L360:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L361:
+.L363:
+
+! File dlist.c:
+!  719	}
+!  720	
+!  723	/*
+!  724	 * Display List compilation functions
+!  725	 */
+!  726	
+!  728	void gl_save_Accum( GLcontext *ctx, GLenum op, GLfloat value )
+!  729	{
+!  730	   Node *n = alloc_instruction( ctx, OPCODE_ACCUM, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	%g0,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L364:
+.L366:
+
+!  731	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L365
+	nop
+
+	! block 4
+.L367:
+.L368:
+.L369:
+.L370:
+
+!  732	      n[1].e = op;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L371:
+
+!  733	      n[2].f = value;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L372:
+.L373:
+.L365:
+.L374:
+.L375:
+.L377:
+
+!  734	   }
+!  735	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L376
+	nop
+
+	! block 7
+.L378:
+.L379:
+.L380:
+.L381:
+
+!  736	      (*ctx->Exec.Accum)( ctx, op, value );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1468],%l2
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l2,%o7
+	nop
+
+	! block 8
+.L382:
+.L383:
+.L376:
+.L384:
+
+	! block 9
+.L385:
+.L386:
+.L359:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Accum,(.-gl_save_Accum)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_AlphaFunc
+	.type	gl_save_AlphaFunc,#function
+gl_save_AlphaFunc:
+	save	%sp,-104,%sp
+
+	! block 1
+.L389:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L390:
+.L392:
+
+! File dlist.c:
+!  737	   }
+!  738	}
+!  739	
+!  741	void gl_save_AlphaFunc( GLcontext *ctx, GLenum func, GLclampf ref )
+!  742	{
+!  743	   Node *n = alloc_instruction( ctx, OPCODE_ALPHA_FUNC, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	1,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L393:
+.L395:
+
+!  744	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L394
+	nop
+
+	! block 4
+.L396:
+.L397:
+.L398:
+.L399:
+
+!  745	      n[1].e = func;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L400:
+
+!  746	      n[2].f = (GLfloat) ref;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L401:
+.L402:
+.L394:
+.L403:
+.L404:
+.L406:
+
+!  747	   }
+!  748	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L405
+	nop
+
+	! block 7
+.L407:
+.L408:
+.L409:
+.L410:
+
+!  749	      (*ctx->Exec.AlphaFunc)( ctx, func, ref );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1472],%l2
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l2,%o7
+	nop
+
+	! block 8
+.L411:
+.L412:
+.L405:
+.L413:
+
+	! block 9
+.L414:
+.L415:
+.L388:
+	jmp	%i7+8
+	restore
+	.size	gl_save_AlphaFunc,(.-gl_save_AlphaFunc)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Begin
+	.type	gl_save_Begin,#function
+gl_save_Begin:
+	save	%sp,-104,%sp
+
+	! block 1
+.L418:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L419:
+.L421:
+
+! File dlist.c:
+!  750	   }
+!  751	}
+!  752	
+!  754	void gl_save_Begin( GLcontext *ctx, GLenum mode )
+!  755	{
+!  756	   Node *n = alloc_instruction( ctx, OPCODE_BEGIN, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	2,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L422:
+.L424:
+
+!  757	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L423
+	nop
+
+	! block 4
+.L425:
+.L426:
+.L427:
+.L428:
+
+!  758	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L429:
+.L430:
+.L423:
+.L431:
+.L432:
+.L434:
+
+!  759	   }
+!  760	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L433
+	nop
+
+	! block 6
+.L435:
+.L436:
+.L437:
+.L438:
+
+!  761	      (*ctx->Exec.Begin)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1484],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L439:
+.L440:
+.L433:
+.L441:
+
+	! block 8
+.L442:
+.L443:
+.L417:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Begin,(.-gl_save_Begin)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_BindTexture
+	.type	gl_save_BindTexture,#function
+gl_save_BindTexture:
+	save	%sp,-104,%sp
+
+	! block 1
+.L446:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L447:
+.L449:
+
+! File dlist.c:
+!  762	   }
+!  763	}
+!  764	
+!  766	void gl_save_BindTexture( GLcontext *ctx, GLenum target, GLuint texture )
+!  767	{
+!  768	   Node *n = alloc_instruction( ctx, OPCODE_BIND_TEXTURE, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	3,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L450:
+.L452:
+
+!  769	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L451
+	nop
+
+	! block 4
+.L453:
+.L454:
+.L455:
+.L456:
+
+!  770	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L457:
+
+!  771	      n[2].ui = texture;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L458:
+.L459:
+.L451:
+.L460:
+.L461:
+.L463:
+
+!  772	   }
+!  773	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L462
+	nop
+
+	! block 7
+.L464:
+.L465:
+.L466:
+.L467:
+
+!  774	      (*ctx->Exec.BindTexture)( ctx, target, texture );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1488],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L468:
+.L469:
+.L462:
+.L470:
+
+	! block 9
+.L471:
+.L472:
+.L445:
+	jmp	%i7+8
+	restore
+	.size	gl_save_BindTexture,(.-gl_save_BindTexture)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Bitmap
+	.type	gl_save_Bitmap,#function
+gl_save_Bitmap:
+	save	%sp,-112,%sp
+
+	! block 1
+.L475:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+
+	! block 2
+.L476:
+.L478:
+
+! File dlist.c:
+!  775	   }
+!  776	}
+!  777	
+!  779	void gl_save_Bitmap( GLcontext *ctx,
+!  780	                     GLsizei width, GLsizei height,
+!  781			     GLfloat xorig, GLfloat yorig,
+!  782			     GLfloat xmove, GLfloat ymove,
+!  783			     const struct gl_image *bitmap )
+!  784	{
+!  785	   Node *n = alloc_instruction( ctx, OPCODE_BITMAP, 7 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	4,%o1
+	call	alloc_instruction
+	mov	7,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L479:
+.L481:
+
+!  786	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L480
+	nop
+
+	! block 4
+.L482:
+.L483:
+.L484:
+.L485:
+
+!  787	      n[1].i = (GLint) width;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L486:
+
+!  788	      n[2].i = (GLint) height;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L487:
+
+!  789	      n[3].f = xorig;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L488:
+
+!  790	      n[4].f = yorig;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L489:
+
+!  791	      n[5].f = xmove;
+
+	ld	[%fp+88],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L490:
+
+!  792	      n[6].f = ymove;
+
+	ld	[%fp+92],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L491:
+
+!  793	      n[7].data = (void *) bitmap;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L492:
+.L493:
+.L480:
+.L494:
+.L495:
+.L497:
+
+!  794	   }
+!  795	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L496
+	nop
+
+	! block 12
+.L498:
+.L499:
+.L500:
+.L501:
+
+!  796	      (*ctx->Exec.Bitmap)( ctx, width, height,
+!  797	                    xorig, yorig, xmove, ymove, bitmap );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1492],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%f4
+	ld	[%fp+84],%f5
+	ld	[%fp+88],%f6
+	ld	[%fp+92],%f7
+	ld	[%fp+96],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	st	%f4,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f5,[%sp+84]
+	ld	[%sp+84],%o4
+	st	%f6,[%sp+88]
+	ld	[%sp+88],%o5
+	st	%f7,[%sp+92]
+	st	%l3,[%sp+96]
+	jmpl	%l4,%o7
+	nop
+
+	! block 13
+.L502:
+.L503:
+.L496:
+.L504:
+
+	! block 14
+.L505:
+.L506:
+.L474:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Bitmap,(.-gl_save_Bitmap)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_BlendEquation
+	.type	gl_save_BlendEquation,#function
+gl_save_BlendEquation:
+	save	%sp,-104,%sp
+
+	! block 1
+.L509:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L510:
+.L512:
+
+! File dlist.c:
+!  798	   }
+!  799	}
+!  800	
+!  802	void gl_save_BlendEquation( GLcontext *ctx, GLenum mode )
+!  803	{
+!  804	   Node *n = alloc_instruction( ctx, OPCODE_BLEND_EQUATION, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	6,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L513:
+.L515:
+
+!  805	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L514
+	nop
+
+	! block 4
+.L516:
+.L517:
+.L518:
+.L519:
+
+!  806	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L520:
+.L521:
+.L514:
+.L522:
+.L523:
+.L525:
+
+!  807	   }
+!  808	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L524
+	nop
+
+	! block 6
+.L526:
+.L527:
+.L528:
+.L529:
+
+!  809	      (*ctx->Exec.BlendEquation)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1500],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L530:
+.L531:
+.L524:
+.L532:
+
+	! block 8
+.L533:
+.L534:
+.L508:
+	jmp	%i7+8
+	restore
+	.size	gl_save_BlendEquation,(.-gl_save_BlendEquation)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_BlendFunc
+	.type	gl_save_BlendFunc,#function
+gl_save_BlendFunc:
+	save	%sp,-104,%sp
+
+	! block 1
+.L537:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L538:
+.L540:
+
+! File dlist.c:
+!  810	   }
+!  811	}
+!  812	
+!  814	void gl_save_BlendFunc( GLcontext *ctx, GLenum sfactor, GLenum dfactor )
+!  815	{
+!  816	   Node *n = alloc_instruction( ctx, OPCODE_BLEND_FUNC, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	7,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L541:
+.L543:
+
+!  817	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L542
+	nop
+
+	! block 4
+.L544:
+.L545:
+.L546:
+.L547:
+
+!  818	      n[1].e = sfactor;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L548:
+
+!  819	      n[2].e = dfactor;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L549:
+.L550:
+.L542:
+.L551:
+.L552:
+.L554:
+
+!  820	   }
+!  821	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L553
+	nop
+
+	! block 7
+.L555:
+.L556:
+.L557:
+.L558:
+
+!  822	      (*ctx->Exec.BlendFunc)( ctx, sfactor, dfactor );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1504],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L559:
+.L560:
+.L553:
+.L561:
+
+	! block 9
+.L562:
+.L563:
+.L536:
+	jmp	%i7+8
+	restore
+	.size	gl_save_BlendFunc,(.-gl_save_BlendFunc)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_BlendColor
+	.type	gl_save_BlendColor,#function
+gl_save_BlendColor:
+	save	%sp,-104,%sp
+
+	! block 1
+.L566:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L567:
+.L569:
+
+! File dlist.c:
+!  823	   }
+!  824	}
+!  825	
+!  827	void gl_save_BlendColor( GLcontext *ctx, GLfloat red, GLfloat green,
+!  828	                         GLfloat blue, GLfloat alpha )
+!  829	{
+!  830	   Node *n = alloc_instruction( ctx, OPCODE_BLEND_COLOR, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	5,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L570:
+.L572:
+
+!  831	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L571
+	nop
+
+	! block 4
+.L573:
+.L574:
+.L575:
+.L576:
+
+!  832	      n[1].f = red;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L577:
+
+!  833	      n[2].f = green;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L578:
+
+!  834	      n[3].f = blue;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L579:
+
+!  835	      n[4].f = alpha;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L580:
+.L581:
+.L571:
+.L582:
+.L583:
+.L585:
+
+!  836	   }
+!  837	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L584
+	nop
+
+	! block 9
+.L586:
+.L587:
+.L588:
+.L589:
+
+!  838	      (*ctx->Exec.BlendColor)( ctx, red, green, blue, alpha );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1496],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L590:
+.L591:
+.L584:
+.L592:
+
+	! block 11
+.L593:
+.L594:
+.L565:
+	jmp	%i7+8
+	restore
+	.size	gl_save_BlendColor,(.-gl_save_BlendColor)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CallList
+	.type	gl_save_CallList,#function
+gl_save_CallList:
+	save	%sp,-104,%sp
+
+	! block 1
+.L597:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L598:
+.L600:
+
+! File dlist.c:
+!  839	   }
+!  840	}
+!  841	
+!  843	void gl_save_CallList( GLcontext *ctx, GLuint list )
+!  844	{
+!  845	   Node *n = alloc_instruction( ctx, OPCODE_CALL_LIST, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	8,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L601:
+.L603:
+
+!  846	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L602
+	nop
+
+	! block 4
+.L604:
+.L605:
+.L606:
+.L607:
+
+!  847	      n[1].ui = list;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L608:
+.L609:
+.L602:
+.L610:
+.L611:
+.L613:
+
+!  848	   }
+!  849	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L612
+	nop
+
+	! block 6
+.L614:
+.L615:
+.L616:
+.L617:
+
+!  850	      (*ctx->Exec.CallList)( ctx, list );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1508],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L618:
+.L619:
+.L612:
+.L620:
+
+	! block 8
+.L621:
+.L622:
+.L596:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CallList,(.-gl_save_CallList)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CallLists
+	.type	gl_save_CallLists,#function
+gl_save_CallLists:
+	save	%sp,-112,%sp
+
+	! block 1
+.L625:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L626:
+.L628:
+.L629:
+
+! File dlist.c:
+!  851	   }
+!  852	}
+!  853	
+!  855	void gl_save_CallLists( GLcontext *ctx,
+!  856	                        GLsizei n, GLenum type, const GLvoid *lists )
+!  857	{
+!  858	   GLuint i;
+!  859	
+!  860	   for (i=0;i<n;i++) {
+
+	ld	[%fp+72],%l0
+	cmp	%g0,%l0
+	bgeu	.L632
+	st	%g0,[%fp-4]
+
+	! block 3
+.L633:
+.L630:
+.L634:
+.L635:
+.L636:
+
+!  861	      GLuint list = translate_id( i, type, lists );
+
+	ld	[%fp-4],%l0
+	ld	[%fp+76],%l1
+	ld	[%fp+80],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	translate_id
+	mov	%l2,%o2
+	st	%o0,[%fp-8]
+
+	! block 4
+.L637:
+
+!  862	      Node *n = alloc_instruction( ctx, OPCODE_CALL_LIST_OFFSET, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	9,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-12]
+
+	! block 5
+.L638:
+.L640:
+
+!  863	      if (n) {
+
+	ld	[%fp-12],%l0
+	cmp	%l0,%g0
+	be	.L639
+	nop
+
+	! block 6
+.L641:
+.L642:
+.L643:
+.L644:
+
+!  864	         n[1].ui = list;
+
+	ld	[%fp-8],%l1
+	ld	[%fp-12],%l0
+	st	%l1,[%l0+4]
+
+	! block 7
+.L645:
+.L646:
+.L639:
+.L647:
+.L648:
+.L649:
+.L650:
+	ld	[%fp-4],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-4]
+	ld	[%fp-4],%l1
+	ld	[%fp+72],%l0
+	cmp	%l1,%l0
+	blu	.L630
+	nop
+
+	! block 8
+.L651:
+.L632:
+.L652:
+.L653:
+.L655:
+
+!  865	      }
+!  866	   }
+!  867	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L654
+	nop
+
+	! block 9
+.L656:
+.L657:
+.L658:
+.L659:
+
+!  868	      (*ctx->Exec.CallLists)( ctx, n, type, lists );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1512],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 10
+.L660:
+.L661:
+.L654:
+.L662:
+
+	! block 11
+.L663:
+.L664:
+.L624:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CallLists,(.-gl_save_CallLists)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Clear
+	.type	gl_save_Clear,#function
+gl_save_Clear:
+	save	%sp,-104,%sp
+
+	! block 1
+.L667:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L668:
+.L670:
+
+! File dlist.c:
+!  869	   }
+!  870	}
+!  871	
+!  873	void gl_save_Clear( GLcontext *ctx, GLbitfield mask )
+!  874	{
+!  875	   Node *n = alloc_instruction( ctx, OPCODE_CLEAR, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	10,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L671:
+.L673:
+
+!  876	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L672
+	nop
+
+	! block 4
+.L674:
+.L675:
+.L676:
+.L677:
+
+!  877	      n[1].bf = mask;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L678:
+.L679:
+.L672:
+.L680:
+.L681:
+.L683:
+
+!  878	   }
+!  879	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L682
+	nop
+
+	! block 6
+.L684:
+.L685:
+.L686:
+.L687:
+
+!  880	      (*ctx->Exec.Clear)( ctx, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1516],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L688:
+.L689:
+.L682:
+.L690:
+
+	! block 8
+.L691:
+.L692:
+.L666:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Clear,(.-gl_save_Clear)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ClearAccum
+	.type	gl_save_ClearAccum,#function
+gl_save_ClearAccum:
+	save	%sp,-104,%sp
+
+	! block 1
+.L695:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L696:
+.L698:
+
+! File dlist.c:
+!  881	   }
+!  882	}
+!  883	
+!  885	void gl_save_ClearAccum( GLcontext *ctx, GLfloat red, GLfloat green,
+!  886				 GLfloat blue, GLfloat alpha )
+!  887	{
+!  888	   Node *n = alloc_instruction( ctx, OPCODE_CLEAR_ACCUM, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	11,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L699:
+.L701:
+
+!  889	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L700
+	nop
+
+	! block 4
+.L702:
+.L703:
+.L704:
+.L705:
+
+!  890	      n[1].f = red;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L706:
+
+!  891	      n[2].f = green;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L707:
+
+!  892	      n[3].f = blue;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L708:
+
+!  893	      n[4].f = alpha;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L709:
+.L710:
+.L700:
+.L711:
+.L712:
+.L714:
+
+!  894	   }
+!  895	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L713
+	nop
+
+	! block 9
+.L715:
+.L716:
+.L717:
+.L718:
+
+!  896	      (*ctx->Exec.ClearAccum)( ctx, red, green, blue, alpha );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1520],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L719:
+.L720:
+.L713:
+.L721:
+
+	! block 11
+.L722:
+.L723:
+.L694:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ClearAccum,(.-gl_save_ClearAccum)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ClearColor
+	.type	gl_save_ClearColor,#function
+gl_save_ClearColor:
+	save	%sp,-104,%sp
+
+	! block 1
+.L726:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L727:
+.L729:
+
+! File dlist.c:
+!  897	   }
+!  898	}
+!  899	
+!  901	void gl_save_ClearColor( GLcontext *ctx, GLclampf red, GLclampf green,
+!  902				 GLclampf blue, GLclampf alpha )
+!  903	{
+!  904	   Node *n = alloc_instruction( ctx, OPCODE_CLEAR_COLOR, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	12,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L730:
+.L732:
+
+!  905	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L731
+	nop
+
+	! block 4
+.L733:
+.L734:
+.L735:
+.L736:
+
+!  906	      n[1].f = red;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L737:
+
+!  907	      n[2].f = green;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L738:
+
+!  908	      n[3].f = blue;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L739:
+
+!  909	      n[4].f = alpha;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L740:
+.L741:
+.L731:
+.L742:
+.L743:
+.L745:
+
+!  910	   }
+!  911	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L744
+	nop
+
+	! block 9
+.L746:
+.L747:
+.L748:
+.L749:
+
+!  912	      (*ctx->Exec.ClearColor)( ctx, red, green, blue, alpha );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1524],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L750:
+.L751:
+.L744:
+.L752:
+
+	! block 11
+.L753:
+.L754:
+.L725:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ClearColor,(.-gl_save_ClearColor)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ClearDepth
+	.type	gl_save_ClearDepth,#function
+gl_save_ClearDepth:
+	save	%sp,-104,%sp
+
+	! block 1
+.L757:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L758:
+.L760:
+
+! File dlist.c:
+!  913	   }
+!  914	}
+!  915	
+!  917	void gl_save_ClearDepth( GLcontext *ctx, GLclampd depth )
+!  918	{
+!  919	   Node *n = alloc_instruction( ctx, OPCODE_CLEAR_DEPTH, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	13,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L761:
+.L763:
+
+!  920	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L762
+	nop
+
+	! block 4
+.L764:
+.L765:
+.L766:
+.L767:
+
+!  921	      n[1].f = (GLfloat) depth;
+
+	ldd	[%fp+72],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L768:
+.L769:
+.L762:
+.L770:
+.L771:
+.L773:
+
+!  922	   }
+!  923	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L772
+	nop
+
+	! block 6
+.L774:
+.L775:
+.L776:
+.L777:
+
+!  924	      (*ctx->Exec.ClearDepth)( ctx, depth );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1528],%l1
+	ldd	[%fp+72],%f4
+	mov	%l0,%o0
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L778:
+.L779:
+.L772:
+.L780:
+
+	! block 8
+.L781:
+.L782:
+.L756:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ClearDepth,(.-gl_save_ClearDepth)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ClearIndex
+	.type	gl_save_ClearIndex,#function
+gl_save_ClearIndex:
+	save	%sp,-104,%sp
+
+	! block 1
+.L785:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L786:
+.L788:
+
+! File dlist.c:
+!  925	   }
+!  926	}
+!  927	
+!  929	void gl_save_ClearIndex( GLcontext *ctx, GLfloat c )
+!  930	{
+!  931	   Node *n = alloc_instruction( ctx, OPCODE_CLEAR_INDEX, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	14,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L789:
+.L791:
+
+!  932	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L790
+	nop
+
+	! block 4
+.L792:
+.L793:
+.L794:
+.L795:
+
+!  933	      n[1].f = c;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L796:
+.L797:
+.L790:
+.L798:
+.L799:
+.L801:
+
+!  934	   }
+!  935	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L800
+	nop
+
+	! block 6
+.L802:
+.L803:
+.L804:
+.L805:
+
+!  936	      (*ctx->Exec.ClearIndex)( ctx, c );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1532],%l1
+	ld	[%fp+72],%f4
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L806:
+.L807:
+.L800:
+.L808:
+
+	! block 8
+.L809:
+.L810:
+.L784:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ClearIndex,(.-gl_save_ClearIndex)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ClearStencil
+	.type	gl_save_ClearStencil,#function
+gl_save_ClearStencil:
+	save	%sp,-104,%sp
+
+	! block 1
+.L813:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L814:
+.L816:
+
+! File dlist.c:
+!  937	   }
+!  938	}
+!  939	
+!  941	void gl_save_ClearStencil( GLcontext *ctx, GLint s )
+!  942	{
+!  943	   Node *n = alloc_instruction( ctx, OPCODE_CLEAR_STENCIL, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	15,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L817:
+.L819:
+
+!  944	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L818
+	nop
+
+	! block 4
+.L820:
+.L821:
+.L822:
+.L823:
+
+!  945	      n[1].i = s;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L824:
+.L825:
+.L818:
+.L826:
+.L827:
+.L829:
+
+!  946	   }
+!  947	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L828
+	nop
+
+	! block 6
+.L830:
+.L831:
+.L832:
+.L833:
+
+!  948	      (*ctx->Exec.ClearStencil)( ctx, s );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1536],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L834:
+.L835:
+.L828:
+.L836:
+
+	! block 8
+.L837:
+.L838:
+.L812:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ClearStencil,(.-gl_save_ClearStencil)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ClipPlane
+	.type	gl_save_ClipPlane,#function
+gl_save_ClipPlane:
+	save	%sp,-104,%sp
+
+	! block 1
+.L841:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L842:
+.L844:
+
+! File dlist.c:
+!  949	   }
+!  950	}
+!  951	
+!  953	void gl_save_ClipPlane( GLcontext *ctx, GLenum plane, const GLfloat *equ )
+!  954	{
+!  955	   Node *n = alloc_instruction( ctx, OPCODE_CLIP_PLANE, 5 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	16,%o1
+	call	alloc_instruction
+	mov	5,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L845:
+.L847:
+
+!  956	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L846
+	nop
+
+	! block 4
+.L848:
+.L849:
+.L850:
+.L851:
+
+!  957	      n[1].e = plane;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L852:
+
+!  958	      n[2].f = equ[0];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L853:
+
+!  959	      n[3].f = equ[1];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L854:
+
+!  960	      n[4].f = equ[2];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L855:
+
+!  961	      n[5].f = equ[3];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L856:
+.L857:
+.L846:
+.L858:
+.L859:
+.L861:
+
+!  962	   }
+!  963	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L860
+	nop
+
+	! block 10
+.L862:
+.L863:
+.L864:
+.L865:
+
+!  964	      (*ctx->Exec.ClipPlane)( ctx, plane, equ );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1540],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 11
+.L866:
+.L867:
+.L860:
+.L868:
+
+	! block 12
+.L869:
+.L870:
+.L840:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ClipPlane,(.-gl_save_ClipPlane)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Color3f
+	.type	gl_save_Color3f,#function
+gl_save_Color3f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L873:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L874:
+.L876:
+
+! File dlist.c:
+!  965	   }
+!  966	}
+!  967	
+!  969	void gl_save_Color3f( GLcontext *ctx, GLfloat r, GLfloat g, GLfloat b )
+!  970	{
+!  971	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_3F, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	17,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L877:
+.L879:
+
+!  972	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L878
+	nop
+
+	! block 4
+.L880:
+.L881:
+.L882:
+.L883:
+
+!  973	      n[1].f = r;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L884:
+
+!  974	      n[2].f = g;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L885:
+
+!  975	      n[3].f = b;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L886:
+.L887:
+.L878:
+.L888:
+.L889:
+.L891:
+
+!  976	   }
+!  977	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L890
+	nop
+
+	! block 8
+.L892:
+.L893:
+.L894:
+.L895:
+
+!  978	      (*ctx->Exec.Color3f)( ctx, r, g, b );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1544],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l1,%o7
+	nop
+
+	! block 9
+.L896:
+.L897:
+.L890:
+.L898:
+
+	! block 10
+.L899:
+.L900:
+.L872:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Color3f,(.-gl_save_Color3f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Color3fv
+	.type	gl_save_Color3fv,#function
+gl_save_Color3fv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L903:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L904:
+.L906:
+
+! File dlist.c:
+!  979	   }
+!  980	}
+!  981	
+!  983	void gl_save_Color3fv( GLcontext *ctx, const GLfloat *c )
+!  984	{
+!  985	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_3F, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	17,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L907:
+.L909:
+
+!  986	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L908
+	nop
+
+	! block 4
+.L910:
+.L911:
+.L912:
+.L913:
+
+!  987	      n[1].f = c[0];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L914:
+
+!  988	      n[2].f = c[1];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L915:
+
+!  989	      n[3].f = c[2];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L916:
+.L917:
+.L908:
+.L918:
+.L919:
+.L921:
+
+!  990	   }
+!  991	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L920
+	nop
+
+	! block 8
+.L922:
+.L923:
+.L924:
+.L925:
+
+!  992	      (*ctx->Exec.Color3fv)( ctx, c );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1548],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L926:
+.L927:
+.L920:
+.L928:
+
+	! block 10
+.L929:
+.L930:
+.L902:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Color3fv,(.-gl_save_Color3fv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Color4f
+	.type	gl_save_Color4f,#function
+gl_save_Color4f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L933:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L934:
+.L936:
+
+! File dlist.c:
+!  993	   }
+!  994	}
+!  995	
+!  997	void gl_save_Color4f( GLcontext *ctx, GLfloat r, GLfloat g,
+!  998	                                      GLfloat b, GLfloat a )
+!  999	{
+! 1000	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_4F, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	18,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L937:
+.L939:
+
+! 1001	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L938
+	nop
+
+	! block 4
+.L940:
+.L941:
+.L942:
+.L943:
+
+! 1002	      n[1].f = r;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L944:
+
+! 1003	      n[2].f = g;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L945:
+
+! 1004	      n[3].f = b;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L946:
+
+! 1005	      n[4].f = a;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L947:
+.L948:
+.L938:
+.L949:
+.L950:
+.L952:
+
+! 1006	   }
+! 1007	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L951
+	nop
+
+	! block 9
+.L953:
+.L954:
+.L955:
+.L956:
+
+! 1008	      (*ctx->Exec.Color4f)( ctx, r, g, b, a );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1552],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L957:
+.L958:
+.L951:
+.L959:
+
+	! block 11
+.L960:
+.L961:
+.L932:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Color4f,(.-gl_save_Color4f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Color4fv
+	.type	gl_save_Color4fv,#function
+gl_save_Color4fv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L964:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L965:
+.L967:
+
+! File dlist.c:
+! 1009	   }
+! 1010	}
+! 1011	
+! 1013	void gl_save_Color4fv( GLcontext *ctx, const GLfloat *c )
+! 1014	{
+! 1015	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_4F, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	18,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L968:
+.L970:
+
+! 1016	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L969
+	nop
+
+	! block 4
+.L971:
+.L972:
+.L973:
+.L974:
+
+! 1017	      n[1].f = c[0];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L975:
+
+! 1018	      n[2].f = c[1];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L976:
+
+! 1019	      n[3].f = c[2];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L977:
+
+! 1020	      n[4].f = c[3];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L978:
+.L979:
+.L969:
+.L980:
+.L981:
+.L983:
+
+! 1021	   }
+! 1022	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L982
+	nop
+
+	! block 9
+.L984:
+.L985:
+.L986:
+.L987:
+
+! 1023	      (*ctx->Exec.Color4fv)( ctx, c );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1556],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 10
+.L988:
+.L989:
+.L982:
+.L990:
+
+	! block 11
+.L991:
+.L992:
+.L963:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Color4fv,(.-gl_save_Color4fv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Color4ub
+	.type	gl_save_Color4ub,#function
+gl_save_Color4ub:
+	save	%sp,-104,%sp
+
+	! block 1
+.L995:
+	st	%i0,[%fp+68]
+	stb	%i1,[%fp+75]
+	stb	%i2,[%fp+79]
+	stb	%i3,[%fp+83]
+	stb	%i4,[%fp+87]
+
+	! block 2
+.L996:
+.L998:
+
+! File dlist.c:
+! 1024	   }
+! 1025	}
+! 1026	
+! 1028	void gl_save_Color4ub( GLcontext *ctx, GLubyte r, GLubyte g,
+! 1029	                                       GLubyte b, GLubyte a )
+! 1030	{
+! 1031	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_4UB, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	19,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L999:
+.L1001:
+
+! 1032	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1000
+	nop
+
+	! block 4
+.L1002:
+.L1003:
+.L1004:
+.L1005:
+
+! 1033	      n[1].ub = r;
+
+	ldub	[%fp+75],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+4]
+
+	! block 5
+.L1006:
+
+! 1034	      n[2].ub = g;
+
+	ldub	[%fp+79],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+8]
+
+	! block 6
+.L1007:
+
+! 1035	      n[3].ub = b;
+
+	ldub	[%fp+83],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+12]
+
+	! block 7
+.L1008:
+
+! 1036	      n[4].ub = a;
+
+	ldub	[%fp+87],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+16]
+
+	! block 8
+.L1009:
+.L1010:
+.L1000:
+.L1011:
+.L1012:
+.L1014:
+
+! 1037	   }
+! 1038	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1013
+	nop
+
+	! block 9
+.L1015:
+.L1016:
+.L1017:
+.L1018:
+
+! 1039	      (*ctx->Exec.Color4ub)( ctx, r, g, b, a );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1560],%l5
+	ldub	[%fp+75],%l1
+	ldub	[%fp+79],%l2
+	ldub	[%fp+83],%l3
+	ldub	[%fp+87],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l4,%o4
+	jmpl	%l5,%o7
+	nop
+
+	! block 10
+.L1019:
+.L1020:
+.L1013:
+.L1021:
+
+	! block 11
+.L1022:
+.L1023:
+.L994:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Color4ub,(.-gl_save_Color4ub)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Color4ubv
+	.type	gl_save_Color4ubv,#function
+gl_save_Color4ubv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1026:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1027:
+.L1029:
+
+! File dlist.c:
+! 1040	   }
+! 1041	}
+! 1042	
+! 1044	void gl_save_Color4ubv( GLcontext *ctx, const GLubyte *c )
+! 1045	{
+! 1046	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_4UB, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	19,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1030:
+.L1032:
+
+! 1047	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1031
+	nop
+
+	! block 4
+.L1033:
+.L1034:
+.L1035:
+.L1036:
+
+! 1048	      n[1].ub = c[0];
+
+	ld	[%fp+72],%l0
+	ldub	[%l0+0],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+4]
+
+	! block 5
+.L1037:
+
+! 1049	      n[2].ub = c[1];
+
+	ld	[%fp+72],%l0
+	ldub	[%l0+1],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+8]
+
+	! block 6
+.L1038:
+
+! 1050	      n[3].ub = c[2];
+
+	ld	[%fp+72],%l0
+	ldub	[%l0+2],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+12]
+
+	! block 7
+.L1039:
+
+! 1051	      n[4].ub = c[3];
+
+	ld	[%fp+72],%l0
+	ldub	[%l0+3],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+16]
+
+	! block 8
+.L1040:
+.L1041:
+.L1031:
+.L1042:
+.L1043:
+.L1045:
+
+! 1052	   }
+! 1053	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1044
+	nop
+
+	! block 9
+.L1046:
+.L1047:
+.L1048:
+.L1049:
+
+! 1054	      (*ctx->Exec.Color4ubv)( ctx, c );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1564],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 10
+.L1050:
+.L1051:
+.L1044:
+.L1052:
+
+	! block 11
+.L1053:
+.L1054:
+.L1025:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Color4ubv,(.-gl_save_Color4ubv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ColorMask
+	.type	gl_save_ColorMask,#function
+gl_save_ColorMask:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1057:
+	st	%i0,[%fp+68]
+	stb	%i1,[%fp+75]
+	stb	%i2,[%fp+79]
+	stb	%i3,[%fp+83]
+	stb	%i4,[%fp+87]
+
+	! block 2
+.L1058:
+.L1060:
+
+! File dlist.c:
+! 1055	   }
+! 1056	}
+! 1057	
+! 1059	void gl_save_ColorMask( GLcontext *ctx, GLboolean red, GLboolean green,
+! 1060	                        GLboolean blue, GLboolean alpha )
+! 1061	{
+! 1062	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_MASK, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	20,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1061:
+.L1063:
+
+! 1063	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1062
+	nop
+
+	! block 4
+.L1064:
+.L1065:
+.L1066:
+.L1067:
+
+! 1064	      n[1].b = red;
+
+	ldub	[%fp+75],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+4]
+
+	! block 5
+.L1068:
+
+! 1065	      n[2].b = green;
+
+	ldub	[%fp+79],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+8]
+
+	! block 6
+.L1069:
+
+! 1066	      n[3].b = blue;
+
+	ldub	[%fp+83],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+12]
+
+	! block 7
+.L1070:
+
+! 1067	      n[4].b = alpha;
+
+	ldub	[%fp+87],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+16]
+
+	! block 8
+.L1071:
+.L1072:
+.L1062:
+.L1073:
+.L1074:
+.L1076:
+
+! 1068	   }
+! 1069	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1075
+	nop
+
+	! block 9
+.L1077:
+.L1078:
+.L1079:
+.L1080:
+
+! 1070	      (*ctx->Exec.ColorMask)( ctx, red, green, blue, alpha );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1568],%l5
+	ldub	[%fp+75],%l1
+	ldub	[%fp+79],%l2
+	ldub	[%fp+83],%l3
+	ldub	[%fp+87],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l4,%o4
+	jmpl	%l5,%o7
+	nop
+
+	! block 10
+.L1081:
+.L1082:
+.L1075:
+.L1083:
+
+	! block 11
+.L1084:
+.L1085:
+.L1056:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ColorMask,(.-gl_save_ColorMask)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ColorMaterial
+	.type	gl_save_ColorMaterial,#function
+gl_save_ColorMaterial:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1088:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L1089:
+.L1091:
+
+! File dlist.c:
+! 1071	   }
+! 1072	}
+! 1073	
+! 1075	void gl_save_ColorMaterial( GLcontext *ctx, GLenum face, GLenum mode )
+! 1076	{
+! 1077	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_MATERIAL, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	21,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1092:
+.L1094:
+
+! 1078	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1093
+	nop
+
+	! block 4
+.L1095:
+.L1096:
+.L1097:
+.L1098:
+
+! 1079	      n[1].e = face;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1099:
+
+! 1080	      n[2].e = mode;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1100:
+.L1101:
+.L1093:
+.L1102:
+.L1103:
+.L1105:
+
+! 1081	   }
+! 1082	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1104
+	nop
+
+	! block 7
+.L1106:
+.L1107:
+.L1108:
+.L1109:
+
+! 1083	      (*ctx->Exec.ColorMaterial)( ctx, face, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1572],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L1110:
+.L1111:
+.L1104:
+.L1112:
+
+	! block 9
+.L1113:
+.L1114:
+.L1087:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ColorMaterial,(.-gl_save_ColorMaterial)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ColorTable
+	.type	gl_save_ColorTable,#function
+gl_save_ColorTable:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1117:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L1118:
+.L1120:
+
+! File dlist.c:
+! 1084	   }
+! 1085	}
+! 1086	
+! 1088	void gl_save_ColorTable( GLcontext *ctx, GLenum target, GLenum internalFormat,
+! 1089	                         struct gl_image *table )
+! 1090	{
+! 1091	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_TABLE, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	22,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1121:
+.L1123:
+
+! 1092	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1122
+	nop
+
+	! block 4
+.L1124:
+.L1125:
+.L1126:
+.L1127:
+
+! 1093	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1128:
+
+! 1094	      n[2].e = internalFormat;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1129:
+
+! 1095	      n[3].data = (GLvoid *) table;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1130:
+.L1132:
+
+! 1096	      if (table) {
+
+	ld	[%fp+80],%l0
+	cmp	%l0,%g0
+	be	.L1131
+	nop
+
+	! block 8
+.L1133:
+.L1134:
+.L1135:
+.L1136:
+
+! 1097	         /* must retain this image */
+! 1098	         table->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+80],%l0
+	st	%l1,[%l0+32]
+
+	! block 9
+.L1137:
+.L1138:
+.L1131:
+.L1139:
+.L1140:
+.L1141:
+.L1122:
+.L1142:
+.L1143:
+.L1145:
+
+! 1099	      }
+! 1100	   }
+! 1101	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1144
+	nop
+
+	! block 10
+.L1146:
+.L1147:
+.L1148:
+.L1149:
+
+! 1102	      (*ctx->Exec.ColorTable)( ctx, target, internalFormat, table );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1580],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 11
+.L1150:
+.L1151:
+.L1144:
+.L1152:
+
+	! block 12
+.L1153:
+.L1154:
+.L1116:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ColorTable,(.-gl_save_ColorTable)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ColorSubTable
+	.type	gl_save_ColorSubTable,#function
+gl_save_ColorSubTable:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1157:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L1158:
+.L1160:
+
+! File dlist.c:
+! 1103	   }
+! 1104	}
+! 1105	
+! 1107	void gl_save_ColorSubTable( GLcontext *ctx, GLenum target,
+! 1108	                            GLsizei start, struct gl_image *data )
+! 1109	{
+! 1110	   Node *n = alloc_instruction( ctx, OPCODE_COLOR_SUB_TABLE, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	23,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1161:
+.L1163:
+
+! 1111	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1162
+	nop
+
+	! block 4
+.L1164:
+.L1165:
+.L1166:
+.L1167:
+
+! 1112	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1168:
+
+! 1113	      n[2].i = start;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1169:
+
+! 1114	      n[3].data = (GLvoid *) data;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1170:
+.L1172:
+
+! 1115	      if (data) {
+
+	ld	[%fp+80],%l0
+	cmp	%l0,%g0
+	be	.L1171
+	nop
+
+	! block 8
+.L1173:
+.L1174:
+.L1175:
+.L1176:
+
+! 1116	         /* must retain this image */
+! 1117	         data->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+80],%l0
+	st	%l1,[%l0+32]
+
+	! block 9
+.L1177:
+.L1178:
+.L1171:
+.L1179:
+.L1180:
+.L1181:
+.L1162:
+.L1182:
+.L1183:
+.L1185:
+
+! 1118	      }
+! 1119	   }
+! 1120	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1184
+	nop
+
+	! block 10
+.L1186:
+.L1187:
+.L1188:
+.L1189:
+
+! 1121	      (*ctx->Exec.ColorSubTable)( ctx, target, start, data );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1584],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 11
+.L1190:
+.L1191:
+.L1184:
+.L1192:
+
+	! block 12
+.L1193:
+.L1194:
+.L1156:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ColorSubTable,(.-gl_save_ColorSubTable)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CopyPixels
+	.type	gl_save_CopyPixels,#function
+gl_save_CopyPixels:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1197:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+
+	! block 2
+.L1198:
+.L1200:
+
+! File dlist.c:
+! 1122	   }
+! 1123	}
+! 1124	
+! 1127	void gl_save_CopyPixels( GLcontext *ctx, GLint x, GLint y,
+! 1128				 GLsizei width, GLsizei height, GLenum type )
+! 1129	{
+! 1130	   Node *n = alloc_instruction( ctx, OPCODE_COPY_PIXELS, 5 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	24,%o1
+	call	alloc_instruction
+	mov	5,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1201:
+.L1203:
+
+! 1131	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1202
+	nop
+
+	! block 4
+.L1204:
+.L1205:
+.L1206:
+.L1207:
+
+! 1132	      n[1].i = x;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1208:
+
+! 1133	      n[2].i = y;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1209:
+
+! 1134	      n[3].i = (GLint) width;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1210:
+
+! 1135	      n[4].i = (GLint) height;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1211:
+
+! 1136	      n[5].e = type;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1212:
+.L1213:
+.L1202:
+.L1214:
+.L1215:
+.L1217:
+
+! 1137	   }
+! 1138	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1216
+	nop
+
+	! block 10
+.L1218:
+.L1219:
+.L1220:
+.L1221:
+
+! 1139	      (*ctx->Exec.CopyPixels)( ctx, x, y, width, height, type );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1588],%l6
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l4,%o5
+	jmpl	%l6,%o7
+	nop
+
+	! block 11
+.L1222:
+.L1223:
+.L1216:
+.L1224:
+
+	! block 12
+.L1225:
+.L1226:
+.L1196:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CopyPixels,(.-gl_save_CopyPixels)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CopyTexImage1D
+	.type	gl_save_CopyTexImage1D,#function
+gl_save_CopyTexImage1D:
+	save	%sp,-112,%sp
+
+	! block 1
+.L1229:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+
+	! block 2
+.L1230:
+.L1232:
+
+! File dlist.c:
+! 1140	   }
+! 1141	}
+! 1142	
+! 1145	void gl_save_CopyTexImage1D( GLcontext *ctx,
+! 1146	                             GLenum target, GLint level,
+! 1147	                             GLenum internalformat,
+! 1148	                             GLint x, GLint y, GLsizei width,
+! 1149	                             GLint border )
+! 1150	{
+! 1151	   Node *n = alloc_instruction( ctx, OPCODE_COPY_TEX_IMAGE1D, 7 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	25,%o1
+	call	alloc_instruction
+	mov	7,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1233:
+.L1235:
+
+! 1152	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1234
+	nop
+
+	! block 4
+.L1236:
+.L1237:
+.L1238:
+.L1239:
+
+! 1153	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1240:
+
+! 1154	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1241:
+
+! 1155	      n[3].e = internalformat;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1242:
+
+! 1156	      n[4].i = x;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1243:
+
+! 1157	      n[5].i = y;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1244:
+
+! 1158	      n[6].i = width;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L1245:
+
+! 1159	      n[7].i = border;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L1246:
+.L1247:
+.L1234:
+.L1248:
+.L1249:
+.L1251:
+
+! 1160	   }
+! 1161	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1250
+	nop
+
+	! block 12
+.L1252:
+.L1253:
+.L1254:
+.L1255:
+
+! 1162	      (*ctx->Exec.CopyTexImage1D)( ctx, target, level, internalformat,
+! 1163	                            x, y, width, border );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1592],%i0
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%l4,[%sp+96]
+	jmpl	%i0,%o7
+	nop
+
+	! block 13
+.L1256:
+.L1257:
+.L1250:
+.L1258:
+
+	! block 14
+.L1259:
+.L1260:
+.L1228:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CopyTexImage1D,(.-gl_save_CopyTexImage1D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CopyTexImage2D
+	.type	gl_save_CopyTexImage2D,#function
+gl_save_CopyTexImage2D:
+	save	%sp,-112,%sp
+
+	! block 1
+.L1263:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+
+	! block 2
+.L1264:
+.L1266:
+
+! File dlist.c:
+! 1164	   }
+! 1165	}
+! 1166	
+! 1168	void gl_save_CopyTexImage2D( GLcontext *ctx,
+! 1169	                             GLenum target, GLint level,
+! 1170	                             GLenum internalformat,
+! 1171	                             GLint x, GLint y, GLsizei width,
+! 1172	                             GLsizei height, GLint border )
+! 1173	{
+! 1174	   Node *n = alloc_instruction( ctx, OPCODE_COPY_TEX_IMAGE2D, 8 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	26,%o1
+	call	alloc_instruction
+	mov	8,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1267:
+.L1269:
+
+! 1175	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1268
+	nop
+
+	! block 4
+.L1270:
+.L1271:
+.L1272:
+.L1273:
+
+! 1176	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1274:
+
+! 1177	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1275:
+
+! 1178	      n[3].e = internalformat;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1276:
+
+! 1179	      n[4].i = x;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1277:
+
+! 1180	      n[5].i = y;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1278:
+
+! 1181	      n[6].i = width;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L1279:
+
+! 1182	      n[7].i = height;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L1280:
+
+! 1183	      n[8].i = border;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L1281:
+.L1282:
+.L1268:
+.L1283:
+.L1284:
+.L1286:
+
+! 1184	   }
+! 1185	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1285
+	nop
+
+	! block 13
+.L1287:
+.L1288:
+.L1289:
+.L1290:
+
+! 1186	      (*ctx->Exec.CopyTexImage2D)( ctx, target, level, internalformat,
+! 1187	                            x, y, width, height, border );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1596],%i1
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%l4,[%sp+100]
+	jmpl	%i1,%o7
+	nop
+
+	! block 14
+.L1291:
+.L1292:
+.L1285:
+.L1293:
+
+	! block 15
+.L1294:
+.L1295:
+.L1262:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CopyTexImage2D,(.-gl_save_CopyTexImage2D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CopyTexSubImage1D
+	.type	gl_save_CopyTexSubImage1D,#function
+gl_save_CopyTexSubImage1D:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1298:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+
+	! block 2
+.L1299:
+.L1301:
+
+! File dlist.c:
+! 1188	   }
+! 1189	}
+! 1190	
+! 1193	void gl_save_CopyTexSubImage1D( GLcontext *ctx,
+! 1194	                                GLenum target, GLint level,
+! 1195	                                GLint xoffset, GLint x, GLint y,
+! 1196	                                GLsizei width )
+! 1197	{
+! 1198	   Node *n = alloc_instruction( ctx, OPCODE_COPY_TEX_SUB_IMAGE1D, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	28,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1302:
+.L1304:
+
+! 1199	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1303
+	nop
+
+	! block 4
+.L1305:
+.L1306:
+.L1307:
+.L1308:
+
+! 1200	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1309:
+
+! 1201	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1310:
+
+! 1202	      n[3].i = xoffset;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1311:
+
+! 1203	      n[4].i = x;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1312:
+
+! 1204	      n[5].i = y;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1313:
+
+! 1205	      n[6].i = width;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L1314:
+.L1315:
+.L1303:
+.L1316:
+.L1317:
+.L1319:
+
+! 1206	   }
+! 1207	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1318
+	nop
+
+	! block 11
+.L1320:
+.L1321:
+.L1322:
+.L1323:
+
+! 1208	      (*ctx->Exec.CopyTexSubImage1D)( ctx, target, level, xoffset, x, y, width );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1600],%l7
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l4,[%sp+92]
+	jmpl	%l7,%o7
+	nop
+
+	! block 12
+.L1324:
+.L1325:
+.L1318:
+.L1326:
+
+	! block 13
+.L1327:
+.L1328:
+.L1297:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CopyTexSubImage1D,(.-gl_save_CopyTexSubImage1D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CopyTexSubImage2D
+	.type	gl_save_CopyTexSubImage2D,#function
+gl_save_CopyTexSubImage2D:
+	save	%sp,-112,%sp
+
+	! block 1
+.L1331:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+
+	! block 2
+.L1332:
+.L1334:
+
+! File dlist.c:
+! 1209	   }
+! 1210	}
+! 1211	
+! 1213	void gl_save_CopyTexSubImage2D( GLcontext *ctx,
+! 1214	                                GLenum target, GLint level,
+! 1215	                                GLint xoffset, GLint yoffset,
+! 1216	                                GLint x, GLint y,
+! 1217	                                GLsizei width, GLint height )
+! 1218	{
+! 1219	   Node *n = alloc_instruction( ctx, OPCODE_COPY_TEX_SUB_IMAGE2D, 8 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	29,%o1
+	call	alloc_instruction
+	mov	8,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1335:
+.L1337:
+
+! 1220	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1336
+	nop
+
+	! block 4
+.L1338:
+.L1339:
+.L1340:
+.L1341:
+
+! 1221	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1342:
+
+! 1222	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1343:
+
+! 1223	      n[3].i = xoffset;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1344:
+
+! 1224	      n[4].i = yoffset;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1345:
+
+! 1225	      n[5].i = x;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1346:
+
+! 1226	      n[6].i = y;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L1347:
+
+! 1227	      n[7].i = width;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L1348:
+
+! 1228	      n[8].i = height;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L1349:
+.L1350:
+.L1336:
+.L1351:
+.L1352:
+.L1354:
+
+! 1229	   }
+! 1230	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1353
+	nop
+
+	! block 13
+.L1355:
+.L1356:
+.L1357:
+.L1358:
+
+! 1231	      (*ctx->Exec.CopyTexSubImage2D)( ctx, target, level, xoffset, yoffset,
+! 1232	                               x, y, width, height );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1604],%i1
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%l4,[%sp+100]
+	jmpl	%i1,%o7
+	nop
+
+	! block 14
+.L1359:
+.L1360:
+.L1353:
+.L1361:
+
+	! block 15
+.L1362:
+.L1363:
+.L1330:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CopyTexSubImage2D,(.-gl_save_CopyTexSubImage2D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CopyTexSubImage3DEXT
+	.type	gl_save_CopyTexSubImage3DEXT,#function
+gl_save_CopyTexSubImage3DEXT:
+	save	%sp,-120,%sp
+
+	! block 1
+.L1366:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+	ld	[%fp+104],%l0
+	st	%l0,[%fp+104]
+
+	! block 2
+.L1367:
+.L1369:
+
+! File dlist.c:
+! 1233	   }
+! 1234	}
+! 1235	
+! 1237	void gl_save_CopyTexSubImage3DEXT( GLcontext *ctx,
+! 1238	                                   GLenum target, GLint level,
+! 1239	                                   GLint xoffset, GLint yoffset, GLint zoffset,
+! 1240	                                   GLint x, GLint y,
+! 1241	                                   GLsizei width, GLint height )
+! 1242	{
+! 1243	   Node *n = alloc_instruction( ctx, OPCODE_COPY_TEX_SUB_IMAGE3D, 9 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	30,%o1
+	call	alloc_instruction
+	mov	9,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1370:
+.L1372:
+
+! 1244	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1371
+	nop
+
+	! block 4
+.L1373:
+.L1374:
+.L1375:
+.L1376:
+
+! 1245	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1377:
+
+! 1246	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1378:
+
+! 1247	      n[3].i = xoffset;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1379:
+
+! 1248	      n[4].i = yoffset;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1380:
+
+! 1249	      n[5].i = zoffset;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1381:
+
+! 1250	      n[6].i = x;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L1382:
+
+! 1251	      n[7].i = y;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L1383:
+
+! 1252	      n[8].i = width;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L1384:
+
+! 1253	      n[9].i = height;
+
+	ld	[%fp+104],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+36]
+
+	! block 13
+.L1385:
+.L1386:
+.L1371:
+.L1387:
+.L1388:
+.L1390:
+
+! 1254	   }
+! 1255	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1389
+	nop
+
+	! block 14
+.L1391:
+.L1392:
+.L1393:
+.L1394:
+
+! 1256	      (*ctx->Exec.CopyTexSubImage3DEXT)( ctx, target, level, xoffset, yoffset, zoffset,
+! 1257	                               x, y, width, height );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1608],%i3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%i1
+	ld	[%fp+104],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%i1,[%sp+100]
+	st	%l4,[%sp+104]
+	jmpl	%i3,%o7
+	nop
+
+	! block 15
+.L1395:
+.L1396:
+.L1389:
+.L1397:
+
+	! block 16
+.L1398:
+.L1399:
+.L1365:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CopyTexSubImage3DEXT,(.-gl_save_CopyTexSubImage3DEXT)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_CullFace
+	.type	gl_save_CullFace,#function
+gl_save_CullFace:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1402:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1403:
+.L1405:
+
+! File dlist.c:
+! 1258	   }
+! 1259	}
+! 1260	
+! 1262	void gl_save_CullFace( GLcontext *ctx, GLenum mode )
+! 1263	{
+! 1264	   Node *n = alloc_instruction( ctx, OPCODE_CULL_FACE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	31,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1406:
+.L1408:
+
+! 1265	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1407
+	nop
+
+	! block 4
+.L1409:
+.L1410:
+.L1411:
+.L1412:
+
+! 1266	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1413:
+.L1414:
+.L1407:
+.L1415:
+.L1416:
+.L1418:
+
+! 1267	   }
+! 1268	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1417
+	nop
+
+	! block 6
+.L1419:
+.L1420:
+.L1421:
+.L1422:
+
+! 1269	      (*ctx->Exec.CullFace)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1612],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1423:
+.L1424:
+.L1417:
+.L1425:
+
+	! block 8
+.L1426:
+.L1427:
+.L1401:
+	jmp	%i7+8
+	restore
+	.size	gl_save_CullFace,(.-gl_save_CullFace)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_DepthFunc
+	.type	gl_save_DepthFunc,#function
+gl_save_DepthFunc:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1430:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1431:
+.L1433:
+
+! File dlist.c:
+! 1270	   }
+! 1271	}
+! 1272	
+! 1274	void gl_save_DepthFunc( GLcontext *ctx, GLenum func )
+! 1275	{
+! 1276	   Node *n = alloc_instruction( ctx, OPCODE_DEPTH_FUNC, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	32,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1434:
+.L1436:
+
+! 1277	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1435
+	nop
+
+	! block 4
+.L1437:
+.L1438:
+.L1439:
+.L1440:
+
+! 1278	      n[1].e = func;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1441:
+.L1442:
+.L1435:
+.L1443:
+.L1444:
+.L1446:
+
+! 1279	   }
+! 1280	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1445
+	nop
+
+	! block 6
+.L1447:
+.L1448:
+.L1449:
+.L1450:
+
+! 1281	      (*ctx->Exec.DepthFunc)( ctx, func );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1624],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1451:
+.L1452:
+.L1445:
+.L1453:
+
+	! block 8
+.L1454:
+.L1455:
+.L1429:
+	jmp	%i7+8
+	restore
+	.size	gl_save_DepthFunc,(.-gl_save_DepthFunc)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_DepthMask
+	.type	gl_save_DepthMask,#function
+gl_save_DepthMask:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1458:
+	st	%i0,[%fp+68]
+	stb	%i1,[%fp+75]
+
+	! block 2
+.L1459:
+.L1461:
+
+! File dlist.c:
+! 1282	   }
+! 1283	}
+! 1284	
+! 1286	void gl_save_DepthMask( GLcontext *ctx, GLboolean mask )
+! 1287	{
+! 1288	   Node *n = alloc_instruction( ctx, OPCODE_DEPTH_MASK, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	33,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1462:
+.L1464:
+
+! 1289	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1463
+	nop
+
+	! block 4
+.L1465:
+.L1466:
+.L1467:
+.L1468:
+
+! 1290	      n[1].b = mask;
+
+	ldub	[%fp+75],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+4]
+
+	! block 5
+.L1469:
+.L1470:
+.L1463:
+.L1471:
+.L1472:
+.L1474:
+
+! 1291	   }
+! 1292	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1473
+	nop
+
+	! block 6
+.L1475:
+.L1476:
+.L1477:
+.L1478:
+
+! 1293	      (*ctx->Exec.DepthMask)( ctx, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1628],%l2
+	ldub	[%fp+75],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1479:
+.L1480:
+.L1473:
+.L1481:
+
+	! block 8
+.L1482:
+.L1483:
+.L1457:
+	jmp	%i7+8
+	restore
+	.size	gl_save_DepthMask,(.-gl_save_DepthMask)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_DepthRange
+	.type	gl_save_DepthRange,#function
+gl_save_DepthRange:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1486:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L1487:
+.L1489:
+
+! File dlist.c:
+! 1294	   }
+! 1295	}
+! 1296	
+! 1298	void gl_save_DepthRange( GLcontext *ctx, GLclampd nearval, GLclampd farval )
+! 1299	{
+! 1300	   Node *n = alloc_instruction( ctx, OPCODE_DEPTH_RANGE, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	34,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1490:
+.L1492:
+
+! 1301	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1491
+	nop
+
+	! block 4
+.L1493:
+.L1494:
+.L1495:
+.L1496:
+
+! 1302	      n[1].f = (GLfloat) nearval;
+
+	ldd	[%fp+72],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L1497:
+
+! 1303	      n[2].f = (GLfloat) farval;
+
+	ldd	[%fp+80],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L1498:
+.L1499:
+.L1491:
+.L1500:
+.L1501:
+.L1503:
+
+! 1304	   }
+! 1305	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1502
+	nop
+
+	! block 7
+.L1504:
+.L1505:
+.L1506:
+.L1507:
+
+! 1306	      (*ctx->Exec.DepthRange)( ctx, nearval, farval );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1632],%l1
+	ldd	[%fp+72],%f4
+	ldd	[%fp+80],%f6
+	mov	%l0,%o0
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	std	%f6,[%sp+88]
+	ld	[%sp+88],%o3
+	ld	[%sp+92],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 8
+.L1508:
+.L1509:
+.L1502:
+.L1510:
+
+	! block 9
+.L1511:
+.L1512:
+.L1485:
+	jmp	%i7+8
+	restore
+	.size	gl_save_DepthRange,(.-gl_save_DepthRange)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Disable
+	.type	gl_save_Disable,#function
+gl_save_Disable:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1515:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1516:
+.L1518:
+
+! File dlist.c:
+! 1307	   }
+! 1308	}
+! 1309	
+! 1311	void gl_save_Disable( GLcontext *ctx, GLenum cap )
+! 1312	{
+! 1313	   Node *n = alloc_instruction( ctx, OPCODE_DISABLE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	35,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1519:
+.L1521:
+
+! 1314	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1520
+	nop
+
+	! block 4
+.L1522:
+.L1523:
+.L1524:
+.L1525:
+
+! 1315	      n[1].e = cap;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1526:
+.L1527:
+.L1520:
+.L1528:
+.L1529:
+.L1531:
+
+! 1316	   }
+! 1317	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1530
+	nop
+
+	! block 6
+.L1532:
+.L1533:
+.L1534:
+.L1535:
+
+! 1318	      (*ctx->Exec.Disable)( ctx, cap );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1636],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1536:
+.L1537:
+.L1530:
+.L1538:
+
+	! block 8
+.L1539:
+.L1540:
+.L1514:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Disable,(.-gl_save_Disable)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_DrawBuffer
+	.type	gl_save_DrawBuffer,#function
+gl_save_DrawBuffer:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1543:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1544:
+.L1546:
+
+! File dlist.c:
+! 1319	   }
+! 1320	}
+! 1321	
+! 1323	void gl_save_DrawBuffer( GLcontext *ctx, GLenum mode )
+! 1324	{
+! 1325	   Node *n = alloc_instruction( ctx, OPCODE_DRAW_BUFFER, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	36,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1547:
+.L1549:
+
+! 1326	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1548
+	nop
+
+	! block 4
+.L1550:
+.L1551:
+.L1552:
+.L1553:
+
+! 1327	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1554:
+.L1555:
+.L1548:
+.L1556:
+.L1557:
+.L1559:
+
+! 1328	   }
+! 1329	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1558
+	nop
+
+	! block 6
+.L1560:
+.L1561:
+.L1562:
+.L1563:
+
+! 1330	      (*ctx->Exec.DrawBuffer)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1648],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1564:
+.L1565:
+.L1558:
+.L1566:
+
+	! block 8
+.L1567:
+.L1568:
+.L1542:
+	jmp	%i7+8
+	restore
+	.size	gl_save_DrawBuffer,(.-gl_save_DrawBuffer)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_DrawPixels
+	.type	gl_save_DrawPixels,#function
+gl_save_DrawPixels:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1571:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+
+	! block 2
+.L1572:
+.L1574:
+
+! File dlist.c:
+! 1331	   }
+! 1332	}
+! 1333	
+! 1335	void gl_save_DrawPixels( GLcontext *ctx, GLsizei width, GLsizei height,
+! 1336	                         GLenum format, GLenum type, const GLvoid *pixels )
+! 1337	{
+! 1338	   Node *n = alloc_instruction( ctx, OPCODE_DRAW_PIXELS, 5 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	37,%o1
+	call	alloc_instruction
+	mov	5,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1575:
+.L1577:
+
+! 1339	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1576
+	nop
+
+	! block 4
+.L1578:
+.L1579:
+.L1580:
+.L1581:
+
+! 1340	      n[1].i = (GLint) width;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1582:
+
+! 1341	      n[2].i = (GLint) height;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1583:
+
+! 1342	      n[3].e = format;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1584:
+
+! 1343	      n[4].e = type;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1585:
+
+! 1344	      n[5].data = (GLvoid *) pixels;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1586:
+.L1587:
+.L1576:
+.L1588:
+
+	! block 10
+.L1589:
+.L1590:
+.L1570:
+	jmp	%i7+8
+	restore
+	.size	gl_save_DrawPixels,(.-gl_save_DrawPixels)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EdgeFlag
+	.type	gl_save_EdgeFlag,#function
+gl_save_EdgeFlag:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1593:
+	st	%i0,[%fp+68]
+	stb	%i1,[%fp+75]
+
+	! block 2
+.L1594:
+.L1596:
+
+! File dlist.c:
+! 1345	   }
+! 1346	/* Special case:  gl_DrawPixels takes care of GL_COMPILE_AND_EXECUTE case!
+! 1347	   if (ctx->ExecuteFlag) {
+! 1348	      (*ctx->Exec.DrawPixels)( ctx, width, height, format, type, pixels );
+! 1349	   }
+! 1350	*/
+! 1351	}
+! 1352	
+! 1354	void gl_save_EdgeFlag( GLcontext *ctx, GLboolean flag )
+! 1355	{
+! 1356	   Node *n = alloc_instruction( ctx, OPCODE_EDGE_FLAG, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	38,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1597:
+.L1599:
+
+! 1357	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1598
+	nop
+
+	! block 4
+.L1600:
+.L1601:
+.L1602:
+.L1603:
+
+! 1358	      n[1].b = flag;
+
+	ldub	[%fp+75],%l1
+	ld	[%fp-4],%l0
+	stb	%l1,[%l0+4]
+
+	! block 5
+.L1604:
+.L1605:
+.L1598:
+.L1606:
+.L1607:
+.L1609:
+
+! 1359	   }
+! 1360	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1608
+	nop
+
+	! block 6
+.L1610:
+.L1611:
+.L1612:
+.L1613:
+
+! 1361	      (*ctx->Exec.EdgeFlag)( ctx, flag );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1660],%l2
+	ldub	[%fp+75],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1614:
+.L1615:
+.L1608:
+.L1616:
+
+	! block 8
+.L1617:
+.L1618:
+.L1592:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EdgeFlag,(.-gl_save_EdgeFlag)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Enable
+	.type	gl_save_Enable,#function
+gl_save_Enable:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1621:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1622:
+.L1624:
+
+! File dlist.c:
+! 1362	   }
+! 1363	}
+! 1364	
+! 1366	void gl_save_Enable( GLcontext *ctx, GLenum cap )
+! 1367	{
+! 1368	   Node *n = alloc_instruction( ctx, OPCODE_ENABLE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	39,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1625:
+.L1627:
+
+! 1369	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1626
+	nop
+
+	! block 4
+.L1628:
+.L1629:
+.L1630:
+.L1631:
+
+! 1370	      n[1].e = cap;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1632:
+.L1633:
+.L1626:
+.L1634:
+.L1635:
+.L1637:
+
+! 1371	   }
+! 1372	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1636
+	nop
+
+	! block 6
+.L1638:
+.L1639:
+.L1640:
+.L1641:
+
+! 1373	      (*ctx->Exec.Enable)( ctx, cap );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1668],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1642:
+.L1643:
+.L1636:
+.L1644:
+
+	! block 8
+.L1645:
+.L1646:
+.L1620:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Enable,(.-gl_save_Enable)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_End
+	.type	gl_save_End,#function
+gl_save_End:
+	save	%sp,-96,%sp
+
+	! block 1
+.L1649:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L1650:
+.L1652:
+
+! File dlist.c:
+! 1374	   }
+! 1375	}
+! 1376	
+! 1378	void gl_save_End( GLcontext *ctx )
+! 1379	{
+! 1380	   (void) alloc_instruction( ctx, OPCODE_END, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	40,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L1653:
+.L1655:
+
+! 1381	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1654
+	nop
+
+	! block 4
+.L1656:
+.L1657:
+.L1658:
+.L1659:
+
+! 1382	      (*ctx->Exec.End)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1676],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L1660:
+.L1661:
+.L1654:
+.L1662:
+
+	! block 6
+.L1663:
+.L1664:
+.L1648:
+	jmp	%i7+8
+	restore
+	.size	gl_save_End,(.-gl_save_End)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EvalCoord1f
+	.type	gl_save_EvalCoord1f,#function
+gl_save_EvalCoord1f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1667:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1668:
+.L1670:
+
+! File dlist.c:
+! 1383	   }
+! 1384	}
+! 1385	
+! 1387	void gl_save_EvalCoord1f( GLcontext *ctx, GLfloat u )
+! 1388	{
+! 1389	   Node *n = alloc_instruction( ctx, OPCODE_EVALCOORD1, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	41,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1671:
+.L1673:
+
+! 1390	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1672
+	nop
+
+	! block 4
+.L1674:
+.L1675:
+.L1676:
+.L1677:
+
+! 1391	      n[1].f = u;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L1678:
+.L1679:
+.L1672:
+.L1680:
+.L1681:
+.L1683:
+
+! 1392	   }
+! 1393	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1682
+	nop
+
+	! block 6
+.L1684:
+.L1685:
+.L1686:
+.L1687:
+
+! 1394	      (*ctx->Exec.EvalCoord1f)( ctx, u );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1684],%l1
+	ld	[%fp+72],%f4
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L1688:
+.L1689:
+.L1682:
+.L1690:
+
+	! block 8
+.L1691:
+.L1692:
+.L1666:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EvalCoord1f,(.-gl_save_EvalCoord1f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EvalCoord2f
+	.type	gl_save_EvalCoord2f,#function
+gl_save_EvalCoord2f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1695:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L1696:
+.L1698:
+
+! File dlist.c:
+! 1395	   }
+! 1396	}
+! 1397	
+! 1399	void gl_save_EvalCoord2f( GLcontext *ctx, GLfloat u, GLfloat v )
+! 1400	{
+! 1401	   Node *n = alloc_instruction( ctx, OPCODE_EVALCOORD2, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	42,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1699:
+.L1701:
+
+! 1402	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1700
+	nop
+
+	! block 4
+.L1702:
+.L1703:
+.L1704:
+.L1705:
+
+! 1403	      n[1].f = u;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L1706:
+
+! 1404	      n[2].f = v;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L1707:
+.L1708:
+.L1700:
+.L1709:
+.L1710:
+.L1712:
+
+! 1405	   }
+! 1406	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1711
+	nop
+
+	! block 7
+.L1713:
+.L1714:
+.L1715:
+.L1716:
+
+! 1407	      (*ctx->Exec.EvalCoord2f)( ctx, u, v );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1688],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l1,%o7
+	nop
+
+	! block 8
+.L1717:
+.L1718:
+.L1711:
+.L1719:
+
+	! block 9
+.L1720:
+.L1721:
+.L1694:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EvalCoord2f,(.-gl_save_EvalCoord2f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EvalMesh1
+	.type	gl_save_EvalMesh1,#function
+gl_save_EvalMesh1:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1724:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L1725:
+.L1727:
+
+! File dlist.c:
+! 1408	   }
+! 1409	}
+! 1410	
+! 1412	void gl_save_EvalMesh1( GLcontext *ctx,
+! 1413	                        GLenum mode, GLint i1, GLint i2 )
+! 1414	{
+! 1415	   Node *n = alloc_instruction( ctx, OPCODE_EVALMESH1, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	43,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1728:
+.L1730:
+
+! 1416	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1729
+	nop
+
+	! block 4
+.L1731:
+.L1732:
+.L1733:
+.L1734:
+
+! 1417	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1735:
+
+! 1418	      n[2].i = i1;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1736:
+
+! 1419	      n[3].i = i2;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1737:
+.L1738:
+.L1729:
+.L1739:
+.L1740:
+.L1742:
+
+! 1420	   }
+! 1421	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1741
+	nop
+
+	! block 8
+.L1743:
+.L1744:
+.L1745:
+.L1746:
+
+! 1422	      (*ctx->Exec.EvalMesh1)( ctx, mode, i1, i2 );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1692],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 9
+.L1747:
+.L1748:
+.L1741:
+.L1749:
+
+	! block 10
+.L1750:
+.L1751:
+.L1723:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EvalMesh1,(.-gl_save_EvalMesh1)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EvalMesh2
+	.type	gl_save_EvalMesh2,#function
+gl_save_EvalMesh2:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1754:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+
+	! block 2
+.L1755:
+.L1757:
+
+! File dlist.c:
+! 1423	   }
+! 1424	}
+! 1425	
+! 1427	void gl_save_EvalMesh2( GLcontext *ctx, 
+! 1428	                        GLenum mode, GLint i1, GLint i2, GLint j1, GLint j2 )
+! 1429	{
+! 1430	   Node *n = alloc_instruction( ctx, OPCODE_EVALMESH2, 5 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	44,%o1
+	call	alloc_instruction
+	mov	5,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1758:
+.L1760:
+
+! 1431	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1759
+	nop
+
+	! block 4
+.L1761:
+.L1762:
+.L1763:
+.L1764:
+
+! 1432	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1765:
+
+! 1433	      n[2].i = i1;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1766:
+
+! 1434	      n[3].i = i2;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L1767:
+
+! 1435	      n[4].i = j1;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L1768:
+
+! 1436	      n[5].i = j2;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L1769:
+.L1770:
+.L1759:
+.L1771:
+.L1772:
+.L1774:
+
+! 1437	   }
+! 1438	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1773
+	nop
+
+	! block 10
+.L1775:
+.L1776:
+.L1777:
+.L1778:
+
+! 1439	      (*ctx->Exec.EvalMesh2)( ctx, mode, i1, i2, j1, j2 );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1696],%l6
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l4,%o5
+	jmpl	%l6,%o7
+	nop
+
+	! block 11
+.L1779:
+.L1780:
+.L1773:
+.L1781:
+
+	! block 12
+.L1782:
+.L1783:
+.L1753:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EvalMesh2,(.-gl_save_EvalMesh2)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EvalPoint1
+	.type	gl_save_EvalPoint1,#function
+gl_save_EvalPoint1:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1786:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1787:
+.L1789:
+
+! File dlist.c:
+! 1440	   }
+! 1441	}
+! 1442	
+! 1444	void gl_save_EvalPoint1( GLcontext *ctx, GLint i )
+! 1445	{
+! 1446	   Node *n = alloc_instruction( ctx, OPCODE_EVALPOINT1, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	45,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1790:
+.L1792:
+
+! 1447	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1791
+	nop
+
+	! block 4
+.L1793:
+.L1794:
+.L1795:
+.L1796:
+
+! 1448	      n[1].i = i;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1797:
+.L1798:
+.L1791:
+.L1799:
+.L1800:
+.L1802:
+
+! 1449	   }
+! 1450	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1801
+	nop
+
+	! block 6
+.L1803:
+.L1804:
+.L1805:
+.L1806:
+
+! 1451	      (*ctx->Exec.EvalPoint1)( ctx, i );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1700],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1807:
+.L1808:
+.L1801:
+.L1809:
+
+	! block 8
+.L1810:
+.L1811:
+.L1785:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EvalPoint1,(.-gl_save_EvalPoint1)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_EvalPoint2
+	.type	gl_save_EvalPoint2,#function
+gl_save_EvalPoint2:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1814:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L1815:
+.L1817:
+
+! File dlist.c:
+! 1452	   }
+! 1453	}
+! 1454	
+! 1456	void gl_save_EvalPoint2( GLcontext *ctx, GLint i, GLint j )
+! 1457	{
+! 1458	   Node *n = alloc_instruction( ctx, OPCODE_EVALPOINT2, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	46,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1818:
+.L1820:
+
+! 1459	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1819
+	nop
+
+	! block 4
+.L1821:
+.L1822:
+.L1823:
+.L1824:
+
+! 1460	      n[1].i = i;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1825:
+
+! 1461	      n[2].i = j;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1826:
+.L1827:
+.L1819:
+.L1828:
+.L1829:
+.L1831:
+
+! 1462	   }
+! 1463	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1830
+	nop
+
+	! block 7
+.L1832:
+.L1833:
+.L1834:
+.L1835:
+
+! 1464	      (*ctx->Exec.EvalPoint2)( ctx, i, j );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1704],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L1836:
+.L1837:
+.L1830:
+.L1838:
+
+	! block 9
+.L1839:
+.L1840:
+.L1813:
+	jmp	%i7+8
+	restore
+	.size	gl_save_EvalPoint2,(.-gl_save_EvalPoint2)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Fogfv
+	.type	gl_save_Fogfv,#function
+gl_save_Fogfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1843:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L1844:
+.L1846:
+
+! File dlist.c:
+! 1465	   }
+! 1466	}
+! 1467	
+! 1469	void gl_save_Fogfv( GLcontext *ctx, GLenum pname, const GLfloat *params )
+! 1470	{
+! 1471	   Node *n = alloc_instruction( ctx, OPCODE_FOG, 5 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	47,%o1
+	call	alloc_instruction
+	mov	5,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1847:
+.L1849:
+
+! 1472	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1848
+	nop
+
+	! block 4
+.L1850:
+.L1851:
+.L1852:
+.L1853:
+
+! 1473	      n[1].e = pname;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1854:
+
+! 1474	      n[2].f = params[0];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L1855:
+
+! 1475	      n[3].f = params[1];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L1856:
+
+! 1476	      n[4].f = params[2];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L1857:
+
+! 1477	      n[5].f = params[3];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L1858:
+.L1859:
+.L1848:
+.L1860:
+.L1861:
+.L1863:
+
+! 1478	   }
+! 1479	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1862
+	nop
+
+	! block 10
+.L1864:
+.L1865:
+.L1866:
+.L1867:
+
+! 1480	      (*ctx->Exec.Fogfv)( ctx, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1720],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 11
+.L1868:
+.L1869:
+.L1862:
+.L1870:
+
+	! block 12
+.L1871:
+.L1872:
+.L1842:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Fogfv,(.-gl_save_Fogfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_FrontFace
+	.type	gl_save_FrontFace,#function
+gl_save_FrontFace:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1875:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1876:
+.L1878:
+
+! File dlist.c:
+! 1481	   }
+! 1482	}
+! 1483	
+! 1485	void gl_save_FrontFace( GLcontext *ctx, GLenum mode )
+! 1486	{
+! 1487	   Node *n = alloc_instruction( ctx, OPCODE_FRONT_FACE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	48,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1879:
+.L1881:
+
+! 1488	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1880
+	nop
+
+	! block 4
+.L1882:
+.L1883:
+.L1884:
+.L1885:
+
+! 1489	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1886:
+.L1887:
+.L1880:
+.L1888:
+.L1889:
+.L1891:
+
+! 1490	   }
+! 1491	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1890
+	nop
+
+	! block 6
+.L1892:
+.L1893:
+.L1894:
+.L1895:
+
+! 1492	      (*ctx->Exec.FrontFace)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1724],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1896:
+.L1897:
+.L1890:
+.L1898:
+
+	! block 8
+.L1899:
+.L1900:
+.L1874:
+	jmp	%i7+8
+	restore
+	.size	gl_save_FrontFace,(.-gl_save_FrontFace)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Frustum
+	.type	gl_save_Frustum,#function
+gl_save_Frustum:
+	save	%sp,-128,%sp
+
+	! block 1
+.L1903:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ldx	[%fp+96],%g1
+	srlx	%g1,32,%l0
+	or	%g0,%g1,%l1
+	st	%l0,[%fp+96]
+	st	%l1,[%fp+100]
+	ldx	[%fp+104],%g1
+	srlx	%g1,32,%l0
+	or	%g0,%g1,%l1
+	st	%l0,[%fp+104]
+	st	%l1,[%fp+108]
+	ldx	[%fp+112],%g1
+	srlx	%g1,32,%l0
+	or	%g0,%g1,%l1
+	st	%l0,[%fp+112]
+	st	%l1,[%fp+116]
+
+	! block 2
+.L1904:
+.L1906:
+
+! File dlist.c:
+! 1493	   }
+! 1494	}
+! 1495	
+! 1497	void gl_save_Frustum( GLcontext *ctx, GLdouble left, GLdouble right,
+! 1498	                      GLdouble bottom, GLdouble top,
+! 1499	                      GLdouble nearval, GLdouble farval )
+! 1500	{
+! 1501	   Node *n = alloc_instruction( ctx, OPCODE_FRUSTUM, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	49,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1907:
+.L1909:
+
+! 1502	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1908
+	nop
+
+	! block 4
+.L1910:
+.L1911:
+.L1912:
+.L1913:
+
+! 1503	      n[1].f = left;
+
+	ldd	[%fp+72],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L1914:
+
+! 1504	      n[2].f = right;
+
+	ldd	[%fp+80],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L1915:
+
+! 1505	      n[3].f = bottom;
+
+	ldd	[%fp+88],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L1916:
+
+! 1506	      n[4].f = top;
+
+	ldd	[%fp+96],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L1917:
+
+! 1507	      n[5].f = nearval;
+
+	ldd	[%fp+104],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L1918:
+
+! 1508	      n[6].f = farval;
+
+	ldd	[%fp+112],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L1919:
+.L1920:
+.L1908:
+.L1921:
+.L1922:
+.L1924:
+
+! 1509	   }
+! 1510	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1923
+	nop
+
+	! block 11
+.L1925:
+.L1926:
+.L1927:
+.L1928:
+
+! 1511	      (*ctx->Exec.Frustum)( ctx, left, right, bottom, top, nearval, farval );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1728],%l1
+	ldd	[%fp+72],%f4
+	ldd	[%fp+80],%f6
+	ldd	[%fp+88],%f8
+	ldd	[%fp+96],%f10
+	ldd	[%fp+104],%f12
+	ldd	[%fp+112],%f14
+	mov	%l0,%o0
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	std	%f6,[%sp+88]
+	ld	[%sp+88],%o3
+	ld	[%sp+92],%o4
+	std	%f8,[%sp+88]
+	ld	[%sp+88],%o5
+	std	%f10,[%sp+96]
+	std	%f12,[%sp+104]
+	std	%f14,[%sp+112]
+	jmpl	%l1,%o7
+	nop
+
+	! block 12
+.L1929:
+.L1930:
+.L1923:
+.L1931:
+
+	! block 13
+.L1932:
+.L1933:
+.L1902:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Frustum,(.-gl_save_Frustum)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Hint
+	.type	gl_save_Hint,#function
+gl_save_Hint:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1936:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L1937:
+.L1939:
+
+! File dlist.c:
+! 1512	   }
+! 1513	}
+! 1514	
+! 1516	void gl_save_Hint( GLcontext *ctx, GLenum target, GLenum mode )
+! 1517	{
+! 1518	   Node *n = alloc_instruction( ctx, OPCODE_HINT, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	50,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1940:
+.L1942:
+
+! 1519	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1941
+	nop
+
+	! block 4
+.L1943:
+.L1944:
+.L1945:
+.L1946:
+
+! 1520	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1947:
+
+! 1521	      n[2].e = mode;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L1948:
+.L1949:
+.L1941:
+.L1950:
+.L1951:
+.L1953:
+
+! 1522	   }
+! 1523	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1952
+	nop
+
+	! block 7
+.L1954:
+.L1955:
+.L1956:
+.L1957:
+
+! 1524	      (*ctx->Exec.Hint)( ctx, target, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1868],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L1958:
+.L1959:
+.L1952:
+.L1960:
+
+	! block 9
+.L1961:
+.L1962:
+.L1935:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Hint,(.-gl_save_Hint)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Indexi
+	.type	gl_save_Indexi,#function
+gl_save_Indexi:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1965:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1966:
+.L1968:
+
+! File dlist.c:
+! 1525	   }
+! 1526	}
+! 1527	
+! 1529	void gl_save_Indexi( GLcontext *ctx, GLint index )
+! 1530	{
+! 1531	   Node *n = alloc_instruction( ctx, OPCODE_INDEX, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	51,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1969:
+.L1971:
+
+! 1532	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1970
+	nop
+
+	! block 4
+.L1972:
+.L1973:
+.L1974:
+.L1975:
+
+! 1533	      n[1].i = index;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L1976:
+.L1977:
+.L1970:
+.L1978:
+.L1979:
+.L1981:
+
+! 1534	   }
+! 1535	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L1980
+	nop
+
+	! block 6
+.L1982:
+.L1983:
+.L1984:
+.L1985:
+
+! 1536	      (*ctx->Exec.Indexi)( ctx, index );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1880],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L1986:
+.L1987:
+.L1980:
+.L1988:
+
+	! block 8
+.L1989:
+.L1990:
+.L1964:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Indexi,(.-gl_save_Indexi)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Indexf
+	.type	gl_save_Indexf,#function
+gl_save_Indexf:
+	save	%sp,-104,%sp
+
+	! block 1
+.L1993:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L1994:
+.L1996:
+
+! File dlist.c:
+! 1537	   }
+! 1538	}
+! 1539	
+! 1541	void gl_save_Indexf( GLcontext *ctx, GLfloat index )
+! 1542	{
+! 1543	   Node *n = alloc_instruction( ctx, OPCODE_INDEX, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	51,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L1997:
+.L1999:
+
+! 1544	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L1998
+	nop
+
+	! block 4
+.L2000:
+.L2001:
+.L2002:
+.L2003:
+
+! 1545	      n[1].i = (GLint) index;
+
+	ld	[%fp+72],%f4
+	fstoi	%f4,%f4
+	st	%f4,[%fp-8]
+	ld	[%fp-8],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2004:
+.L2005:
+.L1998:
+.L2006:
+.L2007:
+.L2009:
+
+! 1546	   }
+! 1547	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2008
+	nop
+
+	! block 6
+.L2010:
+.L2011:
+.L2012:
+.L2013:
+
+! 1548	      (*ctx->Exec.Indexf)( ctx,index );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1876],%l1
+	ld	[%fp+72],%f4
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L2014:
+.L2015:
+.L2008:
+.L2016:
+
+	! block 8
+.L2017:
+.L2018:
+.L1992:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Indexf,(.-gl_save_Indexf)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_IndexMask
+	.type	gl_save_IndexMask,#function
+gl_save_IndexMask:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2021:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2022:
+.L2024:
+
+! File dlist.c:
+! 1549	   }
+! 1550	}
+! 1551	
+! 1553	void gl_save_IndexMask( GLcontext *ctx, GLuint mask )
+! 1554	{
+! 1555	   Node *n = alloc_instruction( ctx, OPCODE_INDEX_MASK, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	52,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2025:
+.L2027:
+
+! 1556	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2026
+	nop
+
+	! block 4
+.L2028:
+.L2029:
+.L2030:
+.L2031:
+
+! 1557	      n[1].ui = mask;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2032:
+.L2033:
+.L2026:
+.L2034:
+.L2035:
+.L2037:
+
+! 1558	   }
+! 1559	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2036
+	nop
+
+	! block 6
+.L2038:
+.L2039:
+.L2040:
+.L2041:
+
+! 1560	      (*ctx->Exec.IndexMask)( ctx, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1872],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L2042:
+.L2043:
+.L2036:
+.L2044:
+
+	! block 8
+.L2045:
+.L2046:
+.L2020:
+	jmp	%i7+8
+	restore
+	.size	gl_save_IndexMask,(.-gl_save_IndexMask)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_InitNames
+	.type	gl_save_InitNames,#function
+gl_save_InitNames:
+	save	%sp,-96,%sp
+
+	! block 1
+.L2049:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L2050:
+.L2052:
+
+! File dlist.c:
+! 1561	   }
+! 1562	}
+! 1563	
+! 1565	void gl_save_InitNames( GLcontext *ctx )
+! 1566	{
+! 1567	   (void) alloc_instruction( ctx, OPCODE_INIT_NAMES, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	53,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L2053:
+.L2055:
+
+! 1568	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2054
+	nop
+
+	! block 4
+.L2056:
+.L2057:
+.L2058:
+.L2059:
+
+! 1569	      (*ctx->Exec.InitNames)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1888],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L2060:
+.L2061:
+.L2054:
+.L2062:
+
+	! block 6
+.L2063:
+.L2064:
+.L2048:
+	jmp	%i7+8
+	restore
+	.size	gl_save_InitNames,(.-gl_save_InitNames)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Lightfv
+	.type	gl_save_Lightfv,#function
+gl_save_Lightfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2067:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L2068:
+.L2070:
+
+! File dlist.c:
+! 1570	   }
+! 1571	}
+! 1572	
+! 1574	void gl_save_Lightfv( GLcontext *ctx, GLenum light, GLenum pname,
+! 1575	                      const GLfloat *params, GLint numparams )
+! 1576	{
+! 1577	   Node *n = alloc_instruction( ctx, OPCODE_LIGHT, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	54,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2071:
+.L2073:
+
+! 1578	   if (OPCODE_LIGHT) {
+
+.L2074:
+.L2075:
+.L2076:
+
+! 1579	      GLint i;
+! 1580	      n[1].e = light;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 4
+.L2077:
+
+! 1581	      n[2].e = pname;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 5
+.L2078:
+.L2079:
+
+! 1582	      for (i=0;i<numparams;i++) {
+
+	ld	[%fp+84],%l0
+	cmp	%g0,%l0
+	bge	.L2082
+	st	%g0,[%fp-8]
+
+	! block 6
+.L2083:
+.L2080:
+.L2084:
+.L2085:
+.L2086:
+
+! 1583		 n[3+i].f = params[i];
+
+	ld	[%fp+80],%l1
+	ld	[%fp-8],%l0
+	sll	%l0,2,%l2
+	ld	[%l1+%l2],%f4
+	ld	[%fp-4],%l0
+	add	%l0,%l2,%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2087:
+.L2088:
+.L2089:
+	ld	[%fp-8],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-8]
+	ld	[%fp-8],%l1
+	ld	[%fp+84],%l0
+	cmp	%l1,%l0
+	bl	.L2080
+	nop
+
+	! block 8
+.L2090:
+.L2082:
+.L2091:
+.L2092:
+.L2093:
+.L2072:
+.L2094:
+.L2095:
+.L2097:
+
+! 1584	      }
+! 1585	   }
+! 1586	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2096
+	nop
+
+	! block 9
+.L2098:
+.L2099:
+.L2100:
+.L2101:
+
+! 1587	      (*ctx->Exec.Lightfv)( ctx, light, pname, params, numparams );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1912],%l5
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l4,%o4
+	jmpl	%l5,%o7
+	nop
+
+	! block 10
+.L2102:
+.L2103:
+.L2096:
+.L2104:
+
+	! block 11
+.L2105:
+.L2106:
+.L2066:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Lightfv,(.-gl_save_Lightfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LightModelfv
+	.type	gl_save_LightModelfv,#function
+gl_save_LightModelfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2109:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2110:
+.L2112:
+
+! File dlist.c:
+! 1588	   }
+! 1589	}
+! 1590	
+! 1592	void gl_save_LightModelfv( GLcontext *ctx,
+! 1593	                           GLenum pname, const GLfloat *params )
+! 1594	{
+! 1595	   Node *n = alloc_instruction( ctx, OPCODE_LIGHT_MODEL, 5 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	55,%o1
+	call	alloc_instruction
+	mov	5,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2113:
+.L2115:
+
+! 1596	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2114
+	nop
+
+	! block 4
+.L2116:
+.L2117:
+.L2118:
+.L2119:
+
+! 1597	      n[1].e = pname;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2120:
+
+! 1598	      n[2].f = params[0];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2121:
+
+! 1599	      n[3].f = params[1];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2122:
+
+! 1600	      n[4].f = params[2];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L2123:
+
+! 1601	      n[5].f = params[3];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L2124:
+.L2125:
+.L2114:
+.L2126:
+.L2127:
+.L2129:
+
+! 1602	   }
+! 1603	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2128
+	nop
+
+	! block 10
+.L2130:
+.L2131:
+.L2132:
+.L2133:
+
+! 1604	      (*ctx->Exec.LightModelfv)( ctx, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1908],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 11
+.L2134:
+.L2135:
+.L2128:
+.L2136:
+
+	! block 12
+.L2137:
+.L2138:
+.L2108:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LightModelfv,(.-gl_save_LightModelfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LineStipple
+	.type	gl_save_LineStipple,#function
+gl_save_LineStipple:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2141:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	sth	%i2,[%fp+78]
+
+	! block 2
+.L2142:
+.L2144:
+
+! File dlist.c:
+! 1605	   }
+! 1606	}
+! 1607	
+! 1609	void gl_save_LineStipple( GLcontext *ctx, GLint factor, GLushort pattern )
+! 1610	{
+! 1611	   Node *n = alloc_instruction( ctx, OPCODE_LINE_STIPPLE, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	56,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2145:
+.L2147:
+
+! 1612	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2146
+	nop
+
+	! block 4
+.L2148:
+.L2149:
+.L2150:
+.L2151:
+
+! 1613	      n[1].i = factor;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2152:
+
+! 1614	      n[2].us = pattern;
+
+	lduh	[%fp+78],%l1
+	ld	[%fp-4],%l0
+	sth	%l1,[%l0+8]
+
+	! block 6
+.L2153:
+.L2154:
+.L2146:
+.L2155:
+.L2156:
+.L2158:
+
+! 1615	   }
+! 1616	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2157
+	nop
+
+	! block 7
+.L2159:
+.L2160:
+.L2161:
+.L2162:
+
+! 1617	      (*ctx->Exec.LineStipple)( ctx, factor, pattern );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1916],%l3
+	ld	[%fp+72],%l1
+	lduh	[%fp+78],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L2163:
+.L2164:
+.L2157:
+.L2165:
+
+	! block 9
+.L2166:
+.L2167:
+.L2140:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LineStipple,(.-gl_save_LineStipple)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LineWidth
+	.type	gl_save_LineWidth,#function
+gl_save_LineWidth:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2170:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2171:
+.L2173:
+
+! File dlist.c:
+! 1618	   }
+! 1619	}
+! 1620	
+! 1622	void gl_save_LineWidth( GLcontext *ctx, GLfloat width )
+! 1623	{
+! 1624	   Node *n = alloc_instruction( ctx, OPCODE_LINE_WIDTH, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	57,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2174:
+.L2176:
+
+! 1625	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2175
+	nop
+
+	! block 4
+.L2177:
+.L2178:
+.L2179:
+.L2180:
+
+! 1626	      n[1].f = width;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2181:
+.L2182:
+.L2175:
+.L2183:
+.L2184:
+.L2186:
+
+! 1627	   }
+! 1628	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2185
+	nop
+
+	! block 6
+.L2187:
+.L2188:
+.L2189:
+.L2190:
+
+! 1629	      (*ctx->Exec.LineWidth)( ctx, width );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1920],%l1
+	ld	[%fp+72],%f4
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L2191:
+.L2192:
+.L2185:
+.L2193:
+
+	! block 8
+.L2194:
+.L2195:
+.L2169:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LineWidth,(.-gl_save_LineWidth)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ListBase
+	.type	gl_save_ListBase,#function
+gl_save_ListBase:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2198:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2199:
+.L2201:
+
+! File dlist.c:
+! 1630	   }
+! 1631	}
+! 1632	
+! 1634	void gl_save_ListBase( GLcontext *ctx, GLuint base )
+! 1635	{
+! 1636	   Node *n = alloc_instruction( ctx, OPCODE_LIST_BASE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	58,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2202:
+.L2204:
+
+! 1637	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2203
+	nop
+
+	! block 4
+.L2205:
+.L2206:
+.L2207:
+.L2208:
+
+! 1638	      n[1].ui = base;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2209:
+.L2210:
+.L2203:
+.L2211:
+.L2212:
+.L2214:
+
+! 1639	   }
+! 1640	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2213
+	nop
+
+	! block 6
+.L2215:
+.L2216:
+.L2217:
+.L2218:
+
+! 1641	      (*ctx->Exec.ListBase)( ctx, base );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1924],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L2219:
+.L2220:
+.L2213:
+.L2221:
+
+	! block 8
+.L2222:
+.L2223:
+.L2197:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ListBase,(.-gl_save_ListBase)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LoadIdentity
+	.type	gl_save_LoadIdentity,#function
+gl_save_LoadIdentity:
+	save	%sp,-96,%sp
+
+	! block 1
+.L2226:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L2227:
+.L2229:
+
+! File dlist.c:
+! 1642	   }
+! 1643	}
+! 1644	
+! 1646	void gl_save_LoadIdentity( GLcontext *ctx )
+! 1647	{
+! 1648	   (void) alloc_instruction( ctx, OPCODE_LOAD_IDENTITY, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	59,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L2230:
+.L2232:
+
+! 1649	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2231
+	nop
+
+	! block 4
+.L2233:
+.L2234:
+.L2235:
+.L2236:
+
+! 1650	      (*ctx->Exec.LoadIdentity)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1928],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L2237:
+.L2238:
+.L2231:
+.L2239:
+
+	! block 6
+.L2240:
+.L2241:
+.L2225:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LoadIdentity,(.-gl_save_LoadIdentity)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LoadMatrixf
+	.type	gl_save_LoadMatrixf,#function
+gl_save_LoadMatrixf:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2244:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2245:
+.L2247:
+
+! File dlist.c:
+! 1651	   }
+! 1652	}
+! 1653	
+! 1655	void gl_save_LoadMatrixf( GLcontext *ctx, const GLfloat *m )
+! 1656	{
+! 1657	   Node *n = alloc_instruction( ctx, OPCODE_LOAD_MATRIX, 16 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	60,%o1
+	call	alloc_instruction
+	mov	16,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2248:
+.L2250:
+
+! 1658	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2249
+	nop
+
+	! block 4
+.L2251:
+.L2252:
+.L2253:
+.L2254:
+.L2255:
+
+! 1659	      GLuint i;
+! 1660	      for (i=0;i<16;i++) {
+
+	st	%g0,[%fp-8]
+
+	! block 5
+.L2259:
+.L2256:
+.L2260:
+.L2261:
+.L2262:
+
+! 1661		 n[1+i].f = m[i];
+
+	ld	[%fp+72],%l2
+	ld	[%fp-8],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%f4
+	ld	[%fp-4],%l2
+	add	%l0,1,%l0
+	sll	%l0,2,%l1
+	st	%f4,[%l2+%l1]
+
+	! block 6
+.L2263:
+.L2264:
+.L2265:
+	ld	[%fp-8],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-8]
+	ld	[%fp-8],%l0
+	cmp	%l0,16
+	blu	.L2256
+	nop
+
+	! block 7
+.L2266:
+.L2258:
+.L2267:
+.L2268:
+.L2269:
+.L2249:
+.L2270:
+.L2271:
+.L2273:
+
+! 1662	      }
+! 1663	   }
+! 1664	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2272
+	nop
+
+	! block 8
+.L2274:
+.L2275:
+.L2276:
+.L2277:
+
+! 1665	      (*ctx->Exec.LoadMatrixf)( ctx, m );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1932],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L2278:
+.L2279:
+.L2272:
+.L2280:
+
+	! block 10
+.L2281:
+.L2282:
+.L2243:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LoadMatrixf,(.-gl_save_LoadMatrixf)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LoadName
+	.type	gl_save_LoadName,#function
+gl_save_LoadName:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2285:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2286:
+.L2288:
+
+! File dlist.c:
+! 1666	   }
+! 1667	}
+! 1668	
+! 1670	void gl_save_LoadName( GLcontext *ctx, GLuint name )
+! 1671	{
+! 1672	   Node *n = alloc_instruction( ctx, OPCODE_LOAD_NAME, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	61,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2289:
+.L2291:
+
+! 1673	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2290
+	nop
+
+	! block 4
+.L2292:
+.L2293:
+.L2294:
+.L2295:
+
+! 1674	      n[1].ui = name;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2296:
+.L2297:
+.L2290:
+.L2298:
+.L2299:
+.L2301:
+
+! 1675	   }
+! 1676	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2300
+	nop
+
+	! block 6
+.L2302:
+.L2303:
+.L2304:
+.L2305:
+
+! 1677	      (*ctx->Exec.LoadName)( ctx, name );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1936],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L2306:
+.L2307:
+.L2300:
+.L2308:
+
+	! block 8
+.L2309:
+.L2310:
+.L2284:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LoadName,(.-gl_save_LoadName)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_LogicOp
+	.type	gl_save_LogicOp,#function
+gl_save_LogicOp:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2313:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2314:
+.L2316:
+
+! File dlist.c:
+! 1678	   }
+! 1679	}
+! 1680	
+! 1682	void gl_save_LogicOp( GLcontext *ctx, GLenum opcode )
+! 1683	{
+! 1684	   Node *n = alloc_instruction( ctx, OPCODE_LOGIC_OP, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	62,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2317:
+.L2319:
+
+! 1685	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2318
+	nop
+
+	! block 4
+.L2320:
+.L2321:
+.L2322:
+.L2323:
+
+! 1686	      n[1].e = opcode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2324:
+.L2325:
+.L2318:
+.L2326:
+.L2327:
+.L2329:
+
+! 1687	   }
+! 1688	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2328
+	nop
+
+	! block 6
+.L2330:
+.L2331:
+.L2332:
+.L2333:
+
+! 1689	      (*ctx->Exec.LogicOp)( ctx, opcode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1940],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L2334:
+.L2335:
+.L2328:
+.L2336:
+
+	! block 8
+.L2337:
+.L2338:
+.L2312:
+	jmp	%i7+8
+	restore
+	.size	gl_save_LogicOp,(.-gl_save_LogicOp)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Map1f
+	.type	gl_save_Map1f,#function
+gl_save_Map1f:
+	save	%sp,-112,%sp
+
+	! block 1
+.L2341:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ldub	[%fp+99],%l0
+	stb	%l0,[%fp+99]
+
+	! block 2
+.L2342:
+.L2344:
+
+! File dlist.c:
+! 1690	   }
+! 1691	}
+! 1692	
+! 1694	void gl_save_Map1f( GLcontext *ctx,
+! 1695	                   GLenum target, GLfloat u1, GLfloat u2, GLint stride,
+! 1696			   GLint order, const GLfloat *points, GLboolean retain )
+! 1697	{
+! 1698	   Node *n = alloc_instruction( ctx, OPCODE_MAP1, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	63,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2345:
+.L2347:
+
+! 1699	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2346
+	nop
+
+	! block 4
+.L2348:
+.L2349:
+.L2350:
+.L2351:
+
+! 1700	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2352:
+
+! 1701	      n[2].f = u1;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2353:
+
+! 1702	      n[3].f = u2;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2354:
+
+! 1703	      n[4].i = stride;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L2355:
+
+! 1704	      n[5].i = order;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L2356:
+
+! 1705	      n[6].data = (void *) points;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L2357:
+.L2358:
+.L2346:
+.L2359:
+.L2360:
+.L2362:
+
+! 1706	   }
+! 1707	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2361
+	nop
+
+	! block 11
+.L2363:
+.L2364:
+.L2365:
+.L2366:
+
+! 1708	      (*ctx->Exec.Map1f)( ctx, target, u1, u2, stride, order, points, GL_TRUE );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1944],%l6
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	ld	[%fp+80],%f5
+	ld	[%fp+84],%l2
+	ld	[%fp+88],%l3
+	ld	[%fp+92],%l5
+	mov	1,%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	mov	%l2,%o4
+	mov	%l3,%o5
+	st	%l5,[%sp+92]
+	st	%l4,[%sp+96]
+	jmpl	%l6,%o7
+	nop
+
+	! block 12
+.L2367:
+.L2368:
+.L2361:
+.L2369:
+
+	! block 13
+.L2370:
+.L2371:
+.L2340:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Map1f,(.-gl_save_Map1f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Map2f
+	.type	gl_save_Map2f,#function
+gl_save_Map2f:
+	save	%sp,-128,%sp
+
+	! block 1
+.L2374:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+	ld	[%fp+104],%l0
+	st	%l0,[%fp+104]
+	ld	[%fp+108],%l0
+	st	%l0,[%fp+108]
+	ldub	[%fp+115],%l0
+	stb	%l0,[%fp+115]
+
+	! block 2
+.L2375:
+.L2377:
+
+! File dlist.c:
+! 1709	   }
+! 1710	}
+! 1711	
+! 1713	void gl_save_Map2f( GLcontext *ctx, GLenum target,
+! 1714	                    GLfloat u1, GLfloat u2, GLint ustride, GLint uorder,
+! 1715	                    GLfloat v1, GLfloat v2, GLint vstride, GLint vorder,
+! 1716	                    const GLfloat *points, GLboolean retain )
+! 1717	{
+! 1718	   Node *n = alloc_instruction( ctx, OPCODE_MAP2, 10 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	64,%o1
+	call	alloc_instruction
+	mov	10,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2378:
+.L2380:
+
+! 1719	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2379
+	nop
+
+	! block 4
+.L2381:
+.L2382:
+.L2383:
+.L2384:
+
+! 1720	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2385:
+
+! 1721	      n[2].f = u1;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2386:
+
+! 1722	      n[3].f = u2;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2387:
+
+! 1723	      n[4].f = v1;
+
+	ld	[%fp+92],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L2388:
+
+! 1724	      n[5].f = v2;
+
+	ld	[%fp+96],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L2389:
+
+! 1725	      n[6].i = ustride;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L2390:
+
+! 1726	      n[7].i = vstride;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L2391:
+
+! 1727	      n[8].i = uorder;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L2392:
+
+! 1728	      n[9].i = vorder;
+
+	ld	[%fp+104],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+36]
+
+	! block 13
+.L2393:
+
+! 1729	      n[10].data = (void *) points;
+
+	ld	[%fp+108],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+40]
+
+	! block 14
+.L2394:
+.L2395:
+.L2379:
+.L2396:
+.L2397:
+.L2399:
+
+! 1730	   }
+! 1731	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2398
+	nop
+
+	! block 15
+.L2400:
+.L2401:
+.L2402:
+.L2403:
+
+! 1732	      (*ctx->Exec.Map2f)( ctx, target,
+! 1733	                        u1, u2, ustride, uorder,
+! 1734	                        v1, v2, vstride, vorder, points, GL_TRUE );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1948],%i0
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	ld	[%fp+80],%f5
+	ld	[%fp+84],%l2
+	ld	[%fp+88],%l3
+	ld	[%fp+92],%f6
+	ld	[%fp+96],%f7
+	ld	[%fp+100],%l5
+	ld	[%fp+104],%l6
+	ld	[%fp+108],%l7
+	mov	1,%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	mov	%l2,%o4
+	mov	%l3,%o5
+	st	%f6,[%sp+92]
+	st	%f7,[%sp+96]
+	st	%l5,[%sp+100]
+	st	%l6,[%sp+104]
+	st	%l7,[%sp+108]
+	st	%l4,[%sp+112]
+	jmpl	%i0,%o7
+	nop
+
+	! block 16
+.L2404:
+.L2405:
+.L2398:
+.L2406:
+
+	! block 17
+.L2407:
+.L2408:
+.L2373:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Map2f,(.-gl_save_Map2f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_MapGrid1f
+	.type	gl_save_MapGrid1f,#function
+gl_save_MapGrid1f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2411:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L2412:
+.L2414:
+
+! File dlist.c:
+! 1735	   }
+! 1736	}
+! 1737	
+! 1739	void gl_save_MapGrid1f( GLcontext *ctx, GLint un, GLfloat u1, GLfloat u2 )
+! 1740	{
+! 1741	   Node *n = alloc_instruction( ctx, OPCODE_MAPGRID1, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	65,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2415:
+.L2417:
+
+! 1742	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2416
+	nop
+
+	! block 4
+.L2418:
+.L2419:
+.L2420:
+.L2421:
+
+! 1743	      n[1].i = un;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2422:
+
+! 1744	      n[2].f = u1;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2423:
+
+! 1745	      n[3].f = u2;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2424:
+.L2425:
+.L2416:
+.L2426:
+.L2427:
+.L2429:
+
+! 1746	   }
+! 1747	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2428
+	nop
+
+	! block 8
+.L2430:
+.L2431:
+.L2432:
+.L2433:
+
+! 1748	      (*ctx->Exec.MapGrid1f)( ctx, un, u1, u2 );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1952],%l2
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	ld	[%fp+80],%f5
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L2434:
+.L2435:
+.L2428:
+.L2436:
+
+	! block 10
+.L2437:
+.L2438:
+.L2410:
+	jmp	%i7+8
+	restore
+	.size	gl_save_MapGrid1f,(.-gl_save_MapGrid1f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_MapGrid2f
+	.type	gl_save_MapGrid2f,#function
+gl_save_MapGrid2f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2441:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+
+	! block 2
+.L2442:
+.L2444:
+
+! File dlist.c:
+! 1749	   }
+! 1750	}
+! 1751	
+! 1753	void gl_save_MapGrid2f( GLcontext *ctx, 
+! 1754	                        GLint un, GLfloat u1, GLfloat u2,
+! 1755			        GLint vn, GLfloat v1, GLfloat v2 )
+! 1756	{
+! 1757	   Node *n = alloc_instruction( ctx, OPCODE_MAPGRID2, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	66,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2445:
+.L2447:
+
+! 1758	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2446
+	nop
+
+	! block 4
+.L2448:
+.L2449:
+.L2450:
+.L2451:
+
+! 1759	      n[1].i = un;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2452:
+
+! 1760	      n[2].f = u1;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2453:
+
+! 1761	      n[3].f = u2;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2454:
+
+! 1762	      n[4].i = vn;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L2455:
+
+! 1763	      n[5].f = v1;
+
+	ld	[%fp+88],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L2456:
+
+! 1764	      n[6].f = v2;
+
+	ld	[%fp+92],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L2457:
+.L2458:
+.L2446:
+.L2459:
+.L2460:
+.L2462:
+
+! 1765	   }
+! 1766	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2461
+	nop
+
+	! block 11
+.L2463:
+.L2464:
+.L2465:
+.L2466:
+
+! 1767	      (*ctx->Exec.MapGrid2f)( ctx, un, u1, u2, vn, v1, v2 );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1956],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	ld	[%fp+80],%f5
+	ld	[%fp+84],%l2
+	ld	[%fp+88],%f6
+	ld	[%fp+92],%f7
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	mov	%l2,%o4
+	st	%f6,[%sp+88]
+	ld	[%sp+88],%o5
+	st	%f7,[%sp+92]
+	jmpl	%l3,%o7
+	nop
+
+	! block 12
+.L2467:
+.L2468:
+.L2461:
+.L2469:
+
+	! block 13
+.L2470:
+.L2471:
+.L2440:
+	jmp	%i7+8
+	restore
+	.size	gl_save_MapGrid2f,(.-gl_save_MapGrid2f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Materialfv
+	.type	gl_save_Materialfv,#function
+gl_save_Materialfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2474:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L2475:
+.L2477:
+
+! File dlist.c:
+! 1768	   }
+! 1769	}
+! 1770	
+! 1772	void gl_save_Materialfv( GLcontext *ctx,
+! 1773	                         GLenum face, GLenum pname, const GLfloat *params )
+! 1774	{
+! 1775	   Node *n = alloc_instruction( ctx, OPCODE_MATERIAL, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	67,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2478:
+.L2480:
+
+! 1776	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2479
+	nop
+
+	! block 4
+.L2481:
+.L2482:
+.L2483:
+.L2484:
+
+! 1777	      n[1].e = face;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2485:
+
+! 1778	      n[2].e = pname;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L2486:
+
+! 1779	      n[3].f = params[0];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2487:
+
+! 1780	      n[4].f = params[1];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L2488:
+
+! 1781	      n[5].f = params[2];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L2489:
+
+! 1782	      n[6].f = params[3];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L2490:
+.L2491:
+.L2479:
+.L2492:
+.L2493:
+.L2495:
+
+! 1783	   }
+! 1784	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2494
+	nop
+
+	! block 11
+.L2496:
+.L2497:
+.L2498:
+.L2499:
+
+! 1785	      (*ctx->Exec.Materialfv)( ctx, face, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1960],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 12
+.L2500:
+.L2501:
+.L2494:
+.L2502:
+
+	! block 13
+.L2503:
+.L2504:
+.L2473:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Materialfv,(.-gl_save_Materialfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_MatrixMode
+	.type	gl_save_MatrixMode,#function
+gl_save_MatrixMode:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2507:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2508:
+.L2510:
+
+! File dlist.c:
+! 1786	   }
+! 1787	}
+! 1788	
+! 1790	void gl_save_MatrixMode( GLcontext *ctx, GLenum mode )
+! 1791	{
+! 1792	   Node *n = alloc_instruction( ctx, OPCODE_MATRIX_MODE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	68,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2511:
+.L2513:
+
+! 1793	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2512
+	nop
+
+	! block 4
+.L2514:
+.L2515:
+.L2516:
+.L2517:
+
+! 1794	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2518:
+.L2519:
+.L2512:
+.L2520:
+.L2521:
+.L2523:
+
+! 1795	   }
+! 1796	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2522
+	nop
+
+	! block 6
+.L2524:
+.L2525:
+.L2526:
+.L2527:
+
+! 1797	      (*ctx->Exec.MatrixMode)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1964],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L2528:
+.L2529:
+.L2522:
+.L2530:
+
+	! block 8
+.L2531:
+.L2532:
+.L2506:
+	jmp	%i7+8
+	restore
+	.size	gl_save_MatrixMode,(.-gl_save_MatrixMode)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_MultMatrixf
+	.type	gl_save_MultMatrixf,#function
+gl_save_MultMatrixf:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2535:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2536:
+.L2538:
+
+! File dlist.c:
+! 1798	   }
+! 1799	}
+! 1800	
+! 1802	void gl_save_MultMatrixf( GLcontext *ctx, const GLfloat *m )
+! 1803	{
+! 1804	   Node *n = alloc_instruction( ctx, OPCODE_MULT_MATRIX, 16 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	69,%o1
+	call	alloc_instruction
+	mov	16,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2539:
+.L2541:
+
+! 1805	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2540
+	nop
+
+	! block 4
+.L2542:
+.L2543:
+.L2544:
+.L2545:
+.L2546:
+
+! 1806	      GLuint i;
+! 1807	      for (i=0;i<16;i++) {
+
+	st	%g0,[%fp-8]
+
+	! block 5
+.L2550:
+.L2547:
+.L2551:
+.L2552:
+.L2553:
+
+! 1808		 n[1+i].f = m[i];
+
+	ld	[%fp+72],%l2
+	ld	[%fp-8],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%f4
+	ld	[%fp-4],%l2
+	add	%l0,1,%l0
+	sll	%l0,2,%l1
+	st	%f4,[%l2+%l1]
+
+	! block 6
+.L2554:
+.L2555:
+.L2556:
+	ld	[%fp-8],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-8]
+	ld	[%fp-8],%l0
+	cmp	%l0,16
+	blu	.L2547
+	nop
+
+	! block 7
+.L2557:
+.L2549:
+.L2558:
+.L2559:
+.L2560:
+.L2540:
+.L2561:
+.L2562:
+.L2564:
+
+! 1809	      }
+! 1810	   }
+! 1811	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2563
+	nop
+
+	! block 8
+.L2565:
+.L2566:
+.L2567:
+.L2568:
+
+! 1812	      (*ctx->Exec.MultMatrixf)( ctx, m );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1968],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L2569:
+.L2570:
+.L2563:
+.L2571:
+
+	! block 10
+.L2572:
+.L2573:
+.L2534:
+	jmp	%i7+8
+	restore
+	.size	gl_save_MultMatrixf,(.-gl_save_MultMatrixf)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_NewList
+	.type	gl_save_NewList,#function
+gl_save_NewList:
+	save	%sp,-96,%sp
+
+	! block 1
+.L2576:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2577:
+.L2579:
+
+! File dlist.c:
+! 1813	   }
+! 1814	}
+! 1815	
+! 1817	void gl_save_NewList( GLcontext *ctx, GLuint list, GLenum mode )
+! 1818	{
+! 1819	   /* It's an error to call this function while building a display list */
+! 1820	   gl_error( ctx, GL_INVALID_OPERATION, "glNewList" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L2580),%l1
+	or	%l1,%lo(.L2580),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 3
+.L2581:
+.L2582:
+.L2575:
+	jmp	%i7+8
+	restore
+	.size	gl_save_NewList,(.-gl_save_NewList)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Normal3fv
+	.type	gl_save_Normal3fv,#function
+gl_save_Normal3fv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2585:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2586:
+.L2588:
+
+! File dlist.c:
+! 1821	}
+! 1822	
+! 1824	void gl_save_Normal3fv( GLcontext *ctx, const GLfloat norm[3] )
+! 1825	{
+! 1826	   Node *n = alloc_instruction( ctx, OPCODE_NORMAL, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	70,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2589:
+.L2591:
+
+! 1827	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2590
+	nop
+
+	! block 4
+.L2592:
+.L2593:
+.L2594:
+.L2595:
+
+! 1828	      n[1].f = norm[0];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2596:
+
+! 1829	      n[2].f = norm[1];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2597:
+
+! 1830	      n[3].f = norm[2];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2598:
+.L2599:
+.L2590:
+.L2600:
+.L2601:
+.L2603:
+
+! 1831	   }
+! 1832	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2602
+	nop
+
+	! block 8
+.L2604:
+.L2605:
+.L2606:
+.L2607:
+
+! 1833	      (*ctx->Exec.Normal3fv)( ctx, norm );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1980],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L2608:
+.L2609:
+.L2602:
+.L2610:
+
+	! block 10
+.L2611:
+.L2612:
+.L2584:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Normal3fv,(.-gl_save_Normal3fv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Normal3f
+	.type	gl_save_Normal3f,#function
+gl_save_Normal3f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2615:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L2616:
+.L2618:
+
+! File dlist.c:
+! 1834	   }
+! 1835	}
+! 1836	
+! 1838	void gl_save_Normal3f( GLcontext *ctx, GLfloat nx, GLfloat ny, GLfloat nz )
+! 1839	{
+! 1840	   Node *n = alloc_instruction( ctx, OPCODE_NORMAL, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	70,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2619:
+.L2621:
+
+! 1841	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2620
+	nop
+
+	! block 4
+.L2622:
+.L2623:
+.L2624:
+.L2625:
+
+! 1842	      n[1].f = nx;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2626:
+
+! 1843	      n[2].f = ny;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2627:
+
+! 1844	      n[3].f = nz;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2628:
+.L2629:
+.L2620:
+.L2630:
+.L2631:
+.L2633:
+
+! 1845	   }
+! 1846	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2632
+	nop
+
+	! block 8
+.L2634:
+.L2635:
+.L2636:
+.L2637:
+
+! 1847	      (*ctx->Exec.Normal3f)( ctx, nx, ny, nz );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1976],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l1,%o7
+	nop
+
+	! block 9
+.L2638:
+.L2639:
+.L2632:
+.L2640:
+
+	! block 10
+.L2641:
+.L2642:
+.L2614:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Normal3f,(.-gl_save_Normal3f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Ortho
+	.type	gl_save_Ortho,#function
+gl_save_Ortho:
+	save	%sp,-128,%sp
+
+	! block 1
+.L2645:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ldx	[%fp+96],%g1
+	srlx	%g1,32,%l0
+	or	%g0,%g1,%l1
+	st	%l0,[%fp+96]
+	st	%l1,[%fp+100]
+	ldx	[%fp+104],%g1
+	srlx	%g1,32,%l0
+	or	%g0,%g1,%l1
+	st	%l0,[%fp+104]
+	st	%l1,[%fp+108]
+	ldx	[%fp+112],%g1
+	srlx	%g1,32,%l0
+	or	%g0,%g1,%l1
+	st	%l0,[%fp+112]
+	st	%l1,[%fp+116]
+
+	! block 2
+.L2646:
+.L2648:
+
+! File dlist.c:
+! 1848	   }
+! 1849	}
+! 1850	
+! 1852	void gl_save_Ortho( GLcontext *ctx, GLdouble left, GLdouble right,
+! 1853	                    GLdouble bottom, GLdouble top,
+! 1854	                    GLdouble nearval, GLdouble farval )
+! 1855	{
+! 1856	   Node *n = alloc_instruction( ctx, OPCODE_ORTHO, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	71,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2649:
+.L2651:
+
+! 1857	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2650
+	nop
+
+	! block 4
+.L2652:
+.L2653:
+.L2654:
+.L2655:
+
+! 1858	      n[1].f = left;
+
+	ldd	[%fp+72],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2656:
+
+! 1859	      n[2].f = right;
+
+	ldd	[%fp+80],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2657:
+
+! 1860	      n[3].f = bottom;
+
+	ldd	[%fp+88],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2658:
+
+! 1861	      n[4].f = top;
+
+	ldd	[%fp+96],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L2659:
+
+! 1862	      n[5].f = nearval;
+
+	ldd	[%fp+104],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L2660:
+
+! 1863	      n[6].f = farval;
+
+	ldd	[%fp+112],%f4
+	fdtos	%f4,%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L2661:
+.L2662:
+.L2650:
+.L2663:
+.L2664:
+.L2666:
+
+! 1864	   }
+! 1865	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2665
+	nop
+
+	! block 11
+.L2667:
+.L2668:
+.L2669:
+.L2670:
+
+! 1866	      (*ctx->Exec.Ortho)( ctx, left, right, bottom, top, nearval, farval );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1988],%l1
+	ldd	[%fp+72],%f4
+	ldd	[%fp+80],%f6
+	ldd	[%fp+88],%f8
+	ldd	[%fp+96],%f10
+	ldd	[%fp+104],%f12
+	ldd	[%fp+112],%f14
+	mov	%l0,%o0
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	std	%f6,[%sp+88]
+	ld	[%sp+88],%o3
+	ld	[%sp+92],%o4
+	std	%f8,[%sp+88]
+	ld	[%sp+88],%o5
+	std	%f10,[%sp+96]
+	std	%f12,[%sp+104]
+	std	%f14,[%sp+112]
+	jmpl	%l1,%o7
+	nop
+
+	! block 12
+.L2671:
+.L2672:
+.L2665:
+.L2673:
+
+	! block 13
+.L2674:
+.L2675:
+.L2644:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Ortho,(.-gl_save_Ortho)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PixelMapfv
+	.type	gl_save_PixelMapfv,#function
+gl_save_PixelMapfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2678:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L2679:
+.L2681:
+
+! File dlist.c:
+! 1867	   }
+! 1868	}
+! 1869	
+! 1871	void gl_save_PixelMapfv( GLcontext *ctx,
+! 1872	                         GLenum map, GLint mapsize, const GLfloat *values )
+! 1873	{
+! 1874	   Node *n = alloc_instruction( ctx, OPCODE_PIXEL_MAP, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	73,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2682:
+.L2684:
+
+! 1875	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2683
+	nop
+
+	! block 4
+.L2685:
+.L2686:
+.L2687:
+.L2688:
+
+! 1876	      n[1].e = map;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2689:
+
+! 1877	      n[2].i = mapsize;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L2690:
+
+! 1878	      n[3].data  = (void *) malloc( mapsize * sizeof(GLfloat) );
+
+	ld	[%fp+76],%l0
+	sll	%l0,2,%l0
+	call	malloc
+	mov	%l0,%o0
+	ld	[%fp-4],%l0
+	st	%o0,[%l0+12]
+
+	! block 7
+.L2691:
+
+! 1879	      MEMCPY( n[3].data, (void *) values, mapsize * sizeof(GLfloat) );
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%l1
+	ld	[%fp+80],%l2
+	ld	[%fp+76],%l0
+	sll	%l0,2,%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	memcpy
+	mov	%l0,%o2
+
+	! block 8
+.L2692:
+.L2693:
+.L2683:
+.L2694:
+.L2695:
+.L2697:
+
+! 1880	   }
+! 1881	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2696
+	nop
+
+	! block 9
+.L2698:
+.L2699:
+.L2700:
+.L2701:
+
+! 1882	      (*ctx->Exec.PixelMapfv)( ctx, map, mapsize, values );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1996],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 10
+.L2702:
+.L2703:
+.L2696:
+.L2704:
+
+	! block 11
+.L2705:
+.L2706:
+.L2677:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PixelMapfv,(.-gl_save_PixelMapfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PixelTransferf
+	.type	gl_save_PixelTransferf,#function
+gl_save_PixelTransferf:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2709:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2710:
+.L2712:
+
+! File dlist.c:
+! 1883	   }
+! 1884	}
+! 1885	
+! 1887	void gl_save_PixelTransferf( GLcontext *ctx, GLenum pname, GLfloat param )
+! 1888	{
+! 1889	   Node *n = alloc_instruction( ctx, OPCODE_PIXEL_TRANSFER, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	74,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2713:
+.L2715:
+
+! 1890	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2714
+	nop
+
+	! block 4
+.L2716:
+.L2717:
+.L2718:
+.L2719:
+
+! 1891	      n[1].e = pname;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2720:
+
+! 1892	      n[2].f = param;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2721:
+.L2722:
+.L2714:
+.L2723:
+.L2724:
+.L2726:
+
+! 1893	   }
+! 1894	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2725
+	nop
+
+	! block 7
+.L2727:
+.L2728:
+.L2729:
+.L2730:
+
+! 1895	      (*ctx->Exec.PixelTransferf)( ctx, pname, param );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2004],%l2
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%f4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l2,%o7
+	nop
+
+	! block 8
+.L2731:
+.L2732:
+.L2725:
+.L2733:
+
+	! block 9
+.L2734:
+.L2735:
+.L2708:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PixelTransferf,(.-gl_save_PixelTransferf)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PixelZoom
+	.type	gl_save_PixelZoom,#function
+gl_save_PixelZoom:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2738:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2739:
+.L2741:
+
+! File dlist.c:
+! 1896	   }
+! 1897	}
+! 1898	
+! 1900	void gl_save_PixelZoom( GLcontext *ctx, GLfloat xfactor, GLfloat yfactor )
+! 1901	{
+! 1902	   Node *n = alloc_instruction( ctx, OPCODE_PIXEL_ZOOM, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	75,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2742:
+.L2744:
+
+! 1903	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2743
+	nop
+
+	! block 4
+.L2745:
+.L2746:
+.L2747:
+.L2748:
+
+! 1904	      n[1].f = xfactor;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2749:
+
+! 1905	      n[2].f = yfactor;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2750:
+.L2751:
+.L2743:
+.L2752:
+.L2753:
+.L2755:
+
+! 1906	   }
+! 1907	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2754
+	nop
+
+	! block 7
+.L2756:
+.L2757:
+.L2758:
+.L2759:
+
+! 1908	      (*ctx->Exec.PixelZoom)( ctx, xfactor, yfactor );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2008],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l1,%o7
+	nop
+
+	! block 8
+.L2760:
+.L2761:
+.L2754:
+.L2762:
+
+	! block 9
+.L2763:
+.L2764:
+.L2737:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PixelZoom,(.-gl_save_PixelZoom)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PointParameterfvEXT
+	.type	gl_save_PointParameterfvEXT,#function
+gl_save_PointParameterfvEXT:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2767:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2768:
+.L2770:
+
+! File dlist.c:
+! 1909	   }
+! 1910	}
+! 1911	
+! 1913	void gl_save_PointParameterfvEXT( GLcontext *ctx, GLenum pname,
+! 1914	                                  const GLfloat *params)
+! 1915	{
+! 1916	   Node *n = alloc_instruction( ctx, OPCODE_POINT_PARAMETERS, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	77,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2771:
+.L2773:
+
+! 1917	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2772
+	nop
+
+	! block 4
+.L2774:
+.L2775:
+.L2776:
+.L2777:
+
+! 1918	      n[1].e = pname;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2778:
+
+! 1919	      n[2].f = params[0];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2779:
+
+! 1920	      n[3].f = params[1];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L2780:
+
+! 1921	      n[4].f = params[2];
+
+	ld	[%fp+76],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L2781:
+.L2782:
+.L2772:
+.L2783:
+.L2784:
+.L2786:
+
+! 1922	   }
+! 1923	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2785
+	nop
+
+	! block 9
+.L2787:
+.L2788:
+.L2789:
+.L2790:
+
+! 1924	      (*ctx->Exec.PointParameterfvEXT)( ctx, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2012],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 10
+.L2791:
+.L2792:
+.L2785:
+.L2793:
+
+	! block 11
+.L2794:
+.L2795:
+.L2766:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PointParameterfvEXT,(.-gl_save_PointParameterfvEXT)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PointSize
+	.type	gl_save_PointSize,#function
+gl_save_PointSize:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2798:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2799:
+.L2801:
+
+! File dlist.c:
+! 1925	   }
+! 1926	}
+! 1927	
+! 1929	void gl_save_PointSize( GLcontext *ctx, GLfloat size )
+! 1930	{
+! 1931	   Node *n = alloc_instruction( ctx, OPCODE_POINT_SIZE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	76,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2802:
+.L2804:
+
+! 1932	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2803
+	nop
+
+	! block 4
+.L2805:
+.L2806:
+.L2807:
+.L2808:
+
+! 1933	      n[1].f = size;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2809:
+.L2810:
+.L2803:
+.L2811:
+.L2812:
+.L2814:
+
+! 1934	   }
+! 1935	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2813
+	nop
+
+	! block 6
+.L2815:
+.L2816:
+.L2817:
+.L2818:
+
+! 1936	      (*ctx->Exec.PointSize)( ctx, size );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2016],%l1
+	ld	[%fp+72],%f4
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L2819:
+.L2820:
+.L2813:
+.L2821:
+
+	! block 8
+.L2822:
+.L2823:
+.L2797:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PointSize,(.-gl_save_PointSize)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PolygonMode
+	.type	gl_save_PolygonMode,#function
+gl_save_PolygonMode:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2826:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2827:
+.L2829:
+
+! File dlist.c:
+! 1937	   }
+! 1938	}
+! 1939	
+! 1941	void gl_save_PolygonMode( GLcontext *ctx, GLenum face, GLenum mode )
+! 1942	{
+! 1943	   Node *n = alloc_instruction( ctx, OPCODE_POLYGON_MODE, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	78,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2830:
+.L2832:
+
+! 1944	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2831
+	nop
+
+	! block 4
+.L2833:
+.L2834:
+.L2835:
+.L2836:
+
+! 1945	      n[1].e = face;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L2837:
+
+! 1946	      n[2].e = mode;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L2838:
+.L2839:
+.L2831:
+.L2840:
+.L2841:
+.L2843:
+
+! 1947	   }
+! 1948	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2842
+	nop
+
+	! block 7
+.L2844:
+.L2845:
+.L2846:
+.L2847:
+
+! 1949	      (*ctx->Exec.PolygonMode)( ctx, face, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2020],%l3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	jmpl	%l3,%o7
+	nop
+
+	! block 8
+.L2848:
+.L2849:
+.L2842:
+.L2850:
+
+	! block 9
+.L2851:
+.L2852:
+.L2825:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PolygonMode,(.-gl_save_PolygonMode)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PolygonStipple
+	.type	gl_save_PolygonStipple,#function
+gl_save_PolygonStipple:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2855:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L2856:
+.L2858:
+
+! File dlist.c:
+! 1950	   }
+! 1951	}
+! 1952	
+! 1954	void gl_save_PolygonStipple( GLcontext *ctx, const GLubyte *mask )
+! 1955	{
+! 1956	   Node *n = alloc_instruction( ctx, OPCODE_POLYGON_STIPPLE, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	79,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2859:
+.L2861:
+
+! 1957	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2860
+	nop
+
+	! block 4
+.L2862:
+.L2863:
+.L2864:
+.L2865:
+
+! 1958	      void *data;
+! 1959	      n[1].data = malloc( 32 * 4 );
+
+	call	malloc
+	mov	128,%o0
+	ld	[%fp-4],%l0
+	st	%o0,[%l0+4]
+
+	! block 5
+.L2866:
+
+! 1960	      data = n[1].data;   /* This needed for Acorn compiler */
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	st	%l0,[%fp-8]
+
+	! block 6
+.L2867:
+
+! 1961	      MEMCPY( data, mask, 32 * 4 );
+
+	ld	[%fp-8],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	memcpy
+	mov	128,%o2
+
+	! block 7
+.L2868:
+.L2869:
+.L2860:
+.L2870:
+.L2871:
+.L2873:
+
+! 1962	   }
+! 1963	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2872
+	nop
+
+	! block 8
+.L2874:
+.L2875:
+.L2876:
+.L2877:
+
+! 1964	      (*ctx->Exec.PolygonStipple)( ctx, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2028],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L2878:
+.L2879:
+.L2872:
+.L2880:
+
+	! block 10
+.L2881:
+.L2882:
+.L2854:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PolygonStipple,(.-gl_save_PolygonStipple)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PolygonOffset
+	.type	gl_save_PolygonOffset,#function
+gl_save_PolygonOffset:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2885:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L2886:
+.L2888:
+
+! File dlist.c:
+! 1965	   }
+! 1966	}
+! 1967	
+! 1969	void gl_save_PolygonOffset( GLcontext *ctx, GLfloat factor, GLfloat units )
+! 1970	{
+! 1971	   Node *n = alloc_instruction( ctx, OPCODE_POLYGON_OFFSET, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	80,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L2889:
+.L2891:
+
+! 1972	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L2890
+	nop
+
+	! block 4
+.L2892:
+.L2893:
+.L2894:
+.L2895:
+
+! 1973	      n[1].f = factor;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L2896:
+
+! 1974	      n[2].f = units;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L2897:
+.L2898:
+.L2890:
+.L2899:
+.L2900:
+.L2902:
+
+! 1975	   }
+! 1976	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2901
+	nop
+
+	! block 7
+.L2903:
+.L2904:
+.L2905:
+.L2906:
+
+! 1977	      (*ctx->Exec.PolygonOffset)( ctx, factor, units );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2024],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l1,%o7
+	nop
+
+	! block 8
+.L2907:
+.L2908:
+.L2901:
+.L2909:
+
+	! block 9
+.L2910:
+.L2911:
+.L2884:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PolygonOffset,(.-gl_save_PolygonOffset)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PopAttrib
+	.type	gl_save_PopAttrib,#function
+gl_save_PopAttrib:
+	save	%sp,-96,%sp
+
+	! block 1
+.L2914:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L2915:
+.L2917:
+
+! File dlist.c:
+! 1978	   }
+! 1979	}
+! 1980	
+! 1982	void gl_save_PopAttrib( GLcontext *ctx )
+! 1983	{
+! 1984	   (void) alloc_instruction( ctx, OPCODE_POP_ATTRIB, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	81,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L2918:
+.L2920:
+
+! 1985	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2919
+	nop
+
+	! block 4
+.L2921:
+.L2922:
+.L2923:
+.L2924:
+
+! 1986	      (*ctx->Exec.PopAttrib)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2032],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L2925:
+.L2926:
+.L2919:
+.L2927:
+
+	! block 6
+.L2928:
+.L2929:
+.L2913:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PopAttrib,(.-gl_save_PopAttrib)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PopMatrix
+	.type	gl_save_PopMatrix,#function
+gl_save_PopMatrix:
+	save	%sp,-96,%sp
+
+	! block 1
+.L2932:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L2933:
+.L2935:
+
+! File dlist.c:
+! 1987	   }
+! 1988	}
+! 1989	
+! 1991	void gl_save_PopMatrix( GLcontext *ctx )
+! 1992	{
+! 1993	   (void) alloc_instruction( ctx, OPCODE_POP_MATRIX, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	82,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L2936:
+.L2938:
+
+! 1994	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2937
+	nop
+
+	! block 4
+.L2939:
+.L2940:
+.L2941:
+.L2942:
+
+! 1995	      (*ctx->Exec.PopMatrix)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2040],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L2943:
+.L2944:
+.L2937:
+.L2945:
+
+	! block 6
+.L2946:
+.L2947:
+.L2931:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PopMatrix,(.-gl_save_PopMatrix)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PopName
+	.type	gl_save_PopName,#function
+gl_save_PopName:
+	save	%sp,-96,%sp
+
+	! block 1
+.L2950:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L2951:
+.L2953:
+
+! File dlist.c:
+! 1996	   }
+! 1997	}
+! 1998	
+! 2000	void gl_save_PopName( GLcontext *ctx )
+! 2001	{
+! 2002	   (void) alloc_instruction( ctx, OPCODE_POP_NAME, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	83,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L2954:
+.L2956:
+
+! 2003	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2955
+	nop
+
+	! block 4
+.L2957:
+.L2958:
+.L2959:
+.L2960:
+
+! 2004	      (*ctx->Exec.PopName)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2044],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L2961:
+.L2962:
+.L2955:
+.L2963:
+
+	! block 6
+.L2964:
+.L2965:
+.L2949:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PopName,(.-gl_save_PopName)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PrioritizeTextures
+	.type	gl_save_PrioritizeTextures,#function
+gl_save_PrioritizeTextures:
+	save	%sp,-104,%sp
+
+	! block 1
+.L2968:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L2969:
+.L2971:
+.L2972:
+
+! File dlist.c:
+! 2005	   }
+! 2006	}
+! 2007	
+! 2009	void gl_save_PrioritizeTextures( GLcontext *ctx,
+! 2010	                                 GLsizei num, const GLuint *textures,
+! 2011	                                 const GLclampf *priorities )
+! 2012	{
+! 2013	   GLint i;
+! 2014	
+! 2015	   for (i=0;i<num;i++) {
+
+	ld	[%fp+72],%l0
+	cmp	%g0,%l0
+	bge	.L2975
+	st	%g0,[%fp-4]
+
+	! block 3
+.L2976:
+.L2973:
+.L2977:
+.L2978:
+.L2979:
+
+! 2016	      Node *n = alloc_instruction( ctx,  OPCODE_PRIORITIZE_TEXTURE, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	84,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-8]
+
+	! block 4
+.L2980:
+.L2982:
+
+! 2017	      if (n) {
+
+	ld	[%fp-8],%l0
+	cmp	%l0,%g0
+	be	.L2981
+	nop
+
+	! block 5
+.L2983:
+.L2984:
+.L2985:
+.L2986:
+
+! 2018	         n[1].ui = textures[i];
+
+	ld	[%fp+76],%l2
+	ld	[%fp-4],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%l1
+	ld	[%fp-8],%l0
+	st	%l1,[%l0+4]
+
+	! block 6
+.L2987:
+
+! 2019	         n[2].f = priorities[i];
+
+	ld	[%fp+80],%l2
+	ld	[%fp-4],%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%f4
+	ld	[%fp-8],%l0
+	st	%f4,[%l0+8]
+
+	! block 7
+.L2988:
+.L2989:
+.L2981:
+.L2990:
+.L2991:
+.L2992:
+.L2993:
+	ld	[%fp-4],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-4]
+	ld	[%fp-4],%l1
+	ld	[%fp+72],%l0
+	cmp	%l1,%l0
+	bl	.L2973
+	nop
+
+	! block 8
+.L2994:
+.L2975:
+.L2995:
+.L2996:
+.L2998:
+
+! 2020	      }
+! 2021	   }
+! 2022	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L2997
+	nop
+
+	! block 9
+.L2999:
+.L3000:
+.L3001:
+.L3002:
+
+! 2023	      (*ctx->Exec.PrioritizeTextures)( ctx, num, textures, priorities );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1824],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 10
+.L3003:
+.L3004:
+.L2997:
+.L3005:
+
+	! block 11
+.L3006:
+.L3007:
+.L2967:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PrioritizeTextures,(.-gl_save_PrioritizeTextures)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PushAttrib
+	.type	gl_save_PushAttrib,#function
+gl_save_PushAttrib:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3010:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3011:
+.L3013:
+
+! File dlist.c:
+! 2024	   }
+! 2025	}
+! 2026	
+! 2028	void gl_save_PushAttrib( GLcontext *ctx, GLbitfield mask )
+! 2029	{
+! 2030	   Node *n = alloc_instruction( ctx, OPCODE_PUSH_ATTRIB, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	85,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3014:
+.L3016:
+
+! 2031	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3015
+	nop
+
+	! block 4
+.L3017:
+.L3018:
+.L3019:
+.L3020:
+
+! 2032	      n[1].bf = mask;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3021:
+.L3022:
+.L3015:
+.L3023:
+.L3024:
+.L3026:
+
+! 2033	   }
+! 2034	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3025
+	nop
+
+	! block 6
+.L3027:
+.L3028:
+.L3029:
+.L3030:
+
+! 2035	      (*ctx->Exec.PushAttrib)( ctx, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2048],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L3031:
+.L3032:
+.L3025:
+.L3033:
+
+	! block 8
+.L3034:
+.L3035:
+.L3009:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PushAttrib,(.-gl_save_PushAttrib)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PushMatrix
+	.type	gl_save_PushMatrix,#function
+gl_save_PushMatrix:
+	save	%sp,-96,%sp
+
+	! block 1
+.L3038:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L3039:
+.L3041:
+
+! File dlist.c:
+! 2036	   }
+! 2037	}
+! 2038	
+! 2040	void gl_save_PushMatrix( GLcontext *ctx )
+! 2041	{
+! 2042	   (void) alloc_instruction( ctx, OPCODE_PUSH_MATRIX, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	86,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+
+	! block 3
+.L3042:
+.L3044:
+
+! 2043	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3043
+	nop
+
+	! block 4
+.L3045:
+.L3046:
+.L3047:
+.L3048:
+
+! 2044	      (*ctx->Exec.PushMatrix)( ctx );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2056],%l1
+	mov	%l0,%o0
+	jmpl	%l1,%o7
+	nop
+
+	! block 5
+.L3049:
+.L3050:
+.L3043:
+.L3051:
+
+	! block 6
+.L3052:
+.L3053:
+.L3037:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PushMatrix,(.-gl_save_PushMatrix)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PushName
+	.type	gl_save_PushName,#function
+gl_save_PushName:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3056:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3057:
+.L3059:
+
+! File dlist.c:
+! 2045	   }
+! 2046	}
+! 2047	
+! 2049	void gl_save_PushName( GLcontext *ctx, GLuint name )
+! 2050	{
+! 2051	   Node *n = alloc_instruction( ctx, OPCODE_PUSH_NAME, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	87,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3060:
+.L3062:
+
+! 2052	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3061
+	nop
+
+	! block 4
+.L3063:
+.L3064:
+.L3065:
+.L3066:
+
+! 2053	      n[1].ui = name;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3067:
+.L3068:
+.L3061:
+.L3069:
+.L3070:
+.L3072:
+
+! 2054	   }
+! 2055	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3071
+	nop
+
+	! block 6
+.L3073:
+.L3074:
+.L3075:
+.L3076:
+
+! 2056	      (*ctx->Exec.PushName)( ctx, name );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2060],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L3077:
+.L3078:
+.L3071:
+.L3079:
+
+	! block 8
+.L3080:
+.L3081:
+.L3055:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PushName,(.-gl_save_PushName)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_RasterPos4f
+	.type	gl_save_RasterPos4f,#function
+gl_save_RasterPos4f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3084:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3085:
+.L3087:
+
+! File dlist.c:
+! 2057	   }
+! 2058	}
+! 2059	
+! 2061	void gl_save_RasterPos4f( GLcontext *ctx,
+! 2062	                          GLfloat x, GLfloat y, GLfloat z, GLfloat w )
+! 2063	{
+! 2064	   Node *n = alloc_instruction( ctx, OPCODE_RASTER_POS, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	88,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3088:
+.L3090:
+
+! 2065	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3089
+	nop
+
+	! block 4
+.L3091:
+.L3092:
+.L3093:
+.L3094:
+
+! 2066	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3095:
+
+! 2067	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3096:
+
+! 2068	      n[3].f = z;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3097:
+
+! 2069	      n[4].f = w;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3098:
+.L3099:
+.L3089:
+.L3100:
+.L3101:
+.L3103:
+
+! 2070	   }
+! 2071	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3102
+	nop
+
+	! block 9
+.L3104:
+.L3105:
+.L3106:
+.L3107:
+
+! 2072	      (*ctx->Exec.RasterPos4f)( ctx, x, y, z, w );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2064],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L3108:
+.L3109:
+.L3102:
+.L3110:
+
+	! block 11
+.L3111:
+.L3112:
+.L3083:
+	jmp	%i7+8
+	restore
+	.size	gl_save_RasterPos4f,(.-gl_save_RasterPos4f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_PassThrough
+	.type	gl_save_PassThrough,#function
+gl_save_PassThrough:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3115:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3116:
+.L3118:
+
+! File dlist.c:
+! 2073	   }
+! 2074	}
+! 2075	
+! 2077	void gl_save_PassThrough( GLcontext *ctx, GLfloat token )
+! 2078	{
+! 2079	   Node *n = alloc_instruction( ctx, OPCODE_PASSTHROUGH, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	72,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3119:
+.L3121:
+
+! 2080	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3120
+	nop
+
+	! block 4
+.L3122:
+.L3123:
+.L3124:
+.L3125:
+
+! 2081	      n[1].f = token;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3126:
+.L3127:
+.L3120:
+.L3128:
+.L3129:
+.L3131:
+
+! 2082	   }
+! 2083	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3130
+	nop
+
+	! block 6
+.L3132:
+.L3133:
+.L3134:
+.L3135:
+
+! 2084	      (*ctx->Exec.PassThrough)( ctx, token );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+1992],%l1
+	ld	[%fp+72],%f4
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	jmpl	%l1,%o7
+	nop
+
+	! block 7
+.L3136:
+.L3137:
+.L3130:
+.L3138:
+
+	! block 8
+.L3139:
+.L3140:
+.L3114:
+	jmp	%i7+8
+	restore
+	.size	gl_save_PassThrough,(.-gl_save_PassThrough)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ReadBuffer
+	.type	gl_save_ReadBuffer,#function
+gl_save_ReadBuffer:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3143:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3144:
+.L3146:
+
+! File dlist.c:
+! 2085	   }
+! 2086	}
+! 2087	
+! 2089	void gl_save_ReadBuffer( GLcontext *ctx, GLenum mode )
+! 2090	{
+! 2091	   Node *n = alloc_instruction( ctx, OPCODE_READ_BUFFER, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	90,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3147:
+.L3149:
+
+! 2092	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3148
+	nop
+
+	! block 4
+.L3150:
+.L3151:
+.L3152:
+.L3153:
+
+! 2093	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3154:
+.L3155:
+.L3148:
+.L3156:
+.L3157:
+.L3159:
+
+! 2094	   }
+! 2095	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3158
+	nop
+
+	! block 6
+.L3160:
+.L3161:
+.L3162:
+.L3163:
+
+! 2096	      (*ctx->Exec.ReadBuffer)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2068],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L3164:
+.L3165:
+.L3158:
+.L3166:
+
+	! block 8
+.L3167:
+.L3168:
+.L3142:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ReadBuffer,(.-gl_save_ReadBuffer)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Rectf
+	.type	gl_save_Rectf,#function
+gl_save_Rectf:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3171:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3172:
+.L3174:
+
+! File dlist.c:
+! 2097	   }
+! 2098	}
+! 2099	
+! 2101	void gl_save_Rectf( GLcontext *ctx,
+! 2102	                    GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
+! 2103	{
+! 2104	   Node *n = alloc_instruction( ctx, OPCODE_RECTF, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	89,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3175:
+.L3177:
+
+! 2105	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3176
+	nop
+
+	! block 4
+.L3178:
+.L3179:
+.L3180:
+.L3181:
+
+! 2106	      n[1].f = x1;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3182:
+
+! 2107	      n[2].f = y1;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3183:
+
+! 2108	      n[3].f = x2;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3184:
+
+! 2109	      n[4].f = y2;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3185:
+.L3186:
+.L3176:
+.L3187:
+.L3188:
+.L3190:
+
+! 2110	   }
+! 2111	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3189
+	nop
+
+	! block 9
+.L3191:
+.L3192:
+.L3193:
+.L3194:
+
+! 2112	      (*ctx->Exec.Rectf)( ctx, x1, y1, x2, y2 );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2076],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L3195:
+.L3196:
+.L3189:
+.L3197:
+
+	! block 11
+.L3198:
+.L3199:
+.L3170:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Rectf,(.-gl_save_Rectf)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Rotatef
+	.type	gl_save_Rotatef,#function
+gl_save_Rotatef:
+	save	%sp,-160,%sp
+
+	! block 1
+.L3202:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3203:
+.L3205:
+
+! File dlist.c:
+! 2113	   }
+! 2114	}
+! 2115	
+! 2117	void gl_save_Rotatef( GLcontext *ctx, GLfloat angle,
+! 2118	                      GLfloat x, GLfloat y, GLfloat z )
+! 2119	{
+! 2120	   GLfloat m[16];
+! 2121	   gl_rotation_matrix( angle, x, y, z, m );
+
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	add	%fp,-64,%l0
+	st	%f4,[%sp+68]
+	ld	[%sp+68],%o0
+	st	%f5,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f6,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f7,[%sp+80]
+	ld	[%sp+80],%o3
+	call	gl_rotation_matrix
+	mov	%l0,%o4
+
+	! block 3
+.L3206:
+
+! 2122	   gl_save_MultMatrixf( ctx, m );  /* save and maybe execute */
+
+	ld	[%fp+68],%l0
+	add	%fp,-64,%l1
+	mov	%l0,%o0
+	call	gl_save_MultMatrixf
+	mov	%l1,%o1
+
+	! block 4
+.L3207:
+.L3208:
+.L3201:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Rotatef,(.-gl_save_Rotatef)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Scalef
+	.type	gl_save_Scalef,#function
+gl_save_Scalef:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3211:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3212:
+.L3214:
+
+! File dlist.c:
+! 2123	}
+! 2124	
+! 2126	void gl_save_Scalef( GLcontext *ctx, GLfloat x, GLfloat y, GLfloat z )
+! 2127	{
+! 2128	   Node *n = alloc_instruction( ctx, OPCODE_SCALE, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	91,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3215:
+.L3217:
+
+! 2129	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3216
+	nop
+
+	! block 4
+.L3218:
+.L3219:
+.L3220:
+.L3221:
+
+! 2130	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3222:
+
+! 2131	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3223:
+
+! 2132	      n[3].f = z;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3224:
+.L3225:
+.L3216:
+.L3226:
+.L3227:
+.L3229:
+
+! 2133	   }
+! 2134	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3228
+	nop
+
+	! block 8
+.L3230:
+.L3231:
+.L3232:
+.L3233:
+
+! 2135	      (*ctx->Exec.Scalef)( ctx, x, y, z );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2088],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l1,%o7
+	nop
+
+	! block 9
+.L3234:
+.L3235:
+.L3228:
+.L3236:
+
+	! block 10
+.L3237:
+.L3238:
+.L3210:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Scalef,(.-gl_save_Scalef)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Scissor
+	.type	gl_save_Scissor,#function
+gl_save_Scissor:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3241:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3242:
+.L3244:
+
+! File dlist.c:
+! 2136	   }
+! 2137	}
+! 2138	
+! 2140	void gl_save_Scissor( GLcontext *ctx,
+! 2141	                      GLint x, GLint y, GLsizei width, GLsizei height )
+! 2142	{
+! 2143	   Node *n = alloc_instruction( ctx, OPCODE_SCISSOR, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	92,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3245:
+.L3247:
+
+! 2144	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3246
+	nop
+
+	! block 4
+.L3248:
+.L3249:
+.L3250:
+.L3251:
+
+! 2145	      n[1].i = x;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3252:
+
+! 2146	      n[2].i = y;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3253:
+
+! 2147	      n[3].i = width;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3254:
+
+! 2148	      n[4].i = height;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3255:
+.L3256:
+.L3246:
+.L3257:
+.L3258:
+.L3260:
+
+! 2149	   }
+! 2150	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3259
+	nop
+
+	! block 9
+.L3261:
+.L3262:
+.L3263:
+.L3264:
+
+! 2151	      (*ctx->Exec.Scissor)( ctx, x, y, width, height );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2092],%l5
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l4,%o4
+	jmpl	%l5,%o7
+	nop
+
+	! block 10
+.L3265:
+.L3266:
+.L3259:
+.L3267:
+
+	! block 11
+.L3268:
+.L3269:
+.L3240:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Scissor,(.-gl_save_Scissor)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_ShadeModel
+	.type	gl_save_ShadeModel,#function
+gl_save_ShadeModel:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3272:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3273:
+.L3275:
+
+! File dlist.c:
+! 2152	   }
+! 2153	}
+! 2154	
+! 2156	void gl_save_ShadeModel( GLcontext *ctx, GLenum mode )
+! 2157	{
+! 2158	   Node *n = alloc_instruction( ctx, OPCODE_SHADE_MODEL, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	93,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3276:
+.L3278:
+
+! 2159	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3277
+	nop
+
+	! block 4
+.L3279:
+.L3280:
+.L3281:
+.L3282:
+
+! 2160	      n[1].e = mode;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3283:
+.L3284:
+.L3277:
+.L3285:
+.L3286:
+.L3288:
+
+! 2161	   }
+! 2162	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3287
+	nop
+
+	! block 6
+.L3289:
+.L3290:
+.L3291:
+.L3292:
+
+! 2163	      (*ctx->Exec.ShadeModel)( ctx, mode );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2100],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L3293:
+.L3294:
+.L3287:
+.L3295:
+
+	! block 8
+.L3296:
+.L3297:
+.L3271:
+	jmp	%i7+8
+	restore
+	.size	gl_save_ShadeModel,(.-gl_save_ShadeModel)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_StencilFunc
+	.type	gl_save_StencilFunc,#function
+gl_save_StencilFunc:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3300:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3301:
+.L3303:
+
+! File dlist.c:
+! 2164	   }
+! 2165	}
+! 2166	
+! 2168	void gl_save_StencilFunc( GLcontext *ctx, GLenum func, GLint ref, GLuint mask )
+! 2169	{
+! 2170	   Node *n = alloc_instruction( ctx, OPCODE_STENCIL_FUNC, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	94,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3304:
+.L3306:
+
+! 2171	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3305
+	nop
+
+	! block 4
+.L3307:
+.L3308:
+.L3309:
+.L3310:
+
+! 2172	      n[1].e = func;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3311:
+
+! 2173	      n[2].i = ref;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3312:
+
+! 2174	      n[3].ui = mask;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3313:
+.L3314:
+.L3305:
+.L3315:
+.L3316:
+.L3318:
+
+! 2175	   }
+! 2176	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3317
+	nop
+
+	! block 8
+.L3319:
+.L3320:
+.L3321:
+.L3322:
+
+! 2177	      (*ctx->Exec.StencilFunc)( ctx, func, ref, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2104],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 9
+.L3323:
+.L3324:
+.L3317:
+.L3325:
+
+	! block 10
+.L3326:
+.L3327:
+.L3299:
+	jmp	%i7+8
+	restore
+	.size	gl_save_StencilFunc,(.-gl_save_StencilFunc)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_StencilMask
+	.type	gl_save_StencilMask,#function
+gl_save_StencilMask:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3330:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3331:
+.L3333:
+
+! File dlist.c:
+! 2178	   }
+! 2179	}
+! 2180	
+! 2182	void gl_save_StencilMask( GLcontext *ctx, GLuint mask )
+! 2183	{
+! 2184	   Node *n = alloc_instruction( ctx, OPCODE_STENCIL_MASK, 1 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	95,%o1
+	call	alloc_instruction
+	mov	1,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3334:
+.L3336:
+
+! 2185	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3335
+	nop
+
+	! block 4
+.L3337:
+.L3338:
+.L3339:
+.L3340:
+
+! 2186	      n[1].ui = mask;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3341:
+.L3342:
+.L3335:
+.L3343:
+.L3344:
+.L3346:
+
+! 2187	   }
+! 2188	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3345
+	nop
+
+	! block 6
+.L3347:
+.L3348:
+.L3349:
+.L3350:
+
+! 2189	      (*ctx->Exec.StencilMask)( ctx, mask );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2108],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 7
+.L3351:
+.L3352:
+.L3345:
+.L3353:
+
+	! block 8
+.L3354:
+.L3355:
+.L3329:
+	jmp	%i7+8
+	restore
+	.size	gl_save_StencilMask,(.-gl_save_StencilMask)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_StencilOp
+	.type	gl_save_StencilOp,#function
+gl_save_StencilOp:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3358:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3359:
+.L3361:
+
+! File dlist.c:
+! 2190	   }
+! 2191	}
+! 2192	
+! 2194	void gl_save_StencilOp( GLcontext *ctx,
+! 2195	                        GLenum fail, GLenum zfail, GLenum zpass )
+! 2196	{
+! 2197	   Node *n = alloc_instruction( ctx, OPCODE_STENCIL_OP, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	96,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3362:
+.L3364:
+
+! 2198	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3363
+	nop
+
+	! block 4
+.L3365:
+.L3366:
+.L3367:
+.L3368:
+
+! 2199	      n[1].e = fail;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3369:
+
+! 2200	      n[2].e = zfail;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3370:
+
+! 2201	      n[3].e = zpass;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3371:
+.L3372:
+.L3363:
+.L3373:
+.L3374:
+.L3376:
+
+! 2202	   }
+! 2203	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3375
+	nop
+
+	! block 8
+.L3377:
+.L3378:
+.L3379:
+.L3380:
+
+! 2204	      (*ctx->Exec.StencilOp)( ctx, fail, zfail, zpass );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2112],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 9
+.L3381:
+.L3382:
+.L3375:
+.L3383:
+
+	! block 10
+.L3384:
+.L3385:
+.L3357:
+	jmp	%i7+8
+	restore
+	.size	gl_save_StencilOp,(.-gl_save_StencilOp)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexCoord2f
+	.type	gl_save_TexCoord2f,#function
+gl_save_TexCoord2f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3388:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L3389:
+.L3391:
+
+! File dlist.c:
+! 2205	   }
+! 2206	}
+! 2207	
+! 2209	void gl_save_TexCoord2f( GLcontext *ctx, GLfloat s, GLfloat t )
+! 2210	{
+! 2211	   Node *n = alloc_instruction( ctx, OPCODE_TEXCOORD2, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	97,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3392:
+.L3394:
+
+! 2212	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3393
+	nop
+
+	! block 4
+.L3395:
+.L3396:
+.L3397:
+.L3398:
+
+! 2213	      n[1].f = s;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3399:
+
+! 2214	      n[2].f = t;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3400:
+.L3401:
+.L3393:
+.L3402:
+.L3403:
+.L3405:
+
+! 2215	   }
+! 2216	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3404
+	nop
+
+	! block 7
+.L3406:
+.L3407:
+.L3408:
+.L3409:
+
+! 2217	      (*ctx->Exec.TexCoord2f)( ctx, s, t );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2116],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l1,%o7
+	nop
+
+	! block 8
+.L3410:
+.L3411:
+.L3404:
+.L3412:
+
+	! block 9
+.L3413:
+.L3414:
+.L3387:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexCoord2f,(.-gl_save_TexCoord2f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexCoord4f
+	.type	gl_save_TexCoord4f,#function
+gl_save_TexCoord4f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3417:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3418:
+.L3420:
+
+! File dlist.c:
+! 2218	   }
+! 2219	}
+! 2220	
+! 2222	void gl_save_TexCoord4f( GLcontext *ctx, GLfloat s, GLfloat t,
+! 2223	                                         GLfloat r, GLfloat q )
+! 2224	{
+! 2225	   Node *n = alloc_instruction( ctx, OPCODE_TEXCOORD4, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	98,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3421:
+.L3423:
+
+! 2226	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3422
+	nop
+
+	! block 4
+.L3424:
+.L3425:
+.L3426:
+.L3427:
+
+! 2227	      n[1].f = s;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3428:
+
+! 2228	      n[2].f = t;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3429:
+
+! 2229	      n[3].f = r;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3430:
+
+! 2230	      n[4].f = q;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3431:
+.L3432:
+.L3422:
+.L3433:
+.L3434:
+.L3436:
+
+! 2231	   }
+! 2232	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3435
+	nop
+
+	! block 9
+.L3437:
+.L3438:
+.L3439:
+.L3440:
+
+! 2233	      (*ctx->Exec.TexCoord4f)( ctx, s, t, r, q );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2120],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L3441:
+.L3442:
+.L3435:
+.L3443:
+
+	! block 11
+.L3444:
+.L3445:
+.L3416:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexCoord4f,(.-gl_save_TexCoord4f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexEnvfv
+	.type	gl_save_TexEnvfv,#function
+gl_save_TexEnvfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3448:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3449:
+.L3451:
+
+! File dlist.c:
+! 2234	   }
+! 2235	}
+! 2236	
+! 2238	void gl_save_TexEnvfv( GLcontext *ctx,
+! 2239	                       GLenum target, GLenum pname, const GLfloat *params )
+! 2240	{
+! 2241	   Node *n = alloc_instruction( ctx, OPCODE_TEXENV, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	99,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3452:
+.L3454:
+
+! 2242	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3453
+	nop
+
+	! block 4
+.L3455:
+.L3456:
+.L3457:
+.L3458:
+
+! 2243	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3459:
+
+! 2244	      n[2].e = pname;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3460:
+
+! 2245	      n[3].f = params[0];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3461:
+
+! 2246	      n[4].f = params[1];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3462:
+
+! 2247	      n[5].f = params[2];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L3463:
+
+! 2248	      n[6].f = params[3];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L3464:
+.L3465:
+.L3453:
+.L3466:
+.L3467:
+.L3469:
+
+! 2249	   }
+! 2250	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3468
+	nop
+
+	! block 11
+.L3470:
+.L3471:
+.L3472:
+.L3473:
+
+! 2251	      (*ctx->Exec.TexEnvfv)( ctx, target, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2128],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 12
+.L3474:
+.L3475:
+.L3468:
+.L3476:
+
+	! block 13
+.L3477:
+.L3478:
+.L3447:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexEnvfv,(.-gl_save_TexEnvfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexGenfv
+	.type	gl_save_TexGenfv,#function
+gl_save_TexGenfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3481:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3482:
+.L3484:
+
+! File dlist.c:
+! 2252	   }
+! 2253	}
+! 2254	
+! 2256	void gl_save_TexGenfv( GLcontext *ctx,
+! 2257	                       GLenum coord, GLenum pname, const GLfloat *params )
+! 2258	{
+! 2259	   Node *n = alloc_instruction( ctx, OPCODE_TEXGEN, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	100,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3485:
+.L3487:
+
+! 2260	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3486
+	nop
+
+	! block 4
+.L3488:
+.L3489:
+.L3490:
+.L3491:
+
+! 2261	      n[1].e = coord;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3492:
+
+! 2262	      n[2].e = pname;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3493:
+
+! 2263	      n[3].f = params[0];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3494:
+
+! 2264	      n[4].f = params[1];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3495:
+
+! 2265	      n[5].f = params[2];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L3496:
+
+! 2266	      n[6].f = params[3];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L3497:
+.L3498:
+.L3486:
+.L3499:
+.L3500:
+.L3502:
+
+! 2267	   }
+! 2268	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3501
+	nop
+
+	! block 11
+.L3503:
+.L3504:
+.L3505:
+.L3506:
+
+! 2269	      (*ctx->Exec.TexGenfv)( ctx, coord, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2132],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 12
+.L3507:
+.L3508:
+.L3501:
+.L3509:
+
+	! block 13
+.L3510:
+.L3511:
+.L3480:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexGenfv,(.-gl_save_TexGenfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexParameterfv
+	.type	gl_save_TexParameterfv,#function
+gl_save_TexParameterfv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3514:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3515:
+.L3517:
+
+! File dlist.c:
+! 2270	   }
+! 2271	}
+! 2272	
+! 2274	void gl_save_TexParameterfv( GLcontext *ctx, GLenum target,
+! 2275	                             GLenum pname, const GLfloat *params )
+! 2276	{
+! 2277	   Node *n = alloc_instruction( ctx, OPCODE_TEXPARAMETER, 6 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	101,%o1
+	call	alloc_instruction
+	mov	6,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3518:
+.L3520:
+
+! 2278	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3519
+	nop
+
+	! block 4
+.L3521:
+.L3522:
+.L3523:
+.L3524:
+
+! 2279	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3525:
+
+! 2280	      n[2].e = pname;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3526:
+
+! 2281	      n[3].f = params[0];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3527:
+
+! 2282	      n[4].f = params[1];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3528:
+
+! 2283	      n[5].f = params[2];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+20]
+
+	! block 9
+.L3529:
+
+! 2284	      n[6].f = params[3];
+
+	ld	[%fp+80],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+24]
+
+	! block 10
+.L3530:
+.L3531:
+.L3519:
+.L3532:
+.L3533:
+.L3535:
+
+! 2285	   }
+! 2286	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3534
+	nop
+
+	! block 11
+.L3536:
+.L3537:
+.L3538:
+.L3539:
+
+! 2287	      (*ctx->Exec.TexParameterfv)( ctx, target, pname, params );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2160],%l4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	jmpl	%l4,%o7
+	nop
+
+	! block 12
+.L3540:
+.L3541:
+.L3534:
+.L3542:
+
+	! block 13
+.L3543:
+.L3544:
+.L3513:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexParameterfv,(.-gl_save_TexParameterfv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexImage1D
+	.type	gl_save_TexImage1D,#function
+gl_save_TexImage1D:
+	save	%sp,-112,%sp
+
+	! block 1
+.L3547:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+
+	! block 2
+.L3548:
+.L3550:
+
+! File dlist.c:
+! 2288	   }
+! 2289	}
+! 2290	
+! 2292	void gl_save_TexImage1D( GLcontext *ctx, GLenum target,
+! 2293	                         GLint level, GLint components,
+! 2294				 GLsizei width, GLint border,
+! 2295	                         GLenum format, GLenum type,
+! 2296				 struct gl_image *teximage )
+! 2297	{
+! 2298	   Node *n = alloc_instruction( ctx, OPCODE_TEX_IMAGE1D, 8 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	102,%o1
+	call	alloc_instruction
+	mov	8,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3551:
+.L3553:
+
+! 2299	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3552
+	nop
+
+	! block 4
+.L3554:
+.L3555:
+.L3556:
+.L3557:
+
+! 2300	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3558:
+
+! 2301	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3559:
+
+! 2302	      n[3].i = components;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3560:
+
+! 2303	      n[4].i = (GLint) width;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3561:
+
+! 2304	      n[5].i = border;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L3562:
+
+! 2305	      n[6].e = format;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L3563:
+
+! 2306	      n[7].e = type;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L3564:
+
+! 2307	      n[8].data = teximage;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L3565:
+.L3567:
+
+! 2308	      if (teximage) {
+
+	ld	[%fp+100],%l0
+	cmp	%l0,%g0
+	be	.L3566
+	nop
+
+	! block 13
+.L3568:
+.L3569:
+.L3570:
+.L3571:
+
+! 2309	         /* this prevents gl_TexImage2D() from freeing the image */
+! 2310	         teximage->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+100],%l0
+	st	%l1,[%l0+32]
+
+	! block 14
+.L3572:
+.L3573:
+.L3566:
+.L3574:
+.L3575:
+.L3576:
+.L3552:
+.L3577:
+.L3578:
+.L3580:
+
+! 2311	      }
+! 2312	   }
+! 2313	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3579
+	nop
+
+	! block 15
+.L3581:
+.L3582:
+.L3583:
+.L3584:
+
+! 2314	      (*ctx->Exec.TexImage1D)( ctx, target, level, components, width,
+! 2315	                        border, format, type, teximage );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2136],%i1
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%l4,[%sp+100]
+	jmpl	%i1,%o7
+	nop
+
+	! block 16
+.L3585:
+.L3586:
+.L3579:
+.L3587:
+
+	! block 17
+.L3588:
+.L3589:
+.L3546:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexImage1D,(.-gl_save_TexImage1D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexImage2D
+	.type	gl_save_TexImage2D,#function
+gl_save_TexImage2D:
+	save	%sp,-120,%sp
+
+	! block 1
+.L3592:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+	ld	[%fp+104],%l0
+	st	%l0,[%fp+104]
+
+	! block 2
+.L3593:
+.L3595:
+
+! File dlist.c:
+! 2316	   }
+! 2317	}
+! 2318	
+! 2320	void gl_save_TexImage2D( GLcontext *ctx, GLenum target,
+! 2321	                         GLint level, GLint components,
+! 2322				 GLsizei width, GLsizei height, GLint border,
+! 2323	                         GLenum format, GLenum type,
+! 2324				 struct gl_image *teximage )
+! 2325	{
+! 2326	   Node *n = alloc_instruction( ctx, OPCODE_TEX_IMAGE2D, 9 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	103,%o1
+	call	alloc_instruction
+	mov	9,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3596:
+.L3598:
+
+! 2327	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3597
+	nop
+
+	! block 4
+.L3599:
+.L3600:
+.L3601:
+.L3602:
+
+! 2328	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3603:
+
+! 2329	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3604:
+
+! 2330	      n[3].i = components;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3605:
+
+! 2331	      n[4].i = (GLint) width;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3606:
+
+! 2332	      n[5].i = (GLint) height;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L3607:
+
+! 2333	      n[6].i = border;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L3608:
+
+! 2334	      n[7].e = format;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L3609:
+
+! 2335	      n[8].e = type;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L3610:
+
+! 2336	      n[9].data = teximage;
+
+	ld	[%fp+104],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+36]
+
+	! block 13
+.L3611:
+.L3613:
+
+! 2337	      if (teximage) {
+
+	ld	[%fp+104],%l0
+	cmp	%l0,%g0
+	be	.L3612
+	nop
+
+	! block 14
+.L3614:
+.L3615:
+.L3616:
+.L3617:
+
+! 2338	         /* this prevents gl_TexImage2D() from freeing the image */
+! 2339	         teximage->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+104],%l0
+	st	%l1,[%l0+32]
+
+	! block 15
+.L3618:
+.L3619:
+.L3612:
+.L3620:
+.L3621:
+.L3622:
+.L3597:
+.L3623:
+.L3624:
+.L3626:
+
+! 2340	      }
+! 2341	   }
+! 2342	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3625
+	nop
+
+	! block 16
+.L3627:
+.L3628:
+.L3629:
+.L3630:
+
+! 2343	      (*ctx->Exec.TexImage2D)( ctx, target, level, components, width,
+! 2344	                        height, border, format, type, teximage );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2140],%i3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%i1
+	ld	[%fp+104],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%i1,[%sp+100]
+	st	%l4,[%sp+104]
+	jmpl	%i3,%o7
+	nop
+
+	! block 17
+.L3631:
+.L3632:
+.L3625:
+.L3633:
+
+	! block 18
+.L3634:
+.L3635:
+.L3591:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexImage2D,(.-gl_save_TexImage2D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexImage3DEXT
+	.type	gl_save_TexImage3DEXT,#function
+gl_save_TexImage3DEXT:
+	save	%sp,-120,%sp
+
+	! block 1
+.L3638:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+	ld	[%fp+104],%l0
+	st	%l0,[%fp+104]
+	ld	[%fp+108],%l0
+	st	%l0,[%fp+108]
+
+	! block 2
+.L3639:
+.L3641:
+
+! File dlist.c:
+! 2345	   }
+! 2346	}
+! 2347	
+! 2349	void gl_save_TexImage3DEXT( GLcontext *ctx, GLenum target,
+! 2350	                            GLint level, GLint components,
+! 2351	                            GLsizei width, GLsizei height, GLsizei depth,
+! 2352	                            GLint border,
+! 2353	                            GLenum format, GLenum type,
+! 2354	                            struct gl_image *teximage )
+! 2355	{
+! 2356	   Node *n = alloc_instruction( ctx, OPCODE_TEX_IMAGE3D, 10 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	104,%o1
+	call	alloc_instruction
+	mov	10,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3642:
+.L3644:
+
+! 2357	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3643
+	nop
+
+	! block 4
+.L3645:
+.L3646:
+.L3647:
+.L3648:
+
+! 2358	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3649:
+
+! 2359	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3650:
+
+! 2360	      n[3].i = components;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3651:
+
+! 2361	      n[4].i = (GLint) width;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3652:
+
+! 2362	      n[5].i = (GLint) height;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L3653:
+
+! 2363	      n[6].i = (GLint) depth; 
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L3654:
+
+! 2364	      n[7].i = border;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L3655:
+
+! 2365	      n[8].e = format;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L3656:
+
+! 2366	      n[9].e = type;
+
+	ld	[%fp+104],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+36]
+
+	! block 13
+.L3657:
+
+! 2367	      n[10].data = teximage;
+
+	ld	[%fp+108],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+40]
+
+	! block 14
+.L3658:
+.L3659:
+.L3643:
+.L3660:
+.L3661:
+.L3663:
+
+! 2368	   }
+! 2369	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3662
+	nop
+
+	! block 15
+.L3664:
+.L3665:
+.L3666:
+.L3667:
+
+! 2370	      (*ctx->Exec.TexImage3DEXT)( ctx, target, level, components, width,
+! 2371	                           height, depth, border, format, type, teximage );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2152],%i4
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%i1
+	ld	[%fp+104],%i3
+	ld	[%fp+108],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%i1,[%sp+100]
+	st	%i3,[%sp+104]
+	st	%l4,[%sp+108]
+	jmpl	%i4,%o7
+	nop
+
+	! block 16
+.L3668:
+.L3669:
+.L3662:
+.L3670:
+
+	! block 17
+.L3671:
+.L3672:
+.L3637:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexImage3DEXT,(.-gl_save_TexImage3DEXT)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexSubImage1D
+	.type	gl_save_TexSubImage1D,#function
+gl_save_TexSubImage1D:
+	save	%sp,-112,%sp
+
+	! block 1
+.L3675:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+
+	! block 2
+.L3676:
+.L3678:
+
+! File dlist.c:
+! 2372	   }
+! 2373	}
+! 2374	
+! 2376	void gl_save_TexSubImage1D( GLcontext *ctx,
+! 2377	                            GLenum target, GLint level, GLint xoffset,
+! 2378	                            GLsizei width, GLenum format, GLenum type,
+! 2379	                            struct gl_image *image )
+! 2380	{
+! 2381	   Node *n = alloc_instruction( ctx, OPCODE_TEX_SUB_IMAGE1D, 7 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	105,%o1
+	call	alloc_instruction
+	mov	7,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3679:
+.L3681:
+
+! 2382	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3680
+	nop
+
+	! block 4
+.L3682:
+.L3683:
+.L3684:
+.L3685:
+
+! 2383	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3686:
+
+! 2384	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3687:
+
+! 2385	      n[3].i = xoffset;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3688:
+
+! 2386	      n[4].i = (GLint) width;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3689:
+
+! 2387	      n[5].e = format;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L3690:
+
+! 2388	      n[6].e = type;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L3691:
+
+! 2389	      n[7].data = image;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L3692:
+.L3694:
+
+! 2390	      if (image)
+
+	ld	[%fp+96],%l0
+	cmp	%l0,%g0
+	be	.L3693
+	nop
+
+	! block 12
+.L3695:
+.L3696:
+.L3697:
+
+! 2391	         image->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+96],%l0
+	st	%l1,[%l0+32]
+
+	! block 13
+.L3698:
+.L3693:
+.L3699:
+.L3700:
+.L3701:
+.L3680:
+.L3702:
+.L3703:
+.L3705:
+
+! 2392	   }
+! 2393	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3704
+	nop
+
+	! block 14
+.L3706:
+.L3707:
+.L3708:
+.L3709:
+
+! 2394	      (*ctx->Exec.TexSubImage1D)( ctx, target, level, xoffset, width,
+! 2395	                           format, type, image );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2144],%i0
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%l4,[%sp+96]
+	jmpl	%i0,%o7
+	nop
+
+	! block 15
+.L3710:
+.L3711:
+.L3704:
+.L3712:
+
+	! block 16
+.L3713:
+.L3714:
+.L3674:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexSubImage1D,(.-gl_save_TexSubImage1D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexSubImage2D
+	.type	gl_save_TexSubImage2D,#function
+gl_save_TexSubImage2D:
+	save	%sp,-120,%sp
+
+	! block 1
+.L3717:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+	ld	[%fp+104],%l0
+	st	%l0,[%fp+104]
+
+	! block 2
+.L3718:
+.L3720:
+
+! File dlist.c:
+! 2396	   }
+! 2397	}
+! 2398	
+! 2400	void gl_save_TexSubImage2D( GLcontext *ctx,
+! 2401	                            GLenum target, GLint level,
+! 2402	                            GLint xoffset, GLint yoffset,
+! 2403	                            GLsizei width, GLsizei height,
+! 2404	                            GLenum format, GLenum type,
+! 2405	                            struct gl_image *image )
+! 2406	{
+! 2407	   Node *n = alloc_instruction( ctx, OPCODE_TEX_SUB_IMAGE2D, 9 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	106,%o1
+	call	alloc_instruction
+	mov	9,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3721:
+.L3723:
+
+! 2408	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3722
+	nop
+
+	! block 4
+.L3724:
+.L3725:
+.L3726:
+.L3727:
+
+! 2409	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3728:
+
+! 2410	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3729:
+
+! 2411	      n[3].i = xoffset;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3730:
+
+! 2412	      n[4].i = yoffset;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3731:
+
+! 2413	      n[5].i = (GLint) width;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L3732:
+
+! 2414	      n[6].i = (GLint) height;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L3733:
+
+! 2415	      n[7].e = format;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L3734:
+
+! 2416	      n[8].e = type;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L3735:
+
+! 2417	      n[9].data = image;
+
+	ld	[%fp+104],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+36]
+
+	! block 13
+.L3736:
+.L3738:
+
+! 2418	      if (image)
+
+	ld	[%fp+104],%l0
+	cmp	%l0,%g0
+	be	.L3737
+	nop
+
+	! block 14
+.L3739:
+.L3740:
+.L3741:
+
+! 2419	         image->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+104],%l0
+	st	%l1,[%l0+32]
+
+	! block 15
+.L3742:
+.L3737:
+.L3743:
+.L3744:
+.L3745:
+.L3722:
+.L3746:
+.L3747:
+.L3749:
+
+! 2420	   }
+! 2421	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3748
+	nop
+
+	! block 16
+.L3750:
+.L3751:
+.L3752:
+.L3753:
+
+! 2422	      (*ctx->Exec.TexSubImage2D)( ctx, target, level, xoffset, yoffset,
+! 2423	                           width, height, format, type, image );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2148],%i3
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%i1
+	ld	[%fp+104],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%i1,[%sp+100]
+	st	%l4,[%sp+104]
+	jmpl	%i3,%o7
+	nop
+
+	! block 17
+.L3754:
+.L3755:
+.L3748:
+.L3756:
+
+	! block 18
+.L3757:
+.L3758:
+.L3716:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexSubImage2D,(.-gl_save_TexSubImage2D)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_TexSubImage3DEXT
+	.type	gl_save_TexSubImage3DEXT,#function
+gl_save_TexSubImage3DEXT:
+	save	%sp,-128,%sp
+
+	! block 1
+.L3761:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+	st	%i5,[%fp+88]
+	ld	[%fp+92],%l0
+	st	%l0,[%fp+92]
+	ld	[%fp+96],%l0
+	st	%l0,[%fp+96]
+	ld	[%fp+100],%l0
+	st	%l0,[%fp+100]
+	ld	[%fp+104],%l0
+	st	%l0,[%fp+104]
+	ld	[%fp+108],%l0
+	st	%l0,[%fp+108]
+	ld	[%fp+112],%l0
+	st	%l0,[%fp+112]
+
+	! block 2
+.L3762:
+.L3764:
+
+! File dlist.c:
+! 2424	   }
+! 2425	}
+! 2426	
+! 2428	void gl_save_TexSubImage3DEXT( GLcontext *ctx,
+! 2429	                               GLenum target, GLint level,
+! 2430	                               GLint xoffset, GLint yoffset,GLint zoffset,
+! 2431	                               GLsizei width, GLsizei height, GLsizei depth,
+! 2432	                               GLenum format, GLenum type,
+! 2433	                               struct gl_image *image )
+! 2434	{
+! 2435	   Node *n = alloc_instruction( ctx, OPCODE_TEX_SUB_IMAGE3D, 11 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	107,%o1
+	call	alloc_instruction
+	mov	11,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3765:
+.L3767:
+
+! 2436	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3766
+	nop
+
+	! block 4
+.L3768:
+.L3769:
+.L3770:
+.L3771:
+
+! 2437	      n[1].e = target;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3772:
+
+! 2438	      n[2].i = level;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3773:
+
+! 2439	      n[3].i = xoffset;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3774:
+
+! 2440	      n[4].i = yoffset;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3775:
+
+! 2441	      n[5].i = zoffset;
+
+	ld	[%fp+88],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+20]
+
+	! block 9
+.L3776:
+
+! 2442	      n[6].i = (GLint) width;
+
+	ld	[%fp+92],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+24]
+
+	! block 10
+.L3777:
+
+! 2443	      n[7].i = (GLint) height;
+
+	ld	[%fp+96],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+28]
+
+	! block 11
+.L3778:
+
+! 2444	      n[8].i = (GLint) depth;
+
+	ld	[%fp+100],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+32]
+
+	! block 12
+.L3779:
+
+! 2445	      n[9].e = format;
+
+	ld	[%fp+104],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+36]
+
+	! block 13
+.L3780:
+
+! 2446	      n[10].e = type;
+
+	ld	[%fp+108],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+40]
+
+	! block 14
+.L3781:
+
+! 2447	      n[11].data = image;
+
+	ld	[%fp+112],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+44]
+
+	! block 15
+.L3782:
+.L3784:
+
+! 2448	      if (image)
+
+	ld	[%fp+112],%l0
+	cmp	%l0,%g0
+	be	.L3783
+	nop
+
+	! block 16
+.L3785:
+.L3786:
+.L3787:
+
+! 2449	         image->RefCount = 1;
+
+	mov	1,%l1
+	ld	[%fp+112],%l0
+	st	%l1,[%l0+32]
+
+	! block 17
+.L3788:
+.L3783:
+.L3789:
+.L3790:
+.L3791:
+.L3766:
+.L3792:
+.L3793:
+.L3795:
+
+! 2450	   }
+! 2451	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3794
+	nop
+
+	! block 18
+.L3796:
+.L3797:
+.L3798:
+.L3799:
+
+! 2452	      (*ctx->Exec.TexSubImage3DEXT)( ctx, target, level, xoffset, yoffset, zoffset,
+! 2453	                              width, height, depth, format, type, image );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2156],%i5
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l5
+	ld	[%fp+88],%l6
+	ld	[%fp+92],%l7
+	ld	[%fp+96],%i0
+	ld	[%fp+100],%i1
+	ld	[%fp+104],%i3
+	ld	[%fp+108],%i4
+	ld	[%fp+112],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l5,%o4
+	mov	%l6,%o5
+	st	%l7,[%sp+92]
+	st	%i0,[%sp+96]
+	st	%i1,[%sp+100]
+	st	%i3,[%sp+104]
+	st	%i4,[%sp+108]
+	st	%l4,[%sp+112]
+	jmpl	%i5,%o7
+	nop
+
+	! block 19
+.L3800:
+.L3801:
+.L3794:
+.L3802:
+
+	! block 20
+.L3803:
+.L3804:
+.L3760:
+	jmp	%i7+8
+	restore
+	.size	gl_save_TexSubImage3DEXT,(.-gl_save_TexSubImage3DEXT)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Translatef
+	.type	gl_save_Translatef,#function
+gl_save_Translatef:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3807:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3808:
+.L3810:
+
+! File dlist.c:
+! 2454	   }
+! 2455	}
+! 2456	
+! 2458	void gl_save_Translatef( GLcontext *ctx, GLfloat x, GLfloat y, GLfloat z )
+! 2459	{
+! 2460	   Node *n = alloc_instruction( ctx,  OPCODE_TRANSLATE, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	108,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3811:
+.L3813:
+
+! 2461	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3812
+	nop
+
+	! block 4
+.L3814:
+.L3815:
+.L3816:
+.L3817:
+
+! 2462	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3818:
+
+! 2463	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3819:
+
+! 2464	      n[3].f = z;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3820:
+.L3821:
+.L3812:
+.L3822:
+.L3823:
+.L3825:
+
+! 2465	   }
+! 2466	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3824
+	nop
+
+	! block 8
+.L3826:
+.L3827:
+.L3828:
+.L3829:
+
+! 2467	      (*ctx->Exec.Translatef)( ctx, x, y, z );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2164],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l1,%o7
+	nop
+
+	! block 9
+.L3830:
+.L3831:
+.L3824:
+.L3832:
+
+	! block 10
+.L3833:
+.L3834:
+.L3806:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Translatef,(.-gl_save_Translatef)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Vertex2f
+	.type	gl_save_Vertex2f,#function
+gl_save_Vertex2f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3837:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L3838:
+.L3840:
+
+! File dlist.c:
+! 2468	   }
+! 2469	}
+! 2470	
+! 2472	void gl_save_Vertex2f( GLcontext *ctx, GLfloat x, GLfloat y )
+! 2473	{
+! 2474	   Node *n = alloc_instruction( ctx,  OPCODE_VERTEX2, 2 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	109,%o1
+	call	alloc_instruction
+	mov	2,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3841:
+.L3843:
+
+! 2475	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3842
+	nop
+
+	! block 4
+.L3844:
+.L3845:
+.L3846:
+.L3847:
+
+! 2476	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3848:
+
+! 2477	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3849:
+.L3850:
+.L3842:
+.L3851:
+.L3852:
+.L3854:
+
+! 2478	   }
+! 2479	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3853
+	nop
+
+	! block 7
+.L3855:
+.L3856:
+.L3857:
+.L3858:
+
+! 2480	      (*ctx->Exec.Vertex2f)( ctx, x, y );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2168],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l1,%o7
+	nop
+
+	! block 8
+.L3859:
+.L3860:
+.L3853:
+.L3861:
+
+	! block 9
+.L3862:
+.L3863:
+.L3836:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Vertex2f,(.-gl_save_Vertex2f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Vertex3f
+	.type	gl_save_Vertex3f,#function
+gl_save_Vertex3f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3866:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L3867:
+.L3869:
+
+! File dlist.c:
+! 2481	   }
+! 2482	}
+! 2483	
+! 2485	void gl_save_Vertex3f( GLcontext *ctx, GLfloat x, GLfloat y, GLfloat z )
+! 2486	{
+! 2487	   Node *n = alloc_instruction( ctx,  OPCODE_VERTEX3, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	110,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3870:
+.L3872:
+
+! 2488	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3871
+	nop
+
+	! block 4
+.L3873:
+.L3874:
+.L3875:
+.L3876:
+
+! 2489	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3877:
+
+! 2490	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3878:
+
+! 2491	      n[3].f = z;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3879:
+.L3880:
+.L3871:
+.L3881:
+.L3882:
+.L3884:
+
+! 2492	   }
+! 2493	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3883
+	nop
+
+	! block 8
+.L3885:
+.L3886:
+.L3887:
+.L3888:
+
+! 2494	      (*ctx->Exec.Vertex3f)( ctx, x, y, z );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2172],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l1,%o7
+	nop
+
+	! block 9
+.L3889:
+.L3890:
+.L3883:
+.L3891:
+
+	! block 10
+.L3892:
+.L3893:
+.L3865:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Vertex3f,(.-gl_save_Vertex3f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Vertex4f
+	.type	gl_save_Vertex4f,#function
+gl_save_Vertex4f:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3896:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3897:
+.L3899:
+
+! File dlist.c:
+! 2495	   }
+! 2496	}
+! 2497	
+! 2499	void gl_save_Vertex4f( GLcontext *ctx,
+! 2500	                       GLfloat x, GLfloat y, GLfloat z, GLfloat w )
+! 2501	{
+! 2502	   Node *n = alloc_instruction( ctx,  OPCODE_VERTEX4, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	111,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3900:
+.L3902:
+
+! 2503	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3901
+	nop
+
+	! block 4
+.L3903:
+.L3904:
+.L3905:
+.L3906:
+
+! 2504	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3907:
+
+! 2505	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3908:
+
+! 2506	      n[3].f = z;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3909:
+
+! 2507	      n[4].f = w;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L3910:
+.L3911:
+.L3901:
+.L3912:
+.L3913:
+.L3915:
+
+! 2508	   }
+! 2509	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3914
+	nop
+
+	! block 9
+.L3916:
+.L3917:
+.L3918:
+.L3919:
+
+! 2510	      (*ctx->Exec.Vertex4f)( ctx, x, y, z, w );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2176],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L3920:
+.L3921:
+.L3914:
+.L3922:
+
+	! block 11
+.L3923:
+.L3924:
+.L3895:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Vertex4f,(.-gl_save_Vertex4f)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Vertex3fv
+	.type	gl_save_Vertex3fv,#function
+gl_save_Vertex3fv:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3927:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L3928:
+.L3930:
+
+! File dlist.c:
+! 2511	   }
+! 2512	}
+! 2513	
+! 2515	void gl_save_Vertex3fv( GLcontext *ctx, const GLfloat v[3] )
+! 2516	{
+! 2517	   Node *n = alloc_instruction( ctx,  OPCODE_VERTEX3, 3 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	110,%o1
+	call	alloc_instruction
+	mov	3,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3931:
+.L3933:
+
+! 2518	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3932
+	nop
+
+	! block 4
+.L3934:
+.L3935:
+.L3936:
+.L3937:
+
+! 2519	      n[1].f = v[0];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+0],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3938:
+
+! 2520	      n[2].f = v[1];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L3939:
+
+! 2521	      n[3].f = v[2];
+
+	ld	[%fp+72],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L3940:
+.L3941:
+.L3932:
+.L3942:
+.L3943:
+.L3945:
+
+! 2522	   }
+! 2523	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3944
+	nop
+
+	! block 8
+.L3946:
+.L3947:
+.L3948:
+.L3949:
+
+! 2524	      (*ctx->Exec.Vertex3fv)( ctx, v );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2180],%l2
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	mov	%l1,%o1
+	jmpl	%l2,%o7
+	nop
+
+	! block 9
+.L3950:
+.L3951:
+.L3944:
+.L3952:
+
+	! block 10
+.L3953:
+.L3954:
+.L3926:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Vertex3fv,(.-gl_save_Vertex3fv)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_Viewport
+	.type	gl_save_Viewport,#function
+gl_save_Viewport:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3957:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3958:
+.L3960:
+
+! File dlist.c:
+! 2525	   }
+! 2526	}
+! 2527	
+! 2529	void gl_save_Viewport( GLcontext *ctx,
+! 2530	                       GLint x, GLint y, GLsizei width, GLsizei height )
+! 2531	{
+! 2532	   Node *n = alloc_instruction( ctx,  OPCODE_VIEWPORT, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	112,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3961:
+.L3963:
+
+! 2533	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3962
+	nop
+
+	! block 4
+.L3964:
+.L3965:
+.L3966:
+.L3967:
+
+! 2534	      n[1].i = x;
+
+	ld	[%fp+72],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+4]
+
+	! block 5
+.L3968:
+
+! 2535	      n[2].i = y;
+
+	ld	[%fp+76],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+8]
+
+	! block 6
+.L3969:
+
+! 2536	      n[3].i = (GLint) width;
+
+	ld	[%fp+80],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+12]
+
+	! block 7
+.L3970:
+
+! 2537	      n[4].i = (GLint) height;
+
+	ld	[%fp+84],%l1
+	ld	[%fp-4],%l0
+	st	%l1,[%l0+16]
+
+	! block 8
+.L3971:
+.L3972:
+.L3962:
+.L3973:
+.L3974:
+.L3976:
+
+! 2538	   }
+! 2539	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L3975
+	nop
+
+	! block 9
+.L3977:
+.L3978:
+.L3979:
+.L3980:
+
+! 2540	      (*ctx->Exec.Viewport)( ctx, x, y, width, height );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2188],%l5
+	ld	[%fp+72],%l1
+	ld	[%fp+76],%l2
+	ld	[%fp+80],%l3
+	ld	[%fp+84],%l4
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	mov	%l3,%o3
+	mov	%l4,%o4
+	jmpl	%l5,%o7
+	nop
+
+	! block 10
+.L3981:
+.L3982:
+.L3975:
+.L3983:
+
+	! block 11
+.L3984:
+.L3985:
+.L3956:
+	jmp	%i7+8
+	restore
+	.size	gl_save_Viewport,(.-gl_save_Viewport)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_save_WindowPos4fMESA
+	.type	gl_save_WindowPos4fMESA,#function
+gl_save_WindowPos4fMESA:
+	save	%sp,-104,%sp
+
+	! block 1
+.L3988:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+	st	%i4,[%fp+84]
+
+	! block 2
+.L3989:
+.L3991:
+
+! File dlist.c:
+! 2541	   }
+! 2542	}
+! 2543	
+! 2545	void gl_save_WindowPos4fMESA( GLcontext *ctx,
+! 2546	                              GLfloat x, GLfloat y, GLfloat z, GLfloat w )
+! 2547	{
+! 2548	   Node *n = alloc_instruction( ctx,  OPCODE_WINDOW_POS, 4 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	113,%o1
+	call	alloc_instruction
+	mov	4,%o2
+	st	%o0,[%fp-4]
+
+	! block 3
+.L3992:
+.L3994:
+
+! 2549	   if (n) {
+
+	ld	[%fp-4],%l0
+	cmp	%l0,%g0
+	be	.L3993
+	nop
+
+	! block 4
+.L3995:
+.L3996:
+.L3997:
+.L3998:
+
+! 2550	      n[1].f = x;
+
+	ld	[%fp+72],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+4]
+
+	! block 5
+.L3999:
+
+! 2551	      n[2].f = y;
+
+	ld	[%fp+76],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+8]
+
+	! block 6
+.L4000:
+
+! 2552	      n[3].f = z;
+
+	ld	[%fp+80],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+12]
+
+	! block 7
+.L4001:
+
+! 2553	      n[4].f = w;
+
+	ld	[%fp+84],%f4
+	ld	[%fp-4],%l0
+	st	%f4,[%l0+16]
+
+	! block 8
+.L4002:
+.L4003:
+.L3993:
+.L4004:
+.L4005:
+.L4007:
+
+! 2554	   }
+! 2555	   if (ctx->ExecuteFlag) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	ldub	[%l0+%l1],%l0
+	cmp	%l0,%g0
+	be	.L4006
+	nop
+
+	! block 9
+.L4008:
+.L4009:
+.L4010:
+.L4011:
+
+! 2556	      (*ctx->Exec.WindowPos4fMESA)( ctx, x, y, z, w );
+
+	ld	[%fp+68],%l0
+	ld	[%l0+2192],%l1
+	ld	[%fp+72],%f4
+	ld	[%fp+76],%f5
+	ld	[%fp+80],%f6
+	ld	[%fp+84],%f7
+	mov	%l0,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l1,%o7
+	nop
+
+	! block 10
+.L4012:
+.L4013:
+.L4006:
+.L4014:
+
+	! block 11
+.L4015:
+.L4016:
+.L3987:
+	jmp	%i7+8
+	restore
+	.size	gl_save_WindowPos4fMESA,(.-gl_save_WindowPos4fMESA)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+	.type	execute_list,#function
+execute_list:
+	save	%sp,-1144,%sp
+
+	! block 1
+.L4019:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L4020:
+.L4022:
+.L4024:
+
+! File dlist.c:
+! 2557	   }
+! 2558	}
+! 2559	
+! 2562	/**********************************************************************/
+! 2563	/*                     Display list execution                         */
+! 2564	/**********************************************************************/
+! 2565	
+! 2567	/*
+! 2568	 * Execute a display list.  Note that the ListBase offset must have already
+! 2569	 * been added before calling this function.  I.e. the list argument is
+! 2570	 * the absolute list number, not relative to ListBase.
+! 2571	 * Input:  list - display list number
+! 2572	 */
+! 2573	static void execute_list( GLcontext *ctx, GLuint list )
+! 2574	{
+! 2575	   Node *n;
+! 2576	   GLboolean done;
+! 2577	   OpCode opcode;
+! 2578	
+! 2579	   if (!gl_IsList(ctx,list))
+
+	ld	[%fp+68],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	gl_IsList
+	mov	%l1,%o1
+	sll	%o0,24,%l0
+	srl	%l0,24,%l0
+	cmp	%l0,%g0
+	bne	.L4023
+	nop
+
+	! block 3
+.L4025:
+.L4026:
+.L4027:
+
+! 2580	      return;
+
+	ba	.L4018
+	nop
+
+	! block 4
+.L4028:
+.L4023:
+.L4029:
+.L4030:
+
+! 2582	   ctx->CallDepth++;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e20),%l1
+	or	%l1,%lo(0x1e20),%l1
+	add	%l0,%l1,%l1
+	ld	[%l1+0],%l0
+	add	%l0,1,%l0
+	st	%l0,[%l1+0]
+
+	! block 5
+.L4031:
+
+! 2584	   n = (Node *) HashLookup(ctx->Shared->DisplayList, list);
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	HashLookup
+	mov	%l1,%o1
+	st	%o0,[%fp-4]
+
+	! block 6
+.L4032:
+
+! 2586	   done = GL_FALSE;
+
+	stb	%g0,[%fp-5]
+
+	! block 7
+.L4033:
+.L4037:
+
+! 2587	   while (!done) {
+
+	ldub	[%fp-5],%l0
+	cmp	%l0,%g0
+	bne	.L4036
+	nop
+
+	! block 8
+.L4038:
+.L4034:
+.L4039:
+.L4040:
+.L4041:
+
+! 2588	      opcode = n[0].opcode;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+0],%l0
+	st	%l0,[%fp-12]
+
+	! block 9
+.L4042:
+.L4045:
+
+! 2590	      switch (opcode) {
+
+	ba	.L4044
+	nop
+
+	! block 10
+.L4046:
+.L4047:
+.L4048:
+.L4049:
+
+! 2591		 /* Frequently called functions: */
+! 2592	         case OPCODE_VERTEX2:
+! 2593	            (*ctx->Exec.Vertex2f)( ctx, n[1].f, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%l1+2168],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	jmpl	%l2,%o7
+	nop
+
+	! block 11
+.L4050:
+
+! 2594	            break;
+
+	ba	.L4043
+	nop
+
+	! block 12
+.L4051:
+.L4052:
+
+! 2595	         case OPCODE_VERTEX3:
+! 2596	            (*ctx->Exec.Vertex3f)( ctx, n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+68],%l1
+	ld	[%l1+2172],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l2,%o7
+	nop
+
+	! block 13
+.L4053:
+
+! 2597	            break;
+
+	ba	.L4043
+	nop
+
+	! block 14
+.L4054:
+.L4055:
+
+! 2598	         case OPCODE_VERTEX4:
+! 2599	            (*ctx->Exec.Vertex4f)( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%l1+2176],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l2,%o7
+	nop
+
+	! block 15
+.L4056:
+
+! 2600	            break;
+
+	ba	.L4043
+	nop
+
+	! block 16
+.L4057:
+.L4058:
+
+! 2601	         case OPCODE_NORMAL:
+! 2602	            ctx->Current.Normal[0] = n[1].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1edc),%l1
+	or	%l1,%lo(0x1edc),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 17
+.L4059:
+
+! 2603	            ctx->Current.Normal[1] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ee0),%l1
+	or	%l1,%lo(0x1ee0),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 18
+.L4060:
+
+! 2604	            ctx->Current.Normal[2] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ee4),%l1
+	or	%l1,%lo(0x1ee4),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 19
+.L4061:
+
+! 2605	            ctx->VB->MonoNormal = GL_FALSE;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe134),%l1
+	or	%l1,%lo(0xe134),%l1
+	ld	[%l0+%l1],%l0
+	sethi	%hi(0xd0d1),%l1
+	or	%l1,%lo(0xd0d1),%l1
+	stb	%g0,[%l0+%l1]
+
+	! block 20
+.L4062:
+
+! 2606	            break;
+
+	ba	.L4043
+	nop
+
+	! block 21
+.L4063:
+.L4064:
+
+! 2607		 case OPCODE_COLOR_4UB:
+! 2608	            (*ctx->Exec.Color4ub)( ctx, n[1].ub, n[2].ub, n[3].ub, n[4].ub );
+
+	ld	[%fp+68],%l1
+	ld	[%l1+1560],%l4
+	ld	[%fp-4],%l0
+	ldub	[%l0+4],%l2
+	ldub	[%l0+8],%l3
+	ldub	[%l0+12],%l5
+	ldub	[%l0+16],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l0,%o4
+	jmpl	%l4,%o7
+	nop
+
+	! block 22
+.L4065:
+
+! 2609		    break;
+
+	ba	.L4043
+	nop
+
+	! block 23
+.L4066:
+.L4067:
+
+! 2610		 case OPCODE_COLOR_3F:
+! 2611	            (*ctx->Exec.Color3f)( ctx, n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+68],%l1
+	ld	[%l1+1544],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	jmpl	%l2,%o7
+	nop
+
+	! block 24
+.L4068:
+
+! 2612	            break;
+
+	ba	.L4043
+	nop
+
+	! block 25
+.L4069:
+.L4070:
+
+! 2613		 case OPCODE_COLOR_4F:
+! 2614	            (*ctx->Exec.Color4f)( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%l1+1552],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	ld	[%sp+84],%o4
+	jmpl	%l2,%o7
+	nop
+
+	! block 26
+.L4071:
+
+! 2615	            break;
+
+	ba	.L4043
+	nop
+
+	! block 27
+.L4072:
+.L4073:
+
+! 2616	         case OPCODE_INDEX:
+! 2617	            ctx->Current.Index = n[1].ui;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ed8),%l1
+	or	%l1,%lo(0x1ed8),%l1
+	st	%l2,[%l0+%l1]
+
+	! block 28
+.L4074:
+
+! 2618	            ctx->VB->MonoColor = GL_FALSE;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe134),%l1
+	or	%l1,%lo(0xe134),%l1
+	ld	[%l0+%l1],%l0
+	sethi	%hi(0xd0d0),%l1
+	or	%l1,%lo(0xd0d0),%l1
+	stb	%g0,[%l0+%l1]
+
+	! block 29
+.L4075:
+
+! 2619	            break;
+
+	ba	.L4043
+	nop
+
+	! block 30
+.L4076:
+.L4077:
+
+! 2620	         case OPCODE_BEGIN:
+! 2621	            gl_Begin( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_Begin
+	mov	%l0,%o1
+
+	! block 31
+.L4078:
+
+! 2622	            break;
+
+	ba	.L4043
+	nop
+
+	! block 32
+.L4079:
+.L4080:
+
+! 2623	         case OPCODE_END:
+! 2624	            gl_End( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_End
+	mov	%l0,%o0
+
+	! block 33
+.L4081:
+
+! 2625	            break;
+
+	ba	.L4043
+	nop
+
+	! block 34
+.L4082:
+.L4083:
+
+! 2626		 case OPCODE_TEXCOORD2:
+! 2627		    ctx->Current.TexCoord[0] = n[1].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ee8),%l1
+	or	%l1,%lo(0x1ee8),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 35
+.L4084:
+
+! 2628		    ctx->Current.TexCoord[1] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1eec),%l1
+	or	%l1,%lo(0x1eec),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 36
+.L4085:
+.L4087:
+
+! 2629	            if (ctx->VB->TexCoordSize==4) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe134),%l1
+	or	%l1,%lo(0xe134),%l1
+	ld	[%l0+%l1],%l0
+	sethi	%hi(0xd0cc),%l1
+	or	%l1,%lo(0xd0cc),%l1
+	ld	[%l0+%l1],%l0
+	cmp	%l0,4
+	bne	.L4086
+	nop
+
+	! block 37
+.L4088:
+.L4089:
+.L4090:
+.L4091:
+
+! 2630	               ctx->Current.TexCoord[2] = 0.0F;
+
+	sethi	%hi(.L_cseg0),%l0
+	ld	[%l0+%lo(.L_cseg0)],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ef0),%l1
+	or	%l1,%lo(0x1ef0),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 38
+.L4092:
+
+! 2631	               ctx->Current.TexCoord[3] = 1.0F;
+
+	sethi	%hi(.L_cseg1),%l0
+	ld	[%l0+%lo(.L_cseg1)],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ef4),%l1
+	or	%l1,%lo(0x1ef4),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 39
+.L4093:
+.L4094:
+.L4086:
+.L4095:
+.L4096:
+
+! 2632	            }
+! 2633		    break;
+
+	ba	.L4043
+	nop
+
+	! block 40
+.L4097:
+.L4098:
+
+! 2634		 case OPCODE_TEXCOORD4:
+! 2635		    ctx->Current.TexCoord[0] = n[1].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ee8),%l1
+	or	%l1,%lo(0x1ee8),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 41
+.L4099:
+
+! 2636		    ctx->Current.TexCoord[1] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1eec),%l1
+	or	%l1,%lo(0x1eec),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 42
+.L4100:
+
+! 2637		    ctx->Current.TexCoord[2] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ef0),%l1
+	or	%l1,%lo(0x1ef0),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 43
+.L4101:
+
+! 2638		    ctx->Current.TexCoord[3] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1ef4),%l1
+	or	%l1,%lo(0x1ef4),%l1
+	st	%f4,[%l0+%l1]
+
+	! block 44
+.L4102:
+.L4104:
+
+! 2639	            if (ctx->VB->TexCoordSize==2) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe134),%l1
+	or	%l1,%lo(0xe134),%l1
+	ld	[%l0+%l1],%l0
+	sethi	%hi(0xd0cc),%l1
+	or	%l1,%lo(0xd0cc),%l1
+	ld	[%l0+%l1],%l0
+	cmp	%l0,2
+	bne	.L4103
+	nop
+
+	! block 45
+.L4105:
+.L4106:
+.L4107:
+.L4108:
+
+! 2640	               /* Switch to 4-component texcoords */
+! 2641	               ctx->VB->TexCoordSize = 4;
+
+	mov	4,%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe134),%l1
+	or	%l1,%lo(0xe134),%l1
+	ld	[%l0+%l1],%l0
+	sethi	%hi(0xd0cc),%l1
+	or	%l1,%lo(0xd0cc),%l1
+	st	%l2,[%l0+%l1]
+
+	! block 46
+.L4109:
+
+! 2642	               gl_set_vertex_function(ctx);
+
+	ld	[%fp+68],%l0
+	call	gl_set_vertex_function
+	mov	%l0,%o0
+
+	! block 47
+.L4110:
+.L4111:
+.L4103:
+.L4112:
+.L4113:
+
+! 2643	            }
+! 2644		    break;
+
+	ba	.L4043
+	nop
+
+	! block 48
+.L4114:
+.L4115:
+
+! 2646		 /* Everything Else: */
+! 2647	         case OPCODE_ACCUM:
+! 2648		    gl_Accum( ctx, n[1].e, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	call	gl_Accum
+	ld	[%sp+76],%o2
+
+	! block 49
+.L4116:
+
+! 2649		    break;
+
+	ba	.L4043
+	nop
+
+	! block 50
+.L4117:
+.L4118:
+
+! 2650	         case OPCODE_ALPHA_FUNC:
+! 2651		    gl_AlphaFunc( ctx, n[1].e, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	call	gl_AlphaFunc
+	ld	[%sp+76],%o2
+
+	! block 51
+.L4119:
+
+! 2652		    break;
+
+	ba	.L4043
+	nop
+
+	! block 52
+.L4120:
+.L4121:
+
+! 2653	         case OPCODE_BIND_TEXTURE:
+! 2654	            gl_BindTexture( ctx, n[1].e, n[2].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_BindTexture
+	mov	%l0,%o2
+
+	! block 53
+.L4122:
+
+! 2655	            break;
+
+	ba	.L4043
+	nop
+
+	! block 54
+.L4123:
+.L4124:
+
+! 2656		 case OPCODE_BITMAP:
+! 2657		    gl_Bitmap( ctx, (GLsizei) n[1].i, (GLsizei) n[2].i,
+! 2658			       n[3].f, n[4].f,
+! 2659			       n[5].f, n[6].f,
+! 2660			       (struct gl_image *) n[7].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%f4
+	ld	[%l0+16],%f5
+	ld	[%l0+20],%f6
+	ld	[%l0+24],%f7
+	ld	[%l0+28],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	st	%f4,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f5,[%sp+84]
+	ld	[%sp+84],%o4
+	st	%f6,[%sp+88]
+	ld	[%sp+88],%o5
+	st	%f7,[%sp+92]
+	call	gl_Bitmap
+	st	%l0,[%sp+96]
+
+	! block 55
+.L4125:
+
+! 2661		    break;
+
+	ba	.L4043
+	nop
+
+	! block 56
+.L4126:
+.L4127:
+
+! 2662		 case OPCODE_BLEND_COLOR:
+! 2663		    gl_BlendColor( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	call	gl_BlendColor
+	ld	[%sp+84],%o4
+
+	! block 57
+.L4128:
+
+! 2664		    break;
+
+	ba	.L4043
+	nop
+
+	! block 58
+.L4129:
+.L4130:
+
+! 2665		 case OPCODE_BLEND_EQUATION:
+! 2666		    gl_BlendEquation( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_BlendEquation
+	mov	%l0,%o1
+
+	! block 59
+.L4131:
+
+! 2667		    break;
+
+	ba	.L4043
+	nop
+
+	! block 60
+.L4132:
+.L4133:
+
+! 2668		 case OPCODE_BLEND_FUNC:
+! 2669		    gl_BlendFunc( ctx, n[1].e, n[2].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_BlendFunc
+	mov	%l0,%o2
+
+	! block 61
+.L4134:
+
+! 2670		    break;
+
+	ba	.L4043
+	nop
+
+	! block 62
+.L4135:
+.L4136:
+.L4138:
+
+! 2671	         case OPCODE_CALL_LIST:
+! 2672		    /* Generated by glCallList(), don't add ListBase */
+! 2673	            if (ctx->CallDepth<MAX_LIST_NESTING) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e20),%l1
+	or	%l1,%lo(0x1e20),%l1
+	ld	[%l0+%l1],%l0
+	cmp	%l0,64
+	bgeu	.L4137
+	nop
+
+	! block 63
+.L4139:
+.L4140:
+.L4141:
+.L4142:
+
+! 2674	               execute_list( ctx, n[1].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	execute_list
+	mov	%l0,%o1
+
+	! block 64
+.L4143:
+.L4144:
+.L4137:
+.L4145:
+.L4146:
+
+! 2675	            }
+! 2676	            break;
+
+	ba	.L4043
+	nop
+
+	! block 65
+.L4147:
+.L4148:
+.L4150:
+
+! 2677	         case OPCODE_CALL_LIST_OFFSET:
+! 2678		    /* Generated by glCallLists() so we must add ListBase */
+! 2679	            if (ctx->CallDepth<MAX_LIST_NESTING) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e20),%l1
+	or	%l1,%lo(0x1e20),%l1
+	ld	[%l0+%l1],%l0
+	cmp	%l0,64
+	bgeu	.L4149
+	nop
+
+	! block 66
+.L4151:
+.L4152:
+.L4153:
+.L4154:
+
+! 2680	               execute_list( ctx, ctx->List.ListBase + n[1].ui );
+
+	ld	[%fp+68],%l3
+	sethi	%hi(0xae14),%l1
+	or	%l1,%lo(0xae14),%l1
+	ld	[%l3+%l1],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l1
+	add	%l2,%l1,%l0
+	mov	%l3,%o0
+	call	execute_list
+	mov	%l0,%o1
+
+	! block 67
+.L4155:
+.L4156:
+.L4149:
+.L4157:
+.L4158:
+
+! 2681	            }
+! 2682	            break;
+
+	ba	.L4043
+	nop
+
+	! block 68
+.L4159:
+.L4160:
+
+! 2683		 case OPCODE_CLEAR:
+! 2684		    gl_Clear( ctx, n[1].bf );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_Clear
+	mov	%l0,%o1
+
+	! block 69
+.L4161:
+
+! 2685		    break;
+
+	ba	.L4043
+	nop
+
+	! block 70
+.L4162:
+.L4163:
+
+! 2686		 case OPCODE_CLEAR_COLOR:
+! 2687		    gl_ClearColor( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	call	gl_ClearColor
+	ld	[%sp+84],%o4
+
+	! block 71
+.L4164:
+
+! 2688		    break;
+
+	ba	.L4043
+	nop
+
+	! block 72
+.L4165:
+.L4166:
+
+! 2689		 case OPCODE_CLEAR_ACCUM:
+! 2690		    gl_ClearAccum( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	call	gl_ClearAccum
+	ld	[%sp+84],%o4
+
+	! block 73
+.L4167:
+
+! 2691		    break;
+
+	ba	.L4043
+	nop
+
+	! block 74
+.L4168:
+.L4169:
+
+! 2692		 case OPCODE_CLEAR_DEPTH:
+! 2693		    gl_ClearDepth( ctx, (GLclampd) n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o1
+	call	gl_ClearDepth
+	ld	[%sp+92],%o2
+
+	! block 75
+.L4170:
+
+! 2694		    break;
+
+	ba	.L4043
+	nop
+
+	! block 76
+.L4171:
+.L4172:
+
+! 2695		 case OPCODE_CLEAR_INDEX:
+! 2696		    gl_ClearIndex( ctx, n[1].ui );
+
+	ld	[%fp+68],%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l1
+	sethi	%hi(0x43300000),%l0
+	st	%l0,[%fp-1024]
+	st	%l1,[%fp-1020]
+	ldd	[%fp-1024],%f6
+	mov	0,%l0
+	st	%l0,[%fp-1020]
+	ldd	[%fp-1024],%f4
+	fsubd	%f6,%f4,%f4
+	fabss	%f4,%f4
+	fdtos	%f4,%f4
+	mov	%l2,%o0
+	st	%f4,[%sp+72]
+	call	gl_ClearIndex
+	ld	[%sp+72],%o1
+
+	! block 77
+.L4173:
+
+! 2697		    break;
+
+	ba	.L4043
+	nop
+
+	! block 78
+.L4174:
+.L4175:
+
+! 2698		 case OPCODE_CLEAR_STENCIL:
+! 2699		    gl_ClearStencil( ctx, n[1].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_ClearStencil
+	mov	%l0,%o1
+
+	! block 79
+.L4176:
+
+! 2700		    break;
+
+	ba	.L4043
+	nop
+
+	! block 80
+.L4177:
+.L4178:
+.L4179:
+
+! 2701	         case OPCODE_CLIP_PLANE:
+! 2702	            {
+! 2703	               GLfloat equ[4];
+! 2704	               equ[0] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	st	%f4,[%fp-28]
+
+	! block 81
+.L4180:
+
+! 2705	               equ[1] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-24]
+
+	! block 82
+.L4181:
+
+! 2706	               equ[2] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-20]
+
+	! block 83
+.L4182:
+
+! 2707	               equ[3] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-16]
+
+	! block 84
+.L4183:
+
+! 2708	               gl_ClipPlane( ctx, n[1].e, equ );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	add	%fp,-28,%l2
+	mov	%l1,%o0
+	mov	%l0,%o1
+	call	gl_ClipPlane
+	mov	%l2,%o2
+
+	! block 85
+.L4184:
+.L4185:
+
+! 2709	            }
+! 2710	            break;
+
+	ba	.L4043
+	nop
+
+	! block 86
+.L4186:
+.L4187:
+
+! 2711		 case OPCODE_COLOR_MASK:
+! 2712		    gl_ColorMask( ctx, n[1].b, n[2].b, n[3].b, n[4].b );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ldub	[%l0+4],%l2
+	ldub	[%l0+8],%l3
+	ldub	[%l0+12],%l5
+	ldub	[%l0+16],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	call	gl_ColorMask
+	mov	%l0,%o4
+
+	! block 87
+.L4188:
+
+! 2713		    break;
+
+	ba	.L4043
+	nop
+
+	! block 88
+.L4189:
+.L4190:
+
+! 2714		 case OPCODE_COLOR_MATERIAL:
+! 2715		    gl_ColorMaterial( ctx, n[1].e, n[2].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_ColorMaterial
+	mov	%l0,%o2
+
+	! block 89
+.L4191:
+
+! 2716		    break;
+
+	ba	.L4043
+	nop
+
+	! block 90
+.L4192:
+.L4193:
+
+! 2717	         case OPCODE_COLOR_TABLE:
+! 2718	            gl_ColorTable( ctx, n[1].e, n[2].e, (struct gl_image *) n[3].data);
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	gl_ColorTable
+	mov	%l0,%o3
+
+	! block 91
+.L4194:
+
+! 2719	            break;
+
+	ba	.L4043
+	nop
+
+	! block 92
+.L4195:
+.L4196:
+
+! 2720	         case OPCODE_COLOR_SUB_TABLE:
+! 2721	            gl_ColorSubTable( ctx, n[1].e, n[2].i,
+! 2722	                              (struct gl_image *) n[3].data);
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	gl_ColorSubTable
+	mov	%l0,%o3
+
+	! block 93
+.L4197:
+
+! 2723	            break;
+
+	ba	.L4043
+	nop
+
+	! block 94
+.L4198:
+.L4199:
+
+! 2724		 case OPCODE_COPY_PIXELS:
+! 2725		    gl_CopyPixels( ctx, n[1].i, n[2].i,
+! 2726				   (GLsizei) n[3].i, (GLsizei) n[4].i, n[5].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	call	gl_CopyPixels
+	mov	%l0,%o5
+
+	! block 95
+.L4200:
+
+! 2727		    break;
+
+	ba	.L4043
+	nop
+
+	! block 96
+.L4201:
+.L4202:
+
+! 2728	         case OPCODE_COPY_TEX_IMAGE1D:
+! 2729		    gl_CopyTexImage1D( ctx, n[1].e, n[2].i, n[3].e, n[4].i,
+! 2730	                               n[5].i, n[6].i, n[7].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	call	gl_CopyTexImage1D
+	st	%l0,[%sp+96]
+
+	! block 97
+.L4203:
+
+! 2731	            break;
+
+	ba	.L4043
+	nop
+
+	! block 98
+.L4204:
+.L4205:
+
+! 2732	         case OPCODE_COPY_TEX_IMAGE2D:
+! 2733		    gl_CopyTexImage2D( ctx, n[1].e, n[2].i, n[3].e, n[4].i,
+! 2734	                               n[5].i, n[6].i, n[7].i, n[8].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	call	gl_CopyTexImage2D
+	st	%l0,[%sp+100]
+
+	! block 99
+.L4206:
+
+! 2735	            break;
+
+	ba	.L4043
+	nop
+
+	! block 100
+.L4207:
+.L4208:
+
+! 2736	         case OPCODE_COPY_TEX_SUB_IMAGE1D:
+! 2737		    gl_CopyTexSubImage1D( ctx, n[1].e, n[2].i, n[3].i, n[4].i,
+! 2738	                                  n[5].i, n[6].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	call	gl_CopyTexSubImage1D
+	st	%l0,[%sp+92]
+
+	! block 101
+.L4209:
+
+! 2739	            break;
+
+	ba	.L4043
+	nop
+
+	! block 102
+.L4210:
+.L4211:
+
+! 2740	         case OPCODE_COPY_TEX_SUB_IMAGE2D:
+! 2741		    gl_CopyTexSubImage2D( ctx, n[1].e, n[2].i, n[3].i, n[4].i,
+! 2742	                                  n[5].i, n[6].i, n[7].i, n[8].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	call	gl_CopyTexSubImage2D
+	st	%l0,[%sp+100]
+
+	! block 103
+.L4212:
+
+! 2743	            break;
+
+	ba	.L4043
+	nop
+
+	! block 104
+.L4213:
+.L4214:
+
+! 2744	         case OPCODE_COPY_TEX_SUB_IMAGE3D:
+! 2745	            gl_CopyTexSubImage3DEXT( ctx, n[1].e, n[2].i, n[3].i, n[4].i,
+! 2746	                                     n[5].i, n[6].i, n[7].i, n[8].i , n[9].i);
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%i3
+	ld	[%l0+36],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	st	%i3,[%sp+100]
+	call	gl_CopyTexSubImage3DEXT
+	st	%l0,[%sp+104]
+
+	! block 105
+.L4215:
+
+! 2747	            break;
+
+	ba	.L4043
+	nop
+
+	! block 106
+.L4216:
+.L4217:
+
+! 2748		 case OPCODE_CULL_FACE:
+! 2749		    gl_CullFace( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_CullFace
+	mov	%l0,%o1
+
+	! block 107
+.L4218:
+
+! 2750		    break;
+
+	ba	.L4043
+	nop
+
+	! block 108
+.L4219:
+.L4220:
+
+! 2751		 case OPCODE_DEPTH_FUNC:
+! 2752		    gl_DepthFunc( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_DepthFunc
+	mov	%l0,%o1
+
+	! block 109
+.L4221:
+
+! 2753		    break;
+
+	ba	.L4043
+	nop
+
+	! block 110
+.L4222:
+.L4223:
+
+! 2754		 case OPCODE_DEPTH_MASK:
+! 2755		    gl_DepthMask( ctx, n[1].b );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ldub	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_DepthMask
+	mov	%l0,%o1
+
+	! block 111
+.L4224:
+
+! 2756		    break;
+
+	ba	.L4043
+	nop
+
+	! block 112
+.L4225:
+.L4226:
+
+! 2757		 case OPCODE_DEPTH_RANGE:
+! 2758		    gl_DepthRange( ctx, (GLclampd) n[1].f, (GLclampd) n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	std	%f6,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o3
+	call	gl_DepthRange
+	ld	[%sp+92],%o4
+
+	! block 113
+.L4227:
+
+! 2759		    break;
+
+	ba	.L4043
+	nop
+
+	! block 114
+.L4228:
+.L4229:
+
+! 2760		 case OPCODE_DISABLE:
+! 2761		    gl_Disable( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_Disable
+	mov	%l0,%o1
+
+	! block 115
+.L4230:
+
+! 2762		    break;
+
+	ba	.L4043
+	nop
+
+	! block 116
+.L4231:
+.L4232:
+
+! 2763		 case OPCODE_DRAW_BUFFER:
+! 2764		    gl_DrawBuffer( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_DrawBuffer
+	mov	%l0,%o1
+
+	! block 117
+.L4233:
+
+! 2765		    break;
+
+	ba	.L4043
+	nop
+
+	! block 118
+.L4234:
+.L4235:
+
+! 2766		 case OPCODE_DRAW_PIXELS:
+! 2767		    gl_DrawPixels( ctx, (GLsizei) n[1].i, (GLsizei) n[2].i,
+! 2768				   n[3].e, n[4].e, n[5].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	call	gl_DrawPixels
+	mov	%l0,%o5
+
+	! block 119
+.L4236:
+
+! 2769		    break;
+
+	ba	.L4043
+	nop
+
+	! block 120
+.L4237:
+.L4238:
+
+! 2770		 case OPCODE_EDGE_FLAG:
+! 2771	            ctx->Current.EdgeFlag = n[1].b;
+
+	ld	[%fp-4],%l0
+	ldub	[%l0+4],%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1f31),%l1
+	or	%l1,%lo(0x1f31),%l1
+	stb	%l2,[%l0+%l1]
+
+	! block 121
+.L4239:
+
+! 2772	            break;
+
+	ba	.L4043
+	nop
+
+	! block 122
+.L4240:
+.L4241:
+
+! 2773		 case OPCODE_ENABLE:
+! 2774		    gl_Enable( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_Enable
+	mov	%l0,%o1
+
+	! block 123
+.L4242:
+
+! 2775		    break;
+
+	ba	.L4043
+	nop
+
+	! block 124
+.L4243:
+.L4244:
+
+! 2776		 case OPCODE_EVALCOORD1:
+! 2777		    gl_EvalCoord1f( ctx, n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	call	gl_EvalCoord1f
+	ld	[%sp+72],%o1
+
+	! block 125
+.L4245:
+
+! 2778		    break;
+
+	ba	.L4043
+	nop
+
+	! block 126
+.L4246:
+.L4247:
+
+! 2779		 case OPCODE_EVALCOORD2:
+! 2780		    gl_EvalCoord2f( ctx, n[1].f, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	call	gl_EvalCoord2f
+	ld	[%sp+76],%o2
+
+	! block 127
+.L4248:
+
+! 2781		    break;
+
+	ba	.L4043
+	nop
+
+	! block 128
+.L4249:
+.L4250:
+
+! 2782		 case OPCODE_EVALMESH1:
+! 2783		    gl_EvalMesh1( ctx, n[1].e, n[2].i, n[3].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	gl_EvalMesh1
+	mov	%l0,%o3
+
+	! block 129
+.L4251:
+
+! 2784		    break;
+
+	ba	.L4043
+	nop
+
+	! block 130
+.L4252:
+.L4253:
+
+! 2785		 case OPCODE_EVALMESH2:
+! 2786		    gl_EvalMesh2( ctx, n[1].e, n[2].i, n[3].i, n[4].i, n[5].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	call	gl_EvalMesh2
+	mov	%l0,%o5
+
+	! block 131
+.L4254:
+
+! 2787		    break;
+
+	ba	.L4043
+	nop
+
+	! block 132
+.L4255:
+.L4256:
+
+! 2788		 case OPCODE_EVALPOINT1:
+! 2789		    gl_EvalPoint1( ctx, n[1].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_EvalPoint1
+	mov	%l0,%o1
+
+	! block 133
+.L4257:
+
+! 2790		    break;
+
+	ba	.L4043
+	nop
+
+	! block 134
+.L4258:
+.L4259:
+
+! 2791		 case OPCODE_EVALPOINT2:
+! 2792		    gl_EvalPoint2( ctx, n[1].i, n[2].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_EvalPoint2
+	mov	%l0,%o2
+
+	! block 135
+.L4260:
+
+! 2793		    break;
+
+	ba	.L4043
+	nop
+
+	! block 136
+.L4261:
+.L4262:
+.L4263:
+
+! 2794		 case OPCODE_FOG:
+! 2795		    {
+! 2796		       GLfloat p[4];
+! 2797		       p[0] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	st	%f4,[%fp-28]
+
+	! block 137
+.L4264:
+
+! 2798		       p[1] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-24]
+
+	! block 138
+.L4265:
+
+! 2799		       p[2] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-20]
+
+	! block 139
+.L4266:
+
+! 2800		       p[3] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-16]
+
+	! block 140
+.L4267:
+
+! 2801		       gl_Fogfv( ctx, n[1].e, p );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	add	%fp,-28,%l2
+	mov	%l1,%o0
+	mov	%l0,%o1
+	call	gl_Fogfv
+	mov	%l2,%o2
+
+	! block 141
+.L4268:
+.L4269:
+
+! 2802		    }
+! 2803		    break;
+
+	ba	.L4043
+	nop
+
+	! block 142
+.L4270:
+.L4271:
+
+! 2804		 case OPCODE_FRONT_FACE:
+! 2805		    gl_FrontFace( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_FrontFace
+	mov	%l0,%o1
+
+	! block 143
+.L4272:
+
+! 2806		    break;
+
+	ba	.L4043
+	nop
+
+	! block 144
+.L4273:
+.L4274:
+
+! 2807	         case OPCODE_FRUSTUM:
+! 2808	            gl_Frustum( ctx, n[1].f, n[2].f, n[3].f, n[4].f, n[5].f, n[6].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f12
+	ld	[%l0+20],%f4
+	fstod	%f4,%f14
+	ld	[%l0+24],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	std	%f6,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	std	%f8,[%sp+88]
+	ld	[%sp+88],%o3
+	ld	[%sp+92],%o4
+	std	%f10,[%sp+88]
+	ld	[%sp+88],%o5
+	std	%f12,[%sp+96]
+	std	%f14,[%sp+104]
+	call	gl_Frustum
+	std	%f4,[%sp+112]
+
+	! block 145
+.L4275:
+
+! 2809	            break;
+
+	ba	.L4043
+	nop
+
+	! block 146
+.L4276:
+.L4277:
+
+! 2810		 case OPCODE_HINT:
+! 2811		    gl_Hint( ctx, n[1].e, n[2].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_Hint
+	mov	%l0,%o2
+
+	! block 147
+.L4278:
+
+! 2812		    break;
+
+	ba	.L4043
+	nop
+
+	! block 148
+.L4279:
+.L4280:
+
+! 2813		 case OPCODE_INDEX_MASK:
+! 2814		    gl_IndexMask( ctx, n[1].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_IndexMask
+	mov	%l0,%o1
+
+	! block 149
+.L4281:
+
+! 2815		    break;
+
+	ba	.L4043
+	nop
+
+	! block 150
+.L4282:
+.L4283:
+
+! 2816		 case OPCODE_INIT_NAMES:
+! 2817		    gl_InitNames( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_InitNames
+	mov	%l0,%o0
+
+	! block 151
+.L4284:
+
+! 2818		    break;
+
+	ba	.L4043
+	nop
+
+	! block 152
+.L4285:
+.L4286:
+.L4287:
+
+! 2819	         case OPCODE_LIGHT:
+! 2820		    {
+! 2821		       GLfloat p[4];
+! 2822		       p[0] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-28]
+
+	! block 153
+.L4288:
+
+! 2823		       p[1] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-24]
+
+	! block 154
+.L4289:
+
+! 2824		       p[2] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-20]
+
+	! block 155
+.L4290:
+
+! 2825		       p[3] = n[6].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+24],%f4
+	st	%f4,[%fp-16]
+
+	! block 156
+.L4291:
+
+! 2826		       gl_Lightfv( ctx, n[1].e, n[2].e, p, 4 );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	add	%fp,-28,%l3
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l0,%o2
+	mov	%l3,%o3
+	call	gl_Lightfv
+	mov	4,%o4
+
+	! block 157
+.L4292:
+.L4293:
+
+! 2827		    }
+! 2828		    break;
+
+	ba	.L4043
+	nop
+
+	! block 158
+.L4294:
+.L4295:
+.L4296:
+
+! 2829	         case OPCODE_LIGHT_MODEL:
+! 2830		    {
+! 2831		       GLfloat p[4];
+! 2832		       p[0] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	st	%f4,[%fp-28]
+
+	! block 159
+.L4297:
+
+! 2833		       p[1] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-24]
+
+	! block 160
+.L4298:
+
+! 2834		       p[2] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-20]
+
+	! block 161
+.L4299:
+
+! 2835		       p[3] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-16]
+
+	! block 162
+.L4300:
+
+! 2836		       gl_LightModelfv( ctx, n[1].e, p );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	add	%fp,-28,%l2
+	mov	%l1,%o0
+	mov	%l0,%o1
+	call	gl_LightModelfv
+	mov	%l2,%o2
+
+	! block 163
+.L4301:
+.L4302:
+
+! 2837		    }
+! 2838		    break;
+
+	ba	.L4043
+	nop
+
+	! block 164
+.L4303:
+.L4304:
+
+! 2839		 case OPCODE_LINE_STIPPLE:
+! 2840		    gl_LineStipple( ctx, n[1].i, n[2].us );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	lduh	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_LineStipple
+	mov	%l0,%o2
+
+	! block 165
+.L4305:
+
+! 2841		    break;
+
+	ba	.L4043
+	nop
+
+	! block 166
+.L4306:
+.L4307:
+
+! 2842		 case OPCODE_LINE_WIDTH:
+! 2843		    gl_LineWidth( ctx, n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	call	gl_LineWidth
+	ld	[%sp+72],%o1
+
+	! block 167
+.L4308:
+
+! 2844		    break;
+
+	ba	.L4043
+	nop
+
+	! block 168
+.L4309:
+.L4310:
+
+! 2845		 case OPCODE_LIST_BASE:
+! 2846		    gl_ListBase( ctx, n[1].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_ListBase
+	mov	%l0,%o1
+
+	! block 169
+.L4311:
+
+! 2847		    break;
+
+	ba	.L4043
+	nop
+
+	! block 170
+.L4312:
+.L4313:
+
+! 2848		 case OPCODE_LOAD_IDENTITY:
+! 2849	            gl_LoadIdentity( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_LoadIdentity
+	mov	%l0,%o0
+
+	! block 171
+.L4314:
+
+! 2850	            break;
+
+	ba	.L4043
+	nop
+
+	! block 172
+.L4315:
+.L4316:
+.L4318:
+
+! 2851		 case OPCODE_LOAD_MATRIX:
+! 2852		    if (sizeof(Node)==sizeof(GLfloat)) {
+
+.L4319:
+.L4320:
+.L4321:
+
+! 2853		       gl_LoadMatrixf( ctx, &n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	add	%l0,4,%l0
+	mov	%l1,%o0
+	call	gl_LoadMatrixf
+	mov	%l0,%o1
+
+	! block 173
+.L4322:
+.L4323:
+	ba	.L4324
+	nop
+
+	! block 174
+.L4317:
+.L4325:
+.L4326:
+.L4327:
+.L4328:
+
+! 2854		    }
+! 2855		    else {
+! 2856		       GLfloat m[16];
+! 2857		       GLuint i;
+! 2858		       for (i=0;i<16;i++) {
+
+	st	%g0,[%fp-80]
+
+	! block 175
+.L_y35:
+	add	%fp,-76,%l4
+.L4332:
+.L4329:
+.L4333:
+.L4334:
+.L4335:
+
+! 2859			  m[i] = n[1+i].f;
+
+	ld	[%fp-4],%l2
+	ld	[%fp-80],%l3
+	add	%l3,1,%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%f4
+	sll	%l3,2,%l1
+	st	%f4,[%l4+%l1]
+
+	! block 176
+.L4336:
+.L4337:
+.L4338:
+	ld	[%fp-80],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-80]
+	ld	[%fp-80],%l0
+	cmp	%l0,16
+	blu	.L4329
+	nop
+
+	! block 177
+.L4339:
+.L4331:
+.L4340:
+.L4341:
+
+! 2860		       }
+! 2861		       gl_LoadMatrixf( ctx, m );
+
+	ld	[%fp+68],%l0
+	add	%fp,-76,%l1
+	mov	%l0,%o0
+	call	gl_LoadMatrixf
+	mov	%l1,%o1
+
+	! block 178
+.L4342:
+.L4343:
+.L4324:
+.L4344:
+.L4345:
+
+! 2862		    }
+! 2863		    break;
+
+	ba	.L4043
+	nop
+
+	! block 179
+.L4346:
+.L4347:
+
+! 2864		 case OPCODE_LOAD_NAME:
+! 2865		    gl_LoadName( ctx, n[1].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_LoadName
+	mov	%l0,%o1
+
+	! block 180
+.L4348:
+
+! 2866		    break;
+
+	ba	.L4043
+	nop
+
+	! block 181
+.L4349:
+.L4350:
+
+! 2867		 case OPCODE_LOGIC_OP:
+! 2868		    gl_LogicOp( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_LogicOp
+	mov	%l0,%o1
+
+	! block 182
+.L4351:
+
+! 2869		    break;
+
+	ba	.L4043
+	nop
+
+	! block 183
+.L4352:
+.L4353:
+
+! 2870		 case OPCODE_MAP1:
+! 2871		    gl_Map1f( ctx, n[1].e, n[2].f, n[3].f,
+! 2872	                      n[4].i, n[5].i, (GLfloat *) n[6].data, GL_TRUE );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	ld	[%l0+12],%f5
+	ld	[%l0+16],%l3
+	ld	[%l0+20],%l5
+	ld	[%l0+24],%l0
+	mov	1,%l4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	mov	%l3,%o4
+	mov	%l5,%o5
+	st	%l0,[%sp+92]
+	call	gl_Map1f
+	st	%l4,[%sp+96]
+
+	! block 184
+.L4354:
+
+! 2873		    break;
+
+	ba	.L4043
+	nop
+
+	! block 185
+.L4355:
+.L4356:
+
+! 2874		 case OPCODE_MAP2:
+! 2875		    gl_Map2f( ctx, n[1].e,
+! 2876	                      n[2].f, n[3].f,  /* u1, u2 */
+! 2877			      n[6].i, n[8].i,  /* ustride, uorder */
+! 2878			      n[4].f, n[5].f,  /* v1, v2 */
+! 2879			      n[7].i, n[9].i,  /* vstride, vorder */
+! 2880			      (GLfloat *) n[10].data,
+! 2881	                      GL_TRUE);
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	ld	[%l0+12],%f5
+	ld	[%l0+24],%l3
+	ld	[%l0+32],%l5
+	ld	[%l0+16],%f6
+	ld	[%l0+20],%f7
+	ld	[%l0+28],%l6
+	ld	[%l0+36],%l7
+	ld	[%l0+40],%l0
+	mov	1,%l4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	mov	%l3,%o4
+	mov	%l5,%o5
+	st	%f6,[%sp+92]
+	st	%f7,[%sp+96]
+	st	%l6,[%sp+100]
+	st	%l7,[%sp+104]
+	st	%l0,[%sp+108]
+	call	gl_Map2f
+	st	%l4,[%sp+112]
+
+	! block 186
+.L4357:
+
+! 2882		    break;
+
+	ba	.L4043
+	nop
+
+	! block 187
+.L4358:
+.L4359:
+
+! 2883		 case OPCODE_MAPGRID1:
+! 2884		    gl_MapGrid1f( ctx, n[1].i, n[2].f, n[3].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	ld	[%l0+12],%f5
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	call	gl_MapGrid1f
+	ld	[%sp+80],%o3
+
+	! block 188
+.L4360:
+
+! 2885		    break;
+
+	ba	.L4043
+	nop
+
+	! block 189
+.L4361:
+.L4362:
+
+! 2886		 case OPCODE_MAPGRID2:
+! 2887		    gl_MapGrid2f( ctx, n[1].i, n[2].f, n[3].f, n[4].i, n[5].f, n[6].f);
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	ld	[%l0+12],%f5
+	ld	[%l0+16],%l3
+	ld	[%l0+20],%f6
+	ld	[%l0+24],%f7
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f5,[%sp+80]
+	ld	[%sp+80],%o3
+	mov	%l3,%o4
+	st	%f6,[%sp+88]
+	ld	[%sp+88],%o5
+	call	gl_MapGrid2f
+	st	%f7,[%sp+92]
+
+	! block 190
+.L4363:
+
+! 2888		    break;
+
+	ba	.L4043
+	nop
+
+	! block 191
+.L4364:
+.L4365:
+.L4366:
+
+! 2889		 case OPCODE_MATERIAL:
+! 2890		    {
+! 2891		       GLfloat params[4];
+! 2892		       params[0] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-28]
+
+	! block 192
+.L4367:
+
+! 2893		       params[1] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-24]
+
+	! block 193
+.L4368:
+
+! 2894		       params[2] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-20]
+
+	! block 194
+.L4369:
+
+! 2895		       params[3] = n[6].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+24],%f4
+	st	%f4,[%fp-16]
+
+	! block 195
+.L4370:
+
+! 2896		       gl_Materialfv( ctx, n[1].e, n[2].e, params );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	add	%fp,-28,%l3
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l0,%o2
+	call	gl_Materialfv
+	mov	%l3,%o3
+
+	! block 196
+.L4371:
+.L4372:
+
+! 2897		    }
+! 2898		    break;
+
+	ba	.L4043
+	nop
+
+	! block 197
+.L4373:
+.L4374:
+
+! 2899	         case OPCODE_MATRIX_MODE:
+! 2900	            gl_MatrixMode( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_MatrixMode
+	mov	%l0,%o1
+
+	! block 198
+.L4375:
+
+! 2901	            break;
+
+	ba	.L4043
+	nop
+
+	! block 199
+.L4376:
+.L4377:
+.L4379:
+
+! 2902		 case OPCODE_MULT_MATRIX:
+! 2903		    if (sizeof(Node)==sizeof(GLfloat)) {
+
+.L4380:
+.L4381:
+.L4382:
+
+! 2904		       gl_MultMatrixf( ctx, &n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	add	%l0,4,%l0
+	mov	%l1,%o0
+	call	gl_MultMatrixf
+	mov	%l0,%o1
+
+	! block 200
+.L4383:
+.L4384:
+	ba	.L4385
+	nop
+
+	! block 201
+.L4378:
+.L4386:
+.L4387:
+.L4388:
+.L4389:
+
+! 2905		    }
+! 2906		    else {
+! 2907		       GLfloat m[16];
+! 2908		       GLuint i;
+! 2909		       for (i=0;i<16;i++) {
+
+	st	%g0,[%fp-80]
+
+	! block 202
+.L_y36:
+	add	%fp,-76,%l4
+.L4393:
+.L4390:
+.L4394:
+.L4395:
+.L4396:
+
+! 2910			  m[i] = n[1+i].f;
+
+	ld	[%fp-4],%l2
+	ld	[%fp-80],%l3
+	add	%l3,1,%l0
+	sll	%l0,2,%l1
+	ld	[%l2+%l1],%f4
+	sll	%l3,2,%l1
+	st	%f4,[%l4+%l1]
+
+	! block 203
+.L4397:
+.L4398:
+.L4399:
+	ld	[%fp-80],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-80]
+	ld	[%fp-80],%l0
+	cmp	%l0,16
+	blu	.L4390
+	nop
+
+	! block 204
+.L4400:
+.L4392:
+.L4401:
+.L4402:
+
+! 2911		       }
+! 2912		       gl_MultMatrixf( ctx, m );
+
+	ld	[%fp+68],%l0
+	add	%fp,-76,%l1
+	mov	%l0,%o0
+	call	gl_MultMatrixf
+	mov	%l1,%o1
+
+	! block 205
+.L4403:
+.L4404:
+.L4385:
+.L4405:
+.L4406:
+
+! 2913		    }
+! 2914		    break;
+
+	ba	.L4043
+	nop
+
+	! block 206
+.L4407:
+.L4408:
+
+! 2915	         case OPCODE_ORTHO:
+! 2916	            gl_Ortho( ctx, n[1].f, n[2].f, n[3].f, n[4].f, n[5].f, n[6].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f12
+	ld	[%l0+20],%f4
+	fstod	%f4,%f14
+	ld	[%l0+24],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	std	%f6,[%sp+88]
+	ld	[%sp+88],%o1
+	ld	[%sp+92],%o2
+	std	%f8,[%sp+88]
+	ld	[%sp+88],%o3
+	ld	[%sp+92],%o4
+	std	%f10,[%sp+88]
+	ld	[%sp+88],%o5
+	std	%f12,[%sp+96]
+	std	%f14,[%sp+104]
+	call	gl_Ortho
+	std	%f4,[%sp+112]
+
+	! block 207
+.L4409:
+
+! 2917	            break;
+
+	ba	.L4043
+	nop
+
+	! block 208
+.L4410:
+.L4411:
+
+! 2918		 case OPCODE_PASSTHROUGH:
+! 2919		    gl_PassThrough( ctx, n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	call	gl_PassThrough
+	ld	[%sp+72],%o1
+
+	! block 209
+.L4412:
+
+! 2920		    break;
+
+	ba	.L4043
+	nop
+
+	! block 210
+.L4413:
+.L4414:
+
+! 2921		 case OPCODE_PIXEL_MAP:
+! 2922		    gl_PixelMapfv( ctx, n[1].e, n[2].i, (GLfloat *) n[3].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	gl_PixelMapfv
+	mov	%l0,%o3
+
+	! block 211
+.L4415:
+
+! 2923		    break;
+
+	ba	.L4043
+	nop
+
+	! block 212
+.L4416:
+.L4417:
+
+! 2924		 case OPCODE_PIXEL_TRANSFER:
+! 2925		    gl_PixelTransferf( ctx, n[1].e, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	st	%f4,[%sp+76]
+	call	gl_PixelTransferf
+	ld	[%sp+76],%o2
+
+	! block 213
+.L4418:
+
+! 2926		    break;
+
+	ba	.L4043
+	nop
+
+	! block 214
+.L4419:
+.L4420:
+
+! 2927		 case OPCODE_PIXEL_ZOOM:
+! 2928		    gl_PixelZoom( ctx, n[1].f, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	call	gl_PixelZoom
+	ld	[%sp+76],%o2
+
+	! block 215
+.L4421:
+
+! 2929		    break;
+
+	ba	.L4043
+	nop
+
+	! block 216
+.L4422:
+.L4423:
+
+! 2930		 case OPCODE_POINT_SIZE:
+! 2931		    gl_PointSize( ctx, n[1].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	call	gl_PointSize
+	ld	[%sp+72],%o1
+
+	! block 217
+.L4424:
+
+! 2932		    break;
+
+	ba	.L4043
+	nop
+
+	! block 218
+.L4425:
+.L4426:
+.L4427:
+
+! 2933		 case OPCODE_POINT_PARAMETERS:
+! 2934		    {
+! 2935			GLfloat params[3];
+! 2936			params[0] = n[2].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	st	%f4,[%fp-24]
+
+	! block 219
+.L4428:
+
+! 2937			params[1] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-20]
+
+	! block 220
+.L4429:
+
+! 2938			params[2] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-16]
+
+	! block 221
+.L4430:
+
+! 2939			gl_PointParameterfvEXT( ctx, n[1].e, params ); 
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	add	%fp,-24,%l2
+	mov	%l1,%o0
+	mov	%l0,%o1
+	call	gl_PointParameterfvEXT
+	mov	%l2,%o2
+
+	! block 222
+.L4431:
+.L4432:
+
+! 2940		    }
+! 2941		    break;
+
+	ba	.L4043
+	nop
+
+	! block 223
+.L4433:
+.L4434:
+
+! 2942		 case OPCODE_POLYGON_MODE:
+! 2943		    gl_PolygonMode( ctx, n[1].e, n[2].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	gl_PolygonMode
+	mov	%l0,%o2
+
+	! block 224
+.L4435:
+
+! 2944		    break;
+
+	ba	.L4043
+	nop
+
+	! block 225
+.L4436:
+.L4437:
+
+! 2945		 case OPCODE_POLYGON_STIPPLE:
+! 2946		    gl_PolygonStipple( ctx, (GLubyte *) n[1].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_PolygonStipple
+	mov	%l0,%o1
+
+	! block 226
+.L4438:
+
+! 2947		    break;
+
+	ba	.L4043
+	nop
+
+	! block 227
+.L4439:
+.L4440:
+
+! 2948		 case OPCODE_POLYGON_OFFSET:
+! 2949		    gl_PolygonOffset( ctx, n[1].f, n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	call	gl_PolygonOffset
+	ld	[%sp+76],%o2
+
+	! block 228
+.L4441:
+
+! 2950		    break;
+
+	ba	.L4043
+	nop
+
+	! block 229
+.L4442:
+.L4443:
+
+! 2951		 case OPCODE_POP_ATTRIB:
+! 2952		    gl_PopAttrib( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_PopAttrib
+	mov	%l0,%o0
+
+	! block 230
+.L4444:
+
+! 2953		    break;
+
+	ba	.L4043
+	nop
+
+	! block 231
+.L4445:
+.L4446:
+
+! 2954		 case OPCODE_POP_MATRIX:
+! 2955		    gl_PopMatrix( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_PopMatrix
+	mov	%l0,%o0
+
+	! block 232
+.L4447:
+
+! 2956		    break;
+
+	ba	.L4043
+	nop
+
+	! block 233
+.L4448:
+.L4449:
+
+! 2957		 case OPCODE_POP_NAME:
+! 2958		    gl_PopName( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_PopName
+	mov	%l0,%o0
+
+	! block 234
+.L4450:
+
+! 2959		    break;
+
+	ba	.L4043
+	nop
+
+	! block 235
+.L4451:
+.L4452:
+
+! 2960		 case OPCODE_PRIORITIZE_TEXTURE:
+! 2961	            gl_PrioritizeTextures( ctx, 1, &n[1].ui, &n[2].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	add	%l0,4,%l2
+	add	%l0,8,%l0
+	mov	%l1,%o0
+	mov	1,%o1
+	mov	%l2,%o2
+	call	gl_PrioritizeTextures
+	mov	%l0,%o3
+
+	! block 236
+.L4453:
+
+! 2962		    break;
+
+	ba	.L4043
+	nop
+
+	! block 237
+.L4454:
+.L4455:
+
+! 2963		 case OPCODE_PUSH_ATTRIB:
+! 2964		    gl_PushAttrib( ctx, n[1].bf );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_PushAttrib
+	mov	%l0,%o1
+
+	! block 238
+.L4456:
+
+! 2965		    break;
+
+	ba	.L4043
+	nop
+
+	! block 239
+.L4457:
+.L4458:
+
+! 2966		 case OPCODE_PUSH_MATRIX:
+! 2967		    gl_PushMatrix( ctx );
+
+	ld	[%fp+68],%l0
+	call	gl_PushMatrix
+	mov	%l0,%o0
+
+	! block 240
+.L4459:
+
+! 2968		    break;
+
+	ba	.L4043
+	nop
+
+	! block 241
+.L4460:
+.L4461:
+
+! 2969		 case OPCODE_PUSH_NAME:
+! 2970		    gl_PushName( ctx, n[1].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_PushName
+	mov	%l0,%o1
+
+	! block 242
+.L4462:
+
+! 2971		    break;
+
+	ba	.L4043
+	nop
+
+	! block 243
+.L4463:
+.L4464:
+
+! 2972		 case OPCODE_RASTER_POS:
+! 2973	            gl_RasterPos4f( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	call	gl_RasterPos4f
+	ld	[%sp+84],%o4
+
+	! block 244
+.L4465:
+
+! 2974		    break;
+
+	ba	.L4043
+	nop
+
+	! block 245
+.L4466:
+.L4467:
+
+! 2975		 case OPCODE_READ_BUFFER:
+! 2976		    gl_ReadBuffer( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_ReadBuffer
+	mov	%l0,%o1
+
+	! block 246
+.L4468:
+
+! 2977		    break;
+
+	ba	.L4043
+	nop
+
+	! block 247
+.L4469:
+.L4470:
+
+! 2978	         case OPCODE_RECTF:
+! 2979	            gl_Rectf( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	call	gl_Rectf
+	ld	[%sp+84],%o4
+
+	! block 248
+.L4471:
+
+! 2980	            break;
+
+	ba	.L4043
+	nop
+
+	! block 249
+.L4472:
+.L4473:
+
+! 2981	         case OPCODE_SCALE:
+! 2982	            gl_Scalef( ctx, n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	call	gl_Scalef
+	ld	[%sp+80],%o3
+
+	! block 250
+.L4474:
+
+! 2983	            break;
+
+	ba	.L4043
+	nop
+
+	! block 251
+.L4475:
+.L4476:
+
+! 2984		 case OPCODE_SCISSOR:
+! 2985		    gl_Scissor( ctx, n[1].i, n[2].i, n[3].i, n[4].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	call	gl_Scissor
+	mov	%l0,%o4
+
+	! block 252
+.L4477:
+
+! 2986		    break;
+
+	ba	.L4043
+	nop
+
+	! block 253
+.L4478:
+.L4479:
+
+! 2987		 case OPCODE_SHADE_MODEL:
+! 2988		    gl_ShadeModel( ctx, n[1].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_ShadeModel
+	mov	%l0,%o1
+
+	! block 254
+.L4480:
+
+! 2989		    break;
+
+	ba	.L4043
+	nop
+
+	! block 255
+.L4481:
+.L4482:
+
+! 2990		 case OPCODE_STENCIL_FUNC:
+! 2991		    gl_StencilFunc( ctx, n[1].e, n[2].i, n[3].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	gl_StencilFunc
+	mov	%l0,%o3
+
+	! block 256
+.L4483:
+
+! 2992		    break;
+
+	ba	.L4043
+	nop
+
+	! block 257
+.L4484:
+.L4485:
+
+! 2993		 case OPCODE_STENCIL_MASK:
+! 2994		    gl_StencilMask( ctx, n[1].ui );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	call	gl_StencilMask
+	mov	%l0,%o1
+
+	! block 258
+.L4486:
+
+! 2995		    break;
+
+	ba	.L4043
+	nop
+
+	! block 259
+.L4487:
+.L4488:
+
+! 2996		 case OPCODE_STENCIL_OP:
+! 2997		    gl_StencilOp( ctx, n[1].e, n[2].e, n[3].e );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	gl_StencilOp
+	mov	%l0,%o3
+
+	! block 260
+.L4489:
+
+! 2998		    break;
+
+	ba	.L4043
+	nop
+
+	! block 261
+.L4490:
+.L4491:
+.L4492:
+
+! 2999	         case OPCODE_TEXENV:
+! 3000	            {
+! 3001	               GLfloat params[4];
+! 3002	               params[0] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-28]
+
+	! block 262
+.L4493:
+
+! 3003	               params[1] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-24]
+
+	! block 263
+.L4494:
+
+! 3004	               params[2] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-20]
+
+	! block 264
+.L4495:
+
+! 3005	               params[3] = n[6].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+24],%f4
+	st	%f4,[%fp-16]
+
+	! block 265
+.L4496:
+
+! 3006	               gl_TexEnvfv( ctx, n[1].e, n[2].e, params );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	add	%fp,-28,%l3
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l0,%o2
+	call	gl_TexEnvfv
+	mov	%l3,%o3
+
+	! block 266
+.L4497:
+.L4498:
+
+! 3007	            }
+! 3008	            break;
+
+	ba	.L4043
+	nop
+
+	! block 267
+.L4499:
+.L4500:
+.L4501:
+
+! 3009	         case OPCODE_TEXGEN:
+! 3010	            {
+! 3011	               GLfloat params[4];
+! 3012	               params[0] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-28]
+
+	! block 268
+.L4502:
+
+! 3013	               params[1] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-24]
+
+	! block 269
+.L4503:
+
+! 3014	               params[2] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-20]
+
+	! block 270
+.L4504:
+
+! 3015	               params[3] = n[6].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+24],%f4
+	st	%f4,[%fp-16]
+
+	! block 271
+.L4505:
+
+! 3016	               gl_TexGenfv( ctx, n[1].e, n[2].e, params );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	add	%fp,-28,%l3
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l0,%o2
+	call	gl_TexGenfv
+	mov	%l3,%o3
+
+	! block 272
+.L4506:
+.L4507:
+
+! 3017	            }
+! 3018	            break;
+
+	ba	.L4043
+	nop
+
+	! block 273
+.L4508:
+.L4509:
+.L4510:
+
+! 3019	         case OPCODE_TEXPARAMETER:
+! 3020	            {
+! 3021	               GLfloat params[4];
+! 3022	               params[0] = n[3].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	st	%f4,[%fp-28]
+
+	! block 274
+.L4511:
+
+! 3023	               params[1] = n[4].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	st	%f4,[%fp-24]
+
+	! block 275
+.L4512:
+
+! 3024	               params[2] = n[5].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+20],%f4
+	st	%f4,[%fp-20]
+
+	! block 276
+.L4513:
+
+! 3025	               params[3] = n[6].f;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+24],%f4
+	st	%f4,[%fp-16]
+
+	! block 277
+.L4514:
+
+! 3026	               gl_TexParameterfv( ctx, n[1].e, n[2].e, params );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l0
+	add	%fp,-28,%l3
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l0,%o2
+	call	gl_TexParameterfv
+	mov	%l3,%o3
+
+	! block 278
+.L4515:
+.L4516:
+
+! 3027	            }
+! 3028	            break;
+
+	ba	.L4043
+	nop
+
+	! block 279
+.L4517:
+.L4518:
+
+! 3029		 case OPCODE_TEX_IMAGE1D:
+! 3030		    gl_TexImage1D( ctx,
+! 3031	                           n[1].e, /* target */
+! 3032	                           n[2].i, /* level */
+! 3033	                           n[3].i, /* components */
+! 3034	                           n[4].i, /* width */
+! 3035	                           n[5].e, /* border */
+! 3036	                           n[6].e, /* format */
+! 3037	                           n[7].e, /* type */
+! 3038	                           (struct gl_image *) n[8].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	call	gl_TexImage1D
+	st	%l0,[%sp+100]
+
+	! block 280
+.L4519:
+
+! 3039		    break;
+
+	ba	.L4043
+	nop
+
+	! block 281
+.L4520:
+.L4521:
+
+! 3040		 case OPCODE_TEX_IMAGE2D:
+! 3041		    gl_TexImage2D( ctx,
+! 3042	                           n[1].e, /* target */
+! 3043	                           n[2].i, /* level */
+! 3044	                           n[3].i, /* components */
+! 3045	                           n[4].i, /* width */
+! 3046	                           n[5].i, /* height */
+! 3047	                           n[6].e, /* border */
+! 3048	                           n[7].e, /* format */
+! 3049	                           n[8].e, /* type */
+! 3050	                           (struct gl_image *) n[9].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%i3
+	ld	[%l0+36],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	st	%i3,[%sp+100]
+	call	gl_TexImage2D
+	st	%l0,[%sp+104]
+
+	! block 282
+.L4522:
+
+! 3051		    break;
+
+	ba	.L4043
+	nop
+
+	! block 283
+.L4523:
+.L4524:
+
+! 3052	         case OPCODE_TEX_IMAGE3D:
+! 3053	            gl_TexImage3DEXT( ctx,
+! 3054	                              n[1].e, /* target */
+! 3055	                              n[2].i, /* level */
+! 3056	                              n[3].i, /* components */
+! 3057	                              n[4].i, /* width */
+! 3058	                              n[5].i, /* height */
+! 3059	                              n[6].i, /* depth  */
+! 3060	                              n[7].e, /* border */
+! 3061	                              n[8].e, /* format */
+! 3062	                              n[9].e, /* type */
+! 3063	                              (struct gl_image *) n[10].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%i3
+	ld	[%l0+36],%i4
+	ld	[%l0+40],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	st	%i3,[%sp+100]
+	st	%i4,[%sp+104]
+	call	gl_TexImage3DEXT
+	st	%l0,[%sp+108]
+
+	! block 284
+.L4525:
+
+! 3064	            break;
+
+	ba	.L4043
+	nop
+
+	! block 285
+.L4526:
+.L4527:
+
+! 3065	         case OPCODE_TEX_SUB_IMAGE1D:
+! 3066	            gl_TexSubImage1D( ctx, n[1].e, n[2].i, n[3].i, n[4].i, n[5].e,
+! 3067	                              n[6].e, (struct gl_image *) n[7].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	call	gl_TexSubImage1D
+	st	%l0,[%sp+96]
+
+	! block 286
+.L4528:
+
+! 3068	            break;
+
+	ba	.L4043
+	nop
+
+	! block 287
+.L4529:
+.L4530:
+
+! 3069	         case OPCODE_TEX_SUB_IMAGE2D:
+! 3070	            gl_TexSubImage2D( ctx, n[1].e, n[2].i, n[3].i, n[4].i, n[5].e,
+! 3071	                              n[6].i, n[7].e, n[8].e,
+! 3072	                              (struct gl_image *) n[9].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%i3
+	ld	[%l0+36],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	st	%i3,[%sp+100]
+	call	gl_TexSubImage2D
+	st	%l0,[%sp+104]
+
+	! block 288
+.L4531:
+
+! 3073	            break;
+
+	ba	.L4043
+	nop
+
+	! block 289
+.L4532:
+.L4533:
+
+! 3074	         case OPCODE_TEX_SUB_IMAGE3D:
+! 3075	            gl_TexSubImage3DEXT( ctx, n[1].e, n[2].i, n[3].i, n[4].i, n[5].i,
+! 3076	                                 n[6].i, n[7].i, n[8].i, n[9].e, n[10].e,
+! 3077	                                 (struct gl_image *) n[11].data );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l6
+	ld	[%l0+20],%l7
+	ld	[%l0+24],%i0
+	ld	[%l0+28],%i1
+	ld	[%l0+32],%i3
+	ld	[%l0+36],%i4
+	ld	[%l0+40],%i5
+	ld	[%l0+44],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	mov	%l7,%o5
+	st	%i0,[%sp+92]
+	st	%i1,[%sp+96]
+	st	%i3,[%sp+100]
+	st	%i4,[%sp+104]
+	st	%i5,[%sp+108]
+	call	gl_TexSubImage3DEXT
+	st	%l0,[%sp+112]
+
+	! block 290
+.L4534:
+
+! 3078	            break;
+
+	ba	.L4043
+	nop
+
+	! block 291
+.L4535:
+.L4536:
+
+! 3079	         case OPCODE_TRANSLATE:
+! 3080	            gl_Translatef( ctx, n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	call	gl_Translatef
+	ld	[%sp+80],%o3
+
+	! block 292
+.L4537:
+
+! 3081	            break;
+
+	ba	.L4043
+	nop
+
+	! block 293
+.L4538:
+.L4539:
+
+! 3082		 case OPCODE_VIEWPORT:
+! 3083		    gl_Viewport( ctx,
+! 3084	                         n[1].i, n[2].i, (GLsizei) n[3].i, (GLsizei) n[4].i );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%l0+8],%l3
+	ld	[%l0+12],%l5
+	ld	[%l0+16],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	call	gl_Viewport
+	mov	%l0,%o4
+
+	! block 294
+.L4540:
+
+! 3085		    break;
+
+	ba	.L4043
+	nop
+
+	! block 295
+.L4541:
+.L4542:
+
+! 3086		 case OPCODE_WINDOW_POS:
+! 3087	            gl_WindowPos4fMESA( ctx, n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+68],%l1
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	ld	[%l0+8],%f5
+	ld	[%l0+12],%f6
+	ld	[%l0+16],%f7
+	mov	%l1,%o0
+	st	%f4,[%sp+72]
+	ld	[%sp+72],%o1
+	st	%f5,[%sp+76]
+	ld	[%sp+76],%o2
+	st	%f6,[%sp+80]
+	ld	[%sp+80],%o3
+	st	%f7,[%sp+84]
+	call	gl_WindowPos4fMESA
+	ld	[%sp+84],%o4
+
+	! block 296
+.L4543:
+
+! 3088		    break;
+
+	ba	.L4043
+	nop
+
+	! block 297
+.L4544:
+.L4545:
+
+! 3089		 case OPCODE_CONTINUE:
+! 3090		    n = (Node *) n[1].next;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	st	%l0,[%fp-4]
+
+	! block 298
+.L4546:
+
+! 3091		    break;
+
+	ba	.L4043
+	nop
+
+	! block 299
+.L4547:
+.L4548:
+
+! 3092		 case OPCODE_END_OF_LIST:
+! 3093		    done = GL_TRUE;
+
+	mov	1,%l0
+	stb	%l0,[%fp-5]
+
+	! block 300
+.L4549:
+
+! 3094		    break;
+
+	ba	.L4043
+	nop
+
+	! block 301
+.L4550:
+.L4551:
+.L4552:
+
+! 3095		 default:
+! 3096	            {
+! 3097	               char msg[1000];
+! 3098	               sprintf(msg, "Error in execute_list: opcode=%d", (int) opcode);
+
+	add	%fp,-1012,%l0
+	sethi	%hi(.L4553),%l1
+	or	%l1,%lo(.L4553),%l1
+	ld	[%fp-12],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	sprintf
+	mov	%l2,%o2
+
+	! block 302
+.L4554:
+
+! 3099	               gl_problem( ctx, msg );
+
+	ld	[%fp+68],%l0
+	add	%fp,-1012,%l1
+	mov	%l0,%o0
+	call	gl_problem
+	mov	%l1,%o1
+
+	! block 303
+.L4555:
+.L4556:
+
+! 3100	            }
+! 3101	            done = GL_TRUE;
+
+	mov	1,%l0
+	stb	%l0,[%fp-5]
+
+	! block 304
+.L4557:
+.L4558:
+	ba	.L4043
+	nop
+
+	! block 305
+.L4044:
+.L4559:
+	ld	[%fp-12],%l0
+	cmp	%l0,115
+	bgu	.L4550
+	nop
+
+	! block 306
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y8-464),%l0
+	or	%l0,%lo(.L_y8-464),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 307
+.L4560:
+.L4043:
+.L4561:
+.L4562:
+.L4564:
+
+! 3102	      }
+! 3103	
+! 3104	      /* increment n to point to next compiled command */
+! 3105	      if (opcode!=OPCODE_CONTINUE) {
+
+	ld	[%fp-12],%l0
+	cmp	%l0,114
+	be	.L4563
+	nop
+
+	! block 308
+.L4565:
+.L4566:
+.L4567:
+.L4568:
+
+! 3106		 n += InstSize[opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%fp-12],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 309
+.L4569:
+.L4570:
+.L4563:
+.L4571:
+.L4572:
+.L4573:
+.L4574:
+	ldub	[%fp-5],%l0
+	cmp	%l0,%g0
+	be	.L4034
+	nop
+
+	! block 310
+.L4575:
+.L4036:
+.L4576:
+.L4577:
+
+! 3107	      }
+! 3108	
+! 3109	   }
+! 3110	   ctx->CallDepth--;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e20),%l1
+	or	%l1,%lo(0x1e20),%l1
+	add	%l0,%l1,%l1
+	ld	[%l1+0],%l0
+	sub	%l0,1,%l0
+	st	%l0,[%l1+0]
+
+	! block 311
+.L4578:
+.L4579:
+.L4018:
+	jmp	%i7+8
+	restore
+	.size	execute_list,(.-execute_list)
+
+	.word	.L4114
+	.word	.L4117
+	.word	.L4076
+	.word	.L4120
+	.word	.L4123
+	.word	.L4126
+	.word	.L4129
+	.word	.L4132
+	.word	.L4135
+	.word	.L4147
+	.word	.L4159
+	.word	.L4165
+	.word	.L4162
+	.word	.L4168
+	.word	.L4171
+	.word	.L4174
+	.word	.L4177
+	.word	.L4066
+	.word	.L4069
+	.word	.L4063
+	.word	.L4186
+	.word	.L4189
+	.word	.L4192
+	.word	.L4195
+	.word	.L4198
+	.word	.L4201
+	.word	.L4204
+	.word	.L4550
+	.word	.L4207
+	.word	.L4210
+	.word	.L4213
+	.word	.L4216
+	.word	.L4219
+	.word	.L4222
+	.word	.L4225
+	.word	.L4228
+	.word	.L4231
+	.word	.L4234
+	.word	.L4237
+	.word	.L4240
+	.word	.L4079
+	.word	.L4243
+	.word	.L4246
+	.word	.L4249
+	.word	.L4252
+	.word	.L4255
+	.word	.L4258
+	.word	.L4261
+	.word	.L4270
+	.word	.L4273
+	.word	.L4276
+	.word	.L4072
+	.word	.L4279
+	.word	.L4282
+	.word	.L4285
+	.word	.L4294
+	.word	.L4303
+	.word	.L4306
+	.word	.L4309
+	.word	.L4312
+	.word	.L4315
+	.word	.L4346
+	.word	.L4349
+	.word	.L4352
+	.word	.L4355
+	.word	.L4358
+	.word	.L4361
+	.word	.L4364
+	.word	.L4373
+	.word	.L4376
+	.word	.L4057
+	.word	.L4407
+	.word	.L4410
+	.word	.L4413
+	.word	.L4416
+	.word	.L4419
+	.word	.L4422
+	.word	.L4425
+	.word	.L4433
+	.word	.L4436
+	.word	.L4439
+	.word	.L4442
+	.word	.L4445
+	.word	.L4448
+	.word	.L4451
+	.word	.L4454
+	.word	.L4457
+	.word	.L4460
+	.word	.L4463
+	.word	.L4469
+	.word	.L4466
+	.word	.L4472
+	.word	.L4475
+	.word	.L4478
+	.word	.L4481
+	.word	.L4484
+	.word	.L4487
+	.word	.L4082
+	.word	.L4097
+	.word	.L4490
+	.word	.L4499
+	.word	.L4508
+	.word	.L4517
+	.word	.L4520
+	.word	.L4523
+	.word	.L4526
+	.word	.L4529
+	.word	.L4532
+	.word	.L4535
+	.word	.L4048
+	.word	.L4051
+	.word	.L4054
+	.word	.L4538
+	.word	.L4541
+	.word	.L4544
+	.word	.L4547
+.L_y8:
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_IsList
+	.type	gl_IsList,#function
+gl_IsList:
+	save	%sp,-104,%sp
+
+	! block 1
+.L4582:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L4583:
+.L4585:
+.L4587:
+
+! File dlist.c:
+! 3111	}
+! 3112	
+! 3115	/**********************************************************************/
+! 3116	/*                           GL functions                             */
+! 3117	/**********************************************************************/
+! 3118	
+! 3121	/*
+! 3122	 * Test if a display list number is valid.
+! 3123	 */
+! 3124	GLboolean gl_IsList( GLcontext *ctx, GLuint list )
+! 3125	{
+! 3126	   if (list > 0 && HashLookup(ctx->Shared->DisplayList, list)) {
+
+	ld	[%fp+72],%l0
+	cmp	%l0,0
+	bleu	.L4586
+	nop
+
+	! block 3
+.L4588:
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	HashLookup
+	mov	%l1,%o1
+	cmp	%o0,%g0
+	be	.L4586
+	nop
+
+	! block 4
+.L4589:
+.L4590:
+.L4591:
+.L4592:
+
+! 3127	      return GL_TRUE;
+
+	mov	1,%l0
+	ba	.L4581
+	stb	%l0,[%fp-1]
+
+	! block 5
+.L4593:
+.L4594:
+.L4586:
+.L4595:
+.L4596:
+.L4597:
+
+! 3128	   }
+! 3129	   else {
+! 3130	      return GL_FALSE;
+
+	ba	.L4581
+	stb	%g0,[%fp-1]
+
+	! block 6
+.L4598:
+.L4599:
+.L4600:
+
+	! block 7
+.L4601:
+.L4602:
+.L4581:
+	ldub	[%fp-1],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	gl_IsList,(.-gl_IsList)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_DeleteLists
+	.type	gl_DeleteLists,#function
+gl_DeleteLists:
+	save	%sp,-104,%sp
+
+	! block 1
+.L4605:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L4606:
+.L4608:
+.L4610:
+
+! File dlist.c:
+! 3131	   }
+! 3132	}
+! 3133	
+! 3136	/*
+! 3137	 * Delete a sequence of consecutive display lists.
+! 3138	 */
+! 3139	void gl_DeleteLists( GLcontext *ctx, GLuint list, GLsizei range )
+! 3140	{
+! 3141	   GLuint i;
+! 3142	
+! 3143	   if (INSIDE_BEGIN_END(ctx)) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe0fc),%l1
+	or	%l1,%lo(0xe0fc),%l1
+	ld	[%l0+%l1],%l1
+	sethi	%hi(0x1a00),%l0
+	or	%l0,%lo(0x1a00),%l0
+	cmp	%l1,%l0
+	be	.L4609
+	nop
+
+	! block 3
+.L4611:
+.L4612:
+.L4613:
+.L4614:
+
+! 3144	      gl_error( ctx, GL_INVALID_OPERATION, "glDeleteLists" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4615),%l1
+	or	%l1,%lo(.L4615),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 4
+.L4616:
+
+! 3145	      return;
+
+	ba	.L4604
+	nop
+
+	! block 5
+.L4617:
+.L4618:
+.L4609:
+.L4619:
+.L4620:
+.L4622:
+
+! 3146	   }
+! 3147	   if (range<0) {
+
+	ld	[%fp+76],%l0
+	cmp	%l0,0
+	bge	.L4621
+	nop
+
+	! block 6
+.L4623:
+.L4624:
+.L4625:
+.L4626:
+
+! 3148	      gl_error( ctx, GL_INVALID_VALUE, "glDeleteLists" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4627),%l1
+	or	%l1,%lo(.L4627),%l1
+	mov	%l0,%o0
+	mov	1281,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 7
+.L4628:
+
+! 3149	      return;
+
+	ba	.L4604
+	nop
+
+	! block 8
+.L4629:
+.L4630:
+.L4621:
+.L4631:
+.L4632:
+.L4633:
+
+! 3150	   }
+! 3151	   for (i=list;i<list+range;i++) {
+
+	ld	[%fp+72],%l0
+	st	%l0,[%fp-4]
+	ld	[%fp-4],%l2
+	ld	[%fp+72],%l0
+	ld	[%fp+76],%l1
+	add	%l0,%l1,%l0
+	cmp	%l2,%l0
+	bgeu	.L4636
+	nop
+
+	! block 9
+.L4637:
+.L4634:
+.L4638:
+.L4639:
+.L4640:
+
+! 3152	      gl_destroy_list( ctx, i );
+
+	ld	[%fp+68],%l0
+	ld	[%fp-4],%l1
+	mov	%l0,%o0
+	call	gl_destroy_list
+	mov	%l1,%o1
+
+	! block 10
+.L4641:
+.L4642:
+.L4643:
+	ld	[%fp-4],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-4]
+	ld	[%fp-4],%l2
+	ld	[%fp+72],%l0
+	ld	[%fp+76],%l1
+	add	%l0,%l1,%l0
+	cmp	%l2,%l0
+	blu	.L4634
+	nop
+
+	! block 11
+.L4644:
+.L4636:
+.L4645:
+
+	! block 12
+.L4646:
+.L4647:
+.L4604:
+	jmp	%i7+8
+	restore
+	.size	gl_DeleteLists,(.-gl_DeleteLists)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_GenLists
+	.type	gl_GenLists,#function
+gl_GenLists:
+	save	%sp,-112,%sp
+
+	! block 1
+.L4650:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L4651:
+.L4653:
+.L4655:
+
+! File dlist.c:
+! 3153	   }
+! 3154	}
+! 3155	
+! 3158	/*
+! 3159	 * Return a display list number, n, such that lists n through n+range-1
+! 3160	 * are free.
+! 3161	 */
+! 3162	GLuint gl_GenLists( GLcontext *ctx, GLsizei range )
+! 3163	{
+! 3164	   GLuint base;
+! 3165	
+! 3166	   if (INSIDE_BEGIN_END(ctx)) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe0fc),%l1
+	or	%l1,%lo(0xe0fc),%l1
+	ld	[%l0+%l1],%l1
+	sethi	%hi(0x1a00),%l0
+	or	%l0,%lo(0x1a00),%l0
+	cmp	%l1,%l0
+	be	.L4654
+	nop
+
+	! block 3
+.L4656:
+.L4657:
+.L4658:
+.L4659:
+
+! 3167	      gl_error( ctx, GL_INVALID_OPERATION, "glGenLists" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4660),%l1
+	or	%l1,%lo(.L4660),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 4
+.L4661:
+
+! 3168	      return 0;
+
+	ba	.L4649
+	st	%g0,[%fp-4]
+
+	! block 5
+.L4662:
+.L4663:
+.L4654:
+.L4664:
+.L4665:
+.L4667:
+
+! 3169	   }
+! 3170	   if (range<0) {
+
+	ld	[%fp+72],%l0
+	cmp	%l0,0
+	bge	.L4666
+	nop
+
+	! block 6
+.L4668:
+.L4669:
+.L4670:
+.L4671:
+
+! 3171	      gl_error( ctx, GL_INVALID_VALUE, "glGenLists" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4672),%l1
+	or	%l1,%lo(.L4672),%l1
+	mov	%l0,%o0
+	mov	1281,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 7
+.L4673:
+
+! 3172	      return 0;
+
+	ba	.L4649
+	st	%g0,[%fp-4]
+
+	! block 8
+.L4674:
+.L4675:
+.L4666:
+.L4676:
+.L4677:
+.L4679:
+
+! 3173	   }
+! 3174	   if (range==0) {
+
+	ld	[%fp+72],%l0
+	cmp	%l0,0
+	bne	.L4678
+	nop
+
+	! block 9
+.L4680:
+.L4681:
+.L4682:
+.L4683:
+
+! 3175	      return 0;
+
+	ba	.L4649
+	st	%g0,[%fp-4]
+
+	! block 10
+.L4684:
+.L4685:
+.L4678:
+.L4686:
+.L4687:
+
+! 3176	   }
+! 3177	
+! 3178	   base = HashFindFreeKeyBlock(ctx->Shared->DisplayList, range);
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	HashFindFreeKeyBlock
+	mov	%l1,%o1
+	st	%o0,[%fp-8]
+
+	! block 11
+.L4688:
+.L4690:
+
+! 3179	   if (base) {
+
+	ld	[%fp-8],%l0
+	cmp	%l0,%g0
+	be	.L4689
+	nop
+
+	! block 12
+.L4691:
+.L4692:
+.L4693:
+.L4694:
+.L4695:
+
+! 3180	      /* reserve the list IDs by with empty/dummy lists */
+! 3181	      GLuint i;
+! 3182	      for (i=0; i<range; i++) {
+
+	ld	[%fp+72],%l0
+	cmp	%g0,%l0
+	bgeu	.L4698
+	st	%g0,[%fp-12]
+
+	! block 13
+.L4699:
+.L4696:
+.L4700:
+.L4701:
+.L4702:
+
+! 3183	         HashInsert(ctx->Shared->DisplayList, base+i, make_empty_list());
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l2
+	ld	[%fp-8],%l0
+	ld	[%fp-12],%l1
+	call	make_empty_list
+	add	%l0,%l1,%l0
+	mov	%o0,%l1
+	mov	%l2,%o0
+	mov	%l0,%o1
+	call	HashInsert
+	mov	%l1,%o2
+
+	! block 14
+.L4703:
+.L4704:
+.L4705:
+	ld	[%fp-12],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-12]
+	ld	[%fp-12],%l1
+	ld	[%fp+72],%l0
+	cmp	%l1,%l0
+	blu	.L4696
+	nop
+
+	! block 15
+.L4706:
+.L4698:
+.L4707:
+.L4708:
+.L4709:
+.L4689:
+.L4710:
+.L4711:
+
+! 3184	      }
+! 3185	   }
+! 3186	   return base;
+
+	ld	[%fp-8],%l0
+	ba	.L4649
+	st	%l0,[%fp-4]
+
+	! block 16
+
+	! block 17
+.L4712:
+.L4713:
+.L4649:
+	ld	[%fp-4],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	gl_GenLists,(.-gl_GenLists)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_NewList
+	.type	gl_NewList,#function
+gl_NewList:
+	save	%sp,-104,%sp
+
+	! block 1
+.L4716:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L4717:
+.L4719:
+.L4721:
+
+! File dlist.c:
+! 3187	}
+! 3188	
+! 3191	/*
+! 3192	 * Begin a new display list.
+! 3193	 */
+! 3194	void gl_NewList( GLcontext *ctx, GLuint list, GLenum mode )
+! 3195	{
+! 3196	   if (INSIDE_BEGIN_END(ctx)) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe0fc),%l1
+	or	%l1,%lo(0xe0fc),%l1
+	ld	[%l0+%l1],%l1
+	sethi	%hi(0x1a00),%l0
+	or	%l0,%lo(0x1a00),%l0
+	cmp	%l1,%l0
+	be	.L4720
+	nop
+
+	! block 3
+.L4722:
+.L4723:
+.L4724:
+.L4725:
+
+! 3197	      gl_error( ctx, GL_INVALID_OPERATION, "glNewList" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4726),%l1
+	or	%l1,%lo(.L4726),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 4
+.L4727:
+
+! 3198	      return;
+
+	ba	.L4715
+	nop
+
+	! block 5
+.L4728:
+.L4729:
+.L4720:
+.L4730:
+.L4731:
+.L4733:
+
+! 3199	   }
+! 3200	   if (list==0) {
+
+	ld	[%fp+72],%l0
+	cmp	%l0,0
+	bne	.L4732
+	nop
+
+	! block 6
+.L4734:
+.L4735:
+.L4736:
+.L4737:
+
+! 3201	      gl_error( ctx, GL_INVALID_VALUE, "glNewList" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4738),%l1
+	or	%l1,%lo(.L4738),%l1
+	mov	%l0,%o0
+	mov	1281,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 7
+.L4739:
+
+! 3202	      return;
+
+	ba	.L4715
+	nop
+
+	! block 8
+.L4740:
+.L4741:
+.L4732:
+.L4742:
+.L4743:
+.L4745:
+
+! 3203	   }
+! 3204	   if (mode!=GL_COMPILE && mode!=GL_COMPILE_AND_EXECUTE) {
+
+	ld	[%fp+76],%l1
+	sethi	%hi(0x1300),%l0
+	or	%l0,%lo(0x1300),%l0
+	cmp	%l1,%l0
+	be	.L4744
+	nop
+
+	! block 9
+.L4746:
+	ld	[%fp+76],%l1
+	sethi	%hi(0x1301),%l0
+	or	%l0,%lo(0x1301),%l0
+	cmp	%l1,%l0
+	be	.L4744
+	nop
+
+	! block 10
+.L4747:
+.L4748:
+.L4749:
+.L4750:
+
+! 3205	      gl_error( ctx, GL_INVALID_ENUM, "glNewList" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4751),%l1
+	or	%l1,%lo(.L4751),%l1
+	mov	%l0,%o0
+	mov	1280,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 11
+.L4752:
+
+! 3206	      return;
+
+	ba	.L4715
+	nop
+
+	! block 12
+.L4753:
+.L4754:
+.L4744:
+.L4755:
+.L4756:
+.L4758:
+
+! 3207	   }
+! 3208	   if (CurrentListPtr) {
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListPtr),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentListPtr)],%l0
+	cmp	%l0,%g0
+	be	.L4757
+	nop
+
+	! block 13
+.L4759:
+.L4760:
+.L4761:
+.L4762:
+
+! 3209	      /* already compiling a display list */
+! 3210	      gl_error( ctx, GL_INVALID_OPERATION, "glNewList" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4763),%l1
+	or	%l1,%lo(.L4763),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 14
+.L4764:
+
+! 3211	      return;
+
+	ba	.L4715
+	nop
+
+	! block 15
+.L4765:
+.L4766:
+.L4757:
+.L4767:
+.L4768:
+
+! 3212	   }
+! 3213	
+! 3214	   /* Allocate new display list */
+! 3215	   CurrentListNum = list;
+
+	ld	[%fp+72],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListNum),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.CurrentListNum)]
+
+	! block 16
+.L4769:
+
+! 3216	   CurrentListPtr = CurrentBlock = (Node *) malloc( sizeof(Node) * BLOCK_SIZE );
+
+	call	malloc
+	mov	2000,%o0
+	st	%o0,[%fp-4]
+	ld	[%fp-4],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentBlock),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.CurrentBlock)]
+	ld	[%fp-4],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListPtr),%l0
+	st	%l1,[%l0+%lo($XAa59JCQsd3LGqK.CurrentListPtr)]
+
+	! block 17
+.L4770:
+
+! 3217	   CurrentPos = 0;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentPos),%l0
+	st	%g0,[%l0+%lo($XAa59JCQsd3LGqK.CurrentPos)]
+
+	! block 18
+.L4771:
+
+! 3219	   ctx->CompileFlag = GL_TRUE;
+
+	mov	1,%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	stb	%l2,[%l0+%l1]
+
+	! block 19
+.L4772:
+.L4774:
+
+! 3220	   if (mode==GL_COMPILE) {
+
+	ld	[%fp+76],%l1
+	sethi	%hi(0x1300),%l0
+	or	%l0,%lo(0x1300),%l0
+	cmp	%l1,%l0
+	bne	.L4773
+	nop
+
+	! block 20
+.L4775:
+.L4776:
+.L4777:
+.L4778:
+
+! 3221	      ctx->ExecuteFlag = GL_FALSE;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	stb	%g0,[%l0+%l1]
+
+	! block 21
+.L4779:
+.L4780:
+	ba	.L4781
+	nop
+
+	! block 22
+.L4773:
+.L4782:
+.L4783:
+.L4784:
+
+! 3222	   }
+! 3223	   else {
+! 3224	      /* Compile and execute */
+! 3225	      ctx->ExecuteFlag = GL_TRUE;
+
+	mov	1,%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	stb	%l2,[%l0+%l1]
+
+	! block 23
+.L4785:
+.L4786:
+.L4781:
+.L4787:
+.L4788:
+
+! 3226	   }
+! 3227	
+! 3228	   ctx->API = ctx->Save;  /* Switch the API function pointers */
+
+	ld	[%fp+68],%l0
+	add	%l0,736,%l1
+	add	%l0,4,%l0
+	or	%g0,732,%g1
+1:
+	subcc	%g1,4,%g1
+.L_y37:
+	ld	[%l1+%g1],%l2
+	bg	1b
+	st	%l2,[%l0+%g1]
+
+	! block 24
+.L4789:
+.L4790:
+.L4715:
+	jmp	%i7+8
+	restore
+	.size	gl_NewList,(.-gl_NewList)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_EndList
+	.type	gl_EndList,#function
+gl_EndList:
+	save	%sp,-104,%sp
+
+	! block 1
+.L4793:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L4794:
+.L4796:
+.L4798:
+
+! File dlist.c:
+! 3229	}
+! 3230	
+! 3233	/*
+! 3234	 * End definition of current display list.
+! 3235	 */
+! 3236	void gl_EndList( GLcontext *ctx )
+! 3237	{
+! 3238	   Node *n;
+! 3239	
+! 3240	   /* Check that a list is under construction */
+! 3241	   if (!CurrentListPtr) {
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListPtr),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentListPtr)],%l0
+	cmp	%l0,%g0
+	bne	.L4797
+	nop
+
+	! block 3
+.L4799:
+.L4800:
+.L4801:
+.L4802:
+
+! 3242	      gl_error( ctx, GL_INVALID_OPERATION, "glEndList" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4803),%l1
+	or	%l1,%lo(.L4803),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 4
+.L4804:
+
+! 3243	      return;
+
+	ba	.L4792
+	nop
+
+	! block 5
+.L4805:
+.L4806:
+.L4797:
+.L4807:
+.L4808:
+
+! 3244	   }
+! 3245	
+! 3246	   n = alloc_instruction( ctx, OPCODE_END_OF_LIST, 0 );
+
+	ld	[%fp+68],%l0
+	mov	%l0,%o0
+	mov	115,%o1
+	call	alloc_instruction
+	mov	%g0,%o2
+	st	%o0,[%fp-4]
+
+	! block 6
+.L4809:
+
+! 3248	   /* Destroy old list, if any */
+! 3249	   gl_destroy_list(ctx, CurrentListNum);
+
+	ld	[%fp+68],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListNum),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentListNum)],%l0
+	mov	%l1,%o0
+	call	gl_destroy_list
+	mov	%l0,%o1
+
+	! block 7
+.L4810:
+
+! 3250	   /* Install the list */
+! 3251	   HashInsert(ctx->Shared->DisplayList, CurrentListNum, CurrentListPtr);
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l1
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListNum),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentListNum)],%l2
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListPtr),%l0
+	ld	[%l0+%lo($XAa59JCQsd3LGqK.CurrentListPtr)],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	HashInsert
+	mov	%l0,%o2
+
+	! block 8
+.L4811:
+
+! 3253	   CurrentListNum = 0;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListNum),%l0
+	st	%g0,[%l0+%lo($XAa59JCQsd3LGqK.CurrentListNum)]
+
+	! block 9
+.L4812:
+
+! 3254	   CurrentListPtr = NULL;
+
+	sethi	%hi($XAa59JCQsd3LGqK.CurrentListPtr),%l0
+	st	%g0,[%l0+%lo($XAa59JCQsd3LGqK.CurrentListPtr)]
+
+	! block 10
+.L4813:
+
+! 3255	   ctx->ExecuteFlag = GL_TRUE;
+
+	mov	1,%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e24),%l1
+	or	%l1,%lo(0x1e24),%l1
+	stb	%l2,[%l0+%l1]
+
+	! block 11
+.L4814:
+
+! 3256	   ctx->CompileFlag = GL_FALSE;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	stb	%g0,[%l0+%l1]
+
+	! block 12
+.L4815:
+
+! 3258	   ctx->API = ctx->Exec;   /* Switch the API function pointers */
+
+	ld	[%fp+68],%l0
+	add	%l0,1468,%l1
+	add	%l0,4,%l0
+	or	%g0,732,%g1
+1:
+	subcc	%g1,4,%g1
+.L_y38:
+	ld	[%l1+%g1],%l2
+	bg	1b
+	st	%l2,[%l0+%g1]
+
+	! block 13
+.L4816:
+.L4817:
+.L4792:
+	jmp	%i7+8
+	restore
+	.size	gl_EndList,(.-gl_EndList)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_CallList
+	.type	gl_CallList,#function
+gl_CallList:
+	save	%sp,-104,%sp
+
+	! block 1
+.L4820:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L4821:
+.L4823:
+
+! File dlist.c:
+! 3259	}
+! 3260	
+! 3263	void gl_CallList( GLcontext *ctx, GLuint list )
+! 3264	{
+! 3265	   /* VERY IMPORTANT:  Save the CompileFlag status, turn it off, */
+! 3266	   /* execute the display list, and restore the CompileFlag. */
+! 3267	   GLboolean save_compile_flag;
+! 3268	   save_compile_flag = ctx->CompileFlag;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	ldub	[%l0+%l1],%l0
+	stb	%l0,[%fp-1]
+
+	! block 3
+.L4824:
+
+! 3269	   ctx->CompileFlag = GL_FALSE;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	stb	%g0,[%l0+%l1]
+
+	! block 4
+.L4825:
+
+! 3270	   execute_list( ctx, list );
+
+	ld	[%fp+68],%l0
+	ld	[%fp+72],%l1
+	mov	%l0,%o0
+	call	execute_list
+	mov	%l1,%o1
+
+	! block 5
+.L4826:
+
+! 3271	   ctx->CompileFlag = save_compile_flag;
+
+	ldub	[%fp-1],%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	stb	%l2,[%l0+%l1]
+
+	! block 6
+.L4827:
+.L4828:
+.L4819:
+	jmp	%i7+8
+	restore
+	.size	gl_CallList,(.-gl_CallList)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_CallLists
+	.type	gl_CallLists,#function
+gl_CallLists:
+	save	%sp,-112,%sp
+
+	! block 1
+.L4831:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+	st	%i3,[%fp+80]
+
+	! block 2
+.L4832:
+.L4834:
+
+! File dlist.c:
+! 3272	}
+! 3273	
+! 3276	/*
+! 3277	 * Execute glCallLists:  call multiple display lists.
+! 3278	 */
+! 3279	void gl_CallLists( GLcontext *ctx,
+! 3280	                   GLsizei n, GLenum type, const GLvoid *lists )
+! 3281	{
+! 3282	   GLuint i, list;
+! 3283	   GLboolean save_compile_flag;
+! 3284	
+! 3285	   /* Save the CompileFlag status, turn it off, execute display list,
+! 3286	    * and restore the CompileFlag.
+! 3287	    */
+! 3288	   save_compile_flag = ctx->CompileFlag;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	ldub	[%l0+%l1],%l0
+	stb	%l0,[%fp-9]
+
+	! block 3
+.L4835:
+
+! 3289	   ctx->CompileFlag = GL_FALSE;
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	stb	%g0,[%l0+%l1]
+
+	! block 4
+.L4836:
+.L4837:
+
+! 3291	   for (i=0;i<n;i++) {
+
+	ld	[%fp+72],%l0
+	cmp	%g0,%l0
+	bgeu	.L4840
+	st	%g0,[%fp-4]
+
+	! block 5
+.L_y39:
+	sethi	%hi(0xae14),%l4
+	or	%l4,%lo(0xae14),%l4
+.L4841:
+.L4838:
+.L4842:
+.L4843:
+.L4844:
+
+! 3292	      list = translate_id( i, type, lists );
+
+	ld	[%fp-4],%l0
+	ld	[%fp+76],%l1
+	ld	[%fp+80],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	translate_id
+	mov	%l2,%o2
+	st	%o0,[%fp-8]
+
+	! block 6
+.L4845:
+
+! 3293	      execute_list( ctx, ctx->List.ListBase + list );
+
+	ld	[%fp+68],%l3
+	ld	[%l3+%l4],%l0
+	ld	[%fp-8],%l1
+	add	%l0,%l1,%l0
+	mov	%l3,%o0
+	call	execute_list
+	mov	%l0,%o1
+
+	! block 7
+.L4846:
+.L4847:
+.L4848:
+	ld	[%fp-4],%l0
+	add	%l0,1,%l0
+	st	%l0,[%fp-4]
+	ld	[%fp-4],%l1
+	ld	[%fp+72],%l0
+	cmp	%l1,%l0
+	blu	.L4838
+	nop
+
+	! block 8
+.L4849:
+.L4840:
+.L4850:
+.L4851:
+
+! 3294	   }
+! 3295	
+! 3296	   ctx->CompileFlag = save_compile_flag;
+
+	ldub	[%fp-9],%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0x1e25),%l1
+	or	%l1,%lo(0x1e25),%l1
+	stb	%l2,[%l0+%l1]
+
+	! block 9
+.L4852:
+.L4853:
+.L4830:
+	jmp	%i7+8
+	restore
+	.size	gl_CallLists,(.-gl_CallLists)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	gl_ListBase
+	.type	gl_ListBase,#function
+gl_ListBase:
+	save	%sp,-96,%sp
+
+	! block 1
+.L4856:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+
+	! block 2
+.L4857:
+.L4859:
+.L4861:
+
+! File dlist.c:
+! 3297	}
+! 3298	
+! 3301	/*
+! 3302	 * Set the offset added to list numbers in glCallLists.
+! 3303	 */
+! 3304	void gl_ListBase( GLcontext *ctx, GLuint base )
+! 3305	{
+! 3306	   if (INSIDE_BEGIN_END(ctx)) {
+
+	ld	[%fp+68],%l0
+	sethi	%hi(0xe0fc),%l1
+	or	%l1,%lo(0xe0fc),%l1
+	ld	[%l0+%l1],%l1
+	sethi	%hi(0x1a00),%l0
+	or	%l0,%lo(0x1a00),%l0
+	cmp	%l1,%l0
+	be	.L4860
+	nop
+
+	! block 3
+.L4862:
+.L4863:
+.L4864:
+.L4865:
+
+! 3307	      gl_error( ctx, GL_INVALID_OPERATION, "glListBase" );
+
+	ld	[%fp+68],%l0
+	sethi	%hi(.L4866),%l1
+	or	%l1,%lo(.L4866),%l1
+	mov	%l0,%o0
+	mov	1282,%o1
+	call	gl_error
+	mov	%l1,%o2
+
+	! block 4
+.L4867:
+
+! 3308	      return;
+
+	ba	.L4855
+	nop
+
+	! block 5
+.L4868:
+.L4869:
+.L4860:
+.L4870:
+.L4871:
+
+! 3309	   }
+! 3310	   ctx->List.ListBase = base;
+
+	ld	[%fp+72],%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0xae14),%l1
+	or	%l1,%lo(0xae14),%l1
+	st	%l2,[%l0+%l1]
+
+	! block 6
+.L4872:
+.L4873:
+.L4855:
+	jmp	%i7+8
+	restore
+	.size	gl_ListBase,(.-gl_ListBase)
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+	.type	enum_string,#function
+enum_string:
+	save	%sp,-104,%sp
+
+	! block 1
+.L4876:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L4877:
+.L4879:
+.L4882:
+
+! File dlist.c:
+! 3311	}
+! 3312	
+! 3316	/***
+! 3317	 *** Debugging code
+! 3318	 ***/
+! 3319	
+! 3320	static char tmp[1000];
+! 3321	
+! 3322	static char *enum_string( GLenum k )
+! 3323	{
+! 3324	   /* TODO: Add many more constant/string entries */
+! 3325	   switch (k) {
+
+	ba	.L4881
+	nop
+
+	! block 3
+.L4883:
+.L4884:
+.L4885:
+.L4886:
+
+! 3326	      case GL_POINTS:		return "GL_POINTS";
+
+	sethi	%hi(.L4887),%l0
+	or	%l0,%lo(.L4887),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 4
+.L4888:
+.L4889:
+
+! 3327	      case GL_LINES:		return "GL_LINES";
+
+	sethi	%hi(.L4890),%l0
+	or	%l0,%lo(.L4890),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 5
+.L4891:
+.L4892:
+
+! 3328	      case GL_LINE_STRIP:	return "GL_LINE_STRIP";
+
+	sethi	%hi(.L4893),%l0
+	or	%l0,%lo(.L4893),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 6
+.L4894:
+.L4895:
+
+! 3329	      case GL_LINE_LOOP:	return "GL_LINE_LOOP";
+
+	sethi	%hi(.L4896),%l0
+	or	%l0,%lo(.L4896),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 7
+.L4897:
+.L4898:
+
+! 3330	      case GL_TRIANGLES:	return "GL_TRIANGLES";
+
+	sethi	%hi(.L4899),%l0
+	or	%l0,%lo(.L4899),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 8
+.L4900:
+.L4901:
+
+! 3331	      case GL_TRIANGLE_STRIP:	return "GL_TRIANGLE_STRIP";
+
+	sethi	%hi(.L4902),%l0
+	or	%l0,%lo(.L4902),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 9
+.L4903:
+.L4904:
+
+! 3332	      case GL_TRIANGLE_FAN:	return "GL_TRIANGLE_FAN";
+
+	sethi	%hi(.L4905),%l0
+	or	%l0,%lo(.L4905),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 10
+.L4906:
+.L4907:
+
+! 3333	      case GL_QUADS:		return "GL_QUADS";
+
+	sethi	%hi(.L4908),%l0
+	or	%l0,%lo(.L4908),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 11
+.L4909:
+.L4910:
+
+! 3334	      case GL_QUAD_STRIP:	return "GL_QUAD_STRIP";
+
+	sethi	%hi(.L4911),%l0
+	or	%l0,%lo(.L4911),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 12
+.L4912:
+.L4913:
+
+! 3335	      case GL_POLYGON:		return "GL_POLYGON";
+
+	sethi	%hi(.L4914),%l0
+	or	%l0,%lo(.L4914),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 13
+.L4915:
+.L4916:
+
+! 3336	      case GL_FRONT:		return "GL_FRONT";
+
+	sethi	%hi(.L4917),%l0
+	or	%l0,%lo(.L4917),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 14
+.L4918:
+.L4919:
+
+! 3337	      case GL_BACK:		return "GL_BACK";
+
+	sethi	%hi(.L4920),%l0
+	or	%l0,%lo(.L4920),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 15
+.L4921:
+.L4922:
+
+! 3338	      case GL_FRONT_AND_BACK:	return "GL_FRONT_AND_BACK";
+
+	sethi	%hi(.L4923),%l0
+	or	%l0,%lo(.L4923),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 16
+.L4924:
+.L4925:
+
+! 3339	      case GL_AMBIENT:		return "GL_AMBIENT";
+
+	sethi	%hi(.L4926),%l0
+	or	%l0,%lo(.L4926),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 17
+.L4927:
+.L4928:
+
+! 3340	      case GL_DIFFUSE:		return "GL_DIFFUSE";
+
+	sethi	%hi(.L4929),%l0
+	or	%l0,%lo(.L4929),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 18
+.L4930:
+.L4931:
+
+! 3341	      case GL_SPECULAR:		return "GL_SPECULAR";
+
+	sethi	%hi(.L4932),%l0
+	or	%l0,%lo(.L4932),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 19
+.L4933:
+.L4934:
+
+! 3342	      case GL_SHININESS:	return "GL_SHININESS";
+
+	sethi	%hi(.L4935),%l0
+	or	%l0,%lo(.L4935),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 20
+.L4936:
+.L4937:
+
+! 3343	      default:
+! 3344	         sprintf(tmp,"0x%X", k);
+
+	sethi	%hi($XAa59JCQsd3LGqK.tmp),%l0
+	or	%l0,%lo($XAa59JCQsd3LGqK.tmp),%l0
+	sethi	%hi(.L4938),%l1
+	or	%l1,%lo(.L4938),%l1
+	ld	[%fp+68],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	sprintf
+	mov	%l2,%o2
+
+	! block 21
+.L4939:
+
+! 3345	         return tmp;
+
+	sethi	%hi($XAa59JCQsd3LGqK.tmp),%l0
+	or	%l0,%lo($XAa59JCQsd3LGqK.tmp),%l0
+	ba	.L4875
+	st	%l0,[%fp-4]
+
+	! block 22
+.L4940:
+.L4941:
+.L4881:
+.L4942:
+	ld	[%fp+68],%l2
+	cmp	%l2,1028
+	bge	.L_y9
+	nop
+
+	! block 23
+	cmp	%l2,9
+	bgu	.L4936
+	nop
+
+	! block 24
+	sll	%l2,2,%l1
+	sethi	%hi(.L_y10-40),%l0
+	or	%l0,%lo(.L_y10-40),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 25
+.L_y9:
+	sethi	%hi(0x1200),%l0
+	or	%l0,%lo(0x1200),%l0
+	cmp	%l2,%l0
+	bge	.L_y11
+	nop
+
+	! block 26
+	cmp	%l2,1032
+	bge	.L_y12
+	nop
+
+	! block 27
+	cmp	%l2,1028
+	be	.L4915
+	nop
+
+	! block 28
+	cmp	%l2,1029
+	be	.L4918
+	nop
+
+	! block 29
+	ba	.L4936
+	nop
+
+	! block 30
+.L_y12:
+	be	.L4921
+	nop
+
+	! block 31
+	ba	.L4936
+	nop
+
+	! block 32
+.L_y11:
+	sethi	%hi(0x1601),%l0
+	or	%l0,%lo(0x1601),%l0
+	cmp	%l2,%l0
+	bge	.L_y13
+	nop
+
+	! block 33
+	sethi	%hi(0x1200),%l1
+	or	%l1,%lo(0x1200),%l1
+	sub	%l2,%l1,%l0
+	cmp	%l0,2
+	bgu	.L4936
+	nop
+
+	! block 34
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y14-12),%l0
+	or	%l0,%lo(.L_y14-12),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 35
+.L_y13:
+	sethi	%hi(0x1601),%l0
+	or	%l0,%lo(0x1601),%l0
+	cmp	%l2,%l0
+	be	.L4933
+	nop
+
+	! block 36
+	ba	.L4936
+	nop
+
+	! block 37
+.L4943:
+.L4944:
+
+	! block 38
+.L4945:
+.L4946:
+.L4875:
+	ld	[%fp-4],%l0
+	mov	%l0,%i0
+	jmp	%i7+8
+	restore
+	.size	enum_string,(.-enum_string)
+
+	.word	.L4885
+	.word	.L4888
+	.word	.L4894
+	.word	.L4891
+	.word	.L4897
+	.word	.L4900
+	.word	.L4903
+	.word	.L4906
+	.word	.L4909
+	.word	.L4912
+.L_y10:
+	.word	.L4924
+	.word	.L4927
+	.word	.L4930
+.L_y14:
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+	.type	print_list,#function
+print_list:
+	save	%sp,-144,%sp
+
+	! block 1
+.L4949:
+	st	%i0,[%fp+68]
+	st	%i1,[%fp+72]
+	st	%i2,[%fp+76]
+
+	! block 2
+.L4950:
+.L4952:
+.L4954:
+
+! File dlist.c:
+! 3346	   }
+! 3347	}
+! 3348	
+! 3350	/*
+! 3351	 * Print the commands in a display list.  For debugging only.
+! 3352	 * TODO: many commands aren't handled yet.
+! 3353	 */
+! 3354	static void print_list( GLcontext *ctx, FILE *f, GLuint list )
+! 3355	{
+! 3356	   Node *n;
+! 3357	   GLboolean done;
+! 3358	   OpCode opcode;
+! 3359	
+! 3360	   if (!glIsList(list)) {
+
+	ld	[%fp+76],%l0
+	call	glIsList
+	mov	%l0,%o0
+	sll	%o0,24,%l0
+	srl	%l0,24,%l0
+	cmp	%l0,%g0
+	bne	.L4953
+	nop
+
+	! block 3
+.L4955:
+.L4956:
+.L4957:
+.L4958:
+
+! 3361	      fprintf(f,"%d is not a display list ID\n",list);
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L4959),%l1
+	or	%l1,%lo(.L4959),%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	fprintf
+	mov	%l2,%o2
+
+	! block 4
+.L4960:
+
+! 3362	      return;
+
+	ba	.L4948
+	nop
+
+	! block 5
+.L4961:
+.L4962:
+.L4953:
+.L4963:
+.L4964:
+
+! 3363	   }
+! 3364	
+! 3365	   n = (Node *) HashLookup(ctx->Shared->DisplayList, list);
+
+	ld	[%fp+68],%l0
+	ld	[%l0+0],%l0
+	ld	[%l0+4],%l0
+	ld	[%fp+76],%l1
+	mov	%l0,%o0
+	call	HashLookup
+	mov	%l1,%o1
+	st	%o0,[%fp-4]
+
+	! block 6
+.L4965:
+
+! 3367	   fprintf( f, "START-LIST %d, address %p\n", list, (void*)n );
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L4966),%l1
+	or	%l1,%lo(.L4966),%l1
+	ld	[%fp+76],%l2
+	ld	[%fp-4],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	call	fprintf
+	mov	%l3,%o3
+
+	! block 7
+.L4967:
+
+! 3369	   done = n ? GL_FALSE : GL_TRUE;
+
+	ld	[%fp-4],%l0
+	cmp	%g0,%l0
+
+	! block 8
+.L4969:
+
+	! block 9
+.L4968:
+
+	! block 10
+.L4970:
+	subx	%g0,-1,%l0
+	st	%l0,[%fp-16]
+	ld	[%fp-16],%l0
+	stb	%l0,[%fp-5]
+
+	! block 11
+.L4971:
+.L4975:
+
+! 3370	   while (!done) {
+
+	ldub	[%fp-5],%l0
+	cmp	%l0,%g0
+	bne	.L4974
+	nop
+
+	! block 12
+.L4976:
+.L4972:
+.L4977:
+.L4978:
+.L4979:
+
+! 3371	      opcode = n[0].opcode;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+0],%l0
+	st	%l0,[%fp-12]
+
+	! block 13
+.L4980:
+.L4983:
+
+! 3373	      switch (opcode) {
+
+	ba	.L4982
+	nop
+
+	! block 14
+.L4984:
+.L4985:
+.L4986:
+.L4987:
+
+! 3374	         case OPCODE_ACCUM:
+! 3375	            fprintf(f,"accum %d %g\n", n[1].e, n[2].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L4988),%l2
+	or	%l2,%lo(.L4988),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l3
+	ld	[%l0+8],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	std	%f4,[%sp+88]
+	ld	[%sp+88],%o3
+	call	fprintf
+	ld	[%sp+92],%o4
+
+	! block 15
+.L4989:
+
+! 3376		    break;
+
+	ba	.L4981
+	nop
+
+	! block 16
+.L4990:
+.L4991:
+
+! 3377	         case OPCODE_BEGIN:
+! 3378	            fprintf(f,"Begin %s\n", enum_string(n[1].e) );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L4992),%l2
+	or	%l2,%lo(.L4992),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	call	enum_string
+	mov	%l0,%o0
+	mov	%o0,%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 17
+.L4993:
+
+! 3379	            break;
+
+	ba	.L4981
+	nop
+
+	! block 18
+.L4994:
+.L4995:
+
+! 3380		 case OPCODE_BITMAP:
+! 3381	            fprintf(f,"Bitmap %d %d %g %g %g %g %p\n", n[1].i, n[2].i,
+! 3382			       n[3].f, n[4].f, n[5].f, n[6].f, (void *) n[7].data );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L4996),%l2
+	or	%l2,%lo(.L4996),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l3
+	ld	[%l0+8],%l5
+	ld	[%l0+12],%f4
+	fstod	%f4,%f6
+	ld	[%l0+16],%f4
+	fstod	%f4,%f8
+	ld	[%l0+20],%f4
+	fstod	%f4,%f10
+	ld	[%l0+24],%f4
+	fstod	%f4,%f4
+	ld	[%l0+28],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f8,[%sp+92]
+	st	%f9,[%sp+96]
+	st	%f10,[%sp+100]
+	st	%f11,[%sp+104]
+	st	%f4,[%sp+108]
+	st	%f5,[%sp+112]
+	call	fprintf
+	st	%l0,[%sp+116]
+
+	! block 19
+.L4997:
+
+! 3383		    break;
+
+	ba	.L4981
+	nop
+
+	! block 20
+.L4998:
+.L4999:
+
+! 3384	         case OPCODE_CALL_LIST:
+! 3385	            fprintf(f,"CallList %d\n", n[1].ui );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5000),%l2
+	or	%l2,%lo(.L5000),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 21
+.L5001:
+
+! 3386	            break;
+
+	ba	.L4981
+	nop
+
+	! block 22
+.L5002:
+.L5003:
+
+! 3387	         case OPCODE_CALL_LIST_OFFSET:
+! 3388	            fprintf(f,"CallList %d + offset %d = %d\n", n[1].ui,
+! 3389	                    ctx->List.ListBase, ctx->List.ListBase + n[1].ui );
+
+	ld	[%fp+72],%l3
+	sethi	%hi(.L5004),%l5
+	or	%l5,%lo(.L5004),%l5
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l2
+	ld	[%fp+68],%l0
+	sethi	%hi(0xae14),%l1
+	or	%l1,%lo(0xae14),%l1
+	ld	[%l0+%l1],%l0
+	add	%l0,%l2,%l1
+	mov	%l3,%o0
+	mov	%l5,%o1
+	mov	%l2,%o2
+	mov	%l0,%o3
+	call	fprintf
+	mov	%l1,%o4
+
+	! block 23
+.L5005:
+
+! 3390	            break;
+
+	ba	.L4981
+	nop
+
+	! block 24
+.L5006:
+.L5007:
+
+! 3391		 case OPCODE_COLOR_3F:
+! 3392	            fprintf(f,"Color3f %g %g %gn", n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5008),%l2
+	or	%l2,%lo(.L5008),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f4,[%sp+92]
+	st	%f5,[%sp+96]
+	call	fprintf
+	nop
+
+	! block 25
+.L5009:
+
+! 3393		    break;
+
+	ba	.L4981
+	nop
+
+	! block 26
+.L5010:
+.L5011:
+
+! 3394		 case OPCODE_COLOR_4F:
+! 3395	            fprintf(f,"Color4f %g %g %g %g\n", n[1].f, n[2].f, n[3].f, n[4].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5012),%l2
+	or	%l2,%lo(.L5012),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 27
+.L5013:
+
+! 3396		    break;
+
+	ba	.L4981
+	nop
+
+	! block 28
+.L5014:
+.L5015:
+
+! 3397		 case OPCODE_COLOR_4UB:
+! 3398	            fprintf(f,"Color4ub %d %d %d %d\n", n[1].ub, n[2].ub,
+! 3399	                                                n[3].ub, n[4].ub );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5016),%l2
+	or	%l2,%lo(.L5016),%l2
+	ld	[%fp-4],%l0
+	ldub	[%l0+4],%l3
+	ldub	[%l0+8],%l5
+	ldub	[%l0+12],%l6
+	ldub	[%l0+16],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l5,%o3
+	mov	%l6,%o4
+	call	fprintf
+	mov	%l0,%o5
+
+	! block 29
+.L5017:
+
+! 3400		    break;
+
+	ba	.L4981
+	nop
+
+	! block 30
+.L5018:
+.L5019:
+
+! 3401		 case OPCODE_DISABLE:
+! 3402	            fprintf(f,"Disable %s\n", enum_string(n[1].e));
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5020),%l2
+	or	%l2,%lo(.L5020),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	call	enum_string
+	mov	%l0,%o0
+	mov	%o0,%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 31
+.L5021:
+
+! 3403		    break;
+
+	ba	.L4981
+	nop
+
+	! block 32
+.L5022:
+.L5023:
+
+! 3404		 case OPCODE_ENABLE:
+! 3405	            fprintf(f,"Enable %s\n", enum_string(n[1].e));
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5024),%l2
+	or	%l2,%lo(.L5024),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	call	enum_string
+	mov	%l0,%o0
+	mov	%o0,%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 33
+.L5025:
+
+! 3406		    break;
+
+	ba	.L4981
+	nop
+
+	! block 34
+.L5026:
+.L5027:
+
+! 3407	         case OPCODE_END:
+! 3408	            fprintf(f,"End\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5028),%l1
+	or	%l1,%lo(.L5028),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 35
+.L5029:
+
+! 3409	            break;
+
+	ba	.L4981
+	nop
+
+	! block 36
+.L5030:
+.L5031:
+
+! 3410	         case OPCODE_FRUSTUM:
+! 3411	            fprintf(f,"Frustum %g %g %g %g %g %g\n",
+! 3412	                    n[1].f, n[2].f, n[3].f, n[4].f, n[5].f, n[6].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5032),%l2
+	or	%l2,%lo(.L5032),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f12
+	ld	[%l0+20],%f4
+	fstod	%f4,%f14
+	ld	[%l0+24],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f12,[%sp+100]
+	st	%f13,[%sp+104]
+	st	%f14,[%sp+108]
+	st	%f15,[%sp+112]
+	st	%f4,[%sp+116]
+	st	%f5,[%sp+120]
+	call	fprintf
+	nop
+
+	! block 37
+.L5033:
+
+! 3413	            break;
+
+	ba	.L4981
+	nop
+
+	! block 38
+.L5034:
+.L5035:
+
+! 3414	         case OPCODE_INDEX:
+! 3415	            fprintf(f,"Index %d\n", n[1].ui );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5036),%l2
+	or	%l2,%lo(.L5036),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 39
+.L5037:
+
+! 3416	            break;
+
+	ba	.L4981
+	nop
+
+	! block 40
+.L5038:
+.L5039:
+
+! 3417		 case OPCODE_LINE_STIPPLE:
+! 3418		    fprintf(f,"LineStipple %d %x\n", n[1].i, (int) n[2].us );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5040),%l2
+	or	%l2,%lo(.L5040),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l3
+	lduh	[%l0+8],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	call	fprintf
+	mov	%l0,%o3
+
+	! block 41
+.L5041:
+
+! 3419		    break;
+
+	ba	.L4981
+	nop
+
+	! block 42
+.L5042:
+.L5043:
+
+! 3420		 case OPCODE_LOAD_IDENTITY:
+! 3421	            fprintf(f,"LoadIdentity\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5044),%l1
+	or	%l1,%lo(.L5044),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 43
+.L5045:
+
+! 3422		    break;
+
+	ba	.L4981
+	nop
+
+	! block 44
+.L5046:
+.L5047:
+
+! 3423		 case OPCODE_LOAD_MATRIX:
+! 3424	            fprintf(f,"LoadMatrix\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5048),%l1
+	or	%l1,%lo(.L5048),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 45
+.L5049:
+
+! 3425	            fprintf(f,"  %8f %8f %8f %8f\n", n[1].f, n[5].f,  n[9].f, n[13].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5050),%l2
+	or	%l2,%lo(.L5050),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+20],%f4
+	fstod	%f4,%f8
+	ld	[%l0+36],%f4
+	fstod	%f4,%f10
+	ld	[%l0+52],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 46
+.L5051:
+
+! 3426	            fprintf(f,"  %8f %8f %8f %8f\n", n[2].f, n[6].f, n[10].f, n[14].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5052),%l2
+	or	%l2,%lo(.L5052),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	fstod	%f4,%f6
+	ld	[%l0+24],%f4
+	fstod	%f4,%f8
+	ld	[%l0+40],%f4
+	fstod	%f4,%f10
+	ld	[%l0+56],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 47
+.L5053:
+
+! 3427	            fprintf(f,"  %8f %8f %8f %8f\n", n[3].f, n[7].f, n[11].f, n[15].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5054),%l2
+	or	%l2,%lo(.L5054),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	fstod	%f4,%f6
+	ld	[%l0+28],%f4
+	fstod	%f4,%f8
+	ld	[%l0+44],%f4
+	fstod	%f4,%f10
+	ld	[%l0+60],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 48
+.L5055:
+
+! 3428	            fprintf(f,"  %8f %8f %8f %8f\n", n[4].f, n[8].f, n[12].f, n[16].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5056),%l2
+	or	%l2,%lo(.L5056),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	fstod	%f4,%f6
+	ld	[%l0+32],%f4
+	fstod	%f4,%f8
+	ld	[%l0+48],%f4
+	fstod	%f4,%f10
+	ld	[%l0+64],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 49
+.L5057:
+
+! 3429		    break;
+
+	ba	.L4981
+	nop
+
+	! block 50
+.L5058:
+.L5059:
+
+! 3430		 case OPCODE_MATERIAL:
+! 3431	            fprintf(f,"Material %s %s %g %g %g %g\n", enum_string(n[1].e),
+! 3432	                    enum_string(n[2].e), n[3].f, n[4].f, n[5].f, n[6].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5060),%l2
+	or	%l2,%lo(.L5060),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	call	enum_string
+	mov	%l0,%o0
+	mov	%o0,%l3
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%l0
+	call	enum_string
+	mov	%l0,%o0
+	mov	%o0,%l4
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	fstod	%f4,%f6
+	ld	[%l0+16],%f4
+	fstod	%f4,%f8
+	ld	[%l0+20],%f4
+	fstod	%f4,%f10
+	ld	[%l0+24],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	mov	%l3,%o2
+	mov	%l4,%o3
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f8,[%sp+92]
+	st	%f9,[%sp+96]
+	st	%f10,[%sp+100]
+	st	%f11,[%sp+104]
+	st	%f4,[%sp+108]
+	st	%f5,[%sp+112]
+	call	fprintf
+	nop
+
+	! block 51
+.L5061:
+
+! 3433	            break;
+
+	ba	.L4981
+	nop
+
+	! block 52
+.L5062:
+.L5063:
+
+! 3434		 case OPCODE_MULT_MATRIX:
+! 3435	            fprintf(f,"MultMatrix (or Rotate)\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5064),%l1
+	or	%l1,%lo(.L5064),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 53
+.L5065:
+
+! 3436	            fprintf(f,"  %8f %8f %8f %8f\n", n[1].f, n[5].f,  n[9].f, n[13].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5066),%l2
+	or	%l2,%lo(.L5066),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+20],%f4
+	fstod	%f4,%f8
+	ld	[%l0+36],%f4
+	fstod	%f4,%f10
+	ld	[%l0+52],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 54
+.L5067:
+
+! 3437	            fprintf(f,"  %8f %8f %8f %8f\n", n[2].f, n[6].f, n[10].f, n[14].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5068),%l2
+	or	%l2,%lo(.L5068),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+8],%f4
+	fstod	%f4,%f6
+	ld	[%l0+24],%f4
+	fstod	%f4,%f8
+	ld	[%l0+40],%f4
+	fstod	%f4,%f10
+	ld	[%l0+56],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 55
+.L5069:
+
+! 3438	            fprintf(f,"  %8f %8f %8f %8f\n", n[3].f, n[7].f, n[11].f, n[15].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5070),%l2
+	or	%l2,%lo(.L5070),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+12],%f4
+	fstod	%f4,%f6
+	ld	[%l0+28],%f4
+	fstod	%f4,%f8
+	ld	[%l0+44],%f4
+	fstod	%f4,%f10
+	ld	[%l0+60],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 56
+.L5071:
+
+! 3439	            fprintf(f,"  %8f %8f %8f %8f\n", n[4].f, n[8].f, n[12].f, n[16].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5072),%l2
+	or	%l2,%lo(.L5072),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+16],%f4
+	fstod	%f4,%f6
+	ld	[%l0+32],%f4
+	fstod	%f4,%f8
+	ld	[%l0+48],%f4
+	fstod	%f4,%f10
+	ld	[%l0+64],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 57
+.L5073:
+
+! 3440		    break;
+
+	ba	.L4981
+	nop
+
+	! block 58
+.L5074:
+.L5075:
+
+! 3441	         case OPCODE_NORMAL:
+! 3442	            fprintf(f,"Normal %g %g %g\n", n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5076),%l2
+	or	%l2,%lo(.L5076),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f4,[%sp+92]
+	st	%f5,[%sp+96]
+	call	fprintf
+	nop
+
+	! block 59
+.L5077:
+
+! 3443	            break;
+
+	ba	.L4981
+	nop
+
+	! block 60
+.L5078:
+.L5079:
+
+! 3444	         case OPCODE_ORTHO:
+! 3445	            fprintf(f,"Ortho %g %g %g %g %g %g\n",
+! 3446	                    n[1].f, n[2].f, n[3].f, n[4].f, n[5].f, n[6].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5080),%l2
+	or	%l2,%lo(.L5080),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f12
+	ld	[%l0+20],%f4
+	fstod	%f4,%f14
+	ld	[%l0+24],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f12,[%sp+100]
+	st	%f13,[%sp+104]
+	st	%f14,[%sp+108]
+	st	%f15,[%sp+112]
+	st	%f4,[%sp+116]
+	st	%f5,[%sp+120]
+	call	fprintf
+	nop
+
+	! block 61
+.L5081:
+
+! 3447	            break;
+
+	ba	.L4981
+	nop
+
+	! block 62
+.L5082:
+.L5083:
+
+! 3448		 case OPCODE_POP_ATTRIB:
+! 3449	            fprintf(f,"PopAttrib\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5084),%l1
+	or	%l1,%lo(.L5084),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 63
+.L5085:
+
+! 3450		    break;
+
+	ba	.L4981
+	nop
+
+	! block 64
+.L5086:
+.L5087:
+
+! 3451		 case OPCODE_POP_MATRIX:
+! 3452	            fprintf(f,"PopMatrix\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5088),%l1
+	or	%l1,%lo(.L5088),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 65
+.L5089:
+
+! 3453		    break;
+
+	ba	.L4981
+	nop
+
+	! block 66
+.L5090:
+.L5091:
+
+! 3454		 case OPCODE_POP_NAME:
+! 3455	            fprintf(f,"PopName\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5092),%l1
+	or	%l1,%lo(.L5092),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 67
+.L5093:
+
+! 3456		    break;
+
+	ba	.L4981
+	nop
+
+	! block 68
+.L5094:
+.L5095:
+
+! 3457		 case OPCODE_PUSH_ATTRIB:
+! 3458	            fprintf(f,"PushAttrib %x\n", n[1].bf );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5096),%l2
+	or	%l2,%lo(.L5096),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 69
+.L5097:
+
+! 3459		    break;
+
+	ba	.L4981
+	nop
+
+	! block 70
+.L5098:
+.L5099:
+
+! 3460		 case OPCODE_PUSH_MATRIX:
+! 3461	            fprintf(f,"PushMatrix\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5100),%l1
+	or	%l1,%lo(.L5100),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 71
+.L5101:
+
+! 3462		    break;
+
+	ba	.L4981
+	nop
+
+	! block 72
+.L5102:
+.L5103:
+
+! 3463		 case OPCODE_PUSH_NAME:
+! 3464	            fprintf(f,"PushName %d\n", n[1].ui );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5104),%l2
+	or	%l2,%lo(.L5104),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	mov	%l1,%o0
+	mov	%l2,%o1
+	call	fprintf
+	mov	%l0,%o2
+
+	! block 73
+.L5105:
+
+! 3465		    break;
+
+	ba	.L4981
+	nop
+
+	! block 74
+.L5106:
+.L5107:
+
+! 3466		 case OPCODE_RASTER_POS:
+! 3467	            fprintf(f,"RasterPos %g %g %g %g\n", n[1].f, n[2].f,n[3].f,n[4].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5108),%l2
+	or	%l2,%lo(.L5108),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 75
+.L5109:
+
+! 3468		    break;
+
+	ba	.L4981
+	nop
+
+	! block 76
+.L5110:
+.L5111:
+
+! 3469	         case OPCODE_RECTF:
+! 3470	            fprintf( f, "Rectf %g %g %g %g\n", n[1].f, n[2].f, n[3].f, n[4].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5112),%l2
+	or	%l2,%lo(.L5112),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 77
+.L5113:
+
+! 3471	            break;
+
+	ba	.L4981
+	nop
+
+	! block 78
+.L5114:
+.L5115:
+
+! 3472	         case OPCODE_SCALE:
+! 3473	            fprintf(f,"Scale %g %g %g\n", n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5116),%l2
+	or	%l2,%lo(.L5116),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f4,[%sp+92]
+	st	%f5,[%sp+96]
+	call	fprintf
+	nop
+
+	! block 79
+.L5117:
+
+! 3474	            break;
+
+	ba	.L4981
+	nop
+
+	! block 80
+.L5118:
+.L5119:
+
+! 3475		 case OPCODE_TEXCOORD2:
+! 3476	            fprintf(f,"TexCoord %g %g\n", n[1].f, n[2].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5120),%l2
+	or	%l2,%lo(.L5120),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f4,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	call	fprintf
+	nop
+
+	! block 81
+.L5121:
+
+! 3477		    break;
+
+	ba	.L4981
+	nop
+
+	! block 82
+.L5122:
+.L5123:
+
+! 3478		 case OPCODE_TEXCOORD4:
+! 3479	            fprintf(f,"TexCoord %g %g %g %g\n", n[1].f, n[2].f, n[3].f,n[4].f);
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5124),%l2
+	or	%l2,%lo(.L5124),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 83
+.L5125:
+
+! 3480		    break;
+
+	ba	.L4981
+	nop
+
+	! block 84
+.L5126:
+.L5127:
+
+! 3481	         case OPCODE_TRANSLATE:
+! 3482	            fprintf(f,"Translate %g %g %g\n", n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5128),%l2
+	or	%l2,%lo(.L5128),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f4,[%sp+92]
+	st	%f5,[%sp+96]
+	call	fprintf
+	nop
+
+	! block 85
+.L5129:
+
+! 3483	            break;
+
+	ba	.L4981
+	nop
+
+	! block 86
+.L5130:
+.L5131:
+
+! 3484	         case OPCODE_VERTEX2:
+! 3485	            fprintf(f,"Vertex %g %g\n", n[1].f, n[2].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5132),%l2
+	or	%l2,%lo(.L5132),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f4,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	call	fprintf
+	nop
+
+	! block 87
+.L5133:
+
+! 3486	            break;
+
+	ba	.L4981
+	nop
+
+	! block 88
+.L5134:
+.L5135:
+
+! 3487	         case OPCODE_VERTEX3:
+! 3488	            fprintf(f,"Vertex %g %g %g\n", n[1].f, n[2].f, n[3].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5136),%l2
+	or	%l2,%lo(.L5136),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f4,[%sp+92]
+	st	%f5,[%sp+96]
+	call	fprintf
+	nop
+
+	! block 89
+.L5137:
+
+! 3489	            break;
+
+	ba	.L4981
+	nop
+
+	! block 90
+.L5138:
+.L5139:
+
+! 3490	         case OPCODE_VERTEX4:
+! 3491	            fprintf(f,"Vertex %g %g %g %g\n", n[1].f, n[2].f, n[3].f, n[4].f );
+
+	ld	[%fp+72],%l1
+	sethi	%hi(.L5140),%l2
+	or	%l2,%lo(.L5140),%l2
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%f4
+	fstod	%f4,%f6
+	ld	[%l0+8],%f4
+	fstod	%f4,%f8
+	ld	[%l0+12],%f4
+	fstod	%f4,%f10
+	ld	[%l0+16],%f4
+	fstod	%f4,%f4
+	mov	%l1,%o0
+	mov	%l2,%o1
+	std	%f6,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o2
+	or	%g0,%g1,%o3
+	std	%f8,[%sp+88]
+	ldx	[%sp+88],%g1
+	srlx	%g1,32,%o4
+	or	%g0,%g1,%o5
+	st	%f10,[%sp+92]
+	st	%f11,[%sp+96]
+	st	%f4,[%sp+100]
+	st	%f5,[%sp+104]
+	call	fprintf
+	nop
+
+	! block 91
+.L5141:
+
+! 3492	            break;
+
+	ba	.L4981
+	nop
+
+	! block 92
+.L5142:
+.L5143:
+
+! 3494		 /*
+! 3495		  * meta opcodes/commands
+! 3496		  */
+! 3497		 case OPCODE_CONTINUE:
+! 3498	            fprintf(f,"DISPLAY-LIST-CONTINUE\n");
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5144),%l1
+	or	%l1,%lo(.L5144),%l1
+	mov	%l0,%o0
+	call	fprintf
+	mov	%l1,%o1
+
+	! block 93
+.L5145:
+
+! 3499		    n = (Node *) n[1].next;
+
+	ld	[%fp-4],%l0
+	ld	[%l0+4],%l0
+	st	%l0,[%fp-4]
+
+	! block 94
+.L5146:
+
+! 3500		    break;
+
+	ba	.L4981
+	nop
+
+	! block 95
+.L5147:
+.L5148:
+
+! 3501		 case OPCODE_END_OF_LIST:
+! 3502	            fprintf(f,"END-LIST %d\n", list);
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5149),%l1
+	or	%l1,%lo(.L5149),%l1
+	ld	[%fp+76],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	fprintf
+	mov	%l2,%o2
+
+	! block 96
+.L5150:
+
+! 3503		    done = GL_TRUE;
+
+	mov	1,%l0
+	stb	%l0,[%fp-5]
+
+	! block 97
+.L5151:
+
+! 3504		    break;
+
+	ba	.L4981
+	nop
+
+	! block 98
+.L5152:
+.L5153:
+.L5155:
+
+! 3505	         default:
+! 3506	            if (opcode < 0 || opcode > OPCODE_END_OF_LIST) {
+
+	ld	[%fp-12],%l0
+	cmp	%l0,0
+	bl	.L5156
+	nop
+
+	! block 99
+.L5157:
+	ld	[%fp-12],%l0
+	cmp	%l0,115
+	ble	.L5154
+	nop
+
+	! block 100
+.L5158:
+.L5156:
+.L5159:
+.L5160:
+.L5161:
+
+! 3507	               fprintf(f,"ERROR IN DISPLAY LIST: opcode = %d, address = %p\n",
+! 3508	                       opcode, (void*) n);
+
+	ld	[%fp+72],%l0
+	sethi	%hi(.L5162),%l1
+	or	%l1,%lo(.L5162),%l1
+	ld	[%fp-12],%l2
+	ld	[%fp-4],%l3
+	mov	%l0,%o0
+	mov	%l1,%o1
+	mov	%l2,%o2
+	call	fprintf
+	mov	%l3,%o3
+
+	! block 101
+.L5163:
+
+! 3509	               return;
+
+	ba	.L4948
+	nop
+
+	! block 102
+.L5164:
+.L5165:
+.L5154:
+.L5166:
+.L5167:
+.L5168:
+
+! 3510	            }
+! 3511	            else {
+! 3512	               fprintf(f,"command %d, %d operands\n",opcode,InstSize[opcode]);
+
+	ld	[%fp+72],%l2
+	sethi	%hi(.L5169),%l3
+	or	%l3,%lo(.L5169),%l3
+	ld	[%fp-12],%l5
+	sll	%l5,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	mov	%l2,%o0
+	mov	%l3,%o1
+	mov	%l5,%o2
+	call	fprintf
+	mov	%l0,%o3
+
+	! block 103
+.L5170:
+.L5171:
+.L5172:
+.L5173:
+.L5174:
+	ba	.L4981
+	nop
+
+	! block 104
+.L4982:
+.L5175:
+	ld	[%fp-12],%l2
+	cmp	%l2,69
+	bge	.L_y15
+	nop
+
+	! block 105
+	cmp	%l2,35
+	bge	.L_y16
+	nop
+
+	! block 106
+	cmp	%l2,17
+	bge	.L_y17
+	nop
+
+	! block 107
+	cmp	%l2,4
+	bge	.L_y18
+	nop
+
+	! block 108
+	cmp	%l2,0
+	be	.L4986
+	nop
+
+	! block 109
+	cmp	%l2,2
+	be	.L4990
+	nop
+
+	! block 110
+	ba	.L5152
+	nop
+
+	! block 111
+.L_y18:
+	cmp	%l2,8
+	bge	.L_y19
+	nop
+
+	! block 112
+	cmp	%l2,4
+	be	.L4994
+	nop
+
+	! block 113
+	ba	.L5152
+	nop
+
+	! block 114
+.L_y19:
+	be	.L4998
+	nop
+
+	! block 115
+	cmp	%l2,9
+	be	.L5002
+	nop
+
+	! block 116
+	ba	.L5152
+	nop
+
+	! block 117
+.L_y17:
+	sub	%l2,17,%l0
+	cmp	%l0,2
+	bgu	.L5152
+	nop
+
+	! block 118
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y20-12),%l0
+	or	%l0,%lo(.L_y20-12),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 119
+.L_y16:
+	cmp	%l2,51
+	bge	.L_y21
+	nop
+
+	! block 120
+	cmp	%l2,49
+	bge	.L_y22
+	nop
+
+	! block 121
+	cmp	%l2,39
+	bge	.L_y23
+	nop
+
+	! block 122
+	cmp	%l2,35
+	be	.L5018
+	nop
+
+	! block 123
+	ba	.L5152
+	nop
+
+	! block 124
+.L_y23:
+	be	.L5022
+	nop
+
+	! block 125
+	cmp	%l2,40
+	be	.L5026
+	nop
+
+	! block 126
+	ba	.L5152
+	nop
+
+	! block 127
+.L_y22:
+	be	.L5030
+	nop
+
+	! block 128
+	ba	.L5152
+	nop
+
+	! block 129
+.L_y21:
+	cmp	%l2,59
+	bge	.L_y24
+	nop
+
+	! block 130
+	cmp	%l2,51
+	be	.L5034
+	nop
+
+	! block 131
+	cmp	%l2,56
+	be	.L5038
+	nop
+
+	! block 132
+	ba	.L5152
+	nop
+
+	! block 133
+.L_y24:
+	cmp	%l2,67
+	bge	.L_y25
+	nop
+
+	! block 134
+	cmp	%l2,59
+	be	.L5042
+	nop
+
+	! block 135
+	cmp	%l2,60
+	be	.L5046
+	nop
+
+	! block 136
+	ba	.L5152
+	nop
+
+	! block 137
+.L_y25:
+	be	.L5058
+	nop
+
+	! block 138
+	ba	.L5152
+	nop
+
+	! block 139
+.L_y15:
+	cmp	%l2,91
+	bge	.L_y26
+	nop
+
+	! block 140
+	cmp	%l2,85
+	bge	.L_y27
+	nop
+
+	! block 141
+	cmp	%l2,81
+	bge	.L_y28
+	nop
+
+	! block 142
+	sub	%l2,69,%l0
+	cmp	%l0,2
+	bgu	.L5152
+	nop
+
+	! block 143
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y29-12),%l0
+	or	%l0,%lo(.L_y29-12),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 144
+.L_y28:
+	sub	%l2,81,%l0
+	cmp	%l0,2
+	bgu	.L5152
+	nop
+
+	! block 145
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y30-12),%l0
+	or	%l0,%lo(.L_y30-12),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 146
+.L_y27:
+	sub	%l2,85,%l0
+	cmp	%l0,4
+	bgu	.L5152
+	nop
+
+	! block 147
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y31-20),%l0
+	or	%l0,%lo(.L_y31-20),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 148
+.L_y26:
+	cmp	%l2,108
+	bge	.L_y32
+	nop
+
+	! block 149
+	cmp	%l2,97
+	bge	.L_y33
+	nop
+
+	! block 150
+	cmp	%l2,91
+	be	.L5114
+	nop
+
+	! block 151
+	ba	.L5152
+	nop
+
+	! block 152
+.L_y33:
+	be	.L5118
+	nop
+
+	! block 153
+	cmp	%l2,98
+	be	.L5122
+	nop
+
+	! block 154
+	ba	.L5152
+	nop
+
+	! block 155
+.L_y32:
+	sub	%l2,108,%l0
+	cmp	%l0,7
+	bgu	.L5152
+	nop
+
+	! block 156
+	sll	%l0,2,%l1
+	sethi	%hi(.L_y34-32),%l0
+	or	%l0,%lo(.L_y34-32),%l0
+	ld	[%l0+%l1],%l0
+	jmp	%l0
+	nop
+
+	! block 157
+.L5176:
+.L4981:
+.L5177:
+.L5178:
+.L5180:
+
+! 3513	            }
+! 3514	      }
+! 3515	
+! 3516	      /* increment n to point to next compiled command */
+! 3517	      if (opcode!=OPCODE_CONTINUE) {
+
+	ld	[%fp-12],%l0
+	cmp	%l0,114
+	be	.L5179
+	nop
+
+	! block 158
+.L5181:
+.L5182:
+.L5183:
+.L5184:
+
+! 3518		 n += InstSize[opcode];
+
+	ld	[%fp-4],%l2
+	ld	[%fp-12],%l0
+	sll	%l0,2,%l0
+	sethi	%hi($XAa59JCQsd3LGqK.InstSize),%l1
+	or	%l1,%lo($XAa59JCQsd3LGqK.InstSize),%l1
+	ld	[%l0+%l1],%l0
+	sll	%l0,2,%l1
+	add	%l2,%l1,%l0
+	st	%l0,[%fp-4]
+
+	! block 159
+.L5185:
+.L5186:
+.L5179:
+.L5187:
+.L5188:
+.L5189:
+.L5190:
+	ldub	[%fp-5],%l0
+	cmp	%l0,%g0
+	be	.L4972
+	nop
+
+	! block 160
+.L5191:
+.L4974:
+.L5192:
+
+	! block 161
+.L5193:
+.L5194:
+.L4948:
+	jmp	%i7+8
+	restore
+	.size	print_list,(.-print_list)
+
+	.word	.L5006
+	.word	.L5010
+	.word	.L5014
+.L_y20:
+	.word	.L5062
+	.word	.L5074
+	.word	.L5078
+.L_y29:
+	.word	.L5082
+	.word	.L5086
+	.word	.L5090
+.L_y30:
+	.word	.L5094
+	.word	.L5098
+	.word	.L5102
+	.word	.L5106
+	.word	.L5110
+.L_y31:
+	.word	.L5126
+	.word	.L5130
+	.word	.L5134
+	.word	.L5138
+	.word	.L5152
+	.word	.L5152
+	.word	.L5142
+	.word	.L5147
+.L_y34:
+	.align	8
+	.align	8
+	.skip	16
+
+	! block 0
+
+	.global	mesa_print_display_list
+	.type	mesa_print_display_list,#function
+mesa_print_display_list:
+	save	%sp,-104,%sp
+
+	! block 1
+.L5197:
+	st	%i0,[%fp+68]
+
+	! block 2
+.L5198:
+.L5200:
+
+! File dlist.c:
+! 3519	      }
+! 3520	
+! 3521	   }
+! 3522	}
+! 3523	
+! 3526	/*
+! 3527	 * Clients may call this function to help debug display list problems.
+! 3528	 * This function is _ONLY_FOR_DEBUGGING_PURPOSES_.  It may be removed,
+! 3529	 * changed, or break in the future without notice.
+! 3530	 */
+! 3531	void mesa_print_display_list( GLuint list )
+! 3532	{
+! 3533	   GLcontext *ctx;
+! 3534	#ifdef MULTI_THREADING
+! 3535	   ctx = gl_get_thread_context();
+! 3536	#else
+! 3537	   ctx = CC;
+
+	sethi	%hi(CC),%l0
+	ld	[%l0+%lo(CC)],%l0
+	st	%l0,[%fp-4]
+
+	! block 3
+.L5201:
+
+! 3538	#endif
+! 3539	   print_list( ctx, stdout, list );
+
+	ld	[%fp-4],%l0
+	sethi	%hi(__iob+16),%l1
+	or	%l1,%lo(__iob+16),%l1
+	ld	[%fp+68],%l2
+	mov	%l0,%o0
+	mov	%l1,%o1
+	call	print_list
+	mov	%l2,%o2
+
+	! block 4
+.L5202:
+.L5203:
+.L5196:
+	jmp	%i7+8
+	restore
+	.size	mesa_print_display_list,(.-mesa_print_display_list)
+	.align	8
+
+	.section	".bss",#alloc,#write
+	.align	4
+Bbss.bss:
+	.global	$XAa59JCQsd3LGqK.InstSize
+$XAa59JCQsd3LGqK.InstSize:
+	.skip	464
+	.type	$XAa59JCQsd3LGqK.InstSize,#object
+	.size	$XAa59JCQsd3LGqK.InstSize,464
+
+	.section	".rodata1",#alloc
+	.align	4
+.L21:
+	.ascii	"count == argcount+1\000"
+	.type	.L21,#object
+	.size	.L21,20
+	.align	4
+.L22:
+	.ascii	"dlist.c\000"
+	.type	.L22,#object
+	.size	.L22,8
+
+	.section	".bss",#alloc,#write
+	.align	4
+	.global	$XAa59JCQsd3LGqK.CurrentPos
+$XAa59JCQsd3LGqK.CurrentPos:
+	.skip	4
+	.type	$XAa59JCQsd3LGqK.CurrentPos,#object
+	.size	$XAa59JCQsd3LGqK.CurrentPos,4
+	.align	4
+	.global	$XAa59JCQsd3LGqK.CurrentBlock
+$XAa59JCQsd3LGqK.CurrentBlock:
+	.skip	4
+	.type	$XAa59JCQsd3LGqK.CurrentBlock,#object
+	.size	$XAa59JCQsd3LGqK.CurrentBlock,4
+
+	.section	".rodata1",#alloc
+	.align	4
+.L40:
+	.ascii	"Building display list\000"
+	.skip	2
+	.type	.L40,#object
+	.size	.L40,24
+
+	.section	".data",#alloc,#write
+	.align	4
+Ddata.data:
+	.global	$XBa59JCQsd3LGqK.gl_init_lists.init_flag
+$XBa59JCQsd3LGqK.gl_init_lists.init_flag:
+	.skip	4
+	.type	$XBa59JCQsd3LGqK.gl_init_lists.init_flag,#object
+	.size	$XBa59JCQsd3LGqK.gl_init_lists.init_flag,4
+
+	.section	".bss",#alloc,#write
+	.align	4
+	.global	$XAa59JCQsd3LGqK.CurrentListPtr
+$XAa59JCQsd3LGqK.CurrentListPtr:
+	.skip	4
+	.type	$XAa59JCQsd3LGqK.CurrentListPtr,#object
+	.size	$XAa59JCQsd3LGqK.CurrentListPtr,4
+	.align	4
+	.global	$XAa59JCQsd3LGqK.CurrentListNum
+$XAa59JCQsd3LGqK.CurrentListNum:
+	.skip	4
+	.type	$XAa59JCQsd3LGqK.CurrentListNum,#object
+	.size	$XAa59JCQsd3LGqK.CurrentListNum,4
+
+	.section	".rodata1",#alloc
+	.align	4
+.L2580:
+	.ascii	"glNewList\000"
+	.skip	2
+	.type	.L2580,#object
+	.size	.L2580,12
+	.align	4
+.L4553:
+	.ascii	"Error in execute_list: opcode=%d\000"
+	.skip	3
+	.type	.L4553,#object
+	.size	.L4553,36
+
+	.section	".rodata",#alloc
+	.align	4
+Drodata.rodata:
+.L_cseg0:
+	.skip	4
+	.type	.L_cseg0,#object
+	.size	.L_cseg0,4
+	.align	4
+.L_cseg1:
+	.word	0x3f800000
+	.type	.L_cseg1,#object
+	.size	.L_cseg1,4
+
+	.section	".rodata1",#alloc
+	.align	4
+.L4615:
+	.ascii	"glDeleteLists\000"
+	.skip	2
+	.type	.L4615,#object
+	.size	.L4615,16
+	.align	4
+.L4627:
+	.ascii	"glDeleteLists\000"
+	.skip	2
+	.type	.L4627,#object
+	.size	.L4627,16
+	.align	4
+.L4660:
+	.ascii	"glGenLists\000"
+	.skip	1
+	.type	.L4660,#object
+	.size	.L4660,12
+	.align	4
+.L4672:
+	.ascii	"glGenLists\000"
+	.skip	1
+	.type	.L4672,#object
+	.size	.L4672,12
+	.align	4
+.L4726:
+	.ascii	"glNewList\000"
+	.skip	2
+	.type	.L4726,#object
+	.size	.L4726,12
+	.align	4
+.L4738:
+	.ascii	"glNewList\000"
+	.skip	2
+	.type	.L4738,#object
+	.size	.L4738,12
+	.align	4
+.L4751:
+	.ascii	"glNewList\000"
+	.skip	2
+	.type	.L4751,#object
+	.size	.L4751,12
+	.align	4
+.L4763:
+	.ascii	"glNewList\000"
+	.skip	2
+	.type	.L4763,#object
+	.size	.L4763,12
+	.align	4
+.L4803:
+	.ascii	"glEndList\000"
+	.skip	2
+	.type	.L4803,#object
+	.size	.L4803,12
+	.align	4
+.L4866:
+	.ascii	"glListBase\000"
+	.skip	1
+	.type	.L4866,#object
+	.size	.L4866,12
+
+	.section	".data1",#alloc,#write
+	.align	4
+.L4887:
+	.ascii	"GL_POINTS\000"
+	.skip	2
+	.type	.L4887,#object
+	.size	.L4887,12
+	.align	4
+.L4890:
+	.ascii	"GL_LINES\000"
+	.skip	3
+	.type	.L4890,#object
+	.size	.L4890,12
+	.align	4
+.L4893:
+	.ascii	"GL_LINE_STRIP\000"
+	.skip	2
+	.type	.L4893,#object
+	.size	.L4893,16
+	.align	4
+.L4896:
+	.ascii	"GL_LINE_LOOP\000"
+	.skip	3
+	.type	.L4896,#object
+	.size	.L4896,16
+	.align	4
+.L4899:
+	.ascii	"GL_TRIANGLES\000"
+	.skip	3
+	.type	.L4899,#object
+	.size	.L4899,16
+	.align	4
+.L4902:
+	.ascii	"GL_TRIANGLE_STRIP\000"
+	.skip	2
+	.type	.L4902,#object
+	.size	.L4902,20
+	.align	4
+.L4905:
+	.ascii	"GL_TRIANGLE_FAN\000"
+	.type	.L4905,#object
+	.size	.L4905,16
+	.align	4
+.L4908:
+	.ascii	"GL_QUADS\000"
+	.skip	3
+	.type	.L4908,#object
+	.size	.L4908,12
+	.align	4
+.L4911:
+	.ascii	"GL_QUAD_STRIP\000"
+	.skip	2
+	.type	.L4911,#object
+	.size	.L4911,16
+	.align	4
+.L4914:
+	.ascii	"GL_POLYGON\000"
+	.skip	1
+	.type	.L4914,#object
+	.size	.L4914,12
+	.align	4
+.L4917:
+	.ascii	"GL_FRONT\000"
+	.skip	3
+	.type	.L4917,#object
+	.size	.L4917,12
+	.align	4
+.L4920:
+	.ascii	"GL_BACK\000"
+	.type	.L4920,#object
+	.size	.L4920,8
+	.align	4
+.L4923:
+	.ascii	"GL_FRONT_AND_BACK\000"
+	.skip	2
+	.type	.L4923,#object
+	.size	.L4923,20
+	.align	4
+.L4926:
+	.ascii	"GL_AMBIENT\000"
+	.skip	1
+	.type	.L4926,#object
+	.size	.L4926,12
+	.align	4
+.L4929:
+	.ascii	"GL_DIFFUSE\000"
+	.skip	1
+	.type	.L4929,#object
+	.size	.L4929,12
+	.align	4
+.L4932:
+	.ascii	"GL_SPECULAR\000"
+	.type	.L4932,#object
+	.size	.L4932,12
+	.align	4
+.L4935:
+	.ascii	"GL_SHININESS\000"
+	.type	.L4935,#object
+	.size	.L4935,13
+
+	.section	".bss",#alloc,#write
+	.global	$XAa59JCQsd3LGqK.tmp
+$XAa59JCQsd3LGqK.tmp:
+	.skip	1000
+	.type	$XAa59JCQsd3LGqK.tmp,#object
+	.size	$XAa59JCQsd3LGqK.tmp,1000
+
+	.section	".rodata1",#alloc
+	.align	4
+.L4938:
+	.ascii	"0x%X\000"
+	.skip	3
+	.type	.L4938,#object
+	.size	.L4938,8
+	.align	4
+.L4959:
+	.ascii	"%d is not a display list ID\n\000"
+	.skip	3
+	.type	.L4959,#object
+	.size	.L4959,32
+	.align	4
+.L4966:
+	.ascii	"START-LIST %d, address %p\n\000"
+	.skip	1
+	.type	.L4966,#object
+	.size	.L4966,28
+	.align	4
+.L4988:
+	.ascii	"accum %d %g\n\000"
+	.skip	3
+	.type	.L4988,#object
+	.size	.L4988,16
+	.align	4
+.L4992:
+	.ascii	"Begin %s\n\000"
+	.skip	2
+	.type	.L4992,#object
+	.size	.L4992,12
+	.align	4
+.L4996:
+	.ascii	"Bitmap %d %d %g %g %g %g %p\n\000"
+	.skip	3
+	.type	.L4996,#object
+	.size	.L4996,32
+	.align	4
+.L5000:
+	.ascii	"CallList %d\n\000"
+	.skip	3
+	.type	.L5000,#object
+	.size	.L5000,16
+	.align	4
+.L5004:
+	.ascii	"CallList %d + offset %d = %d\n\000"
+	.skip	2
+	.type	.L5004,#object
+	.size	.L5004,32
+	.align	4
+.L5008:
+	.ascii	"Color3f %g %g %gn\000"
+	.skip	2
+	.type	.L5008,#object
+	.size	.L5008,20
+	.align	4
+.L5012:
+	.ascii	"Color4f %g %g %g %g\n\000"
+	.skip	3
+	.type	.L5012,#object
+	.size	.L5012,24
+	.align	4
+.L5016:
+	.ascii	"Color4ub %d %d %d %d\n\000"
+	.skip	2
+	.type	.L5016,#object
+	.size	.L5016,24
+	.align	4
+.L5020:
+	.ascii	"Disable %s\n\000"
+	.type	.L5020,#object
+	.size	.L5020,12
+	.align	4
+.L5024:
+	.ascii	"Enable %s\n\000"
+	.skip	1
+	.type	.L5024,#object
+	.size	.L5024,12
+	.align	4
+.L5028:
+	.ascii	"End\n\000"
+	.skip	3
+	.type	.L5028,#object
+	.size	.L5028,8
+	.align	4
+.L5032:
+	.ascii	"Frustum %g %g %g %g %g %g\n\000"
+	.skip	1
+	.type	.L5032,#object
+	.size	.L5032,28
+	.align	4
+.L5036:
+	.ascii	"Index %d\n\000"
+	.skip	2
+	.type	.L5036,#object
+	.size	.L5036,12
+	.align	4
+.L5040:
+	.ascii	"LineStipple %d %x\n\000"
+	.skip	1
+	.type	.L5040,#object
+	.size	.L5040,20
+	.align	4
+.L5044:
+	.ascii	"LoadIdentity\n\000"
+	.skip	2
+	.type	.L5044,#object
+	.size	.L5044,16
+	.align	4
+.L5048:
+	.ascii	"LoadMatrix\n\000"
+	.type	.L5048,#object
+	.size	.L5048,12
+	.align	4
+.L5050:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5050,#object
+	.size	.L5050,20
+	.align	4
+.L5052:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5052,#object
+	.size	.L5052,20
+	.align	4
+.L5054:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5054,#object
+	.size	.L5054,20
+	.align	4
+.L5056:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5056,#object
+	.size	.L5056,20
+	.align	4
+.L5060:
+	.ascii	"Material %s %s %g %g %g %g\n\000"
+	.type	.L5060,#object
+	.size	.L5060,28
+	.align	4
+.L5064:
+	.ascii	"MultMatrix (or Rotate)\n\000"
+	.type	.L5064,#object
+	.size	.L5064,24
+	.align	4
+.L5066:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5066,#object
+	.size	.L5066,20
+	.align	4
+.L5068:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5068,#object
+	.size	.L5068,20
+	.align	4
+.L5070:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5070,#object
+	.size	.L5070,20
+	.align	4
+.L5072:
+	.ascii	"  %8f %8f %8f %8f\n\000"
+	.skip	1
+	.type	.L5072,#object
+	.size	.L5072,20
+	.align	4
+.L5076:
+	.ascii	"Normal %g %g %g\n\000"
+	.skip	3
+	.type	.L5076,#object
+	.size	.L5076,20
+	.align	4
+.L5080:
+	.ascii	"Ortho %g %g %g %g %g %g\n\000"
+	.skip	3
+	.type	.L5080,#object
+	.size	.L5080,28
+	.align	4
+.L5084:
+	.ascii	"PopAttrib\n\000"
+	.skip	1
+	.type	.L5084,#object
+	.size	.L5084,12
+	.align	4
+.L5088:
+	.ascii	"PopMatrix\n\000"
+	.skip	1
+	.type	.L5088,#object
+	.size	.L5088,12
+	.align	4
+.L5092:
+	.ascii	"PopName\n\000"
+	.skip	3
+	.type	.L5092,#object
+	.size	.L5092,12
+	.align	4
+.L5096:
+	.ascii	"PushAttrib %x\n\000"
+	.skip	1
+	.type	.L5096,#object
+	.size	.L5096,16
+	.align	4
+.L5100:
+	.ascii	"PushMatrix\n\000"
+	.type	.L5100,#object
+	.size	.L5100,12
+	.align	4
+.L5104:
+	.ascii	"PushName %d\n\000"
+	.skip	3
+	.type	.L5104,#object
+	.size	.L5104,16
+	.align	4
+.L5108:
+	.ascii	"RasterPos %g %g %g %g\n\000"
+	.skip	1
+	.type	.L5108,#object
+	.size	.L5108,24
+	.align	4
+.L5112:
+	.ascii	"Rectf %g %g %g %g\n\000"
+	.skip	1
+	.type	.L5112,#object
+	.size	.L5112,20
+	.align	4
+.L5116:
+	.ascii	"Scale %g %g %g\n\000"
+	.type	.L5116,#object
+	.size	.L5116,16
+	.align	4
+.L5120:
+	.ascii	"TexCoord %g %g\n\000"
+	.type	.L5120,#object
+	.size	.L5120,16
+	.align	4
+.L5124:
+	.ascii	"TexCoord %g %g %g %g\n\000"
+	.skip	2
+	.type	.L5124,#object
+	.size	.L5124,24
+	.align	4
+.L5128:
+	.ascii	"Translate %g %g %g\n\000"
+	.type	.L5128,#object
+	.size	.L5128,20
+	.align	4
+.L5132:
+	.ascii	"Vertex %g %g\n\000"
+	.skip	2
+	.type	.L5132,#object
+	.size	.L5132,16
+	.align	4
+.L5136:
+	.ascii	"Vertex %g %g %g\n\000"
+	.skip	3
+	.type	.L5136,#object
+	.size	.L5136,20
+	.align	4
+.L5140:
+	.ascii	"Vertex %g %g %g %g\n\000"
+	.type	.L5140,#object
+	.size	.L5140,20
+	.align	4
+.L5144:
+	.ascii	"DISPLAY-LIST-CONTINUE\n\000"
+	.skip	1
+	.type	.L5144,#object
+	.size	.L5144,24
+	.align	4
+.L5149:
+	.ascii	"END-LIST %d\n\000"
+	.skip	3
+	.type	.L5149,#object
+	.size	.L5149,16
+	.align	4
+.L5162:
+	.ascii	"ERROR IN DISPLAY LIST: opcode = %d, address = %p\n\000"
+	.skip	2
+	.type	.L5162,#object
+	.size	.L5162,52
+	.align	4
+.L5169:
+	.ascii	"command %d, %d operands\n\000"
+	.type	.L5169,#object
+	.size	.L5169,25
+
+	.file	"dlist.c"
+	.ident	"@(#)assert.h	1.10	04/05/18 SMI"
+	.ident	"@(#)stdio.h	1.84	04/09/28 SMI"
+	.ident	"@(#)feature_tests.h	1.25	07/02/02 SMI"
+	.ident	"@(#)ccompile.h	1.2	04/11/08 SMI"
+	.ident	"@(#)isa_defs.h	1.28	07/02/01 SMI"
+	.ident	"@(#)stdio_iso.h	1.8	05/08/16 SMI"
+	.ident	"@(#)va_list.h	1.15	04/11/19 SMI"
+	.ident	"@(#)stdio_tag.h	1.4	04/09/28 SMI"
+	.ident	"@(#)stdio_impl.h	1.15	07/03/05 SMI"
+	.ident	"@(#)stdio_c99.h	1.2	04/03/29 SMI"
+	.ident	"@(#)stdlib.h	1.51	04/06/30 SMI"
+	.ident	"@(#)stdlib_iso.h	1.9	04/09/28 SMI"
+	.ident	"@(#)stdlib_c99.h	1.2	04/03/29 SMI"
+	.ident	"@(#)string.h	1.27	07/01/14 SMI"
+	.ident	"@(#)string_iso.h	1.5	04/06/18 SMI"
+	.ident	"@(#)math.h	2.24	04/10/23 SMI"
+	.ident	"@(#)math_iso.h	1.9	04/10/23 SMI"
+	.ident	"@(#)math_c99.h	1.9	04/11/01 SMI"
+	.ident	"@(#)floatingpoint.h	2.9	04/10/23 SMI"
+	.ident	"@(#)ieeefp.h	2.12	04/10/23 SMI"
+	.ident	"acomp: Sun C 5.9 SunOS_sparc 2007/05/03"
+!  Begin sdCreateSection : .debug_loc
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+	.section ".debug_loc"
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_info
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+!   reloc[0]: knd=2, off=6, siz=4, lab1=.debug_abbrev, lab2=, loff=0
+!   reloc[1]: knd=2, off=253, siz=4, lab1=.debug_line, lab2=, loff=0
+!   reloc[2]: knd=0, off=280, siz=4, lab1=alloc_instruction, lab2=, loff=0
+!   reloc[3]: knd=0, off=284, siz=4, lab1=.L56, lab2=, loff=0
+!   reloc[4]: knd=0, off=41691, siz=4, lab1=make_empty_list, lab2=, loff=0
+!   reloc[5]: knd=0, off=41695, siz=4, lab1=.L66, lab2=, loff=0
+!   reloc[6]: knd=0, off=41748, siz=4, lab1=gl_destroy_list, lab2=, loff=0
+!   reloc[7]: knd=0, off=41752, siz=4, lab1=.L164, lab2=, loff=0
+!   reloc[8]: knd=0, off=41847, siz=4, lab1=.L78, lab2=, loff=0
+!   reloc[9]: knd=0, off=41851, siz=4, lab1=.L161, lab2=, loff=0
+!   reloc[10]: knd=0, off=41856, siz=4, lab1=.L84, lab2=, loff=0
+!   reloc[11]: knd=0, off=41860, siz=4, lab1=.L158, lab2=, loff=0
+!   reloc[12]: knd=0, off=41865, siz=4, lab1=.L85, lab2=, loff=0
+!   reloc[13]: knd=0, off=41869, siz=4, lab1=.L157, lab2=, loff=0
+!   reloc[14]: knd=0, off=41874, siz=4, lab1=.L86, lab2=, loff=0
+!   reloc[15]: knd=0, off=41878, siz=4, lab1=.L156, lab2=, loff=0
+!   reloc[16]: knd=0, off=41883, siz=4, lab1=.L90, lab2=, loff=0
+!   reloc[17]: knd=0, off=41887, siz=4, lab1=.L153, lab2=, loff=0
+!   reloc[18]: knd=0, off=41892, siz=4, lab1=.L91, lab2=, loff=0
+!   reloc[19]: knd=0, off=41896, siz=4, lab1=.L152, lab2=, loff=0
+!   reloc[20]: knd=0, off=41901, siz=4, lab1=.L129, lab2=, loff=0
+!   reloc[21]: knd=0, off=41905, siz=4, lab1=.L132, lab2=, loff=0
+!   reloc[22]: knd=0, off=41929, siz=4, lab1=.L135, lab2=, loff=0
+!   reloc[23]: knd=0, off=41933, siz=4, lab1=.L138, lab2=, loff=0
+!   reloc[24]: knd=0, off=41981, siz=4, lab1=translate_id, lab2=, loff=0
+!   reloc[25]: knd=0, off=41985, siz=4, lab1=.L214, lab2=, loff=0
+!   reloc[26]: knd=0, off=42250, siz=4, lab1=gl_init_lists, lab2=, loff=0
+!   reloc[27]: knd=0, off=42254, siz=4, lab1=.L349, lab2=, loff=0
+!   reloc[28]: knd=0, off=42287, siz=4, lab1=$XBa59JCQsd3LGqK.gl_init_lists.init_flag, lab2=, loff=0
+!   reloc[29]: knd=0, off=42312, siz=4, lab1=gl_list_index, lab2=, loff=0
+!   reloc[30]: knd=0, off=42316, siz=4, lab1=.L357, lab2=, loff=0
+!   reloc[31]: knd=0, off=42348, siz=4, lab1=gl_save_Accum, lab2=, loff=0
+!   reloc[32]: knd=0, off=42352, siz=4, lab1=.L386, lab2=, loff=0
+!   reloc[33]: knd=0, off=42452, siz=4, lab1=gl_save_AlphaFunc, lab2=, loff=0
+!   reloc[34]: knd=0, off=42456, siz=4, lab1=.L415, lab2=, loff=0
+!   reloc[35]: knd=0, off=42567, siz=4, lab1=gl_save_Begin, lab2=, loff=0
+!   reloc[36]: knd=0, off=42571, siz=4, lab1=.L443, lab2=, loff=0
+!   reloc[37]: knd=0, off=42657, siz=4, lab1=gl_save_BindTexture, lab2=, loff=0
+!   reloc[38]: knd=0, off=42661, siz=4, lab1=.L472, lab2=, loff=0
+!   reloc[39]: knd=0, off=42764, siz=4, lab1=gl_save_Bitmap, lab2=, loff=0
+!   reloc[40]: knd=0, off=42768, siz=4, lab1=.L506, lab2=, loff=0
+!   reloc[41]: knd=0, off=42977, siz=4, lab1=gl_save_BlendEquation, lab2=, loff=0
+!   reloc[42]: knd=0, off=42981, siz=4, lab1=.L534, lab2=, loff=0
+!   reloc[43]: knd=0, off=43065, siz=4, lab1=gl_save_BlendFunc, lab2=, loff=0
+!   reloc[44]: knd=0, off=43069, siz=4, lab1=.L563, lab2=, loff=0
+!   reloc[45]: knd=0, off=43177, siz=4, lab1=gl_save_BlendColor, lab2=, loff=0
+!   reloc[46]: knd=0, off=43181, siz=4, lab1=.L594, lab2=, loff=0
+!   reloc[47]: knd=0, off=43316, siz=4, lab1=gl_save_CallList, lab2=, loff=0
+!   reloc[48]: knd=0, off=43320, siz=4, lab1=.L622, lab2=, loff=0
+!   reloc[49]: knd=0, off=43404, siz=4, lab1=gl_save_CallLists, lab2=, loff=0
+!   reloc[50]: knd=0, off=43408, siz=4, lab1=.L664, lab2=, loff=0
+!   reloc[51]: knd=0, off=43500, siz=4, lab1=.L628, lab2=, loff=0
+!   reloc[52]: knd=0, off=43504, siz=4, lab1=.L652, lab2=, loff=0
+!   reloc[53]: knd=0, off=43509, siz=4, lab1=.L634, lab2=, loff=0
+!   reloc[54]: knd=0, off=43513, siz=4, lab1=.L649, lab2=, loff=0
+!   reloc[55]: knd=0, off=43518, siz=4, lab1=.L635, lab2=, loff=0
+!   reloc[56]: knd=0, off=43522, siz=4, lab1=.L648, lab2=, loff=0
+!   reloc[57]: knd=0, off=43591, siz=4, lab1=gl_save_Clear, lab2=, loff=0
+!   reloc[58]: knd=0, off=43595, siz=4, lab1=.L692, lab2=, loff=0
+!   reloc[59]: knd=0, off=43680, siz=4, lab1=gl_save_ClearAccum, lab2=, loff=0
+!   reloc[60]: knd=0, off=43684, siz=4, lab1=.L723, lab2=, loff=0
+!   reloc[61]: knd=0, off=43821, siz=4, lab1=gl_save_ClearColor, lab2=, loff=0
+!   reloc[62]: knd=0, off=43825, siz=4, lab1=.L754, lab2=, loff=0
+!   reloc[63]: knd=0, off=43962, siz=4, lab1=gl_save_ClearDepth, lab2=, loff=0
+!   reloc[64]: knd=0, off=43966, siz=4, lab1=.L782, lab2=, loff=0
+!   reloc[65]: knd=0, off=44067, siz=4, lab1=gl_save_ClearIndex, lab2=, loff=0
+!   reloc[66]: knd=0, off=44071, siz=4, lab1=.L810, lab2=, loff=0
+!   reloc[67]: knd=0, off=44155, siz=4, lab1=gl_save_ClearStencil, lab2=, loff=0
+!   reloc[68]: knd=0, off=44159, siz=4, lab1=.L838, lab2=, loff=0
+!   reloc[69]: knd=0, off=44240, siz=4, lab1=gl_save_ClipPlane, lab2=, loff=0
+!   reloc[70]: knd=0, off=44244, siz=4, lab1=.L870, lab2=, loff=0
+!   reloc[71]: knd=0, off=44353, siz=4, lab1=gl_save_Color3f, lab2=, loff=0
+!   reloc[72]: knd=0, off=44357, siz=4, lab1=.L900, lab2=, loff=0
+!   reloc[73]: knd=0, off=44465, siz=4, lab1=gl_save_Color3fv, lab2=, loff=0
+!   reloc[74]: knd=0, off=44469, siz=4, lab1=.L930, lab2=, loff=0
+!   reloc[75]: knd=0, off=44558, siz=4, lab1=gl_save_Color4f, lab2=, loff=0
+!   reloc[76]: knd=0, off=44562, siz=4, lab1=.L961, lab2=, loff=0
+!   reloc[77]: knd=0, off=44684, siz=4, lab1=gl_save_Color4fv, lab2=, loff=0
+!   reloc[78]: knd=0, off=44688, siz=4, lab1=.L992, lab2=, loff=0
+!   reloc[79]: knd=0, off=44778, siz=4, lab1=gl_save_Color4ub, lab2=, loff=0
+!   reloc[80]: knd=0, off=44782, siz=4, lab1=.L1023, lab2=, loff=0
+!   reloc[81]: knd=0, off=44905, siz=4, lab1=gl_save_Color4ubv, lab2=, loff=0
+!   reloc[82]: knd=0, off=44909, siz=4, lab1=.L1054, lab2=, loff=0
+!   reloc[83]: knd=0, off=45000, siz=4, lab1=gl_save_ColorMask, lab2=, loff=0
+!   reloc[84]: knd=0, off=45004, siz=4, lab1=.L1085, lab2=, loff=0
+!   reloc[85]: knd=0, off=45144, siz=4, lab1=gl_save_ColorMaterial, lab2=, loff=0
+!   reloc[86]: knd=0, off=45148, siz=4, lab1=.L1114, lab2=, loff=0
+!   reloc[87]: knd=0, off=45250, siz=4, lab1=gl_save_ColorTable, lab2=, loff=0
+!   reloc[88]: knd=0, off=45254, siz=4, lab1=.L1154, lab2=, loff=0
+!   reloc[89]: knd=0, off=45389, siz=4, lab1=gl_save_ColorSubTable, lab2=, loff=0
+!   reloc[90]: knd=0, off=45393, siz=4, lab1=.L1194, lab2=, loff=0
+!   reloc[91]: knd=0, off=45515, siz=4, lab1=gl_save_CopyPixels, lab2=, loff=0
+!   reloc[92]: knd=0, off=45519, siz=4, lab1=.L1226, lab2=, loff=0
+!   reloc[93]: knd=0, off=45673, siz=4, lab1=gl_save_CopyTexImage1D, lab2=, loff=0
+!   reloc[94]: knd=0, off=45677, siz=4, lab1=.L1260, lab2=, loff=0
+!   reloc[95]: knd=0, off=45878, siz=4, lab1=gl_save_CopyTexImage2D, lab2=, loff=0
+!   reloc[96]: knd=0, off=45882, siz=4, lab1=.L1295, lab2=, loff=0
+!   reloc[97]: knd=0, off=46105, siz=4, lab1=gl_save_CopyTexSubImage1D, lab2=, loff=0
+!   reloc[98]: knd=0, off=46109, siz=4, lab1=.L1328, lab2=, loff=0
+!   reloc[99]: knd=0, off=46287, siz=4, lab1=gl_save_CopyTexSubImage2D, lab2=, loff=0
+!   reloc[100]: knd=0, off=46291, siz=4, lab1=.L1363, lab2=, loff=0
+!   reloc[101]: knd=0, off=46511, siz=4, lab1=gl_save_CopyTexSubImage3DEXT, lab2=, loff=0
+!   reloc[102]: knd=0, off=46515, siz=4, lab1=.L1399, lab2=, loff=0
+!   reloc[103]: knd=0, off=46743, siz=4, lab1=gl_save_CullFace, lab2=, loff=0
+!   reloc[104]: knd=0, off=46747, siz=4, lab1=.L1427, lab2=, loff=0
+!   reloc[105]: knd=0, off=46831, siz=4, lab1=gl_save_DepthFunc, lab2=, loff=0
+!   reloc[106]: knd=0, off=46835, siz=4, lab1=.L1455, lab2=, loff=0
+!   reloc[107]: knd=0, off=46919, siz=4, lab1=gl_save_DepthMask, lab2=, loff=0
+!   reloc[108]: knd=0, off=46923, siz=4, lab1=.L1483, lab2=, loff=0
+!   reloc[109]: knd=0, off=47008, siz=4, lab1=gl_save_DepthRange, lab2=, loff=0
+!   reloc[110]: knd=0, off=47012, siz=4, lab1=.L1512, lab2=, loff=0
+!   reloc[111]: knd=0, off=47116, siz=4, lab1=gl_save_Disable, lab2=, loff=0
+!   reloc[112]: knd=0, off=47120, siz=4, lab1=.L1540, lab2=, loff=0
+!   reloc[113]: knd=0, off=47204, siz=4, lab1=gl_save_DrawBuffer, lab2=, loff=0
+!   reloc[114]: knd=0, off=47208, siz=4, lab1=.L1568, lab2=, loff=0
+!   reloc[115]: knd=0, off=47293, siz=4, lab1=gl_save_DrawPixels, lab2=, loff=0
+!   reloc[116]: knd=0, off=47297, siz=4, lab1=.L1590, lab2=, loff=0
+!   reloc[117]: knd=0, off=47465, siz=4, lab1=gl_save_EdgeFlag, lab2=, loff=0
+!   reloc[118]: knd=0, off=47469, siz=4, lab1=.L1618, lab2=, loff=0
+!   reloc[119]: knd=0, off=47550, siz=4, lab1=gl_save_Enable, lab2=, loff=0
+!   reloc[120]: knd=0, off=47554, siz=4, lab1=.L1646, lab2=, loff=0
+!   reloc[121]: knd=0, off=47631, siz=4, lab1=gl_save_End, lab2=, loff=0
+!   reloc[122]: knd=0, off=47635, siz=4, lab1=.L1664, lab2=, loff=0
+!   reloc[123]: knd=0, off=47690, siz=4, lab1=gl_save_EvalCoord1f, lab2=, loff=0
+!   reloc[124]: knd=0, off=47694, siz=4, lab1=.L1692, lab2=, loff=0
+!   reloc[125]: knd=0, off=47777, siz=4, lab1=gl_save_EvalCoord2f, lab2=, loff=0
+!   reloc[126]: knd=0, off=47781, siz=4, lab1=.L1721, lab2=, loff=0
+!   reloc[127]: knd=0, off=47876, siz=4, lab1=gl_save_EvalMesh1, lab2=, loff=0
+!   reloc[128]: knd=0, off=47880, siz=4, lab1=.L1751, lab2=, loff=0
+!   reloc[129]: knd=0, off=47994, siz=4, lab1=gl_save_EvalMesh2, lab2=, loff=0
+!   reloc[130]: knd=0, off=47998, siz=4, lab1=.L1783, lab2=, loff=0
+!   reloc[131]: knd=0, off=48143, siz=4, lab1=gl_save_EvalPoint1, lab2=, loff=0
+!   reloc[132]: knd=0, off=48147, siz=4, lab1=.L1811, lab2=, loff=0
+!   reloc[133]: knd=0, off=48229, siz=4, lab1=gl_save_EvalPoint2, lab2=, loff=0
+!   reloc[134]: knd=0, off=48233, siz=4, lab1=.L1840, lab2=, loff=0
+!   reloc[135]: knd=0, off=48324, siz=4, lab1=gl_save_Fogfv, lab2=, loff=0
+!   reloc[136]: knd=0, off=48328, siz=4, lab1=.L1872, lab2=, loff=0
+!   reloc[137]: knd=0, off=48442, siz=4, lab1=gl_save_FrontFace, lab2=, loff=0
+!   reloc[138]: knd=0, off=48446, siz=4, lab1=.L1900, lab2=, loff=0
+!   reloc[139]: knd=0, off=48528, siz=4, lab1=gl_save_Frustum, lab2=, loff=0
+!   reloc[140]: knd=0, off=48532, siz=4, lab1=.L1933, lab2=, loff=0
+!   reloc[141]: knd=0, off=48718, siz=4, lab1=gl_save_Hint, lab2=, loff=0
+!   reloc[142]: knd=0, off=48722, siz=4, lab1=.L1962, lab2=, loff=0
+!   reloc[143]: knd=0, off=48822, siz=4, lab1=gl_save_Indexi, lab2=, loff=0
+!   reloc[144]: knd=0, off=48826, siz=4, lab1=.L1990, lab2=, loff=0
+!   reloc[145]: knd=0, off=48908, siz=4, lab1=gl_save_Indexf, lab2=, loff=0
+!   reloc[146]: knd=0, off=48912, siz=4, lab1=.L2018, lab2=, loff=0
+!   reloc[147]: knd=0, off=48997, siz=4, lab1=gl_save_IndexMask, lab2=, loff=0
+!   reloc[148]: knd=0, off=49001, siz=4, lab1=.L2046, lab2=, loff=0
+!   reloc[149]: knd=0, off=49085, siz=4, lab1=gl_save_InitNames, lab2=, loff=0
+!   reloc[150]: knd=0, off=49089, siz=4, lab1=.L2064, lab2=, loff=0
+!   reloc[151]: knd=0, off=49140, siz=4, lab1=gl_save_Lightfv, lab2=, loff=0
+!   reloc[152]: knd=0, off=49144, siz=4, lab1=.L2106, lab2=, loff=0
+!   reloc[153]: knd=0, off=49264, siz=4, lab1=.L2071, lab2=, loff=0
+!   reloc[154]: knd=0, off=49268, siz=4, lab1=.L2094, lab2=, loff=0
+!   reloc[155]: knd=0, off=49273, siz=4, lab1=.L2074, lab2=, loff=0
+!   reloc[156]: knd=0, off=49277, siz=4, lab1=.L2093, lab2=, loff=0
+!   reloc[157]: knd=0, off=49282, siz=4, lab1=.L2075, lab2=, loff=0
+!   reloc[158]: knd=0, off=49286, siz=4, lab1=.L2092, lab2=, loff=0
+!   reloc[159]: knd=0, off=49345, siz=4, lab1=gl_save_LightModelfv, lab2=, loff=0
+!   reloc[160]: knd=0, off=49349, siz=4, lab1=.L2138, lab2=, loff=0
+!   reloc[161]: knd=0, off=49465, siz=4, lab1=gl_save_LineStipple, lab2=, loff=0
+!   reloc[162]: knd=0, off=49469, siz=4, lab1=.L2167, lab2=, loff=0
+!   reloc[163]: knd=0, off=49575, siz=4, lab1=gl_save_LineWidth, lab2=, loff=0
+!   reloc[164]: knd=0, off=49579, siz=4, lab1=.L2195, lab2=, loff=0
+!   reloc[165]: knd=0, off=49663, siz=4, lab1=gl_save_ListBase, lab2=, loff=0
+!   reloc[166]: knd=0, off=49667, siz=4, lab1=.L2223, lab2=, loff=0
+!   reloc[167]: knd=0, off=49754, siz=4, lab1=gl_save_LoadIdentity, lab2=, loff=0
+!   reloc[168]: knd=0, off=49758, siz=4, lab1=.L2241, lab2=, loff=0
+!   reloc[169]: knd=0, off=49813, siz=4, lab1=gl_save_LoadMatrixf, lab2=, loff=0
+!   reloc[170]: knd=0, off=49817, siz=4, lab1=.L2282, lab2=, loff=0
+!   reloc[171]: knd=0, off=49874, siz=4, lab1=.L2248, lab2=, loff=0
+!   reloc[172]: knd=0, off=49878, siz=4, lab1=.L2270, lab2=, loff=0
+!   reloc[173]: knd=0, off=49883, siz=4, lab1=.L2252, lab2=, loff=0
+!   reloc[174]: knd=0, off=49887, siz=4, lab1=.L2269, lab2=, loff=0
+!   reloc[175]: knd=0, off=49892, siz=4, lab1=.L2253, lab2=, loff=0
+!   reloc[176]: knd=0, off=49896, siz=4, lab1=.L2268, lab2=, loff=0
+!   reloc[177]: knd=0, off=49951, siz=4, lab1=gl_save_LoadName, lab2=, loff=0
+!   reloc[178]: knd=0, off=49955, siz=4, lab1=.L2310, lab2=, loff=0
+!   reloc[179]: knd=0, off=50037, siz=4, lab1=gl_save_LogicOp, lab2=, loff=0
+!   reloc[180]: knd=0, off=50041, siz=4, lab1=.L2338, lab2=, loff=0
+!   reloc[181]: knd=0, off=50123, siz=4, lab1=gl_save_Map1f, lab2=, loff=0
+!   reloc[182]: knd=0, off=50127, siz=4, lab1=.L2371, lab2=, loff=0
+!   reloc[183]: knd=0, off=50324, siz=4, lab1=gl_save_Map2f, lab2=, loff=0
+!   reloc[184]: knd=0, off=50328, siz=4, lab1=.L2408, lab2=, loff=0
+!   reloc[185]: knd=0, off=50600, siz=4, lab1=gl_save_MapGrid1f, lab2=, loff=0
+!   reloc[186]: knd=0, off=50604, siz=4, lab1=.L2438, lab2=, loff=0
+!   reloc[187]: knd=0, off=50716, siz=4, lab1=gl_save_MapGrid2f, lab2=, loff=0
+!   reloc[188]: knd=0, off=50720, siz=4, lab1=.L2471, lab2=, loff=0
+!   reloc[189]: knd=0, off=50878, siz=4, lab1=gl_save_Materialfv, lab2=, loff=0
+!   reloc[190]: knd=0, off=50882, siz=4, lab1=.L2504, lab2=, loff=0
+!   reloc[191]: knd=0, off=51014, siz=4, lab1=gl_save_MatrixMode, lab2=, loff=0
+!   reloc[192]: knd=0, off=51018, siz=4, lab1=.L2532, lab2=, loff=0
+!   reloc[193]: knd=0, off=51104, siz=4, lab1=gl_save_MultMatrixf, lab2=, loff=0
+!   reloc[194]: knd=0, off=51108, siz=4, lab1=.L2573, lab2=, loff=0
+!   reloc[195]: knd=0, off=51165, siz=4, lab1=.L2539, lab2=, loff=0
+!   reloc[196]: knd=0, off=51169, siz=4, lab1=.L2561, lab2=, loff=0
+!   reloc[197]: knd=0, off=51174, siz=4, lab1=.L2543, lab2=, loff=0
+!   reloc[198]: knd=0, off=51178, siz=4, lab1=.L2560, lab2=, loff=0
+!   reloc[199]: knd=0, off=51183, siz=4, lab1=.L2544, lab2=, loff=0
+!   reloc[200]: knd=0, off=51187, siz=4, lab1=.L2559, lab2=, loff=0
+!   reloc[201]: knd=0, off=51241, siz=4, lab1=gl_save_NewList, lab2=, loff=0
+!   reloc[202]: knd=0, off=51245, siz=4, lab1=.L2582, lab2=, loff=0
+!   reloc[203]: knd=0, off=51332, siz=4, lab1=gl_save_Normal3fv, lab2=, loff=0
+!   reloc[204]: knd=0, off=51336, siz=4, lab1=.L2612, lab2=, loff=0
+!   reloc[205]: knd=0, off=51429, siz=4, lab1=gl_save_Normal3f, lab2=, loff=0
+!   reloc[206]: knd=0, off=51433, siz=4, lab1=.L2642, lab2=, loff=0
+!   reloc[207]: knd=0, off=51541, siz=4, lab1=gl_save_Ortho, lab2=, loff=0
+!   reloc[208]: knd=0, off=51545, siz=4, lab1=.L2675, lab2=, loff=0
+!   reloc[209]: knd=0, off=51722, siz=4, lab1=gl_save_PixelMapfv, lab2=, loff=0
+!   reloc[210]: knd=0, off=51726, siz=4, lab1=.L2706, lab2=, loff=0
+!   reloc[211]: knd=0, off=51863, siz=4, lab1=gl_save_PixelTransferf, lab2=, loff=0
+!   reloc[212]: knd=0, off=51867, siz=4, lab1=.L2735, lab2=, loff=0
+!   reloc[213]: knd=0, off=51970, siz=4, lab1=gl_save_PixelZoom, lab2=, loff=0
+!   reloc[214]: knd=0, off=51974, siz=4, lab1=.L2764, lab2=, loff=0
+!   reloc[215]: knd=0, off=52091, siz=4, lab1=gl_save_PointParameterfvEXT, lab2=, loff=0
+!   reloc[216]: knd=0, off=52095, siz=4, lab1=.L2795, lab2=, loff=0
+!   reloc[217]: knd=0, off=52209, siz=4, lab1=gl_save_PointSize, lab2=, loff=0
+!   reloc[218]: knd=0, off=52213, siz=4, lab1=.L2823, lab2=, loff=0
+!   reloc[219]: knd=0, off=52299, siz=4, lab1=gl_save_PolygonMode, lab2=, loff=0
+!   reloc[220]: knd=0, off=52303, siz=4, lab1=.L2852, lab2=, loff=0
+!   reloc[221]: knd=0, off=52409, siz=4, lab1=gl_save_PolygonStipple, lab2=, loff=0
+!   reloc[222]: knd=0, off=52413, siz=4, lab1=.L2882, lab2=, loff=0
+!   reloc[223]: knd=0, off=52473, siz=4, lab1=.L2859, lab2=, loff=0
+!   reloc[224]: knd=0, off=52477, siz=4, lab1=.L2870, lab2=, loff=0
+!   reloc[225]: knd=0, off=52482, siz=4, lab1=.L2863, lab2=, loff=0
+!   reloc[226]: knd=0, off=52486, siz=4, lab1=.L2869, lab2=, loff=0
+!   reloc[227]: knd=0, off=52491, siz=4, lab1=.L2864, lab2=, loff=0
+!   reloc[228]: knd=0, off=52495, siz=4, lab1=.L2868, lab2=, loff=0
+!   reloc[229]: knd=0, off=52558, siz=4, lab1=gl_save_PolygonOffset, lab2=, loff=0
+!   reloc[230]: knd=0, off=52562, siz=4, lab1=.L2911, lab2=, loff=0
+!   reloc[231]: knd=0, off=52666, siz=4, lab1=gl_save_PopAttrib, lab2=, loff=0
+!   reloc[232]: knd=0, off=52670, siz=4, lab1=.L2929, lab2=, loff=0
+!   reloc[233]: knd=0, off=52723, siz=4, lab1=gl_save_PopMatrix, lab2=, loff=0
+!   reloc[234]: knd=0, off=52727, siz=4, lab1=.L2947, lab2=, loff=0
+!   reloc[235]: knd=0, off=52778, siz=4, lab1=gl_save_PopName, lab2=, loff=0
+!   reloc[236]: knd=0, off=52782, siz=4, lab1=.L2965, lab2=, loff=0
+!   reloc[237]: knd=0, off=52844, siz=4, lab1=gl_save_PrioritizeTextures, lab2=, loff=0
+!   reloc[238]: knd=0, off=52848, siz=4, lab1=.L3007, lab2=, loff=0
+!   reloc[239]: knd=0, off=52951, siz=4, lab1=.L2971, lab2=, loff=0
+!   reloc[240]: knd=0, off=52955, siz=4, lab1=.L2995, lab2=, loff=0
+!   reloc[241]: knd=0, off=52960, siz=4, lab1=.L2977, lab2=, loff=0
+!   reloc[242]: knd=0, off=52964, siz=4, lab1=.L2992, lab2=, loff=0
+!   reloc[243]: knd=0, off=52969, siz=4, lab1=.L2978, lab2=, loff=0
+!   reloc[244]: knd=0, off=52973, siz=4, lab1=.L2991, lab2=, loff=0
+!   reloc[245]: knd=0, off=53040, siz=4, lab1=gl_save_PushAttrib, lab2=, loff=0
+!   reloc[246]: knd=0, off=53044, siz=4, lab1=.L3035, lab2=, loff=0
+!   reloc[247]: knd=0, off=53129, siz=4, lab1=gl_save_PushMatrix, lab2=, loff=0
+!   reloc[248]: knd=0, off=53133, siz=4, lab1=.L3053, lab2=, loff=0
+!   reloc[249]: knd=0, off=53185, siz=4, lab1=gl_save_PushName, lab2=, loff=0
+!   reloc[250]: knd=0, off=53189, siz=4, lab1=.L3081, lab2=, loff=0
+!   reloc[251]: knd=0, off=53275, siz=4, lab1=gl_save_RasterPos4f, lab2=, loff=0
+!   reloc[252]: knd=0, off=53279, siz=4, lab1=.L3112, lab2=, loff=0
+!   reloc[253]: knd=0, off=53404, siz=4, lab1=gl_save_PassThrough, lab2=, loff=0
+!   reloc[254]: knd=0, off=53408, siz=4, lab1=.L3140, lab2=, loff=0
+!   reloc[255]: knd=0, off=53494, siz=4, lab1=gl_save_ReadBuffer, lab2=, loff=0
+!   reloc[256]: knd=0, off=53498, siz=4, lab1=.L3168, lab2=, loff=0
+!   reloc[257]: knd=0, off=53578, siz=4, lab1=gl_save_Rectf, lab2=, loff=0
+!   reloc[258]: knd=0, off=53582, siz=4, lab1=.L3199, lab2=, loff=0
+!   reloc[259]: knd=0, off=53707, siz=4, lab1=gl_save_Rotatef, lab2=, loff=0
+!   reloc[260]: knd=0, off=53711, siz=4, lab1=.L3208, lab2=, loff=0
+!   reloc[261]: knd=0, off=53852, siz=4, lab1=gl_save_Scalef, lab2=, loff=0
+!   reloc[262]: knd=0, off=53856, siz=4, lab1=.L3238, lab2=, loff=0
+!   reloc[263]: knd=0, off=53963, siz=4, lab1=gl_save_Scissor, lab2=, loff=0
+!   reloc[264]: knd=0, off=53967, siz=4, lab1=.L3269, lab2=, loff=0
+!   reloc[265]: knd=0, off=54100, siz=4, lab1=gl_save_ShadeModel, lab2=, loff=0
+!   reloc[266]: knd=0, off=54104, siz=4, lab1=.L3297, lab2=, loff=0
+!   reloc[267]: knd=0, off=54190, siz=4, lab1=gl_save_StencilFunc, lab2=, loff=0
+!   reloc[268]: knd=0, off=54194, siz=4, lab1=.L3327, lab2=, loff=0
+!   reloc[269]: knd=0, off=54313, siz=4, lab1=gl_save_StencilMask, lab2=, loff=0
+!   reloc[270]: knd=0, off=54317, siz=4, lab1=.L3355, lab2=, loff=0
+!   reloc[271]: knd=0, off=54401, siz=4, lab1=gl_save_StencilOp, lab2=, loff=0
+!   reloc[272]: knd=0, off=54405, siz=4, lab1=.L3385, lab2=, loff=0
+!   reloc[273]: knd=0, off=54526, siz=4, lab1=gl_save_TexCoord2f, lab2=, loff=0
+!   reloc[274]: knd=0, off=54530, siz=4, lab1=.L3414, lab2=, loff=0
+!   reloc[275]: knd=0, off=54626, siz=4, lab1=gl_save_TexCoord4f, lab2=, loff=0
+!   reloc[276]: knd=0, off=54630, siz=4, lab1=.L3445, lab2=, loff=0
+!   reloc[277]: knd=0, off=54752, siz=4, lab1=gl_save_TexEnvfv, lab2=, loff=0
+!   reloc[278]: knd=0, off=54756, siz=4, lab1=.L3478, lab2=, loff=0
+!   reloc[279]: knd=0, off=54888, siz=4, lab1=gl_save_TexGenfv, lab2=, loff=0
+!   reloc[280]: knd=0, off=54892, siz=4, lab1=.L3511, lab2=, loff=0
+!   reloc[281]: knd=0, off=55029, siz=4, lab1=gl_save_TexParameterfv, lab2=, loff=0
+!   reloc[282]: knd=0, off=55033, siz=4, lab1=.L3544, lab2=, loff=0
+!   reloc[283]: knd=0, off=55167, siz=4, lab1=gl_save_TexImage1D, lab2=, loff=0
+!   reloc[284]: knd=0, off=55171, siz=4, lab1=.L3589, lab2=, loff=0
+!   reloc[285]: knd=0, off=55393, siz=4, lab1=gl_save_TexImage2D, lab2=, loff=0
+!   reloc[286]: knd=0, off=55397, siz=4, lab1=.L3635, lab2=, loff=0
+!   reloc[287]: knd=0, off=55641, siz=4, lab1=gl_save_TexImage3DEXT, lab2=, loff=0
+!   reloc[288]: knd=0, off=55645, siz=4, lab1=.L3672, lab2=, loff=0
+!   reloc[289]: knd=0, off=55907, siz=4, lab1=gl_save_TexSubImage1D, lab2=, loff=0
+!   reloc[290]: knd=0, off=55911, siz=4, lab1=.L3714, lab2=, loff=0
+!   reloc[291]: knd=0, off=56111, siz=4, lab1=gl_save_TexSubImage2D, lab2=, loff=0
+!   reloc[292]: knd=0, off=56115, siz=4, lab1=.L3758, lab2=, loff=0
+!   reloc[293]: knd=0, off=56357, siz=4, lab1=gl_save_TexSubImage3DEXT, lab2=, loff=0
+!   reloc[294]: knd=0, off=56361, siz=4, lab1=.L3804, lab2=, loff=0
+!   reloc[295]: knd=0, off=56635, siz=4, lab1=gl_save_Translatef, lab2=, loff=0
+!   reloc[296]: knd=0, off=56639, siz=4, lab1=.L3834, lab2=, loff=0
+!   reloc[297]: knd=0, off=56747, siz=4, lab1=gl_save_Vertex2f, lab2=, loff=0
+!   reloc[298]: knd=0, off=56751, siz=4, lab1=.L3863, lab2=, loff=0
+!   reloc[299]: knd=0, off=56845, siz=4, lab1=gl_save_Vertex3f, lab2=, loff=0
+!   reloc[300]: knd=0, off=56849, siz=4, lab1=.L3893, lab2=, loff=0
+!   reloc[301]: knd=0, off=56957, siz=4, lab1=gl_save_Vertex4f, lab2=, loff=0
+!   reloc[302]: knd=0, off=56961, siz=4, lab1=.L3924, lab2=, loff=0
+!   reloc[303]: knd=0, off=57084, siz=4, lab1=gl_save_Vertex3fv, lab2=, loff=0
+!   reloc[304]: knd=0, off=57088, siz=4, lab1=.L3954, lab2=, loff=0
+!   reloc[305]: knd=0, off=57178, siz=4, lab1=gl_save_Viewport, lab2=, loff=0
+!   reloc[306]: knd=0, off=57182, siz=4, lab1=.L3985, lab2=, loff=0
+!   reloc[307]: knd=0, off=57320, siz=4, lab1=gl_save_WindowPos4fMESA, lab2=, loff=0
+!   reloc[308]: knd=0, off=57324, siz=4, lab1=.L4016, lab2=, loff=0
+!   reloc[309]: knd=0, off=57441, siz=4, lab1=execute_list, lab2=, loff=0
+!   reloc[310]: knd=0, off=57445, siz=4, lab1=.L4579, lab2=, loff=0
+!   reloc[311]: knd=0, off=57541, siz=4, lab1=.L4033, lab2=, loff=0
+!   reloc[312]: knd=0, off=57545, siz=4, lab1=.L4576, lab2=, loff=0
+!   reloc[313]: knd=0, off=57550, siz=4, lab1=.L4039, lab2=, loff=0
+!   reloc[314]: knd=0, off=57554, siz=4, lab1=.L4573, lab2=, loff=0
+!   reloc[315]: knd=0, off=57559, siz=4, lab1=.L4040, lab2=, loff=0
+!   reloc[316]: knd=0, off=57563, siz=4, lab1=.L4572, lab2=, loff=0
+!   reloc[317]: knd=0, off=57568, siz=4, lab1=.L4042, lab2=, loff=0
+!   reloc[318]: knd=0, off=57572, siz=4, lab1=.L4561, lab2=, loff=0
+!   reloc[319]: knd=0, off=57577, siz=4, lab1=.L4046, lab2=, loff=0
+!   reloc[320]: knd=0, off=57581, siz=4, lab1=.L4558, lab2=, loff=0
+!   reloc[321]: knd=0, off=57586, siz=4, lab1=.L4047, lab2=, loff=0
+!   reloc[322]: knd=0, off=57590, siz=4, lab1=.L4557, lab2=, loff=0
+!   reloc[323]: knd=0, off=57595, siz=4, lab1=.L4178, lab2=, loff=0
+!   reloc[324]: knd=0, off=57599, siz=4, lab1=.L4184, lab2=, loff=0
+!   reloc[325]: knd=0, off=57621, siz=4, lab1=.L4262, lab2=, loff=0
+!   reloc[326]: knd=0, off=57625, siz=4, lab1=.L4268, lab2=, loff=0
+!   reloc[327]: knd=0, off=57645, siz=4, lab1=.L4286, lab2=, loff=0
+!   reloc[328]: knd=0, off=57649, siz=4, lab1=.L4292, lab2=, loff=0
+!   reloc[329]: knd=0, off=57669, siz=4, lab1=.L4295, lab2=, loff=0
+!   reloc[330]: knd=0, off=57673, siz=4, lab1=.L4301, lab2=, loff=0
+!   reloc[331]: knd=0, off=57693, siz=4, lab1=.L4316, lab2=, loff=0
+!   reloc[332]: knd=0, off=57697, siz=4, lab1=.L4344, lab2=, loff=0
+!   reloc[333]: knd=0, off=57702, siz=4, lab1=.L4325, lab2=, loff=0
+!   reloc[334]: knd=0, off=57706, siz=4, lab1=.L4343, lab2=, loff=0
+!   reloc[335]: knd=0, off=57711, siz=4, lab1=.L4326, lab2=, loff=0
+!   reloc[336]: knd=0, off=57715, siz=4, lab1=.L4342, lab2=, loff=0
+!   reloc[337]: knd=0, off=57753, siz=4, lab1=.L4365, lab2=, loff=0
+!   reloc[338]: knd=0, off=57757, siz=4, lab1=.L4371, lab2=, loff=0
+!   reloc[339]: knd=0, off=57782, siz=4, lab1=.L4377, lab2=, loff=0
+!   reloc[340]: knd=0, off=57786, siz=4, lab1=.L4405, lab2=, loff=0
+!   reloc[341]: knd=0, off=57791, siz=4, lab1=.L4386, lab2=, loff=0
+!   reloc[342]: knd=0, off=57795, siz=4, lab1=.L4404, lab2=, loff=0
+!   reloc[343]: knd=0, off=57800, siz=4, lab1=.L4387, lab2=, loff=0
+!   reloc[344]: knd=0, off=57804, siz=4, lab1=.L4403, lab2=, loff=0
+!   reloc[345]: knd=0, off=57842, siz=4, lab1=.L4426, lab2=, loff=0
+!   reloc[346]: knd=0, off=57846, siz=4, lab1=.L4431, lab2=, loff=0
+!   reloc[347]: knd=0, off=57871, siz=4, lab1=.L4491, lab2=, loff=0
+!   reloc[348]: knd=0, off=57875, siz=4, lab1=.L4497, lab2=, loff=0
+!   reloc[349]: knd=0, off=57900, siz=4, lab1=.L4500, lab2=, loff=0
+!   reloc[350]: knd=0, off=57904, siz=4, lab1=.L4506, lab2=, loff=0
+!   reloc[351]: knd=0, off=57929, siz=4, lab1=.L4509, lab2=, loff=0
+!   reloc[352]: knd=0, off=57933, siz=4, lab1=.L4515, lab2=, loff=0
+!   reloc[353]: knd=0, off=57958, siz=4, lab1=.L4551, lab2=, loff=0
+!   reloc[354]: knd=0, off=57962, siz=4, lab1=.L4555, lab2=, loff=0
+!   reloc[355]: knd=0, off=58213, siz=4, lab1=gl_IsList, lab2=, loff=0
+!   reloc[356]: knd=0, off=58217, siz=4, lab1=.L4602, lab2=, loff=0
+!   reloc[357]: knd=0, off=58288, siz=4, lab1=gl_DeleteLists, lab2=, loff=0
+!   reloc[358]: knd=0, off=58292, siz=4, lab1=.L4647, lab2=, loff=0
+!   reloc[359]: knd=0, off=58388, siz=4, lab1=gl_GenLists, lab2=, loff=0
+!   reloc[360]: knd=0, off=58392, siz=4, lab1=.L4713, lab2=, loff=0
+!   reloc[361]: knd=0, off=58460, siz=4, lab1=.L4688, lab2=, loff=0
+!   reloc[362]: knd=0, off=58464, siz=4, lab1=.L4710, lab2=, loff=0
+!   reloc[363]: knd=0, off=58469, siz=4, lab1=.L4692, lab2=, loff=0
+!   reloc[364]: knd=0, off=58473, siz=4, lab1=.L4709, lab2=, loff=0
+!   reloc[365]: knd=0, off=58478, siz=4, lab1=.L4693, lab2=, loff=0
+!   reloc[366]: knd=0, off=58482, siz=4, lab1=.L4708, lab2=, loff=0
+!   reloc[367]: knd=0, off=58521, siz=4, lab1=gl_NewList, lab2=, loff=0
+!   reloc[368]: knd=0, off=58525, siz=4, lab1=.L4790, lab2=, loff=0
+!   reloc[369]: knd=0, off=58609, siz=4, lab1=gl_EndList, lab2=, loff=0
+!   reloc[370]: knd=0, off=58613, siz=4, lab1=.L4817, lab2=, loff=0
+!   reloc[371]: knd=0, off=58678, siz=4, lab1=gl_CallList, lab2=, loff=0
+!   reloc[372]: knd=0, off=58682, siz=4, lab1=.L4828, lab2=, loff=0
+!   reloc[373]: knd=0, off=58777, siz=4, lab1=gl_CallLists, lab2=, loff=0
+!   reloc[374]: knd=0, off=58781, siz=4, lab1=.L4853, lab2=, loff=0
+!   reloc[375]: knd=0, off=58948, siz=4, lab1=gl_ListBase, lab2=, loff=0
+!   reloc[376]: knd=0, off=58952, siz=4, lab1=.L4873, lab2=, loff=0
+!   reloc[377]: knd=0, off=59015, siz=4, lab1=enum_string, lab2=, loff=0
+!   reloc[378]: knd=0, off=59019, siz=4, lab1=.L4946, lab2=, loff=0
+!   reloc[379]: knd=0, off=59071, siz=4, lab1=print_list, lab2=, loff=0
+!   reloc[380]: knd=0, off=59075, siz=4, lab1=.L5194, lab2=, loff=0
+!   reloc[381]: knd=0, off=59451, siz=4, lab1=mesa_print_display_list, lab2=, loff=0
+!   reloc[382]: knd=0, off=59455, siz=4, lab1=.L5203, lab2=, loff=0
+!   reloc[383]: knd=0, off=59535, siz=4, lab1=$XAa59JCQsd3LGqK.tmp, lab2=, loff=0
+!   reloc[384]: knd=0, off=59561, siz=4, lab1=$XAa59JCQsd3LGqK.CurrentPos, lab2=, loff=0
+!   reloc[385]: knd=0, off=59589, siz=4, lab1=$XAa59JCQsd3LGqK.CurrentBlock, lab2=, loff=0
+!   reloc[386]: knd=0, off=59619, siz=4, lab1=$XAa59JCQsd3LGqK.CurrentListNum, lab2=, loff=0
+!   reloc[387]: knd=0, off=59649, siz=4, lab1=$XAa59JCQsd3LGqK.CurrentListPtr, lab2=, loff=0
+!   reloc[388]: knd=0, off=59691, siz=4, lab1=$XAa59JCQsd3LGqK.InstSize, lab2=, loff=0
+	.section ".debug_info"
+	.byte 0x00,0x00,0xfd,0xa4,0x00,0x02
+	.uaword %section_symbol(".debug_abbrev")
+	.byte 0x04,0x01
+	.ascii "dlist.c\0"
+	.byte 0x0c
+	.ascii "/home/faculty/koppel/teach/gpcom/gpup/rsim/mesa/no-opt\0"
+	.ascii " /local/SUNWspro/prod/bin/cc -g -xtarget=ultraT2 -S  dlist.c -W0,-xp\\$XAa59JCQsd3LGqK.\0"
+	.ascii "Xa;g;R=Sun C 5.9 SunOS_sparc 2007/05/03;G=$XAa59JCQsd3LGqK.;backend;raw;cd;\0"
+	.ascii "DBG_GEN 5.2.1\0"
+	.uaword %section_symbol(".debug_line")
+	.byte 0x02
+	.ascii "alloc_instruction\0"
+	.byte 0x03,0x01,0x01,0x88
+	.uaword alloc_instruction
+	.uaword .L56
+	.byte 0x01,0x6e,0x01,0x00,0x00,0x3c,0x1a,0x01
+	.byte 0x00,0x00,0x01,0x9a,0x03,0x00,0x00,0xa2
+	.byte 0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x01,0x87,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0a,0xee
+	.ascii "opcode\0"
+	.byte 0x01,0x01,0x87,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "argcount\0"
+	.byte 0x01,0x01,0x87,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x01,0x89
+	.byte 0x02,0x91,0x78,0x04
+	.ascii "newblock\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x01,0x89
+	.byte 0x02,0x91,0x74,0x04
+	.ascii "count\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x01,0x8a
+	.byte 0x02,0x91,0x70,0x00,0x05,0x04,0x00,0x00
+	.byte 0x0a,0xee,0x06
+	.ascii "OPCODE_ACCUM\0"
+	.byte 0x00,0x06
+	.ascii "OPCODE_ALPHA_FUNC\0"
+	.byte 0x01,0x06
+	.ascii "OPCODE_BEGIN\0"
+	.byte 0x02,0x06
+	.ascii "OPCODE_BIND_TEXTURE\0"
+	.byte 0x03,0x06
+	.ascii "OPCODE_BITMAP\0"
+	.byte 0x04,0x06
+	.ascii "OPCODE_BLEND_COLOR\0"
+	.byte 0x05,0x06
+	.ascii "OPCODE_BLEND_EQUATION\0"
+	.byte 0x06,0x06
+	.ascii "OPCODE_BLEND_FUNC\0"
+	.byte 0x07,0x06
+	.ascii "OPCODE_CALL_LIST\0"
+	.byte 0x08,0x06
+	.ascii "OPCODE_CALL_LIST_OFFSET\0"
+	.byte 0x09,0x06
+	.ascii "OPCODE_CLEAR\0"
+	.byte 0x0a,0x06
+	.ascii "OPCODE_CLEAR_ACCUM\0"
+	.byte 0x0b,0x06
+	.ascii "OPCODE_CLEAR_COLOR\0"
+	.byte 0x0c,0x06
+	.ascii "OPCODE_CLEAR_DEPTH\0"
+	.byte 0x0d,0x06
+	.ascii "OPCODE_CLEAR_INDEX\0"
+	.byte 0x0e,0x06
+	.ascii "OPCODE_CLEAR_STENCIL\0"
+	.byte 0x0f,0x06
+	.ascii "OPCODE_CLIP_PLANE\0"
+	.byte 0x10,0x06
+	.ascii "OPCODE_COLOR_3F\0"
+	.byte 0x11,0x06
+	.ascii "OPCODE_COLOR_4F\0"
+	.byte 0x12,0x06
+	.ascii "OPCODE_COLOR_4UB\0"
+	.byte 0x13,0x06
+	.ascii "OPCODE_COLOR_MASK\0"
+	.byte 0x14,0x06
+	.ascii "OPCODE_COLOR_MATERIAL\0"
+	.byte 0x15,0x06
+	.ascii "OPCODE_COLOR_TABLE\0"
+	.byte 0x16,0x06
+	.ascii "OPCODE_COLOR_SUB_TABLE\0"
+	.byte 0x17,0x06
+	.ascii "OPCODE_COPY_PIXELS\0"
+	.byte 0x18,0x06
+	.ascii "OPCODE_COPY_TEX_IMAGE1D\0"
+	.byte 0x19,0x06
+	.ascii "OPCODE_COPY_TEX_IMAGE2D\0"
+	.byte 0x1a,0x06
+	.ascii "OPCODE_COPY_TEX_IMAGE3D\0"
+	.byte 0x1b,0x06
+	.ascii "OPCODE_COPY_TEX_SUB_IMAGE1D\0"
+	.byte 0x1c,0x06
+	.ascii "OPCODE_COPY_TEX_SUB_IMAGE2D\0"
+	.byte 0x1d,0x06
+	.ascii "OPCODE_COPY_TEX_SUB_IMAGE3D\0"
+	.byte 0x1e,0x06
+	.ascii "OPCODE_CULL_FACE\0"
+	.byte 0x1f,0x06
+	.ascii "OPCODE_DEPTH_FUNC\0"
+	.byte 0x20,0x06
+	.ascii "OPCODE_DEPTH_MASK\0"
+	.byte 0x21,0x06
+	.ascii "OPCODE_DEPTH_RANGE\0"
+	.byte 0x22,0x06
+	.ascii "OPCODE_DISABLE\0"
+	.byte 0x23,0x06
+	.ascii "OPCODE_DRAW_BUFFER\0"
+	.byte 0x24,0x06
+	.ascii "OPCODE_DRAW_PIXELS\0"
+	.byte 0x25,0x06
+	.ascii "OPCODE_EDGE_FLAG\0"
+	.byte 0x26,0x06
+	.ascii "OPCODE_ENABLE\0"
+	.byte 0x27,0x06
+	.ascii "OPCODE_END\0"
+	.byte 0x28,0x06
+	.ascii "OPCODE_EVALCOORD1\0"
+	.byte 0x29,0x06
+	.ascii "OPCODE_EVALCOORD2\0"
+	.byte 0x2a,0x06
+	.ascii "OPCODE_EVALMESH1\0"
+	.byte 0x2b,0x06
+	.ascii "OPCODE_EVALMESH2\0"
+	.byte 0x2c,0x06
+	.ascii "OPCODE_EVALPOINT1\0"
+	.byte 0x2d,0x06
+	.ascii "OPCODE_EVALPOINT2\0"
+	.byte 0x2e,0x06
+	.ascii "OPCODE_FOG\0"
+	.byte 0x2f,0x06
+	.ascii "OPCODE_FRONT_FACE\0"
+	.byte 0x30,0x06
+	.ascii "OPCODE_FRUSTUM\0"
+	.byte 0x31,0x06
+	.ascii "OPCODE_HINT\0"
+	.byte 0x32,0x06
+	.ascii "OPCODE_INDEX\0"
+	.byte 0x33,0x06
+	.ascii "OPCODE_INDEX_MASK\0"
+	.byte 0x34,0x06
+	.ascii "OPCODE_INIT_NAMES\0"
+	.byte 0x35,0x06
+	.ascii "OPCODE_LIGHT\0"
+	.byte 0x36,0x06
+	.ascii "OPCODE_LIGHT_MODEL\0"
+	.byte 0x37,0x06
+	.ascii "OPCODE_LINE_STIPPLE\0"
+	.byte 0x38,0x06
+	.ascii "OPCODE_LINE_WIDTH\0"
+	.byte 0x39,0x06
+	.ascii "OPCODE_LIST_BASE\0"
+	.byte 0x3a,0x06
+	.ascii "OPCODE_LOAD_IDENTITY\0"
+	.byte 0x3b,0x06
+	.ascii "OPCODE_LOAD_MATRIX\0"
+	.byte 0x3c,0x06
+	.ascii "OPCODE_LOAD_NAME\0"
+	.byte 0x3d,0x06
+	.ascii "OPCODE_LOGIC_OP\0"
+	.byte 0x3e,0x06
+	.ascii "OPCODE_MAP1\0"
+	.byte 0x3f,0x06
+	.ascii "OPCODE_MAP2\0"
+	.byte 0xc0,0x00,0x06
+	.ascii "OPCODE_MAPGRID1\0"
+	.byte 0xc1,0x00,0x06
+	.ascii "OPCODE_MAPGRID2\0"
+	.byte 0xc2,0x00,0x06
+	.ascii "OPCODE_MATERIAL\0"
+	.byte 0xc3,0x00,0x06
+	.ascii "OPCODE_MATRIX_MODE\0"
+	.byte 0xc4,0x00,0x06
+	.ascii "OPCODE_MULT_MATRIX\0"
+	.byte 0xc5,0x00,0x06
+	.ascii "OPCODE_NORMAL\0"
+	.byte 0xc6,0x00,0x06
+	.ascii "OPCODE_ORTHO\0"
+	.byte 0xc7,0x00,0x06
+	.ascii "OPCODE_PASSTHROUGH\0"
+	.byte 0xc8,0x00,0x06
+	.ascii "OPCODE_PIXEL_MAP\0"
+	.byte 0xc9,0x00,0x06
+	.ascii "OPCODE_PIXEL_TRANSFER\0"
+	.byte 0xca,0x00,0x06
+	.ascii "OPCODE_PIXEL_ZOOM\0"
+	.byte 0xcb,0x00,0x06
+	.ascii "OPCODE_POINT_SIZE\0"
+	.byte 0xcc,0x00,0x06
+	.ascii "OPCODE_POINT_PARAMETERS\0"
+	.byte 0xcd,0x00,0x06
+	.ascii "OPCODE_POLYGON_MODE\0"
+	.byte 0xce,0x00,0x06
+	.ascii "OPCODE_POLYGON_STIPPLE\0"
+	.byte 0xcf,0x00,0x06
+	.ascii "OPCODE_POLYGON_OFFSET\0"
+	.byte 0xd0,0x00,0x06
+	.ascii "OPCODE_POP_ATTRIB\0"
+	.byte 0xd1,0x00,0x06
+	.ascii "OPCODE_POP_MATRIX\0"
+	.byte 0xd2,0x00,0x06
+	.ascii "OPCODE_POP_NAME\0"
+	.byte 0xd3,0x00,0x06
+	.ascii "OPCODE_PRIORITIZE_TEXTURE\0"
+	.byte 0xd4,0x00,0x06
+	.ascii "OPCODE_PUSH_ATTRIB\0"
+	.byte 0xd5,0x00,0x06
+	.ascii "OPCODE_PUSH_MATRIX\0"
+	.byte 0xd6,0x00,0x06
+	.ascii "OPCODE_PUSH_NAME\0"
+	.byte 0xd7,0x00,0x06
+	.ascii "OPCODE_RASTER_POS\0"
+	.byte 0xd8,0x00,0x06
+	.ascii "OPCODE_RECTF\0"
+	.byte 0xd9,0x00,0x06
+	.ascii "OPCODE_READ_BUFFER\0"
+	.byte 0xda,0x00,0x06
+	.ascii "OPCODE_SCALE\0"
+	.byte 0xdb,0x00,0x06
+	.ascii "OPCODE_SCISSOR\0"
+	.byte 0xdc,0x00,0x06
+	.ascii "OPCODE_SHADE_MODEL\0"
+	.byte 0xdd,0x00,0x06
+	.ascii "OPCODE_STENCIL_FUNC\0"
+	.byte 0xde,0x00,0x06
+	.ascii "OPCODE_STENCIL_MASK\0"
+	.byte 0xdf,0x00,0x06
+	.ascii "OPCODE_STENCIL_OP\0"
+	.byte 0xe0,0x00,0x06
+	.ascii "OPCODE_TEXCOORD2\0"
+	.byte 0xe1,0x00,0x06
+	.ascii "OPCODE_TEXCOORD4\0"
+	.byte 0xe2,0x00,0x06
+	.ascii "OPCODE_TEXENV\0"
+	.byte 0xe3,0x00,0x06
+	.ascii "OPCODE_TEXGEN\0"
+	.byte 0xe4,0x00,0x06
+	.ascii "OPCODE_TEXPARAMETER\0"
+	.byte 0xe5,0x00,0x06
+	.ascii "OPCODE_TEX_IMAGE1D\0"
+	.byte 0xe6,0x00,0x06
+	.ascii "OPCODE_TEX_IMAGE2D\0"
+	.byte 0xe7,0x00,0x06
+	.ascii "OPCODE_TEX_IMAGE3D\0"
+	.byte 0xe8,0x00,0x06
+	.ascii "OPCODE_TEX_SUB_IMAGE1D\0"
+	.byte 0xe9,0x00,0x06
+	.ascii "OPCODE_TEX_SUB_IMAGE2D\0"
+	.byte 0xea,0x00,0x06
+	.ascii "OPCODE_TEX_SUB_IMAGE3D\0"
+	.byte 0xeb,0x00,0x06
+	.ascii "OPCODE_TRANSLATE\0"
+	.byte 0xec,0x00,0x06
+	.ascii "OPCODE_VERTEX2\0"
+	.byte 0xed,0x00,0x06
+	.ascii "OPCODE_VERTEX3\0"
+	.byte 0xee,0x00,0x06
+	.ascii "OPCODE_VERTEX4\0"
+	.byte 0xef,0x00,0x06
+	.ascii "OPCODE_VIEWPORT\0"
+	.byte 0xf0,0x00,0x06
+	.ascii "OPCODE_WINDOW_POS\0"
+	.byte 0xf1,0x00,0x06
+	.ascii "OPCODE_CONTINUE\0"
+	.byte 0xf2,0x00,0x06
+	.ascii "OPCODE_END_OF_LIST\0"
+	.byte 0xf3,0x00,0x00,0x07,0x00,0x00,0x01,0x9a
+	.ascii "OpCode\0"
+	.byte 0x08
+	.ascii "unsigned char\0"
+	.byte 0x08,0x01,0x09,0x00,0x00,0x0a,0xfa
+	.ascii "GLboolean\0"
+	.byte 0x02,0x08
+	.ascii "unsigned\0"
+	.byte 0x07,0x04,0x09,0x00,0x00,0x0b,0x1b
+	.ascii "GLbitfield\0"
+	.byte 0x02,0x09,0x00,0x00,0x0a,0xfa
+	.ascii "GLubyte\0"
+	.byte 0x02,0x08
+	.ascii "short\0"
+	.byte 0x05,0x02,0x09,0x00,0x00,0x0b,0x46
+	.ascii "GLshort\0"
+	.byte 0x02,0x08
+	.ascii "unsigned short\0"
+	.byte 0x07,0x02,0x09,0x00,0x00,0x0b,0x5d
+	.ascii "GLushort\0"
+	.byte 0x02,0x08
+	.ascii "int\0"
+	.byte 0x05,0x04,0x09,0x00,0x00,0x0b,0x7e
+	.ascii "GLint\0"
+	.byte 0x02,0x09,0x00,0x00,0x0b,0x1b
+	.ascii "GLuint\0"
+	.byte 0x02,0x0a,0x04,0x02,0x00,0x00,0x3b,0x3a
+	.byte 0x06
+	.ascii "GL_FALSE\0"
+	.byte 0x00,0x06
+	.ascii "GL_TRUE\0"
+	.byte 0x01,0x06
+	.ascii "GL_BYTE\0"
+	.byte 0x80,0x28,0x06
+	.ascii "GL_UNSIGNED_BYTE\0"
+	.byte 0x81,0x28,0x06
+	.ascii "GL_SHORT\0"
+	.byte 0x82,0x28,0x06
+	.ascii "GL_UNSIGNED_SHORT\0"
+	.byte 0x83,0x28,0x06
+	.ascii "GL_INT\0"
+	.byte 0x84,0x28,0x06
+	.ascii "GL_UNSIGNED_INT\0"
+	.byte 0x85,0x28,0x06
+	.ascii "GL_FLOAT\0"
+	.byte 0x86,0x28,0x06
+	.ascii "GL_DOUBLE\0"
+	.byte 0x8a,0x28,0x06
+	.ascii "GL_2_BYTES\0"
+	.byte 0x87,0x28,0x06
+	.ascii "GL_3_BYTES\0"
+	.byte 0x88,0x28,0x06
+	.ascii "GL_4_BYTES\0"
+	.byte 0x89,0x28,0x06
+	.ascii "GL_LINES\0"
+	.byte 0x01,0x06
+	.ascii "GL_POINTS\0"
+	.byte 0x00,0x06
+	.ascii "GL_LINE_STRIP\0"
+	.byte 0x03,0x06
+	.ascii "GL_LINE_LOOP\0"
+	.byte 0x02,0x06
+	.ascii "GL_TRIANGLES\0"
+	.byte 0x04,0x06
+	.ascii "GL_TRIANGLE_STRIP\0"
+	.byte 0x05,0x06
+	.ascii "GL_TRIANGLE_FAN\0"
+	.byte 0x06,0x06
+	.ascii "GL_QUADS\0"
+	.byte 0x07,0x06
+	.ascii "GL_QUAD_STRIP\0"
+	.byte 0x08,0x06
+	.ascii "GL_POLYGON\0"
+	.byte 0x09,0x06
+	.ascii "GL_EDGE_FLAG\0"
+	.byte 0xc3,0x16,0x06
+	.ascii "GL_VERTEX_ARRAY\0"
+	.byte 0xf4,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY\0"
+	.byte 0xf5,0x80,0x02,0x06
+	.ascii "GL_COLOR_ARRAY\0"
+	.byte 0xf6,0x80,0x02,0x06
+	.ascii "GL_INDEX_ARRAY\0"
+	.byte 0xf7,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY\0"
+	.byte 0xf8,0x80,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY\0"
+	.byte 0xf9,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_SIZE\0"
+	.byte 0xfa,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_TYPE\0"
+	.byte 0xfb,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_STRIDE\0"
+	.byte 0xfc,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_TYPE\0"
+	.byte 0xfe,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_STRIDE\0"
+	.byte 0xff,0x80,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_SIZE\0"
+	.byte 0x81,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_TYPE\0"
+	.byte 0x82,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_STRIDE\0"
+	.byte 0x83,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_TYPE\0"
+	.byte 0x85,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_STRIDE\0"
+	.byte 0x86,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_SIZE\0"
+	.byte 0x88,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_TYPE\0"
+	.byte 0x89,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_STRIDE\0"
+	.byte 0x8a,0x81,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY_STRIDE\0"
+	.byte 0x8c,0x81,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_POINTER\0"
+	.byte 0x8e,0x81,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_POINTER\0"
+	.byte 0x8f,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_POINTER\0"
+	.byte 0x90,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_POINTER\0"
+	.byte 0x91,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_POINTER\0"
+	.byte 0x92,0x81,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY_POINTER\0"
+	.byte 0x93,0x81,0x02,0x06
+	.ascii "GL_V2F\0"
+	.byte 0xa0,0xd4,0x00,0x06
+	.ascii "GL_V3F\0"
+	.byte 0xa1,0xd4,0x00,0x06
+	.ascii "GL_C4UB_V2F\0"
+	.byte 0xa2,0xd4,0x00,0x06
+	.ascii "GL_C4UB_V3F\0"
+	.byte 0xa3,0xd4,0x00,0x06
+	.ascii "GL_C3F_V3F\0"
+	.byte 0xa4,0xd4,0x00,0x06
+	.ascii "GL_N3F_V3F\0"
+	.byte 0xa5,0xd4,0x00,0x06
+	.ascii "GL_C4F_N3F_V3F\0"
+	.byte 0xa6,0xd4,0x00,0x06
+	.ascii "GL_T2F_V3F\0"
+	.byte 0xa7,0xd4,0x00,0x06
+	.ascii "GL_T4F_V4F\0"
+	.byte 0xa8,0xd4,0x00,0x06
+	.ascii "GL_T2F_C4UB_V3F\0"
+	.byte 0xa9,0xd4,0x00,0x06
+	.ascii "GL_T2F_C3F_V3F\0"
+	.byte 0xaa,0xd4,0x00,0x06
+	.ascii "GL_T2F_N3F_V3F\0"
+	.byte 0xab,0xd4,0x00,0x06
+	.ascii "GL_T2F_C4F_N3F_V3F\0"
+	.byte 0xac,0xd4,0x00,0x06
+	.ascii "GL_T4F_C4F_N3F_V4F\0"
+	.byte 0xad,0xd4,0x00,0x06
+	.ascii "GL_MATRIX_MODE\0"
+	.byte 0xa0,0x17,0x06
+	.ascii "GL_MODELVIEW\0"
+	.byte 0x80,0x2e,0x06
+	.ascii "GL_PROJECTION\0"
+	.byte 0x81,0x2e,0x06
+	.ascii "GL_TEXTURE\0"
+	.byte 0x82,0x2e,0x06
+	.ascii "GL_POINT_SMOOTH\0"
+	.byte 0x90,0x16,0x06
+	.ascii "GL_POINT_SIZE\0"
+	.byte 0x91,0x16,0x06
+	.ascii "GL_POINT_SIZE_GRANULARITY\0"
+	.byte 0x93,0x16,0x06
+	.ascii "GL_POINT_SIZE_RANGE\0"
+	.byte 0x92,0x16,0x06
+	.ascii "GL_LINE_SMOOTH\0"
+	.byte 0xa0,0x16,0x06
+	.ascii "GL_LINE_STIPPLE\0"
+	.byte 0xa4,0x16,0x06
+	.ascii "GL_LINE_STIPPLE_PATTERN\0"
+	.byte 0xa5,0x16,0x06
+	.ascii "GL_LINE_STIPPLE_REPEAT\0"
+	.byte 0xa6,0x16,0x06
+	.ascii "GL_LINE_WIDTH\0"
+	.byte 0xa1,0x16,0x06
+	.ascii "GL_LINE_WIDTH_GRANULARITY\0"
+	.byte 0xa3,0x16,0x06
+	.ascii "GL_LINE_WIDTH_RANGE\0"
+	.byte 0xa2,0x16,0x06
+	.ascii "GL_POINT\0"
+	.byte 0x80,0x36,0x06
+	.ascii "GL_LINE\0"
+	.byte 0x81,0x36,0x06
+	.ascii "GL_FILL\0"
+	.byte 0x82,0x36,0x06
+	.ascii "GL_CCW\0"
+	.byte 0x81,0x12,0x06
+	.ascii "GL_CW\0"
+	.byte 0x80,0x12,0x06
+	.ascii "GL_FRONT\0"
+	.byte 0x84,0x08,0x06
+	.ascii "GL_BACK\0"
+	.byte 0x85,0x08,0x06
+	.ascii "GL_CULL_FACE\0"
+	.byte 0xc4,0x16,0x06
+	.ascii "GL_CULL_FACE_MODE\0"
+	.byte 0xc5,0x16,0x06
+	.ascii "GL_POLYGON_SMOOTH\0"
+	.byte 0xc1,0x16,0x06
+	.ascii "GL_POLYGON_STIPPLE\0"
+	.byte 0xc2,0x16,0x06
+	.ascii "GL_FRONT_FACE\0"
+	.byte 0xc6,0x16,0x06
+	.ascii "GL_POLYGON_MODE\0"
+	.byte 0xc0,0x16,0x06
+	.ascii "GL_POLYGON_OFFSET_FACTOR\0"
+	.byte 0xb8,0x80,0x02,0x06
+	.ascii "GL_POLYGON_OFFSET_UNITS\0"
+	.byte 0x80,0xd4,0x00,0x06
+	.ascii "GL_POLYGON_OFFSET_POINT\0"
+	.byte 0x81,0xd4,0x00,0x06
+	.ascii "GL_POLYGON_OFFSET_LINE\0"
+	.byte 0x82,0xd4,0x00,0x06
+	.ascii "GL_POLYGON_OFFSET_FILL\0"
+	.byte 0xb7,0x80,0x02,0x06
+	.ascii "GL_COMPILE\0"
+	.byte 0x80,0x26,0x06
+	.ascii "GL_COMPILE_AND_EXECUTE\0"
+	.byte 0x81,0x26,0x06
+	.ascii "GL_LIST_BASE\0"
+	.byte 0xb2,0x16,0x06
+	.ascii "GL_LIST_INDEX\0"
+	.byte 0xb3,0x16,0x06
+	.ascii "GL_LIST_MODE\0"
+	.byte 0xb0,0x16,0x06
+	.ascii "GL_NEVER\0"
+	.byte 0x80,0x04,0x06
+	.ascii "GL_LESS\0"
+	.byte 0x81,0x04,0x06
+	.ascii "GL_GEQUAL\0"
+	.byte 0x86,0x04,0x06
+	.ascii "GL_LEQUAL\0"
+	.byte 0x83,0x04,0x06
+	.ascii "GL_GREATER\0"
+	.byte 0x84,0x04,0x06
+	.ascii "GL_NOTEQUAL\0"
+	.byte 0x85,0x04,0x06
+	.ascii "GL_EQUAL\0"
+	.byte 0x82,0x04,0x06
+	.ascii "GL_ALWAYS\0"
+	.byte 0x87,0x04,0x06
+	.ascii "GL_DEPTH_TEST\0"
+	.byte 0xf1,0x16,0x06
+	.ascii "GL_DEPTH_BITS\0"
+	.byte 0xd6,0x1a,0x06
+	.ascii "GL_DEPTH_CLEAR_VALUE\0"
+	.byte 0xf3,0x16,0x06
+	.ascii "GL_DEPTH_FUNC\0"
+	.byte 0xf4,0x16,0x06
+	.ascii "GL_DEPTH_RANGE\0"
+	.byte 0xf0,0x16,0x06
+	.ascii "GL_DEPTH_WRITEMASK\0"
+	.byte 0xf2,0x16,0x06
+	.ascii "GL_DEPTH_COMPONENT\0"
+	.byte 0x82,0x32,0x06
+	.ascii "GL_LIGHTING\0"
+	.byte 0xd0,0x16,0x06
+	.ascii "GL_LIGHT0\0"
+	.byte 0x80,0x80,0x01,0x06
+	.ascii "GL_LIGHT1\0"
+	.byte 0x81,0x80,0x01,0x06
+	.ascii "GL_LIGHT2\0"
+	.byte 0x82,0x80,0x01,0x06
+	.ascii "GL_LIGHT3\0"
+	.byte 0x83,0x80,0x01,0x06
+	.ascii "GL_LIGHT4\0"
+	.byte 0x84,0x80,0x01,0x06
+	.ascii "GL_LIGHT5\0"
+	.byte 0x85,0x80,0x01,0x06
+	.ascii "GL_LIGHT6\0"
+	.byte 0x86,0x80,0x01,0x06
+	.ascii "GL_LIGHT7\0"
+	.byte 0x87,0x80,0x01,0x06
+	.ascii "GL_SPOT_EXPONENT\0"
+	.byte 0x85,0x24,0x06
+	.ascii "GL_SPOT_CUTOFF\0"
+	.byte 0x86,0x24,0x06
+	.ascii "GL_CONSTANT_ATTENUATION\0"
+	.byte 0x87,0x24,0x06
+	.ascii "GL_LINEAR_ATTENUATION\0"
+	.byte 0x88,0x24,0x06
+	.ascii "GL_QUADRATIC_ATTENUATION\0"
+	.byte 0x89,0x24,0x06
+	.ascii "GL_AMBIENT\0"
+	.byte 0x80,0x24,0x06
+	.ascii "GL_DIFFUSE\0"
+	.byte 0x81,0x24,0x06
+	.ascii "GL_SPECULAR\0"
+	.byte 0x82,0x24,0x06
+	.ascii "GL_SHININESS\0"
+	.byte 0x81,0x2c,0x06
+	.ascii "GL_EMISSION\0"
+	.byte 0x80,0x2c,0x06
+	.ascii "GL_POSITION\0"
+	.byte 0x83,0x24,0x06
+	.ascii "GL_SPOT_DIRECTION\0"
+	.byte 0x84,0x24,0x06
+	.ascii "GL_AMBIENT_AND_DIFFUSE\0"
+	.byte 0x82,0x2c,0x06
+	.ascii "GL_COLOR_INDEXES\0"
+	.byte 0x83,0x2c,0x06
+	.ascii "GL_LIGHT_MODEL_TWO_SIDE\0"
+	.byte 0xd2,0x16,0x06
+	.ascii "GL_LIGHT_MODEL_LOCAL_VIEWER\0"
+	.byte 0xd1,0x16,0x06
+	.ascii "GL_LIGHT_MODEL_AMBIENT\0"
+	.byte 0xd3,0x16,0x06
+	.ascii "GL_FRONT_AND_BACK\0"
+	.byte 0x88,0x08,0x06
+	.ascii "GL_SHADE_MODEL\0"
+	.byte 0xd4,0x16,0x06
+	.ascii "GL_FLAT\0"
+	.byte 0x80,0x3a,0x06
+	.ascii "GL_SMOOTH\0"
+	.byte 0x81,0x3a,0x06
+	.ascii "GL_COLOR_MATERIAL\0"
+	.byte 0xd7,0x16,0x06
+	.ascii "GL_COLOR_MATERIAL_FACE\0"
+	.byte 0xd5,0x16,0x06
+	.ascii "GL_COLOR_MATERIAL_PARAMETER\0"
+	.byte 0xd6,0x16,0x06
+	.ascii "GL_NORMALIZE\0"
+	.byte 0xa1,0x17,0x06
+	.ascii "GL_CLIP_PLANE0\0"
+	.byte 0x80,0xe0,0x00,0x06
+	.ascii "GL_CLIP_PLANE1\0"
+	.byte 0x81,0xe0,0x00,0x06
+	.ascii "GL_CLIP_PLANE2\0"
+	.byte 0x82,0xe0,0x00,0x06
+	.ascii "GL_CLIP_PLANE3\0"
+	.byte 0x83,0xe0,0x00,0x06
+	.ascii "GL_CLIP_PLANE4\0"
+	.byte 0x84,0xe0,0x00,0x06
+	.ascii "GL_CLIP_PLANE5\0"
+	.byte 0x85,0xe0,0x00,0x06
+	.ascii "GL_ACCUM_RED_BITS\0"
+	.byte 0xd8,0x1a,0x06
+	.ascii "GL_ACCUM_GREEN_BITS\0"
+	.byte 0xd9,0x1a,0x06
+	.ascii "GL_ACCUM_BLUE_BITS\0"
+	.byte 0xda,0x1a,0x06
+	.ascii "GL_ACCUM_ALPHA_BITS\0"
+	.byte 0xdb,0x1a,0x06
+	.ascii "GL_ACCUM_CLEAR_VALUE\0"
+	.byte 0x80,0x17,0x06
+	.ascii "GL_ACCUM\0"
+	.byte 0x80,0x02,0x06
+	.ascii "GL_ADD\0"
+	.byte 0x84,0x02,0x06
+	.ascii "GL_LOAD\0"
+	.byte 0x81,0x02,0x06
+	.ascii "GL_MULT\0"
+	.byte 0x83,0x02,0x06
+	.ascii "GL_RETURN\0"
+	.byte 0x82,0x02,0x06
+	.ascii "GL_ALPHA_TEST\0"
+	.byte 0xc0,0x17,0x06
+	.ascii "GL_ALPHA_TEST_REF\0"
+	.byte 0xc2,0x17,0x06
+	.ascii "GL_ALPHA_TEST_FUNC\0"
+	.byte 0xc1,0x17,0x06
+	.ascii "GL_BLEND\0"
+	.byte 0xe2,0x17,0x06
+	.ascii "GL_BLEND_SRC\0"
+	.byte 0xe1,0x17,0x06
+	.ascii "GL_BLEND_DST\0"
+	.byte 0xe0,0x17,0x06
+	.ascii "GL_ZERO\0"
+	.byte 0x00,0x06
+	.ascii "GL_ONE\0"
+	.byte 0x01,0x06
+	.ascii "GL_SRC_COLOR\0"
+	.byte 0x80,0x06,0x06
+	.ascii "GL_ONE_MINUS_SRC_COLOR\0"
+	.byte 0x81,0x06,0x06
+	.ascii "GL_DST_COLOR\0"
+	.byte 0x86,0x06,0x06
+	.ascii "GL_ONE_MINUS_DST_COLOR\0"
+	.byte 0x87,0x06,0x06
+	.ascii "GL_SRC_ALPHA\0"
+	.byte 0x82,0x06,0x06
+	.ascii "GL_ONE_MINUS_SRC_ALPHA\0"
+	.byte 0x83,0x06,0x06
+	.ascii "GL_DST_ALPHA\0"
+	.byte 0x84,0x06,0x06
+	.ascii "GL_ONE_MINUS_DST_ALPHA\0"
+	.byte 0x85,0x06,0x06
+	.ascii "GL_SRC_ALPHA_SATURATE\0"
+	.byte 0x88,0x06,0x06
+	.ascii "GL_CONSTANT_COLOR\0"
+	.byte 0x81,0x80,0x02,0x06
+	.ascii "GL_ONE_MINUS_CONSTANT_COLOR\0"
+	.byte 0x82,0x80,0x02,0x06
+	.ascii "GL_CONSTANT_ALPHA\0"
+	.byte 0x83,0x80,0x02,0x06
+	.ascii "GL_ONE_MINUS_CONSTANT_ALPHA\0"
+	.byte 0x84,0x80,0x02,0x06
+	.ascii "GL_FEEDBACK\0"
+	.byte 0x81,0x38,0x06
+	.ascii "GL_RENDER\0"
+	.byte 0x80,0x38,0x06
+	.ascii "GL_SELECT\0"
+	.byte 0x82,0x38,0x06
+	.ascii "GL_2D\0"
+	.byte 0x80,0x0c,0x06
+	.ascii "GL_3D\0"
+	.byte 0x81,0x0c,0x06
+	.ascii "GL_3D_COLOR\0"
+	.byte 0x82,0x0c,0x06
+	.ascii "GL_3D_COLOR_TEXTURE\0"
+	.byte 0x83,0x0c,0x06
+	.ascii "GL_4D_COLOR_TEXTURE\0"
+	.byte 0x84,0x0c,0x06
+	.ascii "GL_POINT_TOKEN\0"
+	.byte 0x81,0x0e,0x06
+	.ascii "GL_LINE_TOKEN\0"
+	.byte 0x82,0x0e,0x06
+	.ascii "GL_LINE_RESET_TOKEN\0"
+	.byte 0x87,0x0e,0x06
+	.ascii "GL_POLYGON_TOKEN\0"
+	.byte 0x83,0x0e,0x06
+	.ascii "GL_BITMAP_TOKEN\0"
+	.byte 0x84,0x0e,0x06
+	.ascii "GL_DRAW_PIXEL_TOKEN\0"
+	.byte 0x85,0x0e,0x06
+	.ascii "GL_COPY_PIXEL_TOKEN\0"
+	.byte 0x86,0x0e,0x06
+	.ascii "GL_PASS_THROUGH_TOKEN\0"
+	.byte 0x80,0x0e,0x06
+	.ascii "GL_FEEDBACK_BUFFER_POINTER\0"
+	.byte 0xf0,0x1b,0x06
+	.ascii "GL_FEEDBACK_BUFFER_SIZE\0"
+	.byte 0xf1,0x1b,0x06
+	.ascii "GL_FEEDBACK_BUFFER_TYPE\0"
+	.byte 0xf2,0x1b,0x06
+	.ascii "GL_FOG\0"
+	.byte 0xe0,0x16,0x06
+	.ascii "GL_FOG_MODE\0"
+	.byte 0xe5,0x16,0x06
+	.ascii "GL_FOG_DENSITY\0"
+	.byte 0xe2,0x16,0x06
+	.ascii "GL_FOG_COLOR\0"
+	.byte 0xe6,0x16,0x06
+	.ascii "GL_FOG_INDEX\0"
+	.byte 0xe1,0x16,0x06
+	.ascii "GL_FOG_START\0"
+	.byte 0xe3,0x16,0x06
+	.ascii "GL_FOG_END\0"
+	.byte 0xe4,0x16,0x06
+	.ascii "GL_LINEAR\0"
+	.byte 0x81,0xcc,0x00,0x06
+	.ascii "GL_EXP\0"
+	.byte 0x80,0x10,0x06
+	.ascii "GL_EXP2\0"
+	.byte 0x81,0x10,0x06
+	.ascii "GL_LOGIC_OP\0"
+	.byte 0xf1,0x17,0x06
+	.ascii "GL_INDEX_LOGIC_OP\0"
+	.byte 0xf1,0x17,0x06
+	.ascii "GL_COLOR_LOGIC_OP\0"
+	.byte 0xf2,0x17,0x06
+	.ascii "GL_LOGIC_OP_MODE\0"
+	.byte 0xf0,0x17,0x06
+	.ascii "GL_CLEAR\0"
+	.byte 0x80,0x2a,0x06
+	.ascii "GL_SET\0"
+	.byte 0x8f,0x2a,0x06
+	.ascii "GL_COPY\0"
+	.byte 0x83,0x2a,0x06
+	.ascii "GL_COPY_INVERTED\0"
+	.byte 0x8c,0x2a,0x06
+	.ascii "GL_NOOP\0"
+	.byte 0x85,0x2a,0x06
+	.ascii "GL_INVERT\0"
+	.byte 0x8a,0x2a,0x06
+	.ascii "GL_AND\0"
+	.byte 0x81,0x2a,0x06
+	.ascii "GL_NAND\0"
+	.byte 0x8e,0x2a,0x06
+	.ascii "GL_OR\0"
+	.byte 0x87,0x2a,0x06
+	.ascii "GL_NOR\0"
+	.byte 0x88,0x2a,0x06
+	.ascii "GL_XOR\0"
+	.byte 0x86,0x2a,0x06
+	.ascii "GL_EQUIV\0"
+	.byte 0x89,0x2a,0x06
+	.ascii "GL_AND_REVERSE\0"
+	.byte 0x82,0x2a,0x06
+	.ascii "GL_AND_INVERTED\0"
+	.byte 0x84,0x2a,0x06
+	.ascii "GL_OR_REVERSE\0"
+	.byte 0x8b,0x2a,0x06
+	.ascii "GL_OR_INVERTED\0"
+	.byte 0x8d,0x2a,0x06
+	.ascii "GL_STENCIL_TEST\0"
+	.byte 0x90,0x17,0x06
+	.ascii "GL_STENCIL_WRITEMASK\0"
+	.byte 0x98,0x17,0x06
+	.ascii "GL_STENCIL_BITS\0"
+	.byte 0xd7,0x1a,0x06
+	.ascii "GL_STENCIL_FUNC\0"
+	.byte 0x92,0x17,0x06
+	.ascii "GL_STENCIL_VALUE_MASK\0"
+	.byte 0x93,0x17,0x06
+	.ascii "GL_STENCIL_REF\0"
+	.byte 0x97,0x17,0x06
+	.ascii "GL_STENCIL_FAIL\0"
+	.byte 0x94,0x17,0x06
+	.ascii "GL_STENCIL_PASS_DEPTH_PASS\0"
+	.byte 0x96,0x17,0x06
+	.ascii "GL_STENCIL_PASS_DEPTH_FAIL\0"
+	.byte 0x95,0x17,0x06
+	.ascii "GL_STENCIL_CLEAR_VALUE\0"
+	.byte 0x91,0x17,0x06
+	.ascii "GL_STENCIL_INDEX\0"
+	.byte 0x81,0x32,0x06
+	.ascii "GL_KEEP\0"
+	.byte 0x80,0x3c,0x06
+	.ascii "GL_REPLACE\0"
+	.byte 0x81,0x3c,0x06
+	.ascii "GL_INCR\0"
+	.byte 0x82,0x3c,0x06
+	.ascii "GL_DECR\0"
+	.byte 0x83,0x3c,0x06
+	.ascii "GL_NONE\0"
+	.byte 0x00,0x06
+	.ascii "GL_LEFT\0"
+	.byte 0x86,0x08,0x06
+	.ascii "GL_RIGHT\0"
+	.byte 0x87,0x08,0x06
+	.ascii "GL_FRONT_LEFT\0"
+	.byte 0x80,0x08,0x06
+	.ascii "GL_FRONT_RIGHT\0"
+	.byte 0x81,0x08,0x06
+	.ascii "GL_BACK_LEFT\0"
+	.byte 0x82,0x08,0x06
+	.ascii "GL_BACK_RIGHT\0"
+	.byte 0x83,0x08,0x06
+	.ascii "GL_AUX0\0"
+	.byte 0x89,0x08,0x06
+	.ascii "GL_AUX1\0"
+	.byte 0x8a,0x08,0x06
+	.ascii "GL_AUX2\0"
+	.byte 0x8b,0x08,0x06
+	.ascii "GL_AUX3\0"
+	.byte 0x8c,0x08,0x06
+	.ascii "GL_COLOR_INDEX\0"
+	.byte 0x80,0x32,0x06
+	.ascii "GL_RED\0"
+	.byte 0x83,0x32,0x06
+	.ascii "GL_GREEN\0"
+	.byte 0x84,0x32,0x06
+	.ascii "GL_BLUE\0"
+	.byte 0x85,0x32,0x06
+	.ascii "GL_ALPHA\0"
+	.byte 0x86,0x32,0x06
+	.ascii "GL_LUMINANCE\0"
+	.byte 0x89,0x32,0x06
+	.ascii "GL_LUMINANCE_ALPHA\0"
+	.byte 0x8a,0x32,0x06
+	.ascii "GL_ALPHA_BITS\0"
+	.byte 0xd5,0x1a,0x06
+	.ascii "GL_RED_BITS\0"
+	.byte 0xd2,0x1a,0x06
+	.ascii "GL_GREEN_BITS\0"
+	.byte 0xd3,0x1a,0x06
+	.ascii "GL_BLUE_BITS\0"
+	.byte 0xd4,0x1a,0x06
+	.ascii "GL_INDEX_BITS\0"
+	.byte 0xd1,0x1a,0x06
+	.ascii "GL_SUBPIXEL_BITS\0"
+	.byte 0xd0,0x1a,0x06
+	.ascii "GL_AUX_BUFFERS\0"
+	.byte 0x80,0x18,0x06
+	.ascii "GL_READ_BUFFER\0"
+	.byte 0x82,0x18,0x06
+	.ascii "GL_DRAW_BUFFER\0"
+	.byte 0x81,0x18,0x06
+	.ascii "GL_DOUBLEBUFFER\0"
+	.byte 0xb2,0x18,0x06
+	.ascii "GL_STEREO\0"
+	.byte 0xb3,0x18,0x06
+	.ascii "GL_BITMAP\0"
+	.byte 0x80,0x34,0x06
+	.ascii "GL_COLOR\0"
+	.byte 0x80,0x30,0x06
+	.ascii "GL_DEPTH\0"
+	.byte 0x81,0x30,0x06
+	.ascii "GL_STENCIL\0"
+	.byte 0x82,0x30,0x06
+	.ascii "GL_DITHER\0"
+	.byte 0xd0,0x17,0x06
+	.ascii "GL_RGB\0"
+	.byte 0x87,0x32,0x06
+	.ascii "GL_RGBA\0"
+	.byte 0x88,0x32,0x06
+	.ascii "GL_MAX_LIST_NESTING\0"
+	.byte 0xb1,0x16,0x06
+	.ascii "GL_MAX_ATTRIB_STACK_DEPTH\0"
+	.byte 0xb5,0x1a,0x06
+	.ascii "GL_MAX_MODELVIEW_STACK_DEPTH\0"
+	.byte 0xb6,0x1a,0x06
+	.ascii "GL_MAX_NAME_STACK_DEPTH\0"
+	.byte 0xb7,0x1a,0x06
+	.ascii "GL_MAX_PROJECTION_STACK_DEPTH\0"
+	.byte 0xb8,0x1a,0x06
+	.ascii "GL_MAX_TEXTURE_STACK_DEPTH\0"
+	.byte 0xb9,0x1a,0x06
+	.ascii "GL_MAX_EVAL_ORDER\0"
+	.byte 0xb0,0x1a,0x06
+	.ascii "GL_MAX_LIGHTS\0"
+	.byte 0xb1,0x1a,0x06
+	.ascii "GL_MAX_CLIP_PLANES\0"
+	.byte 0xb2,0x1a,0x06
+	.ascii "GL_MAX_TEXTURE_SIZE\0"
+	.byte 0xb3,0x1a,0x06
+	.ascii "GL_MAX_PIXEL_MAP_TABLE\0"
+	.byte 0xb4,0x1a,0x06
+	.ascii "GL_MAX_VIEWPORT_DIMS\0"
+	.byte 0xba,0x1a,0x06
+	.ascii "GL_MAX_CLIENT_ATTRIB_STACK_DEPTH\0"
+	.byte 0xbb,0x1a,0x06
+	.ascii "GL_ATTRIB_STACK_DEPTH\0"
+	.byte 0xb0,0x17,0x06
+	.ascii "GL_CLIENT_ATTRIB_STACK_DEPTH\0"
+	.byte 0xb1,0x17,0x06
+	.ascii "GL_COLOR_CLEAR_VALUE\0"
+	.byte 0xa2,0x18,0x06
+	.ascii "GL_COLOR_WRITEMASK\0"
+	.byte 0xa3,0x18,0x06
+	.ascii "GL_CURRENT_INDEX\0"
+	.byte 0x81,0x16,0x06
+	.ascii "GL_CURRENT_COLOR\0"
+	.byte 0x80,0x16,0x06
+	.ascii "GL_CURRENT_NORMAL\0"
+	.byte 0x82,0x16,0x06
+	.ascii "GL_CURRENT_RASTER_COLOR\0"
+	.byte 0x84,0x16,0x06
+	.ascii "GL_CURRENT_RASTER_DISTANCE\0"
+	.byte 0x89,0x16,0x06
+	.ascii "GL_CURRENT_RASTER_INDEX\0"
+	.byte 0x85,0x16,0x06
+	.ascii "GL_CURRENT_RASTER_POSITION\0"
+	.byte 0x87,0x16,0x06
+	.ascii "GL_CURRENT_RASTER_TEXTURE_COORDS\0"
+	.byte 0x86,0x16,0x06
+	.ascii "GL_CURRENT_RASTER_POSITION_VALID\0"
+	.byte 0x88,0x16,0x06
+	.ascii "GL_CURRENT_TEXTURE_COORDS\0"
+	.byte 0x83,0x16,0x06
+	.ascii "GL_INDEX_CLEAR_VALUE\0"
+	.byte 0xa0,0x18,0x06
+	.ascii "GL_INDEX_MODE\0"
+	.byte 0xb0,0x18,0x06
+	.ascii "GL_INDEX_WRITEMASK\0"
+	.byte 0xa1,0x18,0x06
+	.ascii "GL_MODELVIEW_MATRIX\0"
+	.byte 0xa6,0x17,0x06
+	.ascii "GL_MODELVIEW_STACK_DEPTH\0"
+	.byte 0xa3,0x17,0x06
+	.ascii "GL_NAME_STACK_DEPTH\0"
+	.byte 0xf0,0x1a,0x06
+	.ascii "GL_PROJECTION_MATRIX\0"
+	.byte 0xa7,0x17,0x06
+	.ascii "GL_PROJECTION_STACK_DEPTH\0"
+	.byte 0xa4,0x17,0x06
+	.ascii "GL_RENDER_MODE\0"
+	.byte 0xc0,0x18,0x06
+	.ascii "GL_RGBA_MODE\0"
+	.byte 0xb1,0x18,0x06
+	.ascii "GL_TEXTURE_MATRIX\0"
+	.byte 0xa8,0x17,0x06
+	.ascii "GL_TEXTURE_STACK_DEPTH\0"
+	.byte 0xa5,0x17,0x06
+	.ascii "GL_VIEWPORT\0"
+	.byte 0xa2,0x17,0x06
+	.ascii "GL_AUTO_NORMAL\0"
+	.byte 0x80,0x1b,0x06
+	.ascii "GL_MAP1_COLOR_4\0"
+	.byte 0x90,0x1b,0x06
+	.ascii "GL_MAP1_GRID_DOMAIN\0"
+	.byte 0xd0,0x1b,0x06
+	.ascii "GL_MAP1_GRID_SEGMENTS\0"
+	.byte 0xd1,0x1b,0x06
+	.ascii "GL_MAP1_INDEX\0"
+	.byte 0x91,0x1b,0x06
+	.ascii "GL_MAP1_NORMAL\0"
+	.byte 0x92,0x1b,0x06
+	.ascii "GL_MAP1_TEXTURE_COORD_1\0"
+	.byte 0x93,0x1b,0x06
+	.ascii "GL_MAP1_TEXTURE_COORD_2\0"
+	.byte 0x94,0x1b,0x06
+	.ascii "GL_MAP1_TEXTURE_COORD_3\0"
+	.byte 0x95,0x1b,0x06
+	.ascii "GL_MAP1_TEXTURE_COORD_4\0"
+	.byte 0x96,0x1b,0x06
+	.ascii "GL_MAP1_VERTEX_3\0"
+	.byte 0x97,0x1b,0x06
+	.ascii "GL_MAP1_VERTEX_4\0"
+	.byte 0x98,0x1b,0x06
+	.ascii "GL_MAP2_COLOR_4\0"
+	.byte 0xb0,0x1b,0x06
+	.ascii "GL_MAP2_GRID_DOMAIN\0"
+	.byte 0xd2,0x1b,0x06
+	.ascii "GL_MAP2_GRID_SEGMENTS\0"
+	.byte 0xd3,0x1b,0x06
+	.ascii "GL_MAP2_INDEX\0"
+	.byte 0xb1,0x1b,0x06
+	.ascii "GL_MAP2_NORMAL\0"
+	.byte 0xb2,0x1b,0x06
+	.ascii "GL_MAP2_TEXTURE_COORD_1\0"
+	.byte 0xb3,0x1b,0x06
+	.ascii "GL_MAP2_TEXTURE_COORD_2\0"
+	.byte 0xb4,0x1b,0x06
+	.ascii "GL_MAP2_TEXTURE_COORD_3\0"
+	.byte 0xb5,0x1b,0x06
+	.ascii "GL_MAP2_TEXTURE_COORD_4\0"
+	.byte 0xb6,0x1b,0x06
+	.ascii "GL_MAP2_VERTEX_3\0"
+	.byte 0xb7,0x1b,0x06
+	.ascii "GL_MAP2_VERTEX_4\0"
+	.byte 0xb8,0x1b,0x06
+	.ascii "GL_COEFF\0"
+	.byte 0x80,0x14,0x06
+	.ascii "GL_DOMAIN\0"
+	.byte 0x82,0x14,0x06
+	.ascii "GL_ORDER\0"
+	.byte 0x81,0x14,0x06
+	.ascii "GL_FOG_HINT\0"
+	.byte 0xd4,0x18,0x06
+	.ascii "GL_LINE_SMOOTH_HINT\0"
+	.byte 0xd2,0x18,0x06
+	.ascii "GL_PERSPECTIVE_CORRECTION_HINT\0"
+	.byte 0xd0,0x18,0x06
+	.ascii "GL_POINT_SMOOTH_HINT\0"
+	.byte 0xd1,0x18,0x06
+	.ascii "GL_POLYGON_SMOOTH_HINT\0"
+	.byte 0xd3,0x18,0x06
+	.ascii "GL_DONT_CARE\0"
+	.byte 0x80,0x22,0x06
+	.ascii "GL_FASTEST\0"
+	.byte 0x81,0x22,0x06
+	.ascii "GL_NICEST\0"
+	.byte 0x82,0x22,0x06
+	.ascii "GL_SCISSOR_TEST\0"
+	.byte 0x91,0x18,0x06
+	.ascii "GL_SCISSOR_BOX\0"
+	.byte 0x90,0x18,0x06
+	.ascii "GL_MAP_COLOR\0"
+	.byte 0x90,0x1a,0x06
+	.ascii "GL_MAP_STENCIL\0"
+	.byte 0x91,0x1a,0x06
+	.ascii "GL_INDEX_SHIFT\0"
+	.byte 0x92,0x1a,0x06
+	.ascii "GL_INDEX_OFFSET\0"
+	.byte 0x93,0x1a,0x06
+	.ascii "GL_RED_SCALE\0"
+	.byte 0x94,0x1a,0x06
+	.ascii "GL_RED_BIAS\0"
+	.byte 0x95,0x1a,0x06
+	.ascii "GL_GREEN_SCALE\0"
+	.byte 0x98,0x1a,0x06
+	.ascii "GL_GREEN_BIAS\0"
+	.byte 0x99,0x1a,0x06
+	.ascii "GL_BLUE_SCALE\0"
+	.byte 0x9a,0x1a,0x06
+	.ascii "GL_BLUE_BIAS\0"
+	.byte 0x9b,0x1a,0x06
+	.ascii "GL_ALPHA_SCALE\0"
+	.byte 0x9c,0x1a,0x06
+	.ascii "GL_ALPHA_BIAS\0"
+	.byte 0x9d,0x1a,0x06
+	.ascii "GL_DEPTH_SCALE\0"
+	.byte 0x9e,0x1a,0x06
+	.ascii "GL_DEPTH_BIAS\0"
+	.byte 0x9f,0x1a,0x06
+	.ascii "GL_PIXEL_MAP_S_TO_S_SIZE\0"
+	.byte 0xb1,0x19,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_I_SIZE\0"
+	.byte 0xb0,0x19,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_R_SIZE\0"
+	.byte 0xb2,0x19,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_G_SIZE\0"
+	.byte 0xb3,0x19,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_B_SIZE\0"
+	.byte 0xb4,0x19,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_A_SIZE\0"
+	.byte 0xb5,0x19,0x06
+	.ascii "GL_PIXEL_MAP_R_TO_R_SIZE\0"
+	.byte 0xb6,0x19,0x06
+	.ascii "GL_PIXEL_MAP_G_TO_G_SIZE\0"
+	.byte 0xb7,0x19,0x06
+	.ascii "GL_PIXEL_MAP_B_TO_B_SIZE\0"
+	.byte 0xb8,0x19,0x06
+	.ascii "GL_PIXEL_MAP_A_TO_A_SIZE\0"
+	.byte 0xb9,0x19,0x06
+	.ascii "GL_PIXEL_MAP_S_TO_S\0"
+	.byte 0xf1,0x18,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_I\0"
+	.byte 0xf0,0x18,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_R\0"
+	.byte 0xf2,0x18,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_G\0"
+	.byte 0xf3,0x18,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_B\0"
+	.byte 0xf4,0x18,0x06
+	.ascii "GL_PIXEL_MAP_I_TO_A\0"
+	.byte 0xf5,0x18,0x06
+	.ascii "GL_PIXEL_MAP_R_TO_R\0"
+	.byte 0xf6,0x18,0x06
+	.ascii "GL_PIXEL_MAP_G_TO_G\0"
+	.byte 0xf7,0x18,0x06
+	.ascii "GL_PIXEL_MAP_B_TO_B\0"
+	.byte 0xf8,0x18,0x06
+	.ascii "GL_PIXEL_MAP_A_TO_A\0"
+	.byte 0xf9,0x18,0x06
+	.ascii "GL_PACK_ALIGNMENT\0"
+	.byte 0x85,0x1a,0x06
+	.ascii "GL_PACK_LSB_FIRST\0"
+	.byte 0x81,0x1a,0x06
+	.ascii "GL_PACK_ROW_LENGTH\0"
+	.byte 0x82,0x1a,0x06
+	.ascii "GL_PACK_SKIP_PIXELS\0"
+	.byte 0x84,0x1a,0x06
+	.ascii "GL_PACK_SKIP_ROWS\0"
+	.byte 0x83,0x1a,0x06
+	.ascii "GL_PACK_SWAP_BYTES\0"
+	.byte 0x80,0x1a,0x06
+	.ascii "GL_UNPACK_ALIGNMENT\0"
+	.byte 0xf5,0x19,0x06
+	.ascii "GL_UNPACK_LSB_FIRST\0"
+	.byte 0xf1,0x19,0x06
+	.ascii "GL_UNPACK_ROW_LENGTH\0"
+	.byte 0xf2,0x19,0x06
+	.ascii "GL_UNPACK_SKIP_PIXELS\0"
+	.byte 0xf4,0x19,0x06
+	.ascii "GL_UNPACK_SKIP_ROWS\0"
+	.byte 0xf3,0x19,0x06
+	.ascii "GL_UNPACK_SWAP_BYTES\0"
+	.byte 0xf0,0x19,0x06
+	.ascii "GL_ZOOM_X\0"
+	.byte 0x96,0x1a,0x06
+	.ascii "GL_ZOOM_Y\0"
+	.byte 0x97,0x1a,0x06
+	.ascii "GL_TEXTURE_ENV\0"
+	.byte 0x80,0xc6,0x00,0x06
+	.ascii "GL_TEXTURE_ENV_MODE\0"
+	.byte 0x80,0xc4,0x00,0x06
+	.ascii "GL_TEXTURE_1D\0"
+	.byte 0xe0,0x1b,0x06
+	.ascii "GL_TEXTURE_2D\0"
+	.byte 0xe1,0x1b,0x06
+	.ascii "GL_TEXTURE_WRAP_S\0"
+	.byte 0x82,0xd0,0x00,0x06
+	.ascii "GL_TEXTURE_WRAP_T\0"
+	.byte 0x83,0xd0,0x00,0x06
+	.ascii "GL_TEXTURE_MAG_FILTER\0"
+	.byte 0x80,0xd0,0x00,0x06
+	.ascii "GL_TEXTURE_MIN_FILTER\0"
+	.byte 0x81,0xd0,0x00,0x06
+	.ascii "GL_TEXTURE_ENV_COLOR\0"
+	.byte 0x81,0xc4,0x00,0x06
+	.ascii "GL_TEXTURE_GEN_S\0"
+	.byte 0xe0,0x18,0x06
+	.ascii "GL_TEXTURE_GEN_T\0"
+	.byte 0xe1,0x18,0x06
+	.ascii "GL_TEXTURE_GEN_MODE\0"
+	.byte 0x80,0xca,0x00,0x06
+	.ascii "GL_TEXTURE_BORDER_COLOR\0"
+	.byte 0x84,0x20,0x06
+	.ascii "GL_TEXTURE_WIDTH\0"
+	.byte 0x80,0x20,0x06
+	.ascii "GL_TEXTURE_HEIGHT\0"
+	.byte 0x81,0x20,0x06
+	.ascii "GL_TEXTURE_BORDER\0"
+	.byte 0x85,0x20,0x06
+	.ascii "GL_TEXTURE_COMPONENTS\0"
+	.byte 0x83,0x20,0x06
+	.ascii "GL_TEXTURE_RED_SIZE\0"
+	.byte 0xdc,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_GREEN_SIZE\0"
+	.byte 0xdd,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_BLUE_SIZE\0"
+	.byte 0xde,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_ALPHA_SIZE\0"
+	.byte 0xdf,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_LUMINANCE_SIZE\0"
+	.byte 0xe0,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_INTENSITY_SIZE\0"
+	.byte 0xe1,0x80,0x02,0x06
+	.ascii "GL_NEAREST_MIPMAP_NEAREST\0"
+	.byte 0x80,0xce,0x00,0x06
+	.ascii "GL_NEAREST_MIPMAP_LINEAR\0"
+	.byte 0x82,0xce,0x00,0x06
+	.ascii "GL_LINEAR_MIPMAP_NEAREST\0"
+	.byte 0x81,0xce,0x00,0x06
+	.ascii "GL_LINEAR_MIPMAP_LINEAR\0"
+	.byte 0x83,0xce,0x00,0x06
+	.ascii "GL_OBJECT_LINEAR\0"
+	.byte 0x81,0xc8,0x00,0x06
+	.ascii "GL_OBJECT_PLANE\0"
+	.byte 0x81,0xca,0x00,0x06
+	.ascii "GL_EYE_LINEAR\0"
+	.byte 0x80,0xc8,0x00,0x06
+	.ascii "GL_EYE_PLANE\0"
+	.byte 0x82,0xca,0x00,0x06
+	.ascii "GL_SPHERE_MAP\0"
+	.byte 0x82,0xc8,0x00,0x06
+	.ascii "GL_DECAL\0"
+	.byte 0x81,0xc2,0x00,0x06
+	.ascii "GL_MODULATE\0"
+	.byte 0x80,0xc2,0x00,0x06
+	.ascii "GL_NEAREST\0"
+	.byte 0x80,0xcc,0x00,0x06
+	.ascii "GL_REPEAT\0"
+	.byte 0x81,0xd2,0x00,0x06
+	.ascii "GL_CLAMP\0"
+	.byte 0x80,0xd2,0x00,0x06
+	.ascii "GL_S\0"
+	.byte 0x80,0xc0,0x00,0x06
+	.ascii "GL_T\0"
+	.byte 0x81,0xc0,0x00,0x06
+	.ascii "GL_R\0"
+	.byte 0x82,0xc0,0x00,0x06
+	.ascii "GL_Q\0"
+	.byte 0x83,0xc0,0x00,0x06
+	.ascii "GL_TEXTURE_GEN_R\0"
+	.byte 0xe2,0x18,0x06
+	.ascii "GL_TEXTURE_GEN_Q\0"
+	.byte 0xe3,0x18,0x06
+	.ascii "GL_PROXY_TEXTURE_1D\0"
+	.byte 0xe3,0x80,0x02,0x06
+	.ascii "GL_PROXY_TEXTURE_2D\0"
+	.byte 0xe4,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_PRIORITY\0"
+	.byte 0xe6,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_RESIDENT\0"
+	.byte 0xe7,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_BINDING_1D\0"
+	.byte 0xe8,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_BINDING_2D\0"
+	.byte 0xe9,0x80,0x02,0x06
+	.ascii "GL_ALPHA4\0"
+	.byte 0xbb,0x80,0x02,0x06
+	.ascii "GL_ALPHA8\0"
+	.byte 0xbc,0x80,0x02,0x06
+	.ascii "GL_ALPHA12\0"
+	.byte 0xbd,0x80,0x02,0x06
+	.ascii "GL_ALPHA16\0"
+	.byte 0xbe,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE4\0"
+	.byte 0xbf,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE8\0"
+	.byte 0xc0,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE12\0"
+	.byte 0xc1,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE16\0"
+	.byte 0xc2,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE4_ALPHA4\0"
+	.byte 0xc3,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE6_ALPHA2\0"
+	.byte 0xc4,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE8_ALPHA8\0"
+	.byte 0xc5,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE12_ALPHA4\0"
+	.byte 0xc6,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE12_ALPHA12\0"
+	.byte 0xc7,0x80,0x02,0x06
+	.ascii "GL_LUMINANCE16_ALPHA16\0"
+	.byte 0xc8,0x80,0x02,0x06
+	.ascii "GL_INTENSITY\0"
+	.byte 0xc9,0x80,0x02,0x06
+	.ascii "GL_INTENSITY4\0"
+	.byte 0xca,0x80,0x02,0x06
+	.ascii "GL_INTENSITY8\0"
+	.byte 0xcb,0x80,0x02,0x06
+	.ascii "GL_INTENSITY12\0"
+	.byte 0xcc,0x80,0x02,0x06
+	.ascii "GL_INTENSITY16\0"
+	.byte 0xcd,0x80,0x02,0x06
+	.ascii "GL_R3_G3_B2\0"
+	.byte 0x90,0xd4,0x00,0x06
+	.ascii "GL_RGB4\0"
+	.byte 0xcf,0x80,0x02,0x06
+	.ascii "GL_RGB5\0"
+	.byte 0xd0,0x80,0x02,0x06
+	.ascii "GL_RGB8\0"
+	.byte 0xd1,0x80,0x02,0x06
+	.ascii "GL_RGB10\0"
+	.byte 0xd2,0x80,0x02,0x06
+	.ascii "GL_RGB12\0"
+	.byte 0xd3,0x80,0x02,0x06
+	.ascii "GL_RGB16\0"
+	.byte 0xd4,0x80,0x02,0x06
+	.ascii "GL_RGBA2\0"
+	.byte 0xd5,0x80,0x02,0x06
+	.ascii "GL_RGBA4\0"
+	.byte 0xd6,0x80,0x02,0x06
+	.ascii "GL_RGB5_A1\0"
+	.byte 0xd7,0x80,0x02,0x06
+	.ascii "GL_RGBA8\0"
+	.byte 0xd8,0x80,0x02,0x06
+	.ascii "GL_RGB10_A2\0"
+	.byte 0xd9,0x80,0x02,0x06
+	.ascii "GL_RGBA12\0"
+	.byte 0xda,0x80,0x02,0x06
+	.ascii "GL_RGBA16\0"
+	.byte 0xdb,0x80,0x02,0x06
+	.ascii "GL_VENDOR\0"
+	.byte 0x80,0x3e,0x06
+	.ascii "GL_RENDERER\0"
+	.byte 0x81,0x3e,0x06
+	.ascii "GL_VERSION\0"
+	.byte 0x82,0x3e,0x06
+	.ascii "GL_EXTENSIONS\0"
+	.byte 0x83,0x3e,0x06
+	.ascii "GL_INVALID_VALUE\0"
+	.byte 0x81,0x0a,0x06
+	.ascii "GL_INVALID_ENUM\0"
+	.byte 0x80,0x0a,0x06
+	.ascii "GL_INVALID_OPERATION\0"
+	.byte 0x82,0x0a,0x06
+	.ascii "GL_STACK_OVERFLOW\0"
+	.byte 0x83,0x0a,0x06
+	.ascii "GL_STACK_UNDERFLOW\0"
+	.byte 0x84,0x0a,0x06
+	.ascii "GL_OUT_OF_MEMORY\0"
+	.byte 0x85,0x0a,0x06
+	.ascii "GL_CONSTANT_COLOR_EXT\0"
+	.byte 0x81,0x80,0x02,0x06
+	.ascii "GL_ONE_MINUS_CONSTANT_COLOR_EXT\0"
+	.byte 0x82,0x80,0x02,0x06
+	.ascii "GL_CONSTANT_ALPHA_EXT\0"
+	.byte 0x83,0x80,0x02,0x06
+	.ascii "GL_ONE_MINUS_CONSTANT_ALPHA_EXT\0"
+	.byte 0x84,0x80,0x02,0x06
+	.ascii "GL_BLEND_EQUATION_EXT\0"
+	.byte 0x89,0x80,0x02,0x06
+	.ascii "GL_MIN_EXT\0"
+	.byte 0x87,0x80,0x02,0x06
+	.ascii "GL_MAX_EXT\0"
+	.byte 0x88,0x80,0x02,0x06
+	.ascii "GL_FUNC_ADD_EXT\0"
+	.byte 0x86,0x80,0x02,0x06
+	.ascii "GL_FUNC_SUBTRACT_EXT\0"
+	.byte 0x8a,0x80,0x02,0x06
+	.ascii "GL_FUNC_REVERSE_SUBTRACT_EXT\0"
+	.byte 0x8b,0x80,0x02,0x06
+	.ascii "GL_BLEND_COLOR_EXT\0"
+	.byte 0x85,0x80,0x02,0x06
+	.ascii "GL_POLYGON_OFFSET_EXT\0"
+	.byte 0xb7,0x80,0x02,0x06
+	.ascii "GL_POLYGON_OFFSET_FACTOR_EXT\0"
+	.byte 0xb8,0x80,0x02,0x06
+	.ascii "GL_POLYGON_OFFSET_BIAS_EXT\0"
+	.byte 0xb9,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_EXT\0"
+	.byte 0xf4,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_EXT\0"
+	.byte 0xf5,0x80,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_EXT\0"
+	.byte 0xf6,0x80,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_EXT\0"
+	.byte 0xf7,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_EXT\0"
+	.byte 0xf8,0x80,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY_EXT\0"
+	.byte 0xf9,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_SIZE_EXT\0"
+	.byte 0xfa,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_TYPE_EXT\0"
+	.byte 0xfb,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_STRIDE_EXT\0"
+	.byte 0xfc,0x80,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_COUNT_EXT\0"
+	.byte 0xfd,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_TYPE_EXT\0"
+	.byte 0xfe,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_STRIDE_EXT\0"
+	.byte 0xff,0x80,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_COUNT_EXT\0"
+	.byte 0x80,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_SIZE_EXT\0"
+	.byte 0x81,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_TYPE_EXT\0"
+	.byte 0x82,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_STRIDE_EXT\0"
+	.byte 0x83,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_COUNT_EXT\0"
+	.byte 0x84,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_TYPE_EXT\0"
+	.byte 0x85,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_STRIDE_EXT\0"
+	.byte 0x86,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_COUNT_EXT\0"
+	.byte 0x87,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_SIZE_EXT\0"
+	.byte 0x88,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_TYPE_EXT\0"
+	.byte 0x89,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_STRIDE_EXT\0"
+	.byte 0x8a,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_COUNT_EXT\0"
+	.byte 0x8b,0x81,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY_STRIDE_EXT\0"
+	.byte 0x8c,0x81,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY_COUNT_EXT\0"
+	.byte 0x8d,0x81,0x02,0x06
+	.ascii "GL_VERTEX_ARRAY_POINTER_EXT\0"
+	.byte 0x8e,0x81,0x02,0x06
+	.ascii "GL_NORMAL_ARRAY_POINTER_EXT\0"
+	.byte 0x8f,0x81,0x02,0x06
+	.ascii "GL_COLOR_ARRAY_POINTER_EXT\0"
+	.byte 0x90,0x81,0x02,0x06
+	.ascii "GL_INDEX_ARRAY_POINTER_EXT\0"
+	.byte 0x91,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_COORD_ARRAY_POINTER_EXT\0"
+	.byte 0x92,0x81,0x02,0x06
+	.ascii "GL_EDGE_FLAG_ARRAY_POINTER_EXT\0"
+	.byte 0x93,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_PRIORITY_EXT\0"
+	.byte 0xe6,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_RESIDENT_EXT\0"
+	.byte 0xe7,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_1D_BINDING_EXT\0"
+	.byte 0xe8,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_2D_BINDING_EXT\0"
+	.byte 0xe9,0x80,0x02,0x06
+	.ascii "GL_PACK_SKIP_IMAGES_EXT\0"
+	.byte 0xeb,0x80,0x02,0x06
+	.ascii "GL_PACK_IMAGE_HEIGHT_EXT\0"
+	.byte 0xec,0x80,0x02,0x06
+	.ascii "GL_UNPACK_SKIP_IMAGES_EXT\0"
+	.byte 0xed,0x80,0x02,0x06
+	.ascii "GL_UNPACK_IMAGE_HEIGHT_EXT\0"
+	.byte 0xee,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_3D_EXT\0"
+	.byte 0xef,0x80,0x02,0x06
+	.ascii "GL_PROXY_TEXTURE_3D_EXT\0"
+	.byte 0xf0,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_DEPTH_EXT\0"
+	.byte 0xf1,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_WRAP_R_EXT\0"
+	.byte 0xf2,0x80,0x02,0x06
+	.ascii "GL_MAX_3D_TEXTURE_SIZE_EXT\0"
+	.byte 0xf3,0x80,0x02,0x06
+	.ascii "GL_TEXTURE_3D_BINDING_EXT\0"
+	.byte 0xea,0x80,0x02,0x06
+	.ascii "GL_TABLE_TOO_LARGE_EXT\0"
+	.byte 0xb1,0x80,0x02,0x06
+	.ascii "GL_COLOR_TABLE_FORMAT_EXT\0"
+	.byte 0xd8,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_WIDTH_EXT\0"
+	.byte 0xd9,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_RED_SIZE_EXT\0"
+	.byte 0xda,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_GREEN_SIZE_EXT\0"
+	.byte 0xdb,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_BLUE_SIZE_EXT\0"
+	.byte 0xdc,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_ALPHA_SIZE_EXT\0"
+	.byte 0xdd,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_LUMINANCE_SIZE_EXT\0"
+	.byte 0xde,0x81,0x02,0x06
+	.ascii "GL_COLOR_TABLE_INTENSITY_SIZE_EXT\0"
+	.byte 0xdf,0x81,0x02,0x06
+	.ascii "GL_TEXTURE_INDEX_SIZE_EXT\0"
+	.byte 0xe1,0x81,0x02,0x06
+	.ascii "GL_COLOR_INDEX1_EXT\0"
+	.byte 0xe2,0x81,0x02,0x06
+	.ascii "GL_COLOR_INDEX2_EXT\0"
+	.byte 0xe3,0x81,0x02,0x06
+	.ascii "GL_COLOR_INDEX4_EXT\0"
+	.byte 0xe4,0x81,0x02,0x06
+	.ascii "GL_COLOR_INDEX8_EXT\0"
+	.byte 0xe5,0x81,0x02,0x06
+	.ascii "GL_COLOR_INDEX12_EXT\0"
+	.byte 0xe6,0x81,0x02,0x06
+	.ascii "GL_COLOR_INDEX16_EXT\0"
+	.byte 0xe7,0x81,0x02,0x06
+	.ascii "GL_SHARED_TEXTURE_PALETTE_EXT\0"
+	.byte 0xfb,0x83,0x02,0x06
+	.ascii "GL_POINT_SIZE_MIN_EXT\0"
+	.byte 0xa6,0x82,0x02,0x06
+	.ascii "GL_POINT_SIZE_MAX_EXT\0"
+	.byte 0xa7,0x82,0x02,0x06
+	.ascii "GL_POINT_FADE_THRESHOLD_SIZE_EXT\0"
+	.byte 0xa8,0x82,0x02,0x06
+	.ascii "GL_DISTANCE_ATTENUATION_EXT\0"
+	.byte 0xa9,0x82,0x02,0x00,0x09,0x00,0x00,0x0b
+	.byte 0x9e
+	.ascii "GLenum\0"
+	.byte 0x02,0x08
+	.ascii "float\0"
+	.byte 0x04,0x04,0x09,0x00,0x00,0x3b,0x47
+	.ascii "GLfloat\0"
+	.byte 0x02,0x08
+	.ascii "void\0"
+	.byte 0x05,0x00,0x09,0x00,0x00,0x3b,0x5e
+	.ascii "GLvoid\0"
+	.byte 0x02,0x0b,0x00,0x00,0x3b,0x66,0x0b,0x00
+	.byte 0x00,0x3b,0x5e,0x0c
+	.ascii "node\0"
+	.byte 0x04,0x00,0x00,0x3c,0x10,0x0d
+	.ascii "opcode\0"
+	.byte 0x00,0x00,0x0a,0xee,0x02,0x23,0x00,0x0d
+	.ascii "b\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "bf\0"
+	.byte 0x00,0x00,0x0b,0x27,0x02,0x23,0x00,0x0d
+	.ascii "ub\0"
+	.byte 0x00,0x00,0x0b,0x38,0x02,0x23,0x00,0x0d
+	.ascii "s\0"
+	.byte 0x00,0x00,0x0b,0x4f,0x02,0x23,0x00,0x0d
+	.ascii "us\0"
+	.byte 0x00,0x00,0x0b,0x6f,0x02,0x23,0x00,0x0d
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "ui\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x00,0x0d
+	.ascii "e\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "f\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x00,0x0d
+	.ascii "data\0"
+	.byte 0x00,0x00,0x3b,0x73,0x02,0x23,0x00,0x0d
+	.ascii "next\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x00,0x00
+	.byte 0x07,0x00,0x00,0x3b,0x7d
+	.ascii "Node\0"
+	.byte 0x0b,0x00,0x00,0x3c,0x10,0x0e
+	.ascii "HashTable\0"
+	.byte 0x01,0x0b,0x00,0x00,0x3c,0x1f,0x08
+	.ascii "long\0"
+	.byte 0x05,0x04,0x0f,0x00,0x00,0x0b,0x85,0x10
+	.byte 0x00,0x00,0x3c,0x49,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x0b,0x00,0x00,0x0b,0x38
+	.byte 0x11
+	.ascii "gl_texture_image\0"
+	.byte 0x3c,0x03,0x00,0x00,0x3d,0x57,0x0d
+	.ascii "Format\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "IntFormat\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x04,0x0d
+	.ascii "Border\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x08,0x0d
+	.ascii "Width\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x0c,0x0d
+	.ascii "Height\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x10,0x0d
+	.ascii "Depth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x14,0x0d
+	.ascii "Width2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x18,0x0d
+	.ascii "Height2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x1c,0x0d
+	.ascii "Depth2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x20,0x0d
+	.ascii "WidthLog2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x24,0x0d
+	.ascii "HeightLog2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x28,0x0d
+	.ascii "DepthLog2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x2c,0x0d
+	.ascii "MaxLog2\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x30,0x0d
+	.ascii "Data\0"
+	.byte 0x00,0x00,0x3c,0x49,0x02,0x23,0x34,0x0d
+	.ascii "DriverData\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x38,0x00
+	.byte 0x0b,0x00,0x00,0x3c,0x4e,0x0f,0x00,0x00
+	.byte 0x3d,0x57,0x2c,0x00,0x00,0x3d,0x6d,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x0a,0x00,0x12,0x00
+	.byte 0x00,0x0b,0x38,0x04,0x00,0x00,0x00,0x3d
+	.byte 0x80,0x13,0x00,0x00,0x3c,0x30,0x03,0xff
+	.byte 0x00,0x14
+	.ascii "gl_texture_object\0"
+	.byte 0x04,0x84,0x03,0x00,0x00,0x3f,0x0f,0x0d
+	.ascii "RefCount\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "Name\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x04,0x0d
+	.ascii "Dimensions\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x08,0x0d
+	.ascii "Priority\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x0c,0x0d
+	.ascii "BorderColor\0"
+	.byte 0x00,0x00,0x3c,0x38,0x02,0x23,0x10,0x0d
+	.ascii "WrapS\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x20,0x0d
+	.ascii "WrapT\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x24,0x0d
+	.ascii "WrapR\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x28,0x0d
+	.ascii "MinFilter\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x2c,0x0d
+	.ascii "MagFilter\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x30,0x0d
+	.ascii "MinMagThresh\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x34,0x0d
+	.ascii "Image\0"
+	.byte 0x00,0x00,0x3d,0x5c,0x02,0x23,0x38,0x0d
+	.ascii "Palette\0"
+	.byte 0x00,0x00,0x3d,0x6d,0x02,0x23,0x64,0x0d
+	.ascii "PaletteSize\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0xe4,0x08
+	.byte 0x0d
+	.ascii "PaletteIntFormat\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x03,0x23,0xe8,0x08
+	.byte 0x0d
+	.ascii "PaletteFormat\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x03,0x23,0xec,0x08
+	.byte 0x0d
+	.ascii "Dirty\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xf0,0x08
+	.byte 0x0d
+	.ascii "DriverData\0"
+	.byte 0x00,0x00,0x3b,0x78,0x03,0x23,0xf4,0x08
+	.byte 0x0d
+	.ascii "Complete\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xf8,0x08
+	.byte 0x0d
+	.ascii "SampleFunc\0"
+	.byte 0x00,0x00,0x3f,0x85,0x03,0x23,0xfc,0x08
+	.byte 0x0d
+	.ascii "Next\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0x80,0x09
+	.byte 0x00,0x15,0x00,0x00,0x3d,0x80,0x0b,0x00
+	.byte 0x00,0x3f,0x0f,0x15,0x00,0x00,0x3b,0x47
+	.byte 0x0b,0x00,0x00,0x3f,0x19,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0x3f,0x23,0x15
+	.byte 0x00,0x00,0x3b,0x47,0x0b,0x00,0x00,0x3f
+	.byte 0x2d,0x15,0x00,0x00,0x3b,0x47,0x0b,0x00
+	.byte 0x00,0x3f,0x37,0x0b,0x00,0x00,0x0a,0xfa
+	.byte 0x16,0x01,0x01,0x00,0x00,0x3f,0x80,0x17
+	.byte 0x00,0x00,0x3f,0x14,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x17,0x00,0x00,0x3f,0x1e,0x17,0x00
+	.byte 0x00,0x3f,0x28,0x17,0x00,0x00,0x3f,0x32
+	.byte 0x17,0x00,0x00,0x3f,0x3c,0x17,0x00,0x00
+	.byte 0x3f,0x41,0x17,0x00,0x00,0x3f,0x41,0x17
+	.byte 0x00,0x00,0x3f,0x41,0x17,0x00,0x00,0x3f
+	.byte 0x41,0x00,0x0b,0x00,0x00,0x3f,0x46,0x09
+	.byte 0x00,0x00,0x3f,0x80
+	.ascii "TextureSampleFunc\0"
+	.byte 0x03,0x0b,0x00,0x00,0x3d,0x80,0x11
+	.ascii "gl_shared_state\0"
+	.byte 0x1c,0x03,0x00,0x00,0x40,0x3e,0x0d
+	.ascii "RefCount\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "DisplayList\0"
+	.byte 0x00,0x00,0x3c,0x2b,0x02,0x23,0x04,0x0d
+	.ascii "TexObjects\0"
+	.byte 0x00,0x00,0x3c,0x2b,0x02,0x23,0x08,0x0d
+	.ascii "TexObjectList\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x02,0x23,0x0c,0x0d
+	.ascii "Default1D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x02,0x23,0x10,0x0d
+	.ascii "Default2D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x02,0x23,0x14,0x0d
+	.ascii "Default3D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x02,0x23,0x18,0x00
+	.byte 0x0b,0x00,0x00,0x3f,0xa2,0x14
+	.ascii "gl_context\0"
+	.byte 0xe1,0x40,0x03,0x00,0x00,0x47,0x10,0x0d
+	.ascii "Shared\0"
+	.byte 0x00,0x00,0x40,0x3e,0x02,0x23,0x00,0x0d
+	.ascii "API\0"
+	.byte 0x00,0x00,0x5f,0xd7,0x02,0x23,0x04,0x0d
+	.ascii "Save\0"
+	.byte 0x00,0x00,0x5f,0xd7,0x03,0x23,0xe0,0x05
+	.byte 0x0d
+	.ascii "Exec\0"
+	.byte 0x00,0x00,0x5f,0xd7,0x03,0x23,0xbc,0x0b
+	.byte 0x0d
+	.ascii "Visual\0"
+	.byte 0x00,0x00,0x70,0x32,0x03,0x23,0x98,0x11
+	.byte 0x0d
+	.ascii "Buffer\0"
+	.byte 0x00,0x00,0x71,0x5d,0x03,0x23,0x9c,0x11
+	.byte 0x0d
+	.ascii "Driver\0"
+	.byte 0x00,0x00,0x7a,0x6c,0x03,0x23,0xa0,0x11
+	.byte 0x0d
+	.ascii "DriverCtx\0"
+	.byte 0x00,0x00,0x3b,0x78,0x03,0x23,0xf4,0x12
+	.byte 0x0d
+	.ascii "DriverMgrCtx\0"
+	.byte 0x00,0x00,0x3b,0x78,0x03,0x23,0xf8,0x12
+	.byte 0x0d
+	.ascii "NewModelViewMatrix\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xfc,0x12
+	.byte 0x0d
+	.ascii "ModelViewMatrixType\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0x80,0x13
+	.byte 0x0d
+	.ascii "ModelViewMatrix\0"
+	.byte 0x00,0x00,0x7e,0xd4,0x03,0x23,0x84,0x13
+	.byte 0x0d
+	.ascii "ModelViewInv\0"
+	.byte 0x00,0x00,0x7e,0xe5,0x03,0x23,0xc4,0x13
+	.byte 0x0d
+	.ascii "ModelViewStackDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0x84,0x14
+	.byte 0x0d
+	.ascii "ModelViewStack\0"
+	.byte 0x00,0x00,0x7f,0x07,0x03,0x23,0x88,0x14
+	.byte 0x0d
+	.ascii "NewProjectionMatrix\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0x88,0x24
+	.byte 0x0d
+	.ascii "ProjectionMatrixType\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0x8c,0x24
+	.byte 0x0d
+	.ascii "ProjectionMatrix\0"
+	.byte 0x00,0x00,0x7f,0x19,0x03,0x23,0x90,0x24
+	.byte 0x0d
+	.ascii "ProjectionStackDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0xd0,0x24
+	.byte 0x0d
+	.ascii "ProjectionStack\0"
+	.byte 0x00,0x00,0x7f,0x3b,0x03,0x23,0xd4,0x24
+	.byte 0x0d
+	.ascii "NearFarStack\0"
+	.byte 0x00,0x00,0x7f,0x5e,0x03,0x23,0xd4,0x34
+	.byte 0x0d
+	.ascii "NewTextureMatrix\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xd4,0x36
+	.byte 0x0d
+	.ascii "TextureMatrixType\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0xd8,0x36
+	.byte 0x0d
+	.ascii "TextureMatrix\0"
+	.byte 0x00,0x00,0x7f,0x70,0x03,0x23,0xdc,0x36
+	.byte 0x0d
+	.ascii "TextureStackDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0x9c,0x37
+	.byte 0x0d
+	.ascii "TextureStack\0"
+	.byte 0x00,0x00,0x7f,0x92,0x03,0x23,0xa0,0x37
+	.byte 0x0d
+	.ascii "CallDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0xa0,0x3c
+	.byte 0x0d
+	.ascii "ExecuteFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xa4,0x3c
+	.byte 0x0d
+	.ascii "CompileFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xa5,0x3c
+	.byte 0x0d
+	.ascii "AttribStackDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0xa8,0x3c
+	.byte 0x0d
+	.ascii "AttribStack\0"
+	.byte 0x00,0x00,0x7f,0xe7,0x03,0x23,0xac,0x3c
+	.byte 0x0d
+	.ascii "Accum\0"
+	.byte 0x00,0x00,0x80,0x09,0x03,0x23,0xec,0x3c
+	.byte 0x0d
+	.ascii "Color\0"
+	.byte 0x00,0x00,0x80,0x56,0x03,0x23,0xfc,0x3c
+	.byte 0x0d
+	.ascii "Current\0"
+	.byte 0x00,0x00,0x82,0x6b,0x03,0x23,0xd4,0x3d
+	.byte 0x0d
+	.ascii "Depth\0"
+	.byte 0x00,0x00,0x83,0x55,0x03,0x23,0xb4,0x3e
+	.byte 0x0d
+	.ascii "Eval\0"
+	.byte 0x00,0x00,0x83,0xa8,0x03,0x23,0xc0,0x3e
+	.byte 0x0d
+	.ascii "Fog\0"
+	.byte 0x00,0x00,0x86,0x1e,0x03,0x23,0xf8,0x3e
+	.byte 0x0d
+	.ascii "Hint\0"
+	.byte 0x00,0x00,0x86,0x97,0x03,0x23,0xa0,0x3f
+	.byte 0x0d
+	.ascii "Light\0"
+	.byte 0x00,0x00,0x8b,0xa2,0x03,0x23,0xb4,0x3f
+	.byte 0x0d
+	.ascii "Line\0"
+	.byte 0x00,0x00,0x8c,0xc3,0x04,0x23,0x88,0xdc
+	.byte 0x02,0x0d
+	.ascii "List\0"
+	.byte 0x00,0x00,0x8d,0x3c,0x04,0x23,0x94,0xdc
+	.byte 0x02,0x0d
+	.ascii "Pixel\0"
+	.byte 0x00,0x00,0x8e,0x22,0x04,0x23,0x98,0xdc
+	.byte 0x02,0x0d
+	.ascii "Point\0"
+	.byte 0x00,0x00,0x90,0xf2,0x04,0x23,0x80,0xad
+	.byte 0x03,0x0d
+	.ascii "Polygon\0"
+	.byte 0x00,0x00,0x91,0x6b,0x04,0x23,0xa0,0xad
+	.byte 0x03,0x0d
+	.ascii "PolygonStipple\0"
+	.byte 0x00,0x00,0x92,0x9e,0x04,0x23,0xc8,0xad
+	.byte 0x03,0x0d
+	.ascii "Scissor\0"
+	.byte 0x00,0x00,0x92,0xbd,0x04,0x23,0xc8,0xae
+	.byte 0x03,0x0d
+	.ascii "Stencil\0"
+	.byte 0x00,0x00,0x93,0x18,0x04,0x23,0xdc,0xae
+	.byte 0x03,0x0d
+	.ascii "Texture\0"
+	.byte 0x00,0x00,0x94,0x72,0x04,0x23,0xf4,0xae
+	.byte 0x03,0x0d
+	.ascii "Transform\0"
+	.byte 0x00,0x00,0x96,0xd4,0x04,0x23,0xcc,0xb8
+	.byte 0x03,0x0d
+	.ascii "Viewport\0"
+	.byte 0x00,0x00,0x97,0x4e,0x04,0x23,0xb8,0xb9
+	.byte 0x03,0x0d
+	.ascii "ClientAttribStackDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xe8,0xb9
+	.byte 0x03,0x0d
+	.ascii "ClientAttribStack\0"
+	.byte 0x00,0x00,0x97,0xf5,0x04,0x23,0xec,0xb9
+	.byte 0x03,0x0d
+	.ascii "Array\0"
+	.byte 0x00,0x00,0x98,0x0b,0x04,0x23,0xac,0xba
+	.byte 0x03,0x0d
+	.ascii "Pack\0"
+	.byte 0x00,0x00,0x9a,0xb6,0x04,0x23,0xac,0xbb
+	.byte 0x03,0x0d
+	.ascii "Unpack\0"
+	.byte 0x00,0x00,0x9a,0xb6,0x04,0x23,0xc8,0xbb
+	.byte 0x03,0x0d
+	.ascii "EvalMap\0"
+	.byte 0x00,0x00,0x9c,0x38,0x04,0x23,0xe4,0xbb
+	.byte 0x03,0x0d
+	.ascii "Feedback\0"
+	.byte 0x00,0x00,0x9d,0xc2,0x04,0x23,0xb8,0xbf
+	.byte 0x03,0x0d
+	.ascii "Select\0"
+	.byte 0x00,0x00,0x9e,0x37,0x04,0x23,0xcc,0xbf
+	.byte 0x03,0x0d
+	.ascii "ErrorValue\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x04,0x23,0xec,0xc1
+	.byte 0x03,0x0d
+	.ascii "DirectContext\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xf0,0xc1
+	.byte 0x03,0x0d
+	.ascii "NewState\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xf4,0xc1
+	.byte 0x03,0x0d
+	.ascii "RenderMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x04,0x23,0xf8,0xc1
+	.byte 0x03,0x0d
+	.ascii "Primitive\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x04,0x23,0xfc,0xc1
+	.byte 0x03,0x0d
+	.ascii "StippleCounter\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0x80,0xc2
+	.byte 0x03,0x0d
+	.ascii "ClipMask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0x84,0xc2
+	.byte 0x03,0x0d
+	.ascii "RasterMask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0x88,0xc2
+	.byte 0x03,0x0d
+	.ascii "LightTwoSide\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x8c,0xc2
+	.byte 0x03,0x0d
+	.ascii "DirectTriangles\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x8d,0xc2
+	.byte 0x03,0x0d
+	.ascii "PolygonZoffset\0"
+	.byte 0x00,0x00,0x3b,0x50,0x04,0x23,0x90,0xc2
+	.byte 0x03,0x0d
+	.ascii "LineZoffset\0"
+	.byte 0x00,0x00,0x3b,0x50,0x04,0x23,0x94,0xc2
+	.byte 0x03,0x0d
+	.ascii "PointZoffset\0"
+	.byte 0x00,0x00,0x3b,0x50,0x04,0x23,0x98,0xc2
+	.byte 0x03,0x0d
+	.ascii "NeedNormals\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x9c,0xc2
+	.byte 0x03,0x0d
+	.ascii "FastDrawPixels\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x9d,0xc2
+	.byte 0x03,0x0d
+	.ascii "MutablePixels\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x9e,0xc2
+	.byte 0x03,0x0d
+	.ascii "MonoPixels\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x9f,0xc2
+	.byte 0x03,0x0d
+	.ascii "PointsFunc\0"
+	.byte 0x00,0x00,0x77,0xa7,0x04,0x23,0xa0,0xc2
+	.byte 0x03,0x0d
+	.ascii "LineFunc\0"
+	.byte 0x00,0x00,0x77,0xda,0x04,0x23,0xa4,0xc2
+	.byte 0x03,0x0d
+	.ascii "TriangleFunc\0"
+	.byte 0x00,0x00,0x78,0x10,0x04,0x23,0xa8,0xc2
+	.byte 0x03,0x0d
+	.ascii "QuadFunc\0"
+	.byte 0x00,0x00,0x78,0x4f,0x04,0x23,0xac,0xc2
+	.byte 0x03,0x0d
+	.ascii "RectFunc\0"
+	.byte 0x00,0x00,0x78,0x85,0x04,0x23,0xb0,0xc2
+	.byte 0x03,0x0d
+	.ascii "VB\0"
+	.byte 0x00,0x00,0xa2,0x98,0x04,0x23,0xb4,0xc2
+	.byte 0x03,0x0d
+	.ascii "PB\0"
+	.byte 0x00,0x00,0xa2,0xac,0x04,0x23,0xb8,0xc2
+	.byte 0x03,0x0d
+	.ascii "NoRaster\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xbc,0xc2
+	.byte 0x03,0x0d
+	.ascii "NoDither\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xbd,0xc2
+	.byte 0x03,0x00,0x0b,0x00,0x00,0x40,0x43,0x16
+	.byte 0x01,0x01,0x00,0x00,0x47,0x2c,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x00,0x0b,0x00
+	.byte 0x00,0x47,0x15,0x16,0x01,0x01,0x00,0x00
+	.byte 0x47,0x48,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x0b,0x00,0x00,0x47,0x31,0x15
+	.byte 0x00,0x00,0x0b,0x1b,0x0b,0x00,0x00,0x47
+	.byte 0x4d,0x18,0x01,0x00,0x00,0x0a,0xfa,0x01
+	.byte 0x00,0x00,0x47,0x77,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x47,0x52,0x17,0x00,0x00,0x3f,0x41
+	.byte 0x00,0x0b,0x00,0x00,0x47,0x57,0x16,0x01
+	.byte 0x01,0x00,0x00,0x47,0x8e,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x7e,0x00
+	.byte 0x0b,0x00,0x00,0x47,0x7c,0x16,0x01,0x01
+	.byte 0x00,0x00,0x47,0xa5,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b
+	.byte 0x00,0x00,0x47,0x93,0x16,0x01,0x01,0x00
+	.byte 0x00,0x47,0xc1,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x0b,0x00,0x00,0x47,0xaa
+	.byte 0x11
+	.ascii "gl_image\0"
+	.byte 0x24,0x03,0x00,0x00,0x48,0x63,0x0d
+	.ascii "Width\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "Height\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x04,0x0d
+	.ascii "Depth\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x08,0x0d
+	.ascii "Components\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x0c,0x0d
+	.ascii "Format\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x10,0x0d
+	.ascii "Type\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x14,0x0d
+	.ascii "Data\0"
+	.byte 0x00,0x00,0x3b,0x73,0x02,0x23,0x18,0x0d
+	.ascii "Interleaved\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x1c,0x0d
+	.ascii "RefCount\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x20,0x00
+	.byte 0x15,0x00,0x00,0x47,0xc6,0x0b,0x00,0x00
+	.byte 0x48,0x63,0x16,0x01,0x01,0x00,0x00,0x48
+	.byte 0x9d,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x48
+	.byte 0x68,0x00,0x0b,0x00,0x00,0x48,0x6d,0x16
+	.byte 0x01,0x01,0x00,0x00,0x48,0xc3,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x48,0xa2,0x16,0x01,0x01
+	.byte 0x00,0x00,0x48,0xda,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b
+	.byte 0x00,0x00,0x48,0xc8,0x16,0x01,0x01,0x00
+	.byte 0x00,0x48,0xf6,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x0b,0x00,0x00,0x48,0xdf
+	.byte 0x16,0x01,0x01,0x00,0x00,0x49,0x0d,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x0b,0x00,0x00,0x48,0xfb,0x15
+	.byte 0x00,0x00,0x3b,0x5e,0x0b,0x00,0x00,0x49
+	.byte 0x12,0x16,0x01,0x01,0x00,0x00,0x49,0x38
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x49,0x17,0x00,0x0b,0x00,0x00
+	.byte 0x49,0x1c,0x16,0x01,0x01,0x00,0x00,0x49
+	.byte 0x4f,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00,0x49
+	.byte 0x3d,0x16,0x01,0x01,0x00,0x00,0x49,0x75
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x0b,0x00,0x00,0x49,0x54,0x16
+	.byte 0x01,0x01,0x00,0x00,0x49,0x9b,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x49,0x7a,0x08
+	.ascii "double\0"
+	.byte 0x04,0x08,0x16,0x01,0x01,0x00,0x00,0x49
+	.byte 0xbc,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x49,0xa0,0x00,0x0b,0x00,0x00,0x49
+	.byte 0xaa,0x16,0x01,0x01,0x00,0x00,0x49,0xd3
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x0b,0x00,0x00,0x49,0xc1
+	.byte 0x16,0x01,0x01,0x00,0x00,0x49,0xea,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x00,0x0b,0x00,0x00,0x49,0xd8,0x15
+	.byte 0x00,0x00,0x3b,0x47,0x0b,0x00,0x00,0x49
+	.byte 0xef,0x16,0x01,0x01,0x00,0x00,0x4a,0x10
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x49,0xf4,0x00
+	.byte 0x0b,0x00,0x00,0x49,0xf9,0x16,0x01,0x01
+	.byte 0x00,0x00,0x4a,0x31,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x00,0x0b,0x00,0x00,0x4a,0x15,0x15,0x00
+	.byte 0x00,0x3b,0x47,0x0b,0x00,0x00,0x4a,0x36
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4a,0x52,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x4a
+	.byte 0x3b,0x00,0x0b,0x00,0x00,0x4a,0x40,0x16
+	.byte 0x01,0x01,0x00,0x00,0x4a,0x78,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x4a,0x57,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0x4a,0x7d,0x16
+	.byte 0x01,0x01,0x00,0x00,0x4a,0x99,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x4a,0x82
+	.byte 0x00,0x0b,0x00,0x00,0x4a,0x87,0x16,0x01
+	.byte 0x01,0x00,0x00,0x4a,0xbf,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0a,0xfa,0x17
+	.byte 0x00,0x00,0x0a,0xfa,0x17,0x00,0x00,0x0a
+	.byte 0xfa,0x17,0x00,0x00,0x0a,0xfa,0x00,0x0b
+	.byte 0x00,0x00,0x4a,0x9e,0x15,0x00,0x00,0x0a
+	.byte 0xfa,0x0b,0x00,0x00,0x4a,0xc4,0x16,0x01
+	.byte 0x01,0x00,0x00,0x4a,0xe0,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x4a,0xc9,0x00
+	.byte 0x0b,0x00,0x00,0x4a,0xce,0x16,0x01,0x01
+	.byte 0x00,0x00,0x4b,0x06,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0a,0xfa,0x17,0x00
+	.byte 0x00,0x0a,0xfa,0x17,0x00,0x00,0x0a,0xfa
+	.byte 0x17,0x00,0x00,0x0a,0xfa,0x00,0x0b,0x00
+	.byte 0x00,0x4a,0xe5,0x16,0x01,0x01,0x00,0x00
+	.byte 0x4b,0x22,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x00,0x0b,0x00,0x00,0x4b,0x0b,0x15
+	.byte 0x00,0x00,0x3b,0x5e,0x0b,0x00,0x00,0x4b
+	.byte 0x27,0x16,0x01,0x01,0x00,0x00,0x4b,0x52
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x4b
+	.byte 0x2c,0x00,0x0b,0x00,0x00,0x4b,0x31,0x0b
+	.byte 0x00,0x00,0x47,0xc6,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4b,0x78,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4b,0x57,0x00
+	.byte 0x0b,0x00,0x00,0x4b,0x5c,0x16,0x01,0x01
+	.byte 0x00,0x00,0x4b,0x99,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x4b,0x57
+	.byte 0x00,0x0b,0x00,0x00,0x4b,0x7d,0x16,0x01
+	.byte 0x01,0x00,0x00,0x4b,0xc4,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00,0x4b
+	.byte 0x9e,0x16,0x01,0x01,0x00,0x00,0x4b,0xf9
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x00,0x0b,0x00,0x00,0x4b,0xc9,0x16,0x01
+	.byte 0x01,0x00,0x00,0x4c,0x33,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x00,0x0b,0x00,0x00,0x4b,0xfe
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4c,0x63,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x00,0x0b,0x00,0x00,0x4c,0x38
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4c,0x9d,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00
+	.byte 0x4c,0x68,0x16,0x01,0x01,0x00,0x00,0x4c
+	.byte 0xdc,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00,0x4c
+	.byte 0xa2,0x16,0x01,0x01,0x00,0x00,0x4c,0xf3
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x0b,0x00,0x00,0x4c,0xe1
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4d,0x0f,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x17,0x00,0x00,0x0b,0x7e,0x00,0x0b
+	.byte 0x00,0x00,0x4c,0xf8,0x15,0x00,0x00,0x0b
+	.byte 0x1b,0x0b,0x00,0x00,0x4d,0x14,0x16,0x01
+	.byte 0x01,0x00,0x00,0x4d,0x35,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x4d,0x19,0x00,0x0b,0x00,0x00
+	.byte 0x4d,0x1e,0x16,0x01,0x01,0x00,0x00,0x4d
+	.byte 0x4c,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00,0x4d
+	.byte 0x3a,0x16,0x01,0x01,0x00,0x00,0x4d,0x63
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0a,0xfa,0x00,0x0b,0x00,0x00,0x4d,0x51
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4d,0x7f,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x49
+	.byte 0xa0,0x17,0x00,0x00,0x49,0xa0,0x00,0x0b
+	.byte 0x00,0x00,0x4d,0x68,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4d,0x96,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00
+	.byte 0x00,0x4d,0x84,0x16,0x01,0x01,0x00,0x00
+	.byte 0x4d,0xad,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x4d,0x9b,0x16,0x01,0x01,0x00,0x00,0x4d
+	.byte 0xce,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00
+	.byte 0x00,0x4d,0xb2,0x16,0x01,0x01,0x00,0x00
+	.byte 0x4d,0xe5,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x4d,0xd3,0x15,0x00,0x00,0x3b,0x5e,0x0b
+	.byte 0x00,0x00,0x4d,0xea,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4e,0x15,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x4d,0xef,0x00,0x0b,0x00,0x00
+	.byte 0x4d,0xf4,0x15,0x00,0x00,0x3b,0x5e,0x0b
+	.byte 0x00,0x00,0x4e,0x1a,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4e,0x4a,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x4e
+	.byte 0x1f,0x00,0x0b,0x00,0x00,0x4e,0x24,0x16
+	.byte 0x01,0x01,0x00,0x00,0x4e,0x61,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0a,0xfa
+	.byte 0x00,0x0b,0x00,0x00,0x4e,0x4f,0x15,0x00
+	.byte 0x00,0x0a,0xfa,0x0b,0x00,0x00,0x4e,0x66
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4e,0x87,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x4e,0x6b,0x00,0x0b
+	.byte 0x00,0x00,0x4e,0x70,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4e,0x9e,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00
+	.byte 0x00,0x4e,0x8c,0x16,0x01,0x01,0x00,0x00
+	.byte 0x4e,0xb5,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x4e,0xa3,0x16,0x01,0x01,0x00,0x00,0x4e
+	.byte 0xc7,0x17,0x00,0x00,0x47,0x10,0x00,0x0b
+	.byte 0x00,0x00,0x4e,0xba,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4e,0xd9,0x17,0x00,0x00,0x47,0x10
+	.byte 0x00,0x0b,0x00,0x00,0x4e,0xcc,0x16,0x01
+	.byte 0x01,0x00,0x00,0x4e,0xf0,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x4e,0xde,0x16,0x01,0x01
+	.byte 0x00,0x00,0x4f,0x0c,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x00,0x0b,0x00,0x00,0x4e
+	.byte 0xf5,0x16,0x01,0x01,0x00,0x00,0x4f,0x2d
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00
+	.byte 0x4f,0x11,0x16,0x01,0x01,0x00,0x00,0x4f
+	.byte 0x58,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x00
+	.byte 0x0b,0x00,0x00,0x4f,0x32,0x16,0x01,0x01
+	.byte 0x00,0x00,0x4f,0x6f,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x7e,0x00,0x0b
+	.byte 0x00,0x00,0x4f,0x5d,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4f,0x8b,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x00,0x0b
+	.byte 0x00,0x00,0x4f,0x74,0x0b,0x00,0x00,0x3b
+	.byte 0x47,0x16,0x01,0x01,0x00,0x00,0x4f,0xb1
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x4f,0x90,0x00,0x0b,0x00,0x00
+	.byte 0x4f,0x95,0x16,0x01,0x01,0x00,0x00,0x4f
+	.byte 0xc3,0x17,0x00,0x00,0x47,0x10,0x00,0x0b
+	.byte 0x00,0x00,0x4f,0xb6,0x16,0x01,0x01,0x00
+	.byte 0x00,0x4f,0xd5,0x17,0x00,0x00,0x47,0x10
+	.byte 0x00,0x0b,0x00,0x00,0x4f,0xc8,0x15,0x00
+	.byte 0x00,0x3b,0x47,0x0b,0x00,0x00,0x4f,0xda
+	.byte 0x16,0x01,0x01,0x00,0x00,0x4f,0xfb,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x4f,0xdf,0x00,0x0b
+	.byte 0x00,0x00,0x4f,0xe4,0x16,0x01,0x01,0x00
+	.byte 0x00,0x50,0x12,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00
+	.byte 0x00,0x50,0x00,0x16,0x01,0x01,0x00,0x00
+	.byte 0x50,0x42,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x49,0xa0,0x17,0x00,0x00,0x49
+	.byte 0xa0,0x17,0x00,0x00,0x49,0xa0,0x17,0x00
+	.byte 0x00,0x49,0xa0,0x17,0x00,0x00,0x49,0xa0
+	.byte 0x17,0x00,0x00,0x49,0xa0,0x00,0x0b,0x00
+	.byte 0x00,0x50,0x17,0x18,0x01,0x00,0x00,0x0b
+	.byte 0x1b,0x01,0x00,0x00,0x50,0x5d,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x00,0x0b,0x00,0x00,0x50,0x47,0x0b,0x00
+	.byte 0x00,0x0b,0x1b,0x16,0x01,0x01,0x00,0x00
+	.byte 0x50,0x7e,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x50
+	.byte 0x62,0x00,0x0b,0x00,0x00,0x50,0x67,0x16
+	.byte 0x01,0x01,0x00,0x00,0x50,0x9a,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x3f,0x41,0x00,0x0b,0x00
+	.byte 0x00,0x50,0x83,0x0b,0x00,0x00,0x49,0xa0
+	.byte 0x16,0x01,0x01,0x00,0x00,0x50,0xbb,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x50,0x9f,0x00,0x0b
+	.byte 0x00,0x00,0x50,0xa4,0x16,0x01,0x01,0x00
+	.byte 0x00,0x50,0xe1,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x3b,0x78,0x00,0x0b,0x00,0x00
+	.byte 0x50,0xc0,0x0b,0x00,0x00,0x0b,0x7e,0x16
+	.byte 0x01,0x01,0x00,0x00,0x51,0x07,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x50,0xe6,0x00,0x0b,0x00,0x00,0x50,0xeb
+	.byte 0x16,0x01,0x01,0x00,0x00,0x51,0x23,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x50,0x9f,0x00,0x0b
+	.byte 0x00,0x00,0x51,0x0c,0x18,0x01,0x00,0x00
+	.byte 0x0b,0x9e,0x01,0x00,0x00,0x51,0x39,0x17
+	.byte 0x00,0x00,0x47,0x10,0x00,0x0b,0x00,0x00
+	.byte 0x51,0x28,0x16,0x01,0x01,0x00,0x00,0x51
+	.byte 0x55,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x4f,0x90
+	.byte 0x00,0x0b,0x00,0x00,0x51,0x3e,0x16,0x01
+	.byte 0x01,0x00,0x00,0x51,0x71,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x50,0xe6,0x00,0x0b,0x00,0x00
+	.byte 0x51,0x5a,0x15,0x00,0x00,0x0a,0xfa,0x0b
+	.byte 0x00,0x00,0x51,0x76,0x18,0x01,0x00,0x00
+	.byte 0x51,0x7b,0x01,0x00,0x00,0x51,0x96,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x00,0x0b,0x00,0x00,0x51,0x80,0x16
+	.byte 0x01,0x01,0x00,0x00,0x51,0xb7,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x4f,0x90,0x00,0x0b,0x00,0x00,0x51,0x9b
+	.byte 0x16,0x01,0x01,0x00,0x00,0x51,0xd8,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x50,0xe6,0x00,0x0b,0x00,0x00,0x51
+	.byte 0xbc,0x16,0x01,0x01,0x00,0x00,0x51,0xf9
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x50,0x9f,0x00,0x0b,0x00,0x00
+	.byte 0x51,0xdd,0x16,0x01,0x01,0x00,0x00,0x52
+	.byte 0x1a,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x4f,0x90,0x00,0x0b,0x00
+	.byte 0x00,0x51,0xfe,0x16,0x01,0x01,0x00,0x00
+	.byte 0x52,0x3b,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x50,0xe6,0x00,0x0b
+	.byte 0x00,0x00,0x52,0x1f,0x16,0x01,0x01,0x00
+	.byte 0x00,0x52,0x5c,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4f,0x90,0x00
+	.byte 0x0b,0x00,0x00,0x52,0x40,0x16,0x01,0x01
+	.byte 0x00,0x00,0x52,0x7d,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x50,0xe6
+	.byte 0x00,0x0b,0x00,0x00,0x52,0x61,0x16,0x01
+	.byte 0x01,0x00,0x00,0x52,0x99,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x4f,0x90,0x00,0x0b,0x00,0x00
+	.byte 0x52,0x82,0x16,0x01,0x01,0x00,0x00,0x52
+	.byte 0xb5,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x50,0x62
+	.byte 0x00,0x0b,0x00,0x00,0x52,0x9e,0x0b,0x00
+	.byte 0x00,0x0b,0x5d,0x16,0x01,0x01,0x00,0x00
+	.byte 0x52,0xd6,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x52
+	.byte 0xba,0x00,0x0b,0x00,0x00,0x52,0xbf,0x0b
+	.byte 0x00,0x00,0x3b,0x78,0x16,0x01,0x01,0x00
+	.byte 0x00,0x52,0xf7,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x52,0xdb,0x00,0x0b,0x00,0x00,0x52,0xe0
+	.byte 0x16,0x01,0x01,0x00,0x00,0x53,0x0e,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x3f
+	.byte 0x41,0x00,0x0b,0x00,0x00,0x52,0xfc,0x15
+	.byte 0x00,0x00,0x0b,0x1b,0x0b,0x00,0x00,0x53
+	.byte 0x13,0x15,0x00,0x00,0x3b,0x47,0x0b,0x00
+	.byte 0x00,0x53,0x1d,0x16,0x01,0x01,0x00,0x00
+	.byte 0x53,0x43,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x53
+	.byte 0x18,0x17,0x00,0x00,0x53,0x22,0x00,0x0b
+	.byte 0x00,0x00,0x53,0x27,0x16,0x01,0x01,0x00
+	.byte 0x00,0x53,0x64,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4f,0x90,0x00
+	.byte 0x0b,0x00,0x00,0x53,0x48,0x16,0x01,0x01
+	.byte 0x00,0x00,0x53,0x85,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x50,0xe6
+	.byte 0x00,0x0b,0x00,0x00,0x53,0x69,0x16,0x01
+	.byte 0x01,0x00,0x00,0x53,0xa6,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x50
+	.byte 0x9f,0x00,0x0b,0x00,0x00,0x53,0x8a,0x16
+	.byte 0x01,0x01,0x00,0x00,0x53,0xc7,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x4f,0x90,0x00,0x0b,0x00,0x00,0x53,0xab
+	.byte 0x16,0x01,0x01,0x00,0x00,0x53,0xe8,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x50,0xe6,0x00,0x0b,0x00,0x00,0x53
+	.byte 0xcc,0x16,0x01,0x01,0x00,0x00,0x54,0x13
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x3b,0x78,0x00,0x0b
+	.byte 0x00,0x00,0x53,0xed,0x16,0x01,0x01,0x00
+	.byte 0x00,0x54,0x39,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x4f,0x90,0x00,0x0b,0x00,0x00
+	.byte 0x54,0x18,0x16,0x01,0x01,0x00,0x00,0x54
+	.byte 0x5f,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x50,0xe6,0x00,0x0b,0x00,0x00,0x54,0x3e
+	.byte 0x16,0x01,0x01,0x00,0x00,0x54,0x80,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x4f,0x90,0x00,0x0b,0x00,0x00,0x54
+	.byte 0x64,0x16,0x01,0x01,0x00,0x00,0x54,0xa1
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x50,0xe6,0x00,0x0b,0x00,0x00
+	.byte 0x54,0x85,0x16,0x01,0x01,0x00,0x00,0x54
+	.byte 0xbd,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x00,0x0b,0x00,0x00,0x54,0xa6,0x16,0x01
+	.byte 0x01,0x00,0x00,0x54,0xd4,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x1b,0x00
+	.byte 0x0b,0x00,0x00,0x54,0xc2,0x16,0x01,0x01
+	.byte 0x00,0x00,0x54,0xeb,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x3b,0x47,0x00,0x0b
+	.byte 0x00,0x00,0x54,0xd9,0x16,0x01,0x01,0x00
+	.byte 0x00,0x55,0x02,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00
+	.byte 0x00,0x54,0xf0,0x15,0x00,0x00,0x3b,0x5e
+	.byte 0x0b,0x00,0x00,0x55,0x07,0x16,0x01,0x01
+	.byte 0x00,0x00,0x55,0x2d,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x55,0x0c
+	.byte 0x00,0x0b,0x00,0x00,0x55,0x11,0x16,0x01
+	.byte 0x01,0x00,0x00,0x55,0x3f,0x17,0x00,0x00
+	.byte 0x47,0x10,0x00,0x0b,0x00,0x00,0x55,0x32
+	.byte 0x15,0x00,0x00,0x3b,0x5e,0x0b,0x00,0x00
+	.byte 0x55,0x44,0x16,0x01,0x01,0x00,0x00,0x55
+	.byte 0x6a,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x55,0x49,0x00,0x0b,0x00
+	.byte 0x00,0x55,0x4e,0x18,0x01,0x00,0x00,0x0a
+	.byte 0xfa,0x01,0x00,0x00,0x55,0x85,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x00,0x0b,0x00,0x00,0x55,0x6f,0x18,0x01
+	.byte 0x00,0x00,0x0a,0xfa,0x01,0x00,0x00,0x55
+	.byte 0xa0,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00,0x55
+	.byte 0x8a,0x18,0x01,0x00,0x00,0x0a,0xfa,0x01
+	.byte 0x00,0x00,0x55,0xbb,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x1b,0x00,0x0b
+	.byte 0x00,0x00,0x55,0xa5,0x15,0x00,0x00,0x3b
+	.byte 0x47,0x0b,0x00,0x00,0x55,0xc0,0x16,0x01
+	.byte 0x01,0x00,0x00,0x55,0xe1,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x55,0xc5,0x00,0x0b,0x00,0x00
+	.byte 0x55,0xca,0x15,0x00,0x00,0x3b,0x47,0x0b
+	.byte 0x00,0x00,0x55,0xe6,0x16,0x01,0x01,0x00
+	.byte 0x00,0x56,0x11,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x55,0xeb,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00
+	.byte 0x55,0xf0,0x16,0x01,0x01,0x00,0x00,0x56
+	.byte 0x2d,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x5d
+	.byte 0x00,0x0b,0x00,0x00,0x56,0x16,0x16,0x01
+	.byte 0x01,0x00,0x00,0x56,0x44,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x56,0x32,0x16,0x01,0x01
+	.byte 0x00,0x00,0x56,0x5b,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x1b,0x00,0x0b
+	.byte 0x00,0x00,0x56,0x49,0x16,0x01,0x01,0x00
+	.byte 0x00,0x56,0x6d,0x17,0x00,0x00,0x47,0x10
+	.byte 0x00,0x0b,0x00,0x00,0x56,0x60,0x15,0x00
+	.byte 0x00,0x3b,0x47,0x0b,0x00,0x00,0x56,0x72
+	.byte 0x16,0x01,0x01,0x00,0x00,0x56,0x8e,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x56
+	.byte 0x77,0x00,0x0b,0x00,0x00,0x56,0x7c,0x16
+	.byte 0x01,0x01,0x00,0x00,0x56,0xa5,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x1b
+	.byte 0x00,0x0b,0x00,0x00,0x56,0x93,0x16,0x01
+	.byte 0x01,0x00,0x00,0x56,0xbc,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x00
+	.byte 0x0b,0x00,0x00,0x56,0xaa,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0x56,0xc1,0x16
+	.byte 0x01,0x01,0x00,0x00,0x56,0xfb,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x56
+	.byte 0xc6,0x17,0x00,0x00,0x0a,0xfa,0x00,0x0b
+	.byte 0x00,0x00,0x56,0xcb,0x15,0x00,0x00,0x3b
+	.byte 0x47,0x0b,0x00,0x00,0x57,0x00,0x16,0x01
+	.byte 0x01,0x00,0x00,0x57,0x4e,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x57,0x05,0x17,0x00,0x00,0x0a
+	.byte 0xfa,0x00,0x0b,0x00,0x00,0x57,0x0a,0x16
+	.byte 0x01,0x01,0x00,0x00,0x57,0x6f,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x0b,0x00,0x00,0x57,0x53
+	.byte 0x16,0x01,0x01,0x00,0x00,0x57,0x9f,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x0b,0x00,0x00,0x57,0x74
+	.byte 0x15,0x00,0x00,0x3b,0x47,0x0b,0x00,0x00
+	.byte 0x57,0xa4,0x16,0x01,0x01,0x00,0x00,0x57
+	.byte 0xca,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x57,0xa9,0x00,0x0b,0x00
+	.byte 0x00,0x57,0xae,0x16,0x01,0x01,0x00,0x00
+	.byte 0x57,0xe1,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x57,0xcf,0x15,0x00,0x00,0x3b,0x47,0x0b
+	.byte 0x00,0x00,0x57,0xe6,0x16,0x01,0x01,0x00
+	.byte 0x00,0x58,0x02,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x57,0xeb,0x00,0x0b,0x00
+	.byte 0x00,0x57,0xf0,0x16,0x01,0x01,0x00,0x00
+	.byte 0x58,0x1e,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x00,0x0b,0x00,0x00,0x58,0x07,0x16
+	.byte 0x01,0x01,0x00,0x00,0x58,0x3f,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x0b,0x00,0x00,0x58,0x23
+	.byte 0x15,0x00,0x00,0x3b,0x47,0x0b,0x00,0x00
+	.byte 0x58,0x44,0x16,0x01,0x01,0x00,0x00,0x58
+	.byte 0x60,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x58,0x49,0x00,0x0b,0x00,0x00,0x58
+	.byte 0x4e,0x15,0x00,0x00,0x3b,0x5e,0x0b,0x00
+	.byte 0x00,0x58,0x65,0x16,0x01,0x01,0x00,0x00
+	.byte 0x58,0x8b,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x58,0x6a,0x00,0x0b
+	.byte 0x00,0x00,0x58,0x6f,0x16,0x01,0x01,0x00
+	.byte 0x00,0x58,0xbb,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x49,0xa0,0x17,0x00,0x00
+	.byte 0x49,0xa0,0x17,0x00,0x00,0x49,0xa0,0x17
+	.byte 0x00,0x00,0x49,0xa0,0x17,0x00,0x00,0x49
+	.byte 0xa0,0x17,0x00,0x00,0x49,0xa0,0x00,0x0b
+	.byte 0x00,0x00,0x58,0x90,0x16,0x01,0x01,0x00
+	.byte 0x00,0x58,0xd2,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x00,0x0b,0x00
+	.byte 0x00,0x58,0xc0,0x15,0x00,0x00,0x3b,0x47
+	.byte 0x0b,0x00,0x00,0x58,0xd7,0x16,0x01,0x01
+	.byte 0x00,0x00,0x58,0xfd,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x58,0xdc
+	.byte 0x00,0x0b,0x00,0x00,0x58,0xe1,0x16,0x01
+	.byte 0x01,0x00,0x00,0x59,0x19,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00
+	.byte 0x59,0x02,0x16,0x01,0x01,0x00,0x00,0x59
+	.byte 0x35,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x00,0x0b,0x00,0x00,0x59,0x1e,0x16,0x01
+	.byte 0x01,0x00,0x00,0x59,0x51,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x00,0x0b,0x00,0x00
+	.byte 0x59,0x3a,0x15,0x00,0x00,0x3b,0x47,0x0b
+	.byte 0x00,0x00,0x59,0x56,0x16,0x01,0x01,0x00
+	.byte 0x00,0x59,0x77,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x59,0x5b,0x00,0x0b,0x00,0x00,0x59,0x60
+	.byte 0x16,0x01,0x01,0x00,0x00,0x59,0x8e,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x0b,0x00,0x00,0x59,0x7c,0x16
+	.byte 0x01,0x01,0x00,0x00,0x59,0xaa,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00
+	.byte 0x00,0x59,0x93,0x16,0x01,0x01,0x00,0x00
+	.byte 0x59,0xc6,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x0b,0x00,0x00,0x59,0xaf,0x15
+	.byte 0x00,0x00,0x0a,0xfa,0x0b,0x00,0x00,0x59
+	.byte 0xcb,0x16,0x01,0x01,0x00,0x00,0x59,0xe7
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x59,0xd0,0x00,0x0b,0x00,0x00,0x59,0xd5
+	.byte 0x16,0x01,0x01,0x00,0x00,0x59,0xf9,0x17
+	.byte 0x00,0x00,0x47,0x10,0x00,0x0b,0x00,0x00
+	.byte 0x59,0xec,0x16,0x01,0x01,0x00,0x00,0x5a
+	.byte 0x0b,0x17,0x00,0x00,0x47,0x10,0x00,0x0b
+	.byte 0x00,0x00,0x59,0xfe,0x16,0x01,0x01,0x00
+	.byte 0x00,0x5a,0x1d,0x17,0x00,0x00,0x47,0x10
+	.byte 0x00,0x0b,0x00,0x00,0x5a,0x10,0x16,0x01
+	.byte 0x01,0x00,0x00,0x5a,0x2f,0x17,0x00,0x00
+	.byte 0x47,0x10,0x00,0x0b,0x00,0x00,0x5a,0x22
+	.byte 0x16,0x01,0x01,0x00,0x00,0x5a,0x46,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x0b,0x00,0x00,0x5a,0x34,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5a,0x5d,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x1b
+	.byte 0x00,0x0b,0x00,0x00,0x5a,0x4b,0x16,0x01
+	.byte 0x01,0x00,0x00,0x5a,0x6f,0x17,0x00,0x00
+	.byte 0x47,0x10,0x00,0x0b,0x00,0x00,0x5a,0x62
+	.byte 0x16,0x01,0x01,0x00,0x00,0x5a,0x86,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x0b,0x00,0x00,0x5a,0x74,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5a,0xac,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x5a,0x8b,0x16,0x01,0x01
+	.byte 0x00,0x00,0x5a,0xc3,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b
+	.byte 0x00,0x00,0x5a,0xb1,0x16,0x01,0x01,0x00
+	.byte 0x00,0x5a,0xf8,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x3b,0x78,0x00,0x0b,0x00,0x00,0x5a
+	.byte 0xc8,0x16,0x01,0x01,0x00,0x00,0x5b,0x1e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x0b,0x00,0x00,0x5a,0xfd,0x18
+	.byte 0x01,0x00,0x00,0x0b,0x7e,0x01,0x00,0x00
+	.byte 0x5b,0x39,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x5b,0x23,0x16,0x01,0x01,0x00,0x00,0x5b
+	.byte 0x5f,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x0b,0x00,0x00,0x5b,0x3e
+	.byte 0x16,0x01,0x01,0x00,0x00,0x5b,0x80,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x00,0x0b,0x00,0x00,0x5b
+	.byte 0x64,0x16,0x01,0x01,0x00,0x00,0x5b,0xa6
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x00,0x0b,0x00,0x00,0x5b,0x85,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5b,0xc2,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x50,0x62,0x00,0x0b,0x00
+	.byte 0x00,0x5b,0xab,0x16,0x01,0x01,0x00,0x00
+	.byte 0x5b,0xd9,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x5b,0xc7,0x16,0x01,0x01,0x00,0x00,0x5b
+	.byte 0xfa,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x1b,0x00,0x0b,0x00
+	.byte 0x00,0x5b,0xde,0x16,0x01,0x01,0x00,0x00
+	.byte 0x5c,0x11,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00
+	.byte 0x5b,0xff,0x16,0x01,0x01,0x00,0x00,0x5c
+	.byte 0x32,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00
+	.byte 0x00,0x5c,0x16,0x16,0x01,0x01,0x00,0x00
+	.byte 0x5c,0x4e,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x0b,0x00,0x00,0x5c,0x37,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5c,0x74,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x5c,0x53,0x15,0x00,0x00
+	.byte 0x3b,0x5e,0x0b,0x00,0x00,0x5c,0x79,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5c,0xa4,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x5c,0x7e,0x00
+	.byte 0x0b,0x00,0x00,0x5c,0x83,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0x5c,0xa9,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5c,0xcf,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x5c,0xae,0x00,0x0b,0x00,0x00,0x5c,0xb3
+	.byte 0x15,0x00,0x00,0x3b,0x47,0x0b,0x00,0x00
+	.byte 0x5c,0xd4,0x16,0x01,0x01,0x00,0x00,0x5c
+	.byte 0xfa,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x5c,0xd9,0x00,0x0b,0x00
+	.byte 0x00,0x5c,0xde,0x16,0x01,0x01,0x00,0x00
+	.byte 0x5d,0x34,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4b,0x57,0x00
+	.byte 0x0b,0x00,0x00,0x5c,0xff,0x16,0x01,0x01
+	.byte 0x00,0x00,0x5d,0x73,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x4b,0x57,0x00,0x0b
+	.byte 0x00,0x00,0x5d,0x39,0x16,0x01,0x01,0x00
+	.byte 0x00,0x5d,0xa8,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x4b,0x57,0x00,0x0b,0x00,0x00,0x5d
+	.byte 0x78,0x16,0x01,0x01,0x00,0x00,0x5d,0xe7
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x4b,0x57,0x00,0x0b,0x00,0x00,0x5d,0xad
+	.byte 0x16,0x01,0x01,0x00,0x00,0x5e,0x2b,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x4b,0x57,0x00,0x0b
+	.byte 0x00,0x00,0x5d,0xec,0x16,0x01,0x01,0x00
+	.byte 0x00,0x5e,0x74,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4b,0x57,0x00
+	.byte 0x0b,0x00,0x00,0x5e,0x30,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0x5e,0x79,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5e,0x9f,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x5e,0x7e,0x00,0x0b,0x00,0x00,0x5e,0x83
+	.byte 0x16,0x01,0x01,0x00,0x00,0x5e,0xc0,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x00,0x0b,0x00,0x00,0x5e
+	.byte 0xa4,0x16,0x01,0x01,0x00,0x00,0x5e,0xdc
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x0b,0x00,0x00,0x5e,0xc5,0x16,0x01,0x01
+	.byte 0x00,0x00,0x5e,0xfd,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x00,0x0b,0x00,0x00,0x5e,0xe1,0x16,0x01
+	.byte 0x01,0x00,0x00,0x5f,0x23,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x17,0x00,0x00,0x3b,0x47,0x00,0x0b
+	.byte 0x00,0x00,0x5f,0x02,0x15,0x00,0x00,0x3b
+	.byte 0x47,0x0b,0x00,0x00,0x5f,0x28,0x16,0x01
+	.byte 0x01,0x00,0x00,0x5f,0x44,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x5f,0x2d,0x00
+	.byte 0x0b,0x00,0x00,0x5f,0x32,0x15,0x00,0x00
+	.byte 0x3b,0x5e,0x0b,0x00,0x00,0x5f,0x49,0x16
+	.byte 0x01,0x01,0x00,0x00,0x5f,0x74,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x5f,0x4e,0x00
+	.byte 0x0b
+	.byte 0x00,0x00,0x5f,0x53,0x16,0x01,0x01,0x00
+	.byte 0x00,0x5f,0x9a,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00
+	.byte 0x5f,0x79,0x16,0x01,0x01,0x00,0x00,0x5f
+	.byte 0xc0,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x0b,0x00,0x00,0x5f,0x9f
+	.byte 0x16,0x01,0x01,0x00,0x00,0x5f,0xd2,0x17
+	.byte 0x00,0x00,0x47,0x10,0x00,0x0b,0x00,0x00
+	.byte 0x5f,0xc5,0x14
+	.ascii "gl_api_table\0"
+	.byte 0x02,0xdc,0x03,0x00,0x00,0x6e,0x7b,0x0d
+	.ascii "Accum\0"
+	.byte 0x00,0x00,0x47,0x2c,0x02,0x23,0x00,0x0d
+	.ascii "AlphaFunc\0"
+	.byte 0x00,0x00,0x47,0x48,0x02,0x23,0x04,0x0d
+	.ascii "AreTexturesResident\0"
+	.byte 0x00,0x00,0x47,0x77,0x02,0x23,0x08,0x0d
+	.ascii "ArrayElement\0"
+	.byte 0x00,0x00,0x47,0x8e,0x02,0x23,0x0c,0x0d
+	.ascii "Begin\0"
+	.byte 0x00,0x00,0x47,0xa5,0x02,0x23,0x10,0x0d
+	.ascii "BindTexture\0"
+	.byte 0x00,0x00,0x47,0xc1,0x02,0x23,0x14,0x0d
+	.ascii "Bitmap\0"
+	.byte 0x00,0x00,0x48,0x9d,0x02,0x23,0x18,0x0d
+	.ascii "BlendColor\0"
+	.byte 0x00,0x00,0x48,0xc3,0x02,0x23,0x1c,0x0d
+	.ascii "BlendEquation\0"
+	.byte 0x00,0x00,0x48,0xda,0x02,0x23,0x20,0x0d
+	.ascii "BlendFunc\0"
+	.byte 0x00,0x00,0x48,0xf6,0x02,0x23,0x24,0x0d
+	.ascii "CallList\0"
+	.byte 0x00,0x00,0x49,0x0d,0x02,0x23,0x28,0x0d
+	.ascii "CallLists\0"
+	.byte 0x00,0x00,0x49,0x38,0x02,0x23,0x2c,0x0d
+	.ascii "Clear\0"
+	.byte 0x00,0x00,0x49,0x4f,0x02,0x23,0x30,0x0d
+	.ascii "ClearAccum\0"
+	.byte 0x00,0x00,0x49,0x75,0x02,0x23,0x34,0x0d
+	.ascii "ClearColor\0"
+	.byte 0x00,0x00,0x49,0x9b,0x02,0x23,0x38,0x0d
+	.ascii "ClearDepth\0"
+	.byte 0x00,0x00,0x49,0xbc,0x02,0x23,0x3c,0x0d
+	.ascii "ClearIndex\0"
+	.byte 0x00,0x00,0x49,0xd3,0x02,0x23,0x40,0x0d
+	.ascii "ClearStencil\0"
+	.byte 0x00,0x00,0x49,0xea,0x02,0x23,0x44,0x0d
+	.ascii "ClipPlane\0"
+	.byte 0x00,0x00,0x4a,0x10,0x02,0x23,0x48,0x0d
+	.ascii "Color3f\0"
+	.byte 0x00,0x00,0x4a,0x31,0x02,0x23,0x4c,0x0d
+	.ascii "Color3fv\0"
+	.byte 0x00,0x00,0x4a,0x52,0x02,0x23,0x50,0x0d
+	.ascii "Color4f\0"
+	.byte 0x00,0x00,0x4a,0x78,0x02,0x23,0x54,0x0d
+	.ascii "Color4fv\0"
+	.byte 0x00,0x00,0x4a,0x99,0x02,0x23,0x58,0x0d
+	.ascii "Color4ub\0"
+	.byte 0x00,0x00,0x4a,0xbf,0x02,0x23,0x5c,0x0d
+	.ascii "Color4ubv\0"
+	.byte 0x00,0x00,0x4a,0xe0,0x02,0x23,0x60,0x0d
+	.ascii "ColorMask\0"
+	.byte 0x00,0x00,0x4b,0x06,0x02,0x23,0x64,0x0d
+	.ascii "ColorMaterial\0"
+	.byte 0x00,0x00,0x4b,0x22,0x02,0x23,0x68,0x0d
+	.ascii "ColorPointer\0"
+	.byte 0x00,0x00,0x4b,0x52,0x02,0x23,0x6c,0x0d
+	.ascii "ColorTable\0"
+	.byte 0x00,0x00,0x4b,0x78,0x02,0x23,0x70,0x0d
+	.ascii "ColorSubTable\0"
+	.byte 0x00,0x00,0x4b,0x99,0x02,0x23,0x74,0x0d
+	.ascii "CopyPixels\0"
+	.byte 0x00,0x00,0x4b,0xc4,0x02,0x23,0x78,0x0d
+	.ascii "CopyTexImage1D\0"
+	.byte 0x00,0x00,0x4b,0xf9,0x02,0x23,0x7c,0x0d
+	.ascii "CopyTexImage2D\0"
+	.byte 0x00,0x00,0x4c,0x33,0x03,0x23,0x80,0x01
+	.byte 0x0d
+	.ascii "CopyTexSubImage1D\0"
+	.byte 0x00,0x00,0x4c,0x63,0x03,0x23,0x84,0x01
+	.byte 0x0d
+	.ascii "CopyTexSubImage2D\0"
+	.byte 0x00,0x00,0x4c,0x9d,0x03,0x23,0x88,0x01
+	.byte 0x0d
+	.ascii "CopyTexSubImage3DEXT\0"
+	.byte 0x00,0x00,0x4c,0xdc,0x03,0x23,0x8c,0x01
+	.byte 0x0d
+	.ascii "CullFace\0"
+	.byte 0x00,0x00,0x4c,0xf3,0x03,0x23,0x90,0x01
+	.byte 0x0d
+	.ascii "DeleteLists\0"
+	.byte 0x00,0x00,0x4d,0x0f,0x03,0x23,0x94,0x01
+	.byte 0x0d
+	.ascii "DeleteTextures\0"
+	.byte 0x00,0x00,0x4d,0x35,0x03,0x23,0x98,0x01
+	.byte 0x0d
+	.ascii "DepthFunc\0"
+	.byte 0x00,0x00,0x4d,0x4c,0x03,0x23,0x9c,0x01
+	.byte 0x0d
+	.ascii "DepthMask\0"
+	.byte 0x00,0x00,0x4d,0x63,0x03,0x23,0xa0,0x01
+	.byte 0x0d
+	.ascii "DepthRange\0"
+	.byte 0x00,0x00,0x4d,0x7f,0x03,0x23,0xa4,0x01
+	.byte 0x0d
+	.ascii "Disable\0"
+	.byte 0x00,0x00,0x4d,0x96,0x03,0x23,0xa8,0x01
+	.byte 0x0d
+	.ascii "DisableClientState\0"
+	.byte 0x00,0x00,0x4d,0xad,0x03,0x23,0xac,0x01
+	.byte 0x0d
+	.ascii "DrawArrays\0"
+	.byte 0x00,0x00,0x4d,0xce,0x03,0x23,0xb0,0x01
+	.byte 0x0d
+	.ascii "DrawBuffer\0"
+	.byte 0x00,0x00,0x4d,0xe5,0x03,0x23,0xb4,0x01
+	.byte 0x0d
+	.ascii "DrawElements\0"
+	.byte 0x00,0x00,0x4e,0x15,0x03,0x23,0xb8,0x01
+	.byte 0x0d
+	.ascii "DrawPixels\0"
+	.byte 0x00,0x00,0x4e,0x4a,0x03,0x23,0xbc,0x01
+	.byte 0x0d
+	.ascii "EdgeFlag\0"
+	.byte 0x00,0x00,0x4e,0x61,0x03,0x23,0xc0,0x01
+	.byte 0x0d
+	.ascii "EdgeFlagPointer\0"
+	.byte 0x00,0x00,0x4e,0x87,0x03,0x23,0xc4,0x01
+	.byte 0x0d
+	.ascii "Enable\0"
+	.byte 0x00,0x00,0x4e,0x9e,0x03,0x23,0xc8,0x01
+	.byte 0x0d
+	.ascii "EnableClientState\0"
+	.byte 0x00,0x00,0x4e,0xb5,0x03,0x23,0xcc,0x01
+	.byte 0x0d
+	.ascii "End\0"
+	.byte 0x00,0x00,0x4e,0xc7,0x03,0x23,0xd0,0x01
+	.byte 0x0d
+	.ascii "EndList\0"
+	.byte 0x00,0x00,0x4e,0xd9,0x03,0x23,0xd4,0x01
+	.byte 0x0d
+	.ascii "EvalCoord1f\0"
+	.byte 0x00,0x00,0x4e,0xf0,0x03,0x23,0xd8,0x01
+	.byte 0x0d
+	.ascii "EvalCoord2f\0"
+	.byte 0x00,0x00,0x4f,0x0c,0x03,0x23,0xdc,0x01
+	.byte 0x0d
+	.ascii "EvalMesh1\0"
+	.byte 0x00,0x00,0x4f,0x2d,0x03,0x23,0xe0,0x01
+	.byte 0x0d
+	.ascii "EvalMesh2\0"
+	.byte 0x00,0x00,0x4f,0x58,0x03,0x23,0xe4,0x01
+	.byte 0x0d
+	.ascii "EvalPoint1\0"
+	.byte 0x00,0x00,0x4f,0x6f,0x03,0x23,0xe8,0x01
+	.byte 0x0d
+	.ascii "EvalPoint2\0"
+	.byte 0x00,0x00,0x4f,0x8b,0x03,0x23,0xec,0x01
+	.byte 0x0d
+	.ascii "FeedbackBuffer\0"
+	.byte 0x00,0x00,0x4f,0xb1,0x03,0x23,0xf0,0x01
+	.byte 0x0d
+	.ascii "Finish\0"
+	.byte 0x00,0x00,0x4f,0xc3,0x03,0x23,0xf4,0x01
+	.byte 0x0d
+	.ascii "Flush\0"
+	.byte 0x00,0x00,0x4f,0xd5,0x03,0x23,0xf8,0x01
+	.byte 0x0d
+	.ascii "Fogfv\0"
+	.byte 0x00,0x00,0x4f,0xfb,0x03,0x23,0xfc,0x01
+	.byte 0x0d
+	.ascii "FrontFace\0"
+	.byte 0x00,0x00,0x50,0x12,0x03,0x23,0x80,0x02
+	.byte 0x0d
+	.ascii "Frustum\0"
+	.byte 0x00,0x00,0x50,0x42,0x03,0x23,0x84,0x02
+	.byte 0x0d
+	.ascii "GenLists\0"
+	.byte 0x00,0x00,0x50,0x5d,0x03,0x23,0x88,0x02
+	.byte 0x0d
+	.ascii "GenTextures\0"
+	.byte 0x00,0x00,0x50,0x7e,0x03,0x23,0x8c,0x02
+	.byte 0x0d
+	.ascii "GetBooleanv\0"
+	.byte 0x00,0x00,0x50,0x9a,0x03,0x23,0x90,0x02
+	.byte 0x0d
+	.ascii "GetClipPlane\0"
+	.byte 0x00,0x00,0x50,0xbb,0x03,0x23,0x94,0x02
+	.byte 0x0d
+	.ascii "GetColorTable\0"
+	.byte 0x00,0x00,0x50,0xe1,0x03,0x23,0x98,0x02
+	.byte 0x0d
+	.ascii "GetColorTableParameteriv\0"
+	.byte 0x00,0x00,0x51,0x07,0x03,0x23,0x9c,0x02
+	.byte 0x0d
+	.ascii "GetDoublev\0"
+	.byte 0x00,0x00,0x51,0x23,0x03,0x23,0xa0,0x02
+	.byte 0x0d
+	.ascii "GetError\0"
+	.byte 0x00,0x00,0x51,0x39,0x03,0x23,0xa4,0x02
+	.byte 0x0d
+	.ascii "GetFloatv\0"
+	.byte 0x00,0x00,0x51,0x55,0x03,0x23,0xa8,0x02
+	.byte 0x0d
+	.ascii "GetIntegerv\0"
+	.byte 0x00,0x00,0x51,0x71,0x03,0x23,0xac,0x02
+	.byte 0x0d
+	.ascii "GetString\0"
+	.byte 0x00,0x00,0x51,0x96,0x03,0x23,0xb0,0x02
+	.byte 0x0d
+	.ascii "GetLightfv\0"
+	.byte 0x00,0x00,0x51,0xb7,0x03,0x23,0xb4,0x02
+	.byte 0x0d
+	.ascii "GetLightiv\0"
+	.byte 0x00,0x00,0x51,0xd8,0x03,0x23,0xb8,0x02
+	.byte 0x0d
+	.ascii "GetMapdv\0"
+	.byte 0x00,0x00,0x51,0xf9,0x03,0x23,0xbc,0x02
+	.byte 0x0d
+	.ascii "GetMapfv\0"
+	.byte 0x00,0x00,0x52,0x1a,0x03,0x23,0xc0,0x02
+	.byte 0x0d
+	.ascii "GetMapiv\0"
+	.byte 0x00,0x00,0x52,0x3b,0x03,0x23,0xc4,0x02
+	.byte 0x0d
+	.ascii "GetMaterialfv\0"
+	.byte 0x00,0x00,0x52,0x5c,0x03,0x23,0xc8,0x02
+	.byte 0x0d
+	.ascii "GetMaterialiv\0"
+	.byte 0x00,0x00,0x52,0x7d,0x03,0x23,0xcc,0x02
+	.byte 0x0d
+	.ascii "GetPixelMapfv\0"
+	.byte 0x00,0x00,0x52,0x99,0x03,0x23,0xd0,0x02
+	.byte 0x0d
+	.ascii "GetPixelMapuiv\0"
+	.byte 0x00,0x00,0x52,0xb5,0x03,0x23,0xd4,0x02
+	.byte 0x0d
+	.ascii "GetPixelMapusv\0"
+	.byte 0x00,0x00,0x52,0xd6,0x03,0x23,0xd8,0x02
+	.byte 0x0d
+	.ascii "GetPointerv\0"
+	.byte 0x00,0x00,0x52,0xf7,0x03,0x23,0xdc,0x02
+	.byte 0x0d
+	.ascii "GetPolygonStipple\0"
+	.byte 0x00,0x00,0x53,0x0e,0x03,0x23,0xe0,0x02
+	.byte 0x0d
+	.ascii "PrioritizeTextures\0"
+	.byte 0x00,0x00,0x53,0x43,0x03,0x23,0xe4,0x02
+	.byte 0x0d
+	.ascii "GetTexEnvfv\0"
+	.byte 0x00,0x00,0x53,0x64,0x03,0x23,0xe8,0x02
+	.byte 0x0d
+	.ascii "GetTexEnviv\0"
+	.byte 0x00,0x00,0x53,0x85,0x03,0x23,0xec,0x02
+	.byte 0x0d
+	.ascii "GetTexGendv\0"
+	.byte 0x00,0x00,0x53,0xa6,0x03,0x23,0xf0,0x02
+	.byte 0x0d
+	.ascii "GetTexGenfv\0"
+	.byte 0x00,0x00,0x53,0xc7,0x03,0x23,0xf4,0x02
+	.byte 0x0d
+	.ascii "GetTexGeniv\0"
+	.byte 0x00,0x00,0x53,0xe8,0x03,0x23,0xf8,0x02
+	.byte 0x0d
+	.ascii "GetTexImage\0"
+	.byte 0x00,0x00,0x54,0x13,0x03,0x23,0xfc,0x02
+	.byte 0x0d
+	.ascii "GetTexLevelParameterfv\0"
+	.byte 0x00,0x00,0x54,0x39,0x03,0x23,0x80,0x03
+	.byte 0x0d
+	.ascii "GetTexLevelParameteriv\0"
+	.byte 0x00,0x00,0x54,0x5f,0x03,0x23,0x84,0x03
+	.byte 0x0d
+	.ascii "GetTexParameterfv\0"
+	.byte 0x00,0x00,0x54,0x80,0x03,0x23,0x88,0x03
+	.byte 0x0d
+	.ascii "GetTexParameteriv\0"
+	.byte 0x00,0x00,0x54,0xa1,0x03,0x23,0x8c,0x03
+	.byte 0x0d
+	.ascii "Hint\0"
+	.byte 0x00,0x00,0x54,0xbd,0x03,0x23,0x90,0x03
+	.byte 0x0d
+	.ascii "IndexMask\0"
+	.byte 0x00,0x00,0x54,0xd4,0x03,0x23,0x94,0x03
+	.byte 0x0d
+	.ascii "Indexf\0"
+	.byte 0x00,0x00,0x54,0xeb,0x03,0x23,0x98,0x03
+	.byte 0x0d
+	.ascii "Indexi\0"
+	.byte 0x00,0x00,0x55,0x02,0x03,0x23,0x9c,0x03
+	.byte 0x0d
+	.ascii "IndexPointer\0"
+	.byte 0x00,0x00,0x55,0x2d,0x03,0x23,0xa0,0x03
+	.byte 0x0d
+	.ascii "InitNames\0"
+	.byte 0x00,0x00,0x55,0x3f,0x03,0x23,0xa4,0x03
+	.byte 0x0d
+	.ascii "InterleavedArrays\0"
+	.byte 0x00,0x00,0x55,0x6a,0x03,0x23,0xa8,0x03
+	.byte 0x0d
+	.ascii "IsEnabled\0"
+	.byte 0x00,0x00,0x55,0x85,0x03,0x23,0xac,0x03
+	.byte 0x0d
+	.ascii "IsList\0"
+	.byte 0x00,0x00,0x55,0xa0,0x03,0x23,0xb0,0x03
+	.byte 0x0d
+	.ascii "IsTexture\0"
+	.byte 0x00,0x00,0x55,0xbb,0x03,0x23,0xb4,0x03
+	.byte 0x0d
+	.ascii "LightModelfv\0"
+	.byte 0x00,0x00,0x55,0xe1,0x03,0x23,0xb8,0x03
+	.byte 0x0d
+	.ascii "Lightfv\0"
+	.byte 0x00,0x00,0x56,0x11,0x03,0x23,0xbc,0x03
+	.byte 0x0d
+	.ascii "LineStipple\0"
+	.byte 0x00,0x00,0x56,0x2d,0x03,0x23,0xc0,0x03
+	.byte 0x0d
+	.ascii "LineWidth\0"
+	.byte 0x00,0x00,0x56,0x44,0x03,0x23,0xc4,0x03
+	.byte 0x0d
+	.ascii "ListBase\0"
+	.byte 0x00,0x00,0x56,0x5b,0x03,0x23,0xc8,0x03
+	.byte 0x0d
+	.ascii "LoadIdentity\0"
+	.byte 0x00,0x00,0x56,0x6d,0x03,0x23,0xcc,0x03
+	.byte 0x0d
+	.ascii "LoadMatrixf\0"
+	.byte 0x00,0x00,0x56,0x8e,0x03,0x23,0xd0,0x03
+	.byte 0x0d
+	.ascii "LoadName\0"
+	.byte 0x00,0x00,0x56,0xa5,0x03,0x23,0xd4,0x03
+	.byte 0x0d
+	.ascii "LogicOp\0"
+	.byte 0x00,0x00,0x56,0xbc,0x03,0x23,0xd8,0x03
+	.byte 0x0d
+	.ascii "Map1f\0"
+	.byte 0x00,0x00,0x56,0xfb,0x03,0x23,0xdc,0x03
+	.byte 0x0d
+	.ascii "Map2f\0"
+	.byte 0x00,0x00,0x57,0x4e,0x03,0x23,0xe0,0x03
+	.byte 0x0d
+	.ascii "MapGrid1f\0"
+	.byte 0x00,0x00,0x57,0x6f,0x03,0x23,0xe4,0x03
+	.byte 0x0d
+	.ascii "MapGrid2f\0"
+	.byte 0x00,0x00,0x57,0x9f,0x03,0x23,0xe8,0x03
+	.byte 0x0d
+	.ascii "Materialfv\0"
+	.byte 0x00,0x00,0x57,0xca,0x03,0x23,0xec,0x03
+	.byte 0x0d
+	.ascii "MatrixMode\0"
+	.byte 0x00,0x00,0x57,0xe1,0x03,0x23,0xf0,0x03
+	.byte 0x0d
+	.ascii "MultMatrixf\0"
+	.byte 0x00,0x00,0x58,0x02,0x03,0x23,0xf4,0x03
+	.byte 0x0d
+	.ascii "NewList\0"
+	.byte 0x00,0x00,0x58,0x1e,0x03,0x23,0xf8,0x03
+	.byte 0x0d
+	.ascii "Normal3f\0"
+	.byte 0x00,0x00,0x58,0x3f,0x03,0x23,0xfc,0x03
+	.byte 0x0d
+	.ascii "Normal3fv\0"
+	.byte 0x00,0x00,0x58,0x60,0x03,0x23,0x80,0x04
+	.byte 0x0d
+	.ascii "NormalPointer\0"
+	.byte 0x00,0x00,0x58,0x8b,0x03,0x23,0x84,0x04
+	.byte 0x0d
+	.ascii "Ortho\0"
+	.byte 0x00,0x00,0x58,0xbb,0x03,0x23,0x88,0x04
+	.byte 0x0d
+	.ascii "PassThrough\0"
+	.byte 0x00,0x00,0x58,0xd2,0x03,0x23,0x8c,0x04
+	.byte 0x0d
+	.ascii "PixelMapfv\0"
+	.byte 0x00,0x00,0x58,0xfd,0x03,0x23,0x90,0x04
+	.byte 0x0d
+	.ascii "PixelStorei\0"
+	.byte 0x00,0x00,0x59,0x19,0x03,0x23,0x94,0x04
+	.byte 0x0d
+	.ascii "PixelTransferf\0"
+	.byte 0x00,0x00,0x59,0x35,0x03,0x23,0x98,0x04
+	.byte 0x0d
+	.ascii "PixelZoom\0"
+	.byte 0x00,0x00,0x59,0x51,0x03,0x23,0x9c,0x04
+	.byte 0x0d
+	.ascii "PointParameterfvEXT\0"
+	.byte 0x00,0x00,0x59,0x77,0x03,0x23,0xa0,0x04
+	.byte 0x0d
+	.ascii "PointSize\0"
+	.byte 0x00,0x00,0x59,0x8e,0x03,0x23,0xa4,0x04
+	.byte 0x0d
+	.ascii "PolygonMode\0"
+	.byte 0x00,0x00,0x59,0xaa,0x03,0x23,0xa8,0x04
+	.byte 0x0d
+	.ascii "PolygonOffset\0"
+	.byte 0x00,0x00,0x59,0xc6,0x03,0x23,0xac,0x04
+	.byte 0x0d
+	.ascii "PolygonStipple\0"
+	.byte 0x00,0x00,0x59,0xe7,0x03,0x23,0xb0,0x04
+	.byte 0x0d
+	.ascii "PopAttrib\0"
+	.byte 0x00,0x00,0x59,0xf9,0x03,0x23,0xb4,0x04
+	.byte 0x0d
+	.ascii "PopClientAttrib\0"
+	.byte 0x00,0x00,0x5a,0x0b,0x03,0x23,0xb8,0x04
+	.byte 0x0d
+	.ascii "PopMatrix\0"
+	.byte 0x00,0x00,0x5a,0x1d,0x03,0x23,0xbc,0x04
+	.byte 0x0d
+	.ascii "PopName\0"
+	.byte 0x00,0x00,0x5a,0x2f,0x03,0x23,0xc0,0x04
+	.byte 0x0d
+	.ascii "PushAttrib\0"
+	.byte 0x00,0x00,0x5a,0x46,0x03,0x23,0xc4,0x04
+	.byte 0x0d
+	.ascii "PushClientAttrib\0"
+	.byte 0x00,0x00,0x5a,0x5d,0x03,0x23,0xc8,0x04
+	.byte 0x0d
+	.ascii "PushMatrix\0"
+	.byte 0x00,0x00,0x5a,0x6f,0x03,0x23,0xcc,0x04
+	.byte 0x0d
+	.ascii "PushName\0"
+	.byte 0x00,0x00,0x5a,0x86,0x03,0x23,0xd0,0x04
+	.byte 0x0d
+	.ascii "RasterPos4f\0"
+	.byte 0x00,0x00,0x5a,0xac,0x03,0x23,0xd4,0x04
+	.byte 0x0d
+	.ascii "ReadBuffer\0"
+	.byte 0x00,0x00,0x5a,0xc3,0x03,0x23,0xd8,0x04
+	.byte 0x0d
+	.ascii "ReadPixels\0"
+	.byte 0x00,0x00,0x5a,0xf8,0x03,0x23,0xdc,0x04
+	.byte 0x0d
+	.ascii "Rectf\0"
+	.byte 0x00,0x00,0x5b,0x1e,0x03,0x23,0xe0,0x04
+	.byte 0x0d
+	.ascii "RenderMode\0"
+	.byte 0x00,0x00,0x5b,0x39,0x03,0x23,0xe4,0x04
+	.byte 0x0d
+	.ascii "Rotatef\0"
+	.byte 0x00,0x00,0x5b,0x5f,0x03,0x23,0xe8,0x04
+	.byte 0x0d
+	.ascii "Scalef\0"
+	.byte 0x00,0x00,0x5b,0x80,0x03,0x23,0xec,0x04
+	.byte 0x0d
+	.ascii "Scissor\0"
+	.byte 0x00,0x00,0x5b,0xa6,0x03,0x23,0xf0,0x04
+	.byte 0x0d
+	.ascii "SelectBuffer\0"
+	.byte 0x00,0x00,0x5b,0xc2,0x03,0x23,0xf4,0x04
+	.byte 0x0d
+	.ascii "ShadeModel\0"
+	.byte 0x00,0x00,0x5b,0xd9,0x03,0x23,0xf8,0x04
+	.byte 0x0d
+	.ascii "StencilFunc\0"
+	.byte 0x00,0x00,0x5b,0xfa,0x03,0x23,0xfc,0x04
+	.byte 0x0d
+	.ascii "StencilMask\0"
+	.byte 0x00,0x00,0x5c,0x11,0x03,0x23,0x80,0x05
+	.byte 0x0d
+	.ascii "StencilOp\0"
+	.byte 0x00,0x00,0x5c,0x32,0x03,0x23,0x84,0x05
+	.byte 0x0d
+	.ascii "TexCoord2f\0"
+	.byte 0x00,0x00,0x5c,0x4e,0x03,0x23,0x88,0x05
+	.byte 0x0d
+	.ascii "TexCoord4f\0"
+	.byte 0x00,0x00,0x5c,0x74,0x03,0x23,0x8c,0x05
+	.byte 0x0d
+	.ascii "TexCoordPointer\0"
+	.byte 0x00,0x00,0x5c,0xa4,0x03,0x23,0x90,0x05
+	.byte 0x0d
+	.ascii "TexEnvfv\0"
+	.byte 0x00,0x00,0x5c,0xcf,0x03,0x23,0x94,0x05
+	.byte 0x0d
+	.ascii "TexGenfv\0"
+	.byte 0x00,0x00,0x5c,0xfa,0x03,0x23,0x98,0x05
+	.byte 0x0d
+	.ascii "TexImage1D\0"
+	.byte 0x00,0x00,0x5d,0x34,0x03,0x23,0x9c,0x05
+	.byte 0x0d
+	.ascii "TexImage2D\0"
+	.byte 0x00,0x00,0x5d,0x73,0x03,0x23,0xa0,0x05
+	.byte 0x0d
+	.ascii "TexSubImage1D\0"
+	.byte 0x00,0x00,0x5d,0xa8,0x03,0x23,0xa4,0x05
+	.byte 0x0d
+	.ascii "TexSubImage2D\0"
+	.byte 0x00,0x00,0x5d,0xe7,0x03,0x23,0xa8,0x05
+	.byte 0x0d
+	.ascii "TexImage3DEXT\0"
+	.byte 0x00,0x00,0x5e,0x2b,0x03,0x23,0xac,0x05
+	.byte 0x0d
+	.ascii "TexSubImage3DEXT\0"
+	.byte 0x00,0x00,0x5e,0x74,0x03,0x23,0xb0,0x05
+	.byte 0x0d
+	.ascii "TexParameterfv\0"
+	.byte 0x00,0x00,0x5e,0x9f,0x03,0x23,0xb4,0x05
+	.byte 0x0d
+	.ascii "Translatef\0"
+	.byte 0x00,0x00,0x5e,0xc0,0x03,0x23,0xb8,0x05
+	.byte 0x0d
+	.ascii "Vertex2f\0"
+	.byte 0x00,0x00,0x5e,0xdc,0x03,0x23,0xbc,0x05
+	.byte 0x0d
+	.ascii "Vertex3f\0"
+	.byte 0x00,0x00,0x5e,0xfd,0x03,0x23,0xc0,0x05
+	.byte 0x0d
+	.ascii "Vertex4f\0"
+	.byte 0x00,0x00,0x5f,0x23,0x03,0x23,0xc4,0x05
+	.byte 0x0d
+	.ascii "Vertex3fv\0"
+	.byte 0x00,0x00,0x5f,0x44,0x03,0x23,0xc8,0x05
+	.byte 0x0d
+	.ascii "VertexPointer\0"
+	.byte 0x00,0x00,0x5f,0x74,0x03,0x23,0xcc,0x05
+	.byte 0x0d
+	.ascii "Viewport\0"
+	.byte 0x00,0x00,0x5f,0x9a,0x03,0x23,0xd0,0x05
+	.byte 0x0d
+	.ascii "WindowPos4fMESA\0"
+	.byte 0x00,0x00,0x5f,0xc0,0x03,0x23,0xd4,0x05
+	.byte 0x0d
+	.ascii "ResizeBuffersMESA\0"
+	.byte 0x00,0x00,0x5f,0xd2,0x03,0x23,0xd8,0x05
+	.byte 0x00,0x11
+	.ascii "gl_visual\0"
+	.byte 0x4c,0x03,0x00,0x00,0x70,0x23,0x0d
+	.ascii "RGBAflag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "DBflag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x01,0x0d
+	.ascii "RedScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x04,0x0d
+	.ascii "GreenScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x08,0x0d
+	.ascii "BlueScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x0c,0x0d
+	.ascii "AlphaScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x10,0x0d
+	.ascii "EightBitColor\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x14,0x0d
+	.ascii "InvRedScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x18,0x0d
+	.ascii "InvGreenScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x0d
+	.ascii "InvBlueScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x20,0x0d
+	.ascii "InvAlphaScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x24,0x0d
+	.ascii "RedBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x28,0x0d
+	.ascii "GreenBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x2c,0x0d
+	.ascii "BlueBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x30,0x0d
+	.ascii "AlphaBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x34,0x0d
+	.ascii "IndexBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x38,0x0d
+	.ascii "AccumBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x3c,0x0d
+	.ascii "DepthBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x40,0x0d
+	.ascii "StencilBits\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x44,0x0d
+	.ascii "FrontAlphaEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x48,0x0d
+	.ascii "BackAlphaEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x49,0x00
+	.byte 0x09,0x00,0x00,0x6e,0x7b
+	.ascii "GLvisual\0"
+	.byte 0x03,0x0b,0x00,0x00,0x70,0x23,0x09,0x00
+	.byte 0x00,0x0b,0x5d
+	.ascii "GLdepth\0"
+	.byte 0x03,0x0b,0x00,0x00,0x70,0x37,0x09,0x00
+	.byte 0x00,0x0a,0xfa
+	.ascii "GLstencil\0"
+	.byte 0x03,0x0b,0x00,0x00,0x70,0x4a,0x09,0x00
+	.byte 0x00,0x0b,0x46
+	.ascii "GLaccum\0"
+	.byte 0x03,0x0b,0x00,0x00,0x70,0x5f,0x11
+	.ascii "gl_frame_buffer\0"
+	.byte 0x34,0x03,0x00,0x00,0x71,0x49,0x0d
+	.ascii "Visual\0"
+	.byte 0x00,0x00,0x70,0x32,0x02,0x23,0x00,0x0d
+	.ascii "Width\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x04,0x0d
+	.ascii "Height\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x08,0x0d
+	.ascii "Depth\0"
+	.byte 0x00,0x00,0x70,0x45,0x02,0x23,0x0c,0x0d
+	.ascii "Stencil\0"
+	.byte 0x00,0x00,0x70,0x5a,0x02,0x23,0x10,0x0d
+	.ascii "Accum\0"
+	.byte 0x00,0x00,0x70,0x6d,0x02,0x23,0x14,0x0d
+	.ascii "FrontAlpha\0"
+	.byte 0x00,0x00,0x3c,0x49,0x02,0x23,0x18,0x0d
+	.ascii "BackAlpha\0"
+	.byte 0x00,0x00,0x3c,0x49,0x02,0x23,0x1c,0x0d
+	.ascii "Alpha\0"
+	.byte 0x00,0x00,0x3c,0x49,0x02,0x23,0x20,0x0d
+	.ascii "Xmin\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x24,0x0d
+	.ascii "Xmax\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x28,0x0d
+	.ascii "Ymin\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x2c,0x0d
+	.ascii "Ymax\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x30,0x00
+	.byte 0x09,0x00,0x00,0x70,0x72
+	.ascii "GLframebuffer\0"
+	.byte 0x03,0x0b,0x00,0x00,0x71,0x49,0x08
+	.ascii "char\0"
+	.byte 0x06,0x01,0x15,0x00,0x00,0x71,0x62,0x0b
+	.byte 0x00,0x00,0x71,0x6a,0x19,0x01,0x00,0x00
+	.byte 0x71,0x6f,0x01,0x0b,0x00,0x00,0x71,0x74
+	.byte 0x16,0x01,0x01,0x00,0x00,0x71,0x8d,0x17
+	.byte 0x00,0x00,0x47,0x10,0x00,0x0b,0x00,0x00
+	.byte 0x71,0x80,0x16,0x01,0x01,0x00,0x00,0x71
+	.byte 0xa4,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00,0x71
+	.byte 0x92,0x16,0x01,0x01,0x00,0x00,0x71,0xca
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0a,0xfa,0x17,0x00,0x00,0x0a,0xfa,0x17
+	.byte 0x00,0x00,0x0a,0xfa,0x17,0x00,0x00,0x0a
+	.byte 0xfa,0x00,0x0b,0x00,0x00,0x71,0xa9,0x16
+	.byte 0x01,0x01,0x00,0x00,0x71,0xf5,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0a,0xfa
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x0b,0x00,0x00
+	.byte 0x71,0xcf,0x16,0x01,0x01,0x00,0x00,0x72
+	.byte 0x0c,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00,0x71
+	.byte 0xfa,0x16,0x01,0x01,0x00,0x00,0x72,0x32
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0a,0xfa,0x17,0x00,0x00,0x0a,0xfa,0x17
+	.byte 0x00,0x00,0x0a,0xfa,0x17,0x00,0x00,0x0a
+	.byte 0xfa,0x00,0x0b,0x00,0x00,0x72,0x11,0x18
+	.byte 0x01,0x00,0x00,0x0a,0xfa,0x01,0x00,0x00
+	.byte 0x72,0x4d,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00,0x00
+	.byte 0x72,0x37,0x16,0x01,0x01,0x00,0x00,0x72
+	.byte 0x69,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x50,0x62,0x17,0x00,0x00,0x50,0x62
+	.byte 0x00,0x0b,0x00,0x00,0x72,0x52,0x15,0x00
+	.byte 0x00,0x0a,0xfa,0x0b,0x00,0x00,0x72,0x6e
+	.byte 0x15,0x00,0x00,0x0a,0xfa,0x0b,0x00,0x00
+	.byte 0x72,0x78,0x15,0x00,0x00,0x0a,0xfa,0x0b
+	.byte 0x00,0x00,0x72,0x82,0x15,0x00,0x00,0x0a
+	.byte 0xfa,0x0b,0x00,0x00,0x72,0x8c,0x15,0x00
+	.byte 0x00,0x0a,0xfa,0x0b,0x00,0x00,0x72,0x96
+	.byte 0x16,0x01,0x01,0x00,0x00,0x72,0xd5,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x72,0x73
+	.byte 0x17,0x00,0x00,0x72,0x7d,0x17,0x00,0x00
+	.byte 0x72,0x87,0x17,0x00,0x00,0x72,0x91,0x17
+	.byte 0x00,0x00,0x72,0x9b,0x00,0x0b,0x00,0x00
+	.byte 0x72,0xa0,0x15,0x00,0x00,0x0a,0xfa,0x0b
+	.byte 0x00,0x00,0x72,0xda,0x16,0x01,0x01,0x00
+	.byte 0x00,0x73,0x05,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x1b,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x72,0xdf,0x00,0x0b,0x00,0x00
+	.byte 0x72,0xe4,0x15,0x00,0x00,0x0b,0x7e,0x0b
+	.byte 0x00,0x00,0x73,0x0a,0x15,0x00,0x00,0x0b
+	.byte 0x7e,0x0b,0x00,0x00,0x73,0x14,0x15,0x00
+	.byte 0x00,0x0a,0xfa,0x0b,0x00,0x00,0x73,0x1e
+	.byte 0x15,0x00,0x00,0x0a,0xfa,0x0b,0x00,0x00
+	.byte 0x73,0x28,0x15,0x00,0x00,0x0a,0xfa,0x0b
+	.byte 0x00,0x00,0x73,0x32,0x15,0x00,0x00,0x0a
+	.byte 0xfa,0x0b,0x00,0x00,0x73,0x3c,0x15,0x00
+	.byte 0x00,0x0a,0xfa,0x0b,0x00,0x00,0x73,0x46
+	.byte 0x16,0x01,0x01,0x00,0x00,0x73,0x85,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x17,0x00,0x00,0x73,0x0f,0x17,0x00
+	.byte 0x00,0x73,0x19,0x17,0x00,0x00,0x73,0x23
+	.byte 0x17,0x00,0x00,0x73,0x2d,0x17,0x00,0x00
+	.byte 0x73,0x37,0x17,0x00,0x00,0x73,0x41,0x17
+	.byte 0x00,0x00,0x73,0x4b,0x00,0x0b,0x00,0x00
+	.byte 0x73,0x50,0x15,0x00,0x00,0x0b,0x7e,0x0b
+	.byte 0x00,0x00,0x73,0x8a,0x15,0x00,0x00,0x0b
+	.byte 0x7e,0x0b,0x00,0x00,0x73,0x94,0x15,0x00
+	.byte 0x00,0x0a,0xfa,0x0b,0x00,0x00,0x73,0x9e
+	.byte 0x16,0x01,0x01,0x00,0x00,0x73,0xc9,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x17,0x00,0x00,0x73,0x8f,0x17,0x00
+	.byte 0x00,0x73,0x99,0x17,0x00,0x00,0x73,0xa3
+	.byte 0x00,0x0b,0x00,0x00,0x73,0xa8,0x15,0x00
+	.byte 0x00,0x0b,0x1b,0x0b,0x00,0x00,0x73,0xce
+	.byte 0x15,0x00,0x00,0x0a,0xfa,0x0b,0x00,0x00
+	.byte 0x73,0xd8,0x16,0x01,0x01,0x00,0x00,0x74
+	.byte 0x08,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x73,0xd3,0x17,0x00,0x00,0x73,0xdd,0x00
+	.byte 0x0b,0x00,0x00,0x73,0xe2,0x15,0x00,0x00
+	.byte 0x0a,0xfa,0x0b,0x00,0x00,0x74,0x0d,0x16
+	.byte 0x01,0x01,0x00,0x00,0x74,0x38,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x1b
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x74,0x12,0x00
+	.byte 0x0b,0x00,0x00,0x74,0x17,0x15,0x00,0x00
+	.byte 0x0b,0x7e,0x0b,0x00,0x00,0x74,0x3d,0x15
+	.byte 0x00,0x00,0x0b,0x7e,0x0b,0x00,0x00,0x74
+	.byte 0x47,0x15,0x00,0x00,0x0b,0x1b,0x0b,0x00
+	.byte 0x00,0x74,0x51,0x15,0x00,0x00,0x0a,0xfa
+	.byte 0x0b,0x00,0x00,0x74,0x5b,0x16,0x01,0x01
+	.byte 0x00,0x00,0x74,0x8b,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x1b,0x17,0x00
+	.byte 0x00,0x74,0x42,0x17,0x00,0x00,0x74,0x4c
+	.byte 0x17,0x00,0x00,0x74,0x56,0x17,0x00,0x00
+	.byte 0x74,0x60,0x00,0x0b,0x00,0x00,0x74,0x65
+	.byte 0x15,0x00,0x00,0x0b,0x7e,0x0b,0x00,0x00
+	.byte 0x74,0x90,0x15,0x00,0x00,0x0b,0x7e,0x0b
+	.byte 0x00,0x00,0x74,0x9a,0x15,0x00,0x00,0x0a
+	.byte 0xfa,0x0b,0x00,0x00,0x74,0xa4,0x16,0x01
+	.byte 0x01,0x00,0x00,0x74,0xcf,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x1b,0x17
+	.byte 0x00,0x00,0x74,0x95,0x17,0x00,0x00,0x74
+	.byte 0x9f,0x17,0x00,0x00,0x74,0xa9,0x00,0x0b
+	.byte 0x00,0x00,0x74,0xae,0x16,0x01,0x01,0x00
+	.byte 0x00,0x74,0xf5,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x1b,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x50,0x62,0x00,0x0b,0x00,0x00
+	.byte 0x74,0xd4,0x16,0x01,0x01,0x00,0x00,0x75
+	.byte 0x2a,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x3f,0x41,0x17,0x00,0x00,0x3f,0x41,0x17
+	.byte 0x00,0x00,0x3f,0x41,0x17,0x00,0x00,0x3f
+	.byte 0x41,0x00,0x0b,0x00,0x00,0x74,0xfa,0x15
+	.byte 0x00,0x00,0x0b,0x7e,0x0b,0x00,0x00,0x75
+	.byte 0x2f,0x15,0x00,0x00,0x0b,0x7e,0x0b,0x00
+	.byte 0x00,0x75,0x39,0x15,0x00,0x00,0x0a,0xfa
+	.byte 0x0b,0x00,0x00,0x75,0x43,0x16,0x01,0x01
+	.byte 0x00,0x00,0x75,0x73,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x1b,0x17,0x00
+	.byte 0x00,0x75,0x34,0x17,0x00,0x00,0x75,0x3e
+	.byte 0x17,0x00,0x00,0x50,0x62,0x17,0x00,0x00
+	.byte 0x75,0x48,0x00,0x0b,0x00,0x00,0x75,0x4d
+	.byte 0x15,0x00,0x00,0x0b,0x7e,0x0b,0x00,0x00
+	.byte 0x75,0x78,0x15,0x00,0x00,0x0b,0x7e,0x0b
+	.byte 0x00,0x00,0x75,0x82,0x15,0x00,0x00,0x0a
+	.byte 0xfa,0x0b,0x00,0x00,0x75,0x8c,0x16,0x01
+	.byte 0x01,0x00,0x00,0x75,0xcb,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x1b,0x17
+	.byte 0x00,0x00,0x75,0x7d,0x17,0x00,0x00,0x75
+	.byte 0x87,0x17,0x00,0x00,0x3f,0x41,0x17,0x00
+	.byte 0x00,0x3f,0x41,0x17,0x00,0x00,0x3f,0x41
+	.byte 0x17,0x00,0x00,0x3f,0x41,0x17,0x00,0x00
+	.byte 0x75,0x91,0x00,0x0b,0x00,0x00,0x75,0x96
+	.byte 0x16,0x01,0x01,0x00,0x00,0x75,0xdd,0x17
+	.byte 0x00,0x00,0x47,0x10,0x00,0x0b,0x00,0x00
+	.byte 0x75,0xd0,0x16,0x01,0x01,0x00,0x00,0x75
+	.byte 0xef,0x17,0x00,0x00,0x47,0x10,0x00,0x0b
+	.byte 0x00,0x00,0x75,0xe2,0x18,0x01,0x00,0x00
+	.byte 0x0a,0xfa,0x01,0x00,0x00,0x76,0x0a,0x17
+	.byte 0x00,0x00,0x47,0x10,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x0b,0x00,0x00,0x75,0xf4,0x18
+	.byte 0x01,0x00,0x00,0x0a,0xfa,0x01,0x00,0x00
+	.byte 0x76,0x34,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0a,0xfa,0x17,0x00,0x00,0x0a
+	.byte 0xfa,0x17,0x00,0x00,0x0a,0xfa,0x17,0x00
+	.byte 0x00,0x0a,0xfa,0x00,0x0b,0x00,0x00,0x76
+	.byte 0x0f,0x18,0x01,0x00,0x00,0x0a,0xfa,0x01
+	.byte 0x00,0x00,0x76,0x4f,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b
+	.byte 0x00,0x00,0x76,0x39,0x16,0x01,0x01,0x00
+	.byte 0x00,0x76,0x66,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0a,0xfa,0x00,0x0b,0x00
+	.byte 0x00,0x76,0x54,0x16,0x01,0x01,0x00,0x00
+	.byte 0x76,0x78,0x17,0x00,0x00,0x47,0x10,0x00
+	.byte 0x0b,0x00,0x00,0x76,0x6b,0x16,0x01,0x01
+	.byte 0x00,0x00,0x76,0x94,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x00,0x0b,0x00,0x00,0x76
+	.byte 0x7d,0x16,0x01,0x01,0x00,0x00,0x76,0xa6
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x0b,0x00
+	.byte 0x00,0x76,0x99,0x16,0x01,0x01,0x00,0x00
+	.byte 0x76,0xb8,0x17,0x00,0x00,0x47,0x10,0x00
+	.byte 0x0b,0x00,0x00,0x76,0xab,0x15,0x00,0x00
+	.byte 0x0b,0x5d,0x0b,0x00,0x00,0x76,0xbd,0x18
+	.byte 0x01,0x00,0x00,0x0b,0x1b,0x01,0x00,0x00
+	.byte 0x76,0xf1,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x76,0xc2,0x17,0x00,0x00,0x3f,0x41
+	.byte 0x00,0x0b,0x00,0x00,0x76,0xc7,0x15,0x00
+	.byte 0x00,0x0b,0x7e,0x0b,0x00,0x00,0x76,0xf6
+	.byte 0x15,0x00,0x00,0x0b,0x7e,0x0b,0x00,0x00
+	.byte 0x77,0x00,0x15,0x00,0x00,0x0b,0x5d,0x0b
+	.byte 0x00,0x00,0x77,0x0a,0x16,0x01,0x01,0x00
+	.byte 0x00,0x77,0x3a,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x1b,0x17,0x00,0x00
+	.byte 0x76,0xfb,0x17,0x00,0x00,0x77,0x05,0x17
+	.byte 0x00,0x00,0x77,0x0f,0x17,0x00,0x00,0x3f
+	.byte 0x41,0x00,0x0b,0x00,0x00,0x77,0x14,0x16
+	.byte 0x01,0x01,0x00,0x00,0x77,0x60,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x1b
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x4f,0x90,0x00
+	.byte 0x0b,0x00,0x00,0x77,0x3f,0x16,0x01,0x01
+	.byte 0x00,0x00,0x77,0x86,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x1b,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x52,0xba,0x00,0x0b,0x00
+	.byte 0x00,0x77,0x65,0x16,0x01,0x01,0x00,0x00
+	.byte 0x77,0xa2,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x0b,0x00,0x00,0x77,0x8b,0x09
+	.byte 0x00,0x00,0x77,0xa2
+	.ascii "points_func\0"
+	.byte 0x03,0x16,0x01,0x01,0x00,0x00,0x77,0xd5
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x17,0x00,0x00,0x0b,0x1b,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00
+	.byte 0x77,0xb9,0x09,0x00,0x00,0x77,0xd5
+	.ascii "line_func\0"
+	.byte 0x03,0x16,0x01,0x01,0x00,0x00,0x78,0x0b
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x17,0x00,0x00,0x0b,0x1b,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x0b,0x00,0x00,0x77,0xea,0x09
+	.byte 0x00,0x00,0x78,0x0b
+	.ascii "triangle_func\0"
+	.byte 0x03,0x16,0x01,0x01,0x00,0x00,0x78,0x4a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x17,0x00,0x00,0x0b,0x1b,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x17,0x00,0x00,0x0b,0x1b,0x00,0x0b
+	.byte 0x00,0x00,0x78,0x24,0x09,0x00,0x00,0x78
+	.byte 0x4a
+	.ascii "quad_func\0"
+	.byte 0x03,0x16,0x01,0x01,0x00,0x00,0x78,0x80
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x00,0x0b,0x00,0x00,0x78,0x5f,0x09
+	.byte 0x00,0x00,0x78,0x80
+	.ascii "rect_func\0"
+	.byte 0x03,0x15,0x00,0x00,0x3b,0x5e,0x0b,0x00
+	.byte 0x00,0x78,0x95,0x18,0x01,0x00,0x00,0x0a
+	.byte 0xfa,0x01,0x00,0x00,0x78,0xd8,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0x0a,0xfa,0x17,0x00
+	.byte 0x00,0x78,0x9a,0x00,0x0b,0x00,0x00,0x78
+	.byte 0x9f,0x15,0x00,0x00,0x47,0xc6,0x0b,0x00
+	.byte 0x00,0x78,0xdd,0x18,0x01,0x00,0x00,0x0a
+	.byte 0xfa,0x01,0x00,0x00,0x79,0x1b,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x17,0x00,0x00,0x78,0xe2,0x00,0x0b
+	.byte 0x00,0x00,0x78,0xe7,0x16,0x01,0x01,0x00
+	.byte 0x00,0x79,0x32,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x00,0x0b,0x00
+	.byte 0x00,0x79,0x20,0x16,0x01,0x01,0x00,0x00
+	.byte 0x79,0x44,0x17,0x00,0x00,0x47,0x10,0x00
+	.byte 0x0b,0x00,0x00,0x79,0x37,0x16,0x01,0x01
+	.byte 0x00,0x00,0x79,0x60,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0b,0x1b,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x00,0x0b,0x00,0x00,0x79
+	.byte 0x49,0x18,0x01,0x00,0x00,0x0a,0xfa,0x01
+	.byte 0x00,0x00,0x79,0x7b,0x17,0x00,0x00,0x47
+	.byte 0x10,0x17,0x00,0x00,0x0a,0xfa,0x00,0x0b
+	.byte 0x00,0x00,0x79,0x65,0x15,0x00,0x00,0x3b
+	.byte 0x47,0x0b,0x00,0x00,0x79,0x80,0x16,0x01
+	.byte 0x01,0x00,0x00,0x79,0xa1,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x79,0x85,0x00,0x0b,0x00,0x00
+	.byte 0x79,0x8a,0x15,0x00,0x00,0x3c,0x4e,0x0b
+	.byte 0x00,0x00,0x79,0xa6,0x16,0x01,0x01,0x00
+	.byte 0x00,0x79,0xd6,0x17,0x00,0x00,0x47,0x10
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x3f,0x9d,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x79
+	.byte 0xab,0x00,0x0b,0x00,0x00,0x79,0xb0,0x15
+	.byte 0x00,0x00,0x3b,0x47,0x0b,0x00,0x00,0x79
+	.byte 0xdb,0x16,0x01,0x01,0x00,0x00,0x7a,0x06
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x3f,0x9d,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x79
+	.byte 0xe0,0x00,0x0b,0x00,0x00,0x79,0xe5,0x16
+	.byte 0x01,0x01,0x00,0x00,0x7a,0x22,0x17,0x00
+	.byte 0x00,0x47,0x10,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x3f,0x9d,0x00,0x0b,0x00
+	.byte 0x00,0x7a,0x0b,0x16,0x01,0x01,0x00,0x00
+	.byte 0x7a,0x39,0x17,0x00,0x00,0x47,0x10,0x17
+	.byte 0x00,0x00,0x3f,0x9d,0x00,0x0b,0x00,0x00
+	.byte 0x7a,0x27,0x16,0x01,0x01,0x00,0x00,0x7a
+	.byte 0x50,0x17,0x00,0x00,0x47,0x10,0x17,0x00
+	.byte 0x00,0x3f,0x9d,0x00,0x0b,0x00,0x00,0x7a
+	.byte 0x3e,0x16,0x01,0x01,0x00,0x00,0x7a,0x67
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0a,0xfa,0x00,0x0b,0x00,0x00,0x7a,0x55
+	.byte 0x11
+	.ascii "dd_function_table\0"
+	.byte 0xd4,0x04,0x00,0x00,0x7e,0xd4,0x0d
+	.ascii "RendererString\0"
+	.byte 0x00,0x00,0x71,0x7b,0x02,0x23,0x00,0x0d
+	.ascii "UpdateState\0"
+	.byte 0x00,0x00,0x71,0x8d,0x02,0x23,0x04,0x0d
+	.ascii "ClearIndex\0"
+	.byte 0x00,0x00,0x71,0xa4,0x02,0x23,0x08,0x0d
+	.ascii "ClearColor\0"
+	.byte 0x00,0x00,0x71,0xca,0x02,0x23,0x0c,0x0d
+	.ascii "Clear\0"
+	.byte 0x00,0x00,0x71,0xf5,0x02,0x23,0x10,0x0d
+	.ascii "Index\0"
+	.byte 0x00,0x00,0x72,0x0c,0x02,0x23,0x14,0x0d
+	.ascii "Color\0"
+	.byte 0x00,0x00,0x72,0x32,0x02,0x23,0x18,0x0d
+	.ascii "SetBuffer\0"
+	.byte 0x00,0x00,0x72,0x4d,0x02,0x23,0x1c,0x0d
+	.ascii "GetBufferSize\0"
+	.byte 0x00,0x00,0x72,0x69,0x02,0x23,0x20,0x0d
+	.ascii "WriteColorSpan\0"
+	.byte 0x00,0x00,0x72,0xd5,0x02,0x23,0x24,0x0d
+	.ascii "WriteMonocolorSpan\0"
+	.byte 0x00,0x00,0x73,0x05,0x02,0x23,0x28,0x0d
+	.ascii "WriteColorPixels\0"
+	.byte 0x00,0x00,0x73,0x85,0x02,0x23,0x2c,0x0d
+	.ascii "WriteMonocolorPixels\0"
+	.byte 0x00,0x00,0x73,0xc9,0x02,0x23,0x30,0x0d
+	.ascii "WriteIndexSpan\0"
+	.byte 0x00,0x00,0x74,0x08,0x02,0x23,0x34,0x0d
+	.ascii "WriteMonoindexSpan\0"
+	.byte 0x00,0x00,0x74,0x38,0x02,0x23,0x38,0x0d
+	.ascii "WriteIndexPixels\0"
+	.byte 0x00,0x00,0x74,0x8b,0x02,0x23,0x3c,0x0d
+	.ascii "WriteMonoindexPixels\0"
+	.byte 0x00,0x00,0x74,0xcf,0x02,0x23,0x40,0x0d
+	.ascii "ReadIndexSpan\0"
+	.byte 0x00,0x00,0x74,0xf5,0x02,0x23,0x44,0x0d
+	.ascii "ReadColorSpan\0"
+	.byte 0x00,0x00,0x75,0x2a,0x02,0x23,0x48,0x0d
+	.ascii "ReadIndexPixels\0"
+	.byte 0x00,0x00,0x75,0x73,0x02,0x23,0x4c,0x0d
+	.ascii "ReadColorPixels\0"
+	.byte 0x00,0x00,0x75,0xcb,0x02,0x23,0x50,0x0d
+	.ascii "Finish\0"
+	.byte 0x00,0x00,0x75,0xdd,0x02,0x23,0x54,0x0d
+	.ascii "Flush\0"
+	.byte 0x00,0x00,0x75,0xef,0x02,0x23,0x58,0x0d
+	.ascii "IndexMask\0"
+	.byte 0x00,0x00,0x76,0x0a,0x02,0x23,0x5c,0x0d
+	.ascii "ColorMask\0"
+	.byte 0x00,0x00,0x76,0x34,0x02,0x23,0x60,0x0d
+	.ascii "LogicOp\0"
+	.byte 0x00,0x00,0x76,0x4f,0x02,0x23,0x64,0x0d
+	.ascii "Dither\0"
+	.byte 0x00,0x00,0x76,0x66,0x02,0x23,0x68,0x0d
+	.ascii "Error\0"
+	.byte 0x00,0x00,0x76,0x78,0x02,0x23,0x6c,0x0d
+	.ascii "NearFar\0"
+	.byte 0x00,0x00,0x76,0x94,0x02,0x23,0x70,0x0d
+	.ascii "AllocDepthBuffer\0"
+	.byte 0x00,0x00,0x76,0xa6,0x02,0x23,0x74,0x0d
+	.ascii "ClearDepthBuffer\0"
+	.byte 0x00,0x00,0x76,0xb8,0x02,0x23,0x78,0x0d
+	.ascii "DepthTestSpan\0"
+	.byte 0x00,0x00,0x76,0xf1,0x02,0x23,0x7c,0x0d
+	.ascii "DepthTestPixels\0"
+	.byte 0x00,0x00,0x77,0x3a,0x03,0x23,0x80,0x01
+	.byte 0x0d
+	.ascii "ReadDepthSpanFloat\0"
+	.byte 0x00,0x00,0x77,0x60,0x03,0x23,0x84,0x01
+	.byte 0x0d
+	.ascii "ReadDepthSpanInt\0"
+	.byte 0x00,0x00,0x77,0x86,0x03,0x23,0x88,0x01
+	.byte 0x0d
+	.ascii "PointsFunc\0"
+	.byte 0x00,0x00,0x77,0xa7,0x03,0x23,0x8c,0x01
+	.byte 0x0d
+	.ascii "LineFunc\0"
+	.byte 0x00,0x00,0x77,0xda,0x03,0x23,0x90,0x01
+	.byte 0x0d
+	.ascii "TriangleFunc\0"
+	.byte 0x00,0x00,0x78,0x10,0x03,0x23,0x94,0x01
+	.byte 0x0d
+	.ascii "QuadFunc\0"
+	.byte 0x00,0x00,0x78,0x4f,0x03,0x23,0x98,0x01
+	.byte 0x0d
+	.ascii "RectFunc\0"
+	.byte 0x00,0x00,0x78,0x85,0x03,0x23,0x9c,0x01
+	.byte 0x0d
+	.ascii "DrawPixels\0"
+	.byte 0x00,0x00,0x78,0xd8,0x03,0x23,0xa0,0x01
+	.byte 0x0d
+	.ascii "Bitmap\0"
+	.byte 0x00,0x00,0x79,0x1b,0x03,0x23,0xa4,0x01
+	.byte 0x0d
+	.ascii "Begin\0"
+	.byte 0x00,0x00,0x79,0x32,0x03,0x23,0xa8,0x01
+	.byte 0x0d
+	.ascii "End\0"
+	.byte 0x00,0x00,0x79,0x44,0x03,0x23,0xac,0x01
+	.byte 0x0d
+	.ascii "RasterSetup\0"
+	.byte 0x00,0x00,0x79,0x60,0x03,0x23,0xb0,0x01
+	.byte 0x0d
+	.ascii "RenderVB\0"
+	.byte 0x00,0x00,0x79,0x7b,0x03,0x23,0xb4,0x01
+	.byte 0x0d
+	.ascii "TexEnv\0"
+	.byte 0x00,0x00,0x79,0xa1,0x03,0x23,0xb8,0x01
+	.byte 0x0d
+	.ascii "TexImage\0"
+	.byte 0x00,0x00,0x79,0xd6,0x03,0x23,0xbc,0x01
+	.byte 0x0d
+	.ascii "TexParameter\0"
+	.byte 0x00,0x00,0x7a,0x06,0x03,0x23,0xc0,0x01
+	.byte 0x0d
+	.ascii "BindTexture\0"
+	.byte 0x00,0x00,0x7a,0x22,0x03,0x23,0xc4,0x01
+	.byte 0x0d
+	.ascii "DeleteTexture\0"
+	.byte 0x00,0x00,0x7a,0x39,0x03,0x23,0xc8,0x01
+	.byte 0x0d
+	.ascii "UpdateTexturePalette\0"
+	.byte 0x00,0x00,0x7a,0x50,0x03,0x23,0xcc,0x01
+	.byte 0x0d
+	.ascii "UseGlobalTexturePalette\0"
+	.byte 0x00,0x00,0x7a,0x67,0x03,0x23,0xd0,0x01
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x40,0x00
+	.byte 0x00,0x7e,0xe5,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x0f,0x00,0x0f,0x00,0x00,0x3b,0x50,0x40
+	.byte 0x00,0x00,0x7e,0xf6,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x0f,0x00,0x0f,0x00,0x00,0x3b,0x47
+	.byte 0x40,0x00,0x00,0x7f,0x07,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x0f,0x00,0x12,0x00,0x00,0x7e
+	.byte 0xf6,0x08,0x00,0x00,0x00,0x7f,0x19,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x1f,0x00,0x0f,0x00
+	.byte 0x00,0x3b,0x50,0x40,0x00,0x00,0x7f,0x2a
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x0f,0x00,0x0f
+	.byte 0x00,0x00,0x3b,0x47,0x40,0x00,0x00,0x7f
+	.byte 0x3b,0x10,0x00,0x00,0x3c,0x30,0x0f,0x00
+	.byte 0x12,0x00,0x00,0x7f,0x2a,0x08,0x00,0x00
+	.byte 0x00,0x7f,0x4d,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x1f,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x47,0x08,0x00,0x00
+	.byte 0x7f,0x5e,0x10,0x00,0x00,0x3c,0x30,0x01
+	.byte 0x00,0x12,0x00,0x00,0x7f,0x4d,0x01,0x00
+	.byte 0x00,0x00,0x7f,0x70,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x1f,0x00,0x0f,0x00,0x00,0x3b,0x50
+	.byte 0x40,0x00,0x00,0x7f,0x81,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x0f,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x47,0x40,0x00,0x00,0x7f,0x92,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x0f,0x00,0x12,0x00,0x00
+	.byte 0x7f,0x81,0x02,0x80,0x00,0x00,0x7f,0xa4
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x09,0x00,0x0b
+	.byte 0x00,0x00,0x7f,0xa9,0x11
+	.ascii "gl_attrib_node\0"
+	.byte 0x0c,0x03,0x00,0x00,0x7f,0xe7,0x0d
+	.ascii "kind\0"
+	.byte 0x00,0x00,0x0b,0x27,0x02,0x23,0x00,0x0d
+	.ascii "data\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x04,0x0d
+	.ascii "next\0"
+	.byte 0x00,0x00,0x7f,0xa4,0x02,0x23,0x08,0x00
+	.byte 0x0f,0x00,0x00,0x7f,0xa4,0x40,0x00,0x00
+	.byte 0x7f,0xf8,0x10,0x00,0x00,0x3c,0x30,0x0f
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x10,0x00
+	.byte 0x00,0x80,0x09,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x11
+	.ascii "gl_accum_attrib\0"
+	.byte 0x10,0x03,0x00,0x00,0x80,0x34,0x0d
+	.ascii "ClearColor\0"
+	.byte 0x00,0x00,0x7f,0xf8,0x02,0x23,0x00,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x10,0x00,0x00
+	.byte 0x80,0x45,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x10,0x00
+	.byte 0x00,0x80,0x56,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x11
+	.ascii "gl_colorbuffer_attrib\0"
+	.byte 0x58,0x03,0x00,0x00,0x82,0x05,0x0d
+	.ascii "ClearIndex\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x00,0x0d
+	.ascii "ClearColor\0"
+	.byte 0x00,0x00,0x80,0x34,0x02,0x23,0x04,0x0d
+	.ascii "IndexMask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x14,0x0d
+	.ascii "ColorMask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x18,0x0d
+	.ascii "SWmasking\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x1c,0x0d
+	.ascii "DrawBuffer\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x20,0x0d
+	.ascii "AlphaEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x24,0x0d
+	.ascii "AlphaFunc\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x28,0x0d
+	.ascii "AlphaRef\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x2c,0x0d
+	.ascii "AlphaRefUbyte\0"
+	.byte 0x00,0x00,0x0b,0x38,0x02,0x23,0x30,0x0d
+	.ascii "BlendEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x31,0x0d
+	.ascii "BlendSrc\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x34,0x0d
+	.ascii "BlendDst\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x38,0x0d
+	.ascii "BlendEquation\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x3c,0x0d
+	.ascii "BlendColor\0"
+	.byte 0x00,0x00,0x80,0x45,0x02,0x23,0x40,0x0d
+	.ascii "LogicOp\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x50,0x0d
+	.ascii "IndexLogicOpEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x54,0x0d
+	.ascii "ColorLogicOpEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x55,0x0d
+	.ascii "SWLogicOpEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x56,0x0d
+	.ascii "DitherFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x57,0x00
+	.byte 0x0f,0x00,0x00,0x0b,0x38,0x04,0x00,0x00
+	.byte 0x82,0x16,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x0c,0x00
+	.byte 0x00,0x82,0x27,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x02,0x00,0x0f,0x00,0x00,0x3b,0x50,0x10
+	.byte 0x00,0x00,0x82,0x38,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x0f,0x00,0x00,0x3b,0x50
+	.byte 0x10,0x00,0x00,0x82,0x49,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x03,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x50,0x10,0x00,0x00,0x82,0x5a,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x03,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x50,0x10,0x00,0x00,0x82,0x6b,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x11
+	.ascii "gl_current_attrib\0"
+	.byte 0x60,0x03,0x00,0x00,0x83,0x55,0x0d
+	.ascii "ByteColor\0"
+	.byte 0x00,0x00,0x82,0x05,0x02,0x23,0x00,0x0d
+	.ascii "Index\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x04,0x0d
+	.ascii "Normal\0"
+	.byte 0x00,0x00,0x82,0x16,0x02,0x23,0x08,0x0d
+	.ascii "TexCoord\0"
+	.byte 0x00,0x00,0x82,0x27,0x02,0x23,0x14,0x0d
+	.ascii "RasterPos\0"
+	.byte 0x00,0x00,0x82,0x38,0x02,0x23,0x24,0x0d
+	.ascii "RasterDistance\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x34,0x0d
+	.ascii "RasterColor\0"
+	.byte 0x00,0x00,0x82,0x49,0x02,0x23,0x38,0x0d
+	.ascii "RasterIndex\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x48,0x0d
+	.ascii "RasterTexCoord\0"
+	.byte 0x00,0x00,0x82,0x5a,0x02,0x23,0x4c,0x0d
+	.ascii "RasterPosValid\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x5c,0x0d
+	.ascii "EdgeFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x5d,0x00
+	.byte 0x11
+	.ascii "gl_depthbuffer_attrib\0"
+	.byte 0x0c,0x03,0x00,0x00,0x83,0xa8,0x0d
+	.ascii "Func\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "Clear\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x04,0x0d
+	.ascii "Test\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x08,0x0d
+	.ascii "Mask\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x09,0x00
+	.byte 0x11
+	.ascii "gl_eval_attrib\0"
+	.byte 0x38,0x03,0x00,0x00,0x86,0x0d,0x0d
+	.ascii "Map1Color4\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "Map1Index\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x01,0x0d
+	.ascii "Map1Normal\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x02,0x0d
+	.ascii "Map1TextureCoord1\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x03,0x0d
+	.ascii "Map1TextureCoord2\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x04,0x0d
+	.ascii "Map1TextureCoord3\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x05,0x0d
+	.ascii "Map1TextureCoord4\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x06,0x0d
+	.ascii "Map1Vertex3\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x07,0x0d
+	.ascii "Map1Vertex4\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x08,0x0d
+	.ascii "Map2Color4\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x09,0x0d
+	.ascii "Map2Index\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0a,0x0d
+	.ascii "Map2Normal\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0b,0x0d
+	.ascii "Map2TextureCoord1\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0c,0x0d
+	.ascii "Map2TextureCoord2\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0d,0x0d
+	.ascii "Map2TextureCoord3\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0e,0x0d
+	.ascii "Map2TextureCoord4\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0f,0x0d
+	.ascii "Map2Vertex3\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x10,0x0d
+	.ascii "Map2Vertex4\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x11,0x0d
+	.ascii "AutoNormal\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x12,0x0d
+	.ascii "MapGrid1un\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x14,0x0d
+	.ascii "MapGrid1u1\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x18,0x0d
+	.ascii "MapGrid1u2\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x0d
+	.ascii "MapGrid2un\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x20,0x0d
+	.ascii "MapGrid2vn\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x24,0x0d
+	.ascii "MapGrid2u1\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x28,0x0d
+	.ascii "MapGrid2u2\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x2c,0x0d
+	.ascii "MapGrid2v1\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x30,0x0d
+	.ascii "MapGrid2v2\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x34,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x10,0x00,0x00
+	.byte 0x86,0x1e,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x11
+	.ascii "gl_fog_attrib\0"
+	.byte 0x28,0x03,0x00,0x00,0x86,0x97,0x0d
+	.ascii "Enabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "Color\0"
+	.byte 0x00,0x00,0x86,0x0d,0x02,0x23,0x04,0x0d
+	.ascii "Density\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x14,0x0d
+	.ascii "Start\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x18,0x0d
+	.ascii "End\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x0d
+	.ascii "Index\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x20,0x0d
+	.ascii "Mode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x24,0x00
+	.byte 0x11
+	.ascii "gl_hint_attrib\0"
+	.byte 0x14,0x03,0x00,0x00,0x87,0x15,0x0d
+	.ascii "PerspectiveCorrection\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "PointSmooth\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x04,0x0d
+	.ascii "LineSmooth\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x08,0x0d
+	.ascii "PolygonSmooth\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x0c,0x0d
+	.ascii "Fog\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x10,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x10,0x00,0x00
+	.byte 0x87,0x26,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x10,0x00
+	.byte 0x00,0x87,0x37,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x0f,0x00,0x00,0x3b,0x50,0x10
+	.byte 0x00,0x00,0x87,0x48,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x0f,0x00,0x00,0x3b,0x50
+	.byte 0x10,0x00,0x00,0x87,0x59,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x03,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x50,0x10,0x00,0x00,0x87,0x6a,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x03,0x00,0x14
+	.ascii "gl_light\0"
+	.byte 0x10,0xe4,0x03,0x00,0x00,0x89,0x2c,0x0d
+	.ascii "Ambient\0"
+	.byte 0x00,0x00,0x87,0x15,0x02,0x23,0x00,0x0d
+	.ascii "Diffuse\0"
+	.byte 0x00,0x00,0x87,0x26,0x02,0x23,0x10,0x0d
+	.ascii "Specular\0"
+	.byte 0x00,0x00,0x87,0x37,0x02,0x23,0x20,0x0d
+	.ascii "Position\0"
+	.byte 0x00,0x00,0x87,0x48,0x02,0x23,0x30,0x0d
+	.ascii "Direction\0"
+	.byte 0x00,0x00,0x87,0x59,0x02,0x23,0x40,0x0d
+	.ascii "SpotExponent\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x50,0x0d
+	.ascii "SpotCutoff\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x54,0x0d
+	.ascii "CosCutoff\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x58,0x0d
+	.ascii "ConstantAttenuation\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x5c,0x0d
+	.ascii "LinearAttenuation\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x60,0x0d
+	.ascii "QuadraticAttenuation\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x64,0x0d
+	.ascii "Enabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x68,0x0d
+	.ascii "NextEnabled\0"
+	.byte 0x00,0x00,0x89,0x2c,0x02,0x23,0x6c,0x0d
+	.ascii "VP_inf_norm\0"
+	.byte 0x00,0x00,0x89,0x31,0x02,0x23,0x70,0x0d
+	.ascii "h_inf_norm\0"
+	.byte 0x00,0x00,0x89,0x42,0x02,0x23,0x7c,0x0d
+	.ascii "NormDirection\0"
+	.byte 0x00,0x00,0x89,0x53,0x03,0x23,0x88,0x01
+	.byte 0x0d
+	.ascii "SpotExpTable\0"
+	.byte 0x00,0x00,0x89,0x75,0x03,0x23,0x94,0x01
+	.byte 0x0d
+	.ascii "MatAmbient\0"
+	.byte 0x00,0x00,0x89,0x99,0x03,0x23,0x94,0x21
+	.byte 0x0d
+	.ascii "MatDiffuse\0"
+	.byte 0x00,0x00,0x89,0xbb,0x03,0x23,0xac,0x21
+	.byte 0x0d
+	.ascii "MatSpecular\0"
+	.byte 0x00,0x00,0x89,0xdd,0x03,0x23,0xc4,0x21
+	.byte 0x0d
+	.ascii "dli\0"
+	.byte 0x00,0x00,0x3b,0x50,0x03,0x23,0xdc,0x21
+	.byte 0x0d
+	.ascii "sli\0"
+	.byte 0x00,0x00,0x3b,0x50,0x03,0x23,0xe0,0x21
+	.byte 0x00,0x0b,0x00,0x00,0x87,0x6a,0x0f,0x00
+	.byte 0x00,0x3b,0x50,0x0c,0x00,0x00,0x89,0x42
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x02,0x00,0x0f
+	.byte 0x00,0x00,0x3b,0x50,0x0c,0x00,0x00,0x89
+	.byte 0x53,0x10,0x00,0x00,0x3c,0x30,0x02,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x0c,0x00,0x00
+	.byte 0x89,0x64,0x10,0x00,0x00,0x3c,0x30,0x02
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x47,0x08,0x00
+	.byte 0x00,0x89,0x75,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x01,0x00,0x12,0x00,0x00,0x89,0x64,0x10
+	.byte 0x00,0x00,0x00,0x89,0x88,0x13,0x00,0x00
+	.byte 0x3c,0x30,0x01,0xff,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x47,0x0c,0x00,0x00,0x89,0x99,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x02,0x00,0x0f,0x00
+	.byte 0x00,0x89,0x88,0x18,0x00,0x00,0x89,0xaa
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x01,0x00,0x0f
+	.byte 0x00,0x00,0x3b,0x47,0x0c,0x00,0x00,0x89
+	.byte 0xbb,0x10,0x00,0x00,0x3c,0x30,0x02,0x00
+	.byte 0x0f,0x00,0x00,0x89,0xaa,0x18,0x00,0x00
+	.byte 0x89,0xcc,0x10,0x00,0x00,0x3c,0x30,0x01
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x47,0x0c,0x00
+	.byte 0x00,0x89,0xdd,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x02,0x00,0x0f,0x00,0x00,0x89,0xcc,0x18
+	.byte 0x00,0x00,0x89,0xee,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x01,0x00,0x12,0x00,0x00,0x87,0x6a
+	.byte 0x87,0x20,0x00,0x00,0x8a,0x00,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x07,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x50,0x10,0x00,0x00,0x8a,0x11,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x11
+	.ascii "gl_lightmodel\0"
+	.byte 0x14,0x03,0x00,0x00,0x8a,0x5b,0x0d
+	.ascii "Ambient\0"
+	.byte 0x00,0x00,0x8a,0x00,0x02,0x23,0x00,0x0d
+	.ascii "LocalViewer\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x10,0x0d
+	.ascii "TwoSide\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x11,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x10,0x00,0x00
+	.byte 0x8a,0x6c,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x10,0x00
+	.byte 0x00,0x8a,0x7d,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x0f,0x00,0x00,0x3b,0x50,0x10
+	.byte 0x00,0x00,0x8a,0x8e,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x0f,0x00,0x00,0x3b,0x50
+	.byte 0x10,0x00,0x00,0x8a,0x9f,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x03,0x00,0x12,0x00,0x00,0x3b
+	.byte 0x50,0x03,0x20,0x00,0x00,0x8a,0xb2,0x13
+	.byte 0x00,0x00,0x3c,0x30,0x00,0xc7,0x00,0x14
+	.ascii "gl_material\0"
+	.byte 0x03,0x70,0x03,0x00,0x00,0x8b,0x6e,0x0d
+	.ascii "Ambient\0"
+	.byte 0x00,0x00,0x8a,0x5b,0x02,0x23,0x00,0x0d
+	.ascii "Diffuse\0"
+	.byte 0x00,0x00,0x8a,0x6c,0x02,0x23,0x10,0x0d
+	.ascii "Specular\0"
+	.byte 0x00,0x00,0x8a,0x7d,0x02,0x23,0x20,0x0d
+	.ascii "Emission\0"
+	.byte 0x00,0x00,0x8a,0x8e,0x02,0x23,0x30,0x0d
+	.ascii "Shininess\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x40,0x0d
+	.ascii "AmbientIndex\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x44,0x0d
+	.ascii "DiffuseIndex\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x48,0x0d
+	.ascii "SpecularIndex\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x4c,0x0d
+	.ascii "ShineTable\0"
+	.byte 0x00,0x00,0x8a,0x9f,0x02,0x23,0x50,0x00
+	.byte 0x12,0x00,0x00,0x8a,0xb2,0x06,0xe0,0x00
+	.byte 0x00,0x8b,0x80,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x01,0x00,0x0f,0x00,0x00,0x3b,0x47,0x10
+	.byte 0x00,0x00,0x8b,0x91,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x0f,0x00,0x00,0x8b,0x80
+	.byte 0x20,0x00,0x00,0x8b,0xa2,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x01,0x00,0x14
+	.ascii "gl_light_attrib\0"
+	.byte 0x8e,0x54,0x03,0x00,0x00,0x8c,0xc3,0x0d
+	.ascii "Light\0"
+	.byte 0x00,0x00,0x89,0xee,0x02,0x23,0x00,0x0d
+	.ascii "Model\0"
+	.byte 0x00,0x00,0x8a,0x11,0x04,0x23,0xa0,0x8e
+	.byte 0x02,0x0d
+	.ascii "Material\0"
+	.byte 0x00,0x00,0x8b,0x6e,0x04,0x23,0xb4,0x8e
+	.byte 0x02,0x0d
+	.ascii "Enabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0x94,0x9c
+	.byte 0x02,0x0d
+	.ascii "ShadeModel\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x04,0x23,0x98,0x9c
+	.byte 0x02,0x0d
+	.ascii "ColorMaterialFace\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x04,0x23,0x9c,0x9c
+	.byte 0x02,0x0d
+	.ascii "ColorMaterialMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x04,0x23,0xa0,0x9c
+	.byte 0x02,0x0d
+	.ascii "ColorMaterialBitmask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xa4,0x9c
+	.byte 0x02,0x0d
+	.ascii "ColorMaterialEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xa8,0x9c
+	.byte 0x02,0x0d
+	.ascii "FirstEnabled\0"
+	.byte 0x00,0x00,0x89,0x2c,0x04,0x23,0xac,0x9c
+	.byte 0x02,0x0d
+	.ascii "Fast\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xb0,0x9c
+	.byte 0x02,0x0d
+	.ascii "BaseColor\0"
+	.byte 0x00,0x00,0x8b,0x91,0x04,0x23,0xb4,0x9c
+	.byte 0x02,0x00,0x11
+	.ascii "gl_line_attrib\0"
+	.byte 0x0c,0x03,0x00,0x00,0x8d,0x3c,0x0d
+	.ascii "SmoothFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "StippleFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x01,0x0d
+	.ascii "StipplePattern\0"
+	.byte 0x00,0x00,0x0b,0x6f,0x02,0x23,0x02,0x0d
+	.ascii "StippleFactor\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x04,0x0d
+	.ascii "Width\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x08,0x00
+	.byte 0x11
+	.ascii "gl_list_attrib\0"
+	.byte 0x04,0x03,0x00,0x00,0x8d,0x64,0x0d
+	.ascii "ListBase\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x00,0x00
+	.byte 0x12,0x00,0x00,0x0b,0x85,0x04,0x00,0x00
+	.byte 0x00,0x8d,0x77,0x13,0x00,0x00,0x3c,0x30
+	.byte 0x00,0xff,0x00,0x12,0x00,0x00,0x0b,0x85
+	.byte 0x04,0x00,0x00,0x00,0x8d,0x8a,0x13,0x00
+	.byte 0x00,0x3c,0x30,0x00,0xff,0x00,0x12,0x00
+	.byte 0x00,0x3b,0x50,0x04,0x00,0x00,0x00,0x8d
+	.byte 0x9d,0x13,0x00,0x00,0x3c,0x30,0x00,0xff
+	.byte 0x00,0x12,0x00,0x00,0x3b,0x50,0x04,0x00
+	.byte 0x00,0x00,0x8d,0xb0,0x13,0x00,0x00,0x3c
+	.byte 0x30,0x00,0xff,0x00,0x12,0x00,0x00,0x3b
+	.byte 0x50,0x04,0x00,0x00,0x00,0x8d,0xc3,0x13
+	.byte 0x00,0x00,0x3c,0x30,0x00,0xff,0x00,0x12
+	.byte 0x00,0x00,0x3b,0x50,0x04,0x00,0x00,0x00
+	.byte 0x8d,0xd6,0x13,0x00,0x00,0x3c,0x30,0x00
+	.byte 0xff,0x00,0x12,0x00,0x00,0x3b,0x50,0x04
+	.byte 0x00,0x00,0x00,0x8d,0xe9,0x13,0x00,0x00
+	.byte 0x3c,0x30,0x00,0xff,0x00,0x12,0x00,0x00
+	.byte 0x3b,0x50,0x04,0x00,0x00,0x00,0x8d,0xfc
+	.byte 0x13,0x00,0x00,0x3c,0x30,0x00,0xff,0x00
+	.byte 0x12,0x00,0x00,0x3b,0x50,0x04,0x00,0x00
+	.byte 0x00,0x8e,0x0f,0x13,0x00,0x00,0x3c,0x30
+	.byte 0x00,0xff,0x00,0x12,0x00,0x00,0x3b,0x50
+	.byte 0x04,0x00,0x00,0x00,0x8e,0x22,0x13,0x00
+	.byte 0x00,0x3c,0x30,0x00,0xff,0x00,0x14
+	.ascii "gl_pixel_attrib\0"
+	.byte 0x28,0x68,0x03,0x00,0x00,0x90,0xe1,0x0d
+	.ascii "ReadBuffer\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "RedBias\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x04,0x0d
+	.ascii "RedScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x08,0x0d
+	.ascii "GreenBias\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x0c,0x0d
+	.ascii "GreenScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x10,0x0d
+	.ascii "BlueBias\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x14,0x0d
+	.ascii "BlueScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x18,0x0d
+	.ascii "AlphaBias\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x0d
+	.ascii "AlphaScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x20,0x0d
+	.ascii "DepthBias\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x24,0x0d
+	.ascii "DepthScale\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x28,0x0d
+	.ascii "IndexShift\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x2c,0x0d
+	.ascii "IndexOffset\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x30,0x0d
+	.ascii "MapColorFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b
+	.byte 0x02,0x23,0x34,0x0d
+	.ascii "MapStencilFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x35,0x0d
+	.ascii "ZoomX\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x38,0x0d
+	.ascii "ZoomY\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x3c,0x0d
+	.ascii "MapStoSsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x40,0x0d
+	.ascii "MapItoIsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x44,0x0d
+	.ascii "MapItoRsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x48,0x0d
+	.ascii "MapItoGsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x4c,0x0d
+	.ascii "MapItoBsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x50,0x0d
+	.ascii "MapItoAsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x54,0x0d
+	.ascii "MapRtoRsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x58,0x0d
+	.ascii "MapGtoGsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x5c,0x0d
+	.ascii "MapBtoBsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x60,0x0d
+	.ascii "MapAtoAsize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x64,0x0d
+	.ascii "MapStoS\0"
+	.byte 0x00,0x00,0x8d,0x64,0x02,0x23,0x68,0x0d
+	.ascii "MapItoI\0"
+	.byte 0x00,0x00,0x8d,0x77,0x03,0x23,0xe8,0x08
+	.byte 0x0d
+	.ascii "MapItoR\0"
+	.byte 0x00,0x00,0x8d,0x8a,0x03,0x23,0xe8,0x10
+	.byte 0x0d
+	.ascii "MapItoG\0"
+	.byte 0x00,0x00,0x8d,0x9d,0x03,0x23,0xe8,0x18
+	.byte 0x0d
+	.ascii "MapItoB\0"
+	.byte 0x00,0x00,0x8d,0xb0,0x03,0x23,0xe8,0x20
+	.byte 0x0d
+	.ascii "MapItoA\0"
+	.byte 0x00,0x00,0x8d,0xc3,0x03,0x23,0xe8,0x28
+	.byte 0x0d
+	.ascii "MapRtoR\0"
+	.byte 0x00,0x00,0x8d,0xd6,0x03,0x23,0xe8,0x30
+	.byte 0x0d
+	.ascii "MapGtoG\0"
+	.byte 0x00,0x00,0x8d,0xe9,0x03,0x23,0xe8,0x38
+	.byte 0x0d
+	.ascii "MapBtoB\0"
+	.byte 0x00,0x00,0x8d,0xfc,0x03,0x23,0xe8,0x40
+	.byte 0x0d
+	.ascii "MapAtoA\0"
+	.byte 0x00,0x00,0x8e,0x0f,0x03,0x23,0xe8,0x48
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x0c,0x00
+	.byte 0x00,0x90,0xf2,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x02,0x00,0x11
+	.ascii "gl_point_attrib\0"
+	.byte 0x20,0x03,0x00,0x00,0x91,0x6b,0x0d
+	.ascii "SmoothFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "Size\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x04,0x0d
+	.ascii "Params\0"
+	.byte 0x00,0x00,0x90,0xe1,0x02,0x23,0x08,0x0d
+	.ascii "MinSize\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x14,0x0d
+	.ascii "MaxSize\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x18,0x0d
+	.ascii "Threshold\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x00
+	.byte 0x11
+	.ascii "gl_polygon_attrib\0"
+	.byte 0x28,0x03,0x00,0x00,0x92,0x9e,0x0d
+	.ascii "FrontFace\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "FrontMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x04,0x0d
+	.ascii "BackMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x08,0x0d
+	.ascii "Unfilled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0c,0x0d
+	.ascii "CullFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x0d,0x0d
+	.ascii "CullFaceMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x10,0x0d
+	.ascii "CullBits\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x14,0x0d
+	.ascii "SmoothFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x18,0x0d
+	.ascii "StippleFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x19,0x0d
+	.ascii "OffsetFactor\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x0d
+	.ascii "OffsetUnits\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x20,0x0d
+	.ascii "OffsetPoint\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x24,0x0d
+	.ascii "OffsetLine\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x25,0x0d
+	.ascii "OffsetFill\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x26,0x0d
+	.ascii "OffsetAny\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x27,0x00
+	.byte 0x0f,0x00,0x00,0x0b,0x91,0x80,0x00,0x00
+	.byte 0x92,0xaf,0x10,0x00,0x00,0x3c,0x30,0x1f
+	.byte 0x00,0x09,0x00,0x00,0x0b,0x7e
+	.ascii "GLsizei\0"
+	.byte 0x02,0x11
+	.ascii "gl_scissor_attrib\0"
+	.byte 0x14,0x03,0x00,0x00,0x93,0x18,0x0d
+	.ascii "Enabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "X\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x04,0x0d
+	.ascii "Y\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x08,0x0d
+	.ascii "Width\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x0c,0x0d
+	.ascii "Height\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x10,0x00
+	.byte 0x11
+	.ascii "gl_stencil_attrib\0"
+	.byte 0x18,0x03,0x00,0x00,0x93,0xc6,0x0d
+	.ascii "Enabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x00,0x0d
+	.ascii "Function\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x04,0x0d
+	.ascii "FailFunc\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x08,0x0d
+	.ascii "ZPassFunc\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x0c,0x0d
+	.ascii "ZFailFunc\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x10,0x0d
+	.ascii "Ref\0"
+	.byte 0x00,0x00,0x70,0x4a,0x02,0x23,0x14,0x0d
+	.ascii "ValueMask\0"
+	.byte 0x00,0x00,0x70,0x4a,0x02,0x23,0x15,0x0d
+	.ascii "Clear\0"
+	.byte 0x00,0x00,0x70,0x4a,0x02,0x23,0x16,0x0d
+	.ascii "WriteMask\0"
+	.byte 0x00,0x00,0x70,0x4a,0x02,0x23,0x17,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x10,0x00,0x00
+	.byte 0x93,0xd7,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x10,0x00
+	.byte 0x00,0x93,0xe8,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x0f,0x00,0x00,0x3b,0x50,0x10
+	.byte 0x00,0x00,0x93,0xf9,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x0f,0x00,0x00,0x3b,0x50
+	.byte 0x10,0x00,0x00,0x94,0x0a,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x03,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x50,0x10,0x00,0x00,0x94,0x1b,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x03,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x50,0x10,0x00,0x00,0x94,0x2c,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x0f,0x00
+	.byte 0x00,0x3b,0x50,0x10,0x00,0x00,0x94,0x3d
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x03,0x00,0x0f
+	.byte 0x00,0x00,0x3b,0x50,0x10,0x00,0x00,0x94
+	.byte 0x4e,0x10,0x00,0x00,0x3c,0x30,0x03,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x10,0x00,0x00
+	.byte 0x94,0x5f,0x10,0x00,0x00,0x3c,0x30,0x03
+	.byte 0x00,0x12,0x00,0x00,0x0b,0x38,0x04,0x00
+	.byte 0x00,0x00,0x94,0x72,0x13,0x00,0x00,0x3c
+	.byte 0x30,0x03,0xff,0x00,0x14
+	.ascii "gl_texture_attrib\0"
+	.byte 0x04,0xd8,0x03,0x00,0x00,0x96,0xa1,0x0d
+	.ascii "Enabled\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x00,0x0d
+	.ascii "EnvMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x04,0x0d
+	.ascii "EnvColor\0"
+	.byte 0x00,0x00,0x93,0xc6,0x02,0x23,0x08,0x0d
+	.ascii "TexGenEnabled\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x18,0x0d
+	.ascii "GenModeS\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x1c,0x0d
+	.ascii "GenModeT\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x20,0x0d
+	.ascii "GenModeR\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x24,0x0d
+	.ascii "GenModeQ\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x28,0x0d
+	.ascii "ObjectPlaneS\0"
+	.byte 0x00,0x00,0x93,0xd7,0x02,0x23,0x2c,0x0d
+	.ascii "ObjectPlaneT\0"
+	.byte 0x00,0x00,0x93,0xe8,0x02,0x23,0x3c,0x0d
+	.ascii "ObjectPlaneR\0"
+	.byte 0x00,0x00,0x93,0xf9,0x02,0x23,0x4c,0x0d
+	.ascii "ObjectPlaneQ\0"
+	.byte 0x00,0x00,0x94,0x0a,0x02,0x23,0x5c,0x0d
+	.ascii "EyePlaneS\0"
+	.byte 0x00,0x00,0x94,0x1b,0x02,0x23,0x6c,0x0d
+	.ascii "EyePlaneT\0"
+	.byte 0x00,0x00,0x94,0x2c,0x02,0x23,0x7c,0x0d
+	.ascii "EyePlaneR\0"
+	.byte 0x00,0x00,0x94,0x3d,0x03,0x23,0x8c,0x01
+	.byte 0x0d
+	.ascii "EyePlaneQ\0"
+	.byte 0x00,0x00,0x94,0x4e,0x03,0x23,0x9c,0x01
+	.byte 0x0d
+	.ascii "Current1D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xac,0x01
+	.byte 0x0d
+	.ascii "Current2D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xb0,0x01
+	.byte 0x0d
+	.ascii "Current3D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xb4,0x01
+	.byte 0x0d
+	.ascii "Current\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xb8,0x01
+	.byte 0x0d
+	.ascii "Proxy1D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xbc,0x01
+	.byte 0x0d
+	.ascii "Proxy2D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xc0,0x01
+	.byte 0x0d
+	.ascii "Proxy3D\0"
+	.byte 0x00,0x00,0x3f,0x9d,0x03,0x23,0xc4,0x01
+	.byte 0x0d
+	.ascii "SharedPalette\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0xc8,0x01
+	.byte 0x0d
+	.ascii "Palette\0"
+	.byte 0x00,0x00,0x94,0x5f,0x03,0x23,0xc9,0x01
+	.byte 0x0d
+	.ascii "PaletteSize\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x23,0xcc,0x09
+	.byte 0x0d
+	.ascii "PaletteIntFormat\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x03,0x23,0xd0,0x09
+	.byte 0x0d
+	.ascii "PaletteFormat\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x03,0x23,0xd4,0x09
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x47,0x10,0x00
+	.byte 0x00,0x96,0xb2,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x0f,0x00,0x00,0x96,0xa1,0x60
+	.byte 0x00,0x00,0x96,0xc3,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x05,0x00,0x0f,0x00,0x00,0x0b,0x0b
+	.byte 0x06,0x00,0x00,0x96,0xd4,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x05,0x00,0x11
+	.ascii "gl_transform_attrib\0"
+	.byte 0x6c,0x03,0x00,0x00,0x97,0x4e,0x0d
+	.ascii "MatrixMode\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "ClipEquation\0"
+	.byte 0x00,0x00,0x96,0xb2,0x02,0x23,0x04,0x0d
+	.ascii "ClipEnabled\0"
+	.byte 0x00,0x00,0x96,0xc3,0x02,0x23,0x64,0x0d
+	.ascii "AnyClip\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x6a,0x0d
+	.ascii "Normalize\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x6b,0x00
+	.byte 0x11
+	.ascii "gl_viewport_attrib\0"
+	.byte 0x30,0x03,0x00,0x00,0x97,0xf5,0x0d
+	.ascii "X\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "Y\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x04,0x0d
+	.ascii "Width\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x08,0x0d
+	.ascii "Height\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x0c,0x0d
+	.ascii "Near\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x10,0x0d
+	.ascii "Far\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x14,0x0d
+	.ascii "Sx\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x18,0x0d
+	.ascii "Sy\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x1c,0x0d
+	.ascii "Sz\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x20,0x0d
+	.ascii "Tx\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x24,0x0d
+	.ascii "Ty\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x28,0x0d
+	.ascii "Tz\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x2c,0x00
+	.byte 0x0f,0x00,0x00,0x7f,0xa4,0x40,0x00,0x00
+	.byte 0x98,0x06,0x10,0x00,0x00,0x3c,0x30,0x0f
+	.byte 0x00,0x0b,0x00,0x00,0x0b,0x0b,0x11
+	.ascii "gl_array_attrib\0"
+	.byte 0x80,0x03,0x00,0x00,0x9a,0xb6,0x0d
+	.ascii "VertexSize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "VertexType\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x04,0x0d
+	.ascii "VertexStride\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x08,0x0d
+	.ascii "VertexStrideB\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x0c,0x0d
+	.ascii "VertexPtr\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x10,0x0d
+	.ascii "VertexEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x14,0x0d
+	.ascii "NormalType\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x18,0x0d
+	.ascii "NormalStride\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x1c,0x0d
+	.ascii "NormalStrideB\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x20,0x0d
+	.ascii "NormalPtr\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x24,0x0d
+	.ascii "NormalEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x28,0x0d
+	.ascii "ColorSize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x2c,0x0d
+	.ascii "ColorType\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x30,0x0d
+	.ascii "ColorStride\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x34,0x0d
+	.ascii "ColorStrideB\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x38,0x0d
+	.ascii "ColorPtr\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x3c,0x0d
+	.ascii "ColorEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x40,0x0d
+	.ascii "IndexType\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x44,0x0d
+	.ascii "IndexStride\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x48,0x0d
+	.ascii "IndexStrideB\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x4c,0x0d
+	.ascii "IndexPtr\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x50,0x0d
+	.ascii "IndexEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x54,0x0d
+	.ascii "TexCoordSize\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x58,0x0d
+	.ascii "TexCoordType\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x5c,0x0d
+	.ascii "TexCoordStride\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x60,0x0d
+	.ascii "TexCoordStrideB\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x64,0x0d
+	.ascii "TexCoordPtr\0"
+	.byte 0x00,0x00,0x3b,0x78,0x02,0x23,0x68,0x0d
+	.ascii "TexCoordEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x6c,0x0d
+	.ascii "EdgeFlagStride\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x70,0x0d
+	.ascii "EdgeFlagStrideB\0"
+	.byte 0x00,0x00,0x92,0xaf,0x02,0x23,0x74,0x0d
+	.ascii "EdgeFlagPtr\0"
+	.byte 0x00,0x00,0x98,0x06,0x02,0x23,0x78,0x0d
+	.ascii "EdgeFlagEnabled\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x7c,0x00
+	.byte 0x11
+	.ascii "gl_pixelstore_attrib\0"
+	.byte 0x1c,0x03,0x00,0x00,0x9b,0x65,0x0d
+	.ascii "Alignment\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x00,0x0d
+	.ascii "RowLength\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x04,0x0d
+	.ascii "SkipPixels\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x08,0x0d
+	.ascii "SkipRows\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x0c,0x0d
+	.ascii "ImageHeight\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x10,0x0d
+	.ascii "SkipImages\0"
+	.byte 0x00,0x00,0x0b,0x85,0x02,0x23,0x14,0x0d
+	.ascii "SwapBytes\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x18,0x0d
+	.ascii "LsbFirst\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x19,0x00
+	.byte 0x0b,0x00,0x00,0x3b,0x50,0x11
+	.ascii "gl_1d_map\0"
+	.byte 0x14,0x03,0x00,0x00,0x9b,0xbe,0x0d
+	.ascii "Order\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x00,0x0d
+	.ascii "u1\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x04,0x0d
+	.ascii "u2\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x08,0x0d
+	.ascii "Points\0"
+	.byte 0x00,0x00,0x9b,0x65,0x02,0x23,0x0c,0x0d
+	.ascii "Retain\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x10,0x00
+	.byte 0x11
+	.ascii "gl_2d_map\0"
+	.byte 0x20,0x03,0x00,0x00,0x9c,0x38,0x0d
+	.ascii "Uorder\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x00,0x0d
+	.ascii "Vorder\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x04,0x0d
+	.ascii "u1\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x08,0x0d
+	.ascii "u2\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x0c,0x0d
+	.ascii "v1\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x10,0x0d
+	.ascii "v2\0"
+	.byte 0x00,0x00,0x3b,0x50,0x02,0x23,0x14,0x0d
+	.ascii "Points\0"
+	.byte 0x00,0x00,0x9b,0x65,0x02,0x23,0x18,0x0d
+	.ascii "Retain\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x02,0x23,0x1c,0x00
+	.byte 0x14
+	.ascii "gl_evaluators\0"
+	.byte 0x01,0xd4,0x03,0x00,0x00,0x9d,0xc2,0x0d
+	.ascii "Map1Vertex3\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x00,0x0d
+	.ascii "Map1Vertex4\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x14,0x0d
+	.ascii "Map1Index\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x28,0x0d
+	.ascii "Map1Color4\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x3c,0x0d
+	.ascii "Map1Normal\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x50,0x0d
+	.ascii "Map1Texture1\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x64,0x0d
+	.ascii "Map1Texture2\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x02,0x23,0x78,0x0d
+	.ascii "Map1Texture3\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x03,0x23,0x8c,0x01
+	.byte 0x0d
+	.ascii "Map1Texture4\0"
+	.byte 0x00,0x00,0x9b,0x6a,0x03,0x23,0xa0,0x01
+	.byte 0x0d
+	.ascii "Map2Vertex3\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xb4,0x01
+	.byte 0x0d
+	.ascii "Map2Vertex4\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xd4,0x01
+	.byte 0x0d
+	.ascii "Map2Index\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xf4,0x01
+	.byte 0x0d
+	.ascii "Map2Color4\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0x94,0x02
+	.byte 0x0d
+	.ascii "Map2Normal\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xb4,0x02
+	.byte 0x0d
+	.ascii "Map2Texture1\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xd4,0x02
+	.byte 0x0d
+	.ascii "Map2Texture2\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xf4,0x02
+	.byte 0x0d
+	.ascii "Map2Texture3\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0x94,0x03
+	.byte 0x0d
+	.ascii "Map2Texture4\0"
+	.byte 0x00,0x00,0x9b,0xbe,0x03,0x23,0xb4,0x03
+	.byte 0x00,0x11
+	.ascii "gl_feedback\0"
+	.byte 0x14,0x03,0x00,0x00,0x9e,0x20,0x0d
+	.ascii "Type\0"
+	.byte 0x00,0x00,0x3b,0x3a,0x02,0x23,0x00,0x0d
+	.ascii "Mask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x04,0x0d
+	.ascii "Buffer\0"
+	.byte 0x00,0x00,0x9b,0x65,0x02,0x23,0x08,0x0d
+	.ascii "BufferSize\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x0c,0x0d
+	.ascii "Count\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x10,0x00
+	.byte 0x0b,0x00,0x00,0x0b,0x91,0x12,0x00,0x00
+	.byte 0x0b,0x91,0x01,0x00,0x00,0x00,0x9e,0x37
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x3f,0x00,0x14
+	.ascii "gl_selection\0"
+	.byte 0x01,0x20,0x03,0x00,0x00,0x9e,0xec,0x0d
+	.ascii "Buffer\0"
+	.byte 0x00,0x00,0x9e,0x20,0x02,0x23,0x00,0x0d
+	.ascii "BufferSize\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x04,0x0d
+	.ascii "BufferCount\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x08,0x0d
+	.ascii "Hits\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x0c,0x0d
+	.ascii "NameStackDepth\0"
+	.byte 0x00,0x00,0x0b,0x91,0x02,0x23,0x10,0x0d
+	.ascii "NameStack\0"
+	.byte 0x00,0x00,0x9e,0x25,0x02,0x23,0x14,0x0d
+	.ascii "HitFlag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x03,0x23,0x94,0x02
+	.byte 0x0d
+	.ascii "HitMinZ\0"
+	.byte 0x00,0x00,0x3b,0x50,0x03,0x23,0x98,0x02
+	.byte 0x0d
+	.ascii "HitMaxZ\0"
+	.byte 0x00,0x00,0x3b,0x50,0x03,0x23,0x9c,0x02
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x47,0x10,0x00
+	.byte 0x00,0x9e,0xfd,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x12,0x00,0x00,0x9e,0xec,0x1f
+	.byte 0x80,0x00,0x00,0x9f,0x10,0x13,0x00,0x00
+	.byte 0x3c,0x30,0x01,0xf7,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x47,0x10,0x00,0x00,0x9f,0x21,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x12
+	.byte 0x00,0x00,0x9f,0x10,0x1f,0x80,0x00,0x00
+	.byte 0x9f,0x34,0x13,0x00,0x00,0x3c,0x30,0x01
+	.byte 0xf7,0x00,0x0f,0x00,0x00,0x3b,0x47,0x10
+	.byte 0x00,0x00,0x9f,0x45,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x12,0x00,0x00,0x9f,0x34
+	.byte 0x1f,0x80,0x00,0x00,0x9f,0x58,0x13,0x00
+	.byte 0x00,0x3c,0x30,0x01,0xf7,0x00,0x0f,0x00
+	.byte 0x00,0x3b,0x47,0x0c,0x00,0x00,0x9f,0x69
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x02,0x00,0x12
+	.byte 0x00,0x00,0x9f,0x58,0x17,0xa0,0x00,0x00
+	.byte 0x9f,0x7c,0x13,0x00,0x00,0x3c,0x30,0x01
+	.byte 0xf7,0x00,0x0f,0x00,0x00,0x3b,0x47,0x0c
+	.byte 0x00,0x00,0x9f,0x8d,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x02,0x00,0x12,0x00,0x00,0x9f,0x7c
+	.byte 0x17,0xa0,0x00,0x00,0x9f,0xa0,0x13,0x00
+	.byte 0x00,0x3c,0x30,0x01,0xf7,0x00,0x0f,0x00
+	.byte 0x00,0x0a,0xfa,0x04,0x00,0x00,0x9f,0xb1
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x03,0x00,0x12
+	.byte 0x00,0x00,0x9f,0xa0,0x07,0xe0,0x00,0x00
+	.byte 0x9f,0xc4,0x13,0x00,0x00,0x3c,0x30,0x01
+	.byte 0xf7,0x00,0x0f,0x00,0x00,0x0a,0xfa,0x04
+	.byte 0x00,0x00,0x9f,0xd5,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x03,0x00,0x12,0x00,0x00,0x9f,0xc4
+	.byte 0x07,0xe0,0x00,0x00,0x9f,0xe8,0x13,0x00
+	.byte 0x00,0x3c,0x30,0x01,0xf7,0x00,0x0f,0x00
+	.byte 0x00,0x0a,0xfa,0x04,0x00,0x00,0x9f,0xf9
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x03,0x00,0x0b
+	.byte 0x00,0x00,0x9f,0xe8,0x12,0x00,0x00,0x0b
+	.byte 0x91,0x07,0xe0,0x00,0x00,0xa0,0x11,0x13
+	.byte 0x00,0x00,0x3c,0x30,0x01,0xf7,0x00,0x12
+	.byte 0x00,0x00,0x0b,0x91,0x07,0xe0,0x00,0x00
+	.byte 0xa0,0x24,0x13,0x00,0x00,0x3c,0x30,0x01
+	.byte 0xf7,0x00,0x12,0x00,0x00,0x0b,0x0b,0x01
+	.byte 0xf8,0x00,0x00,0xa0,0x37,0x13,0x00,0x00
+	.byte 0x3c,0x30,0x01,0xf7,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x47,0x10,0x00,0x00,0xa0,0x48,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x12,0x00
+	.byte 0x00,0xa0,0x37,0x1f,0x80,0x00,0x00,0xa0
+	.byte 0x5b,0x13,0x00,0x00,0x3c,0x30,0x01,0xf7
+	.byte 0x00,0x12,0x00,0x00,0x0b,0x38,0x01,0xf8
+	.byte 0x00,0x00,0xa0,0x6e,0x13,0x00,0x00,0x3c
+	.byte 0x30,0x01,0xf7,0x00,0x12,0x00,0x00,0x0b
+	.byte 0x91,0x07,0xe0,0x00,0x00,0xa0,0x81,0x13
+	.byte 0x00,0x00,0x3c,0x30,0x01,0xf7,0x00,0x12
+	.byte 0x00,0x00,0x8a,0xb2,0x06,0xe0,0x00,0x00
+	.byte 0xa0,0x93,0x10,0x00,0x00,0x3c,0x30,0x01
+	.byte 0x00,0x1a,0x00,0x00,0xa0,0x81,0x00,0x0d
+	.byte 0x89,0x00,0x00,0x00,0xa0,0xa8,0x13,0x00
+	.byte 0x00,0x3c,0x30,0x01,0xf7,0x00,0x1b
+	.ascii "vertex_buffer\0"
+	.byte 0x00,0x0e,0x61,0xb4,0x05,0x00,0x00,0xa2
+	.byte 0x98,0x0d
+	.ascii "Obj\0"
+	.byte 0x00,0x00,0x9e,0xfd,0x02,0x23,0x00,0x0d
+	.ascii "Eye\0"
+	.byte 0x00,0x00,0x9f,0x21,0x03,0x23,0x80,0x3f
+	.byte 0x0d
+	.ascii "Clip\0"
+	.byte 0x00,0x00,0x9f,0x45,0x03,0x23,0x80,0x7e
+	.byte 0x0d
+	.ascii "Win\0"
+	.byte 0x00,0x00,0x9f,0x69,0x04,0x23,0x80,0xbd
+	.byte 0x01,0x0d
+	.ascii "Normal\0"
+	.byte 0x00,0x00,0x9f,0x8d,0x04,0x23,0xa0,0xec
+	.byte 0x01,0x0d
+	.ascii "Fcolor\0"
+	.byte 0x00,0x00,0x9f,0xb1,0x04,0x23,0xc0,0x9b
+	.byte 0x02,0x0d
+	.ascii "Bcolor\0"
+	.byte 0x00,0x00,0x9f,0xd5,0x04,0x23,0xa0,0xab
+	.byte 0x02,0x0d
+	.ascii "Color\0"
+	.byte 0x00,0x00,0x9f,0xf9,0x04,0x23,0x80,0xbb
+	.byte 0x02,0x0d
+	.ascii "Findex\0"
+	.byte 0x00,0x00,0x9f,0xfe,0x04,0x23,0x84,0xbb
+	.byte 0x02,0x0d
+	.ascii "Bindex\0"
+	.byte 0x00,0x00,0xa0,0x11,0x04,0x23,0xe4,0xca
+	.byte 0x02,0x0d
+	.ascii "Index\0"
+	.byte 0x00,0x00,0x9e,0x20,0x04,0x23,0xc4,0xda
+	.byte 0x02,0x0d
+	.ascii "Edgeflag\0"
+	.byte 0x00,0x00,0xa0,0x24,0x04,0x23,0xc8,0xda
+	.byte 0x02,0x0d
+	.ascii "TexCoord\0"
+	.byte 0x00,0x00,0xa0,0x48,0x04,0x23,0xc0,0xde
+	.byte 0x02,0x0d
+	.ascii "ClipMask\0"
+	.byte 0x00,0x00,0xa0,0x5b,0x04,0x23,0xc0,0x9d
+	.byte 0x03,0x0d
+	.ascii "ClipOrMask\0"
+	.byte 0x00,0x00,0x0b,0x38,0x04,0x23,0xb8,0xa1
+	.byte 0x03,0x0d
+	.ascii "ClipAndMask\0"
+	.byte 0x00,0x00,0x0b,0x38,0x04,0x23,0xb9,0xa1
+	.byte 0x03,0x0d
+	.ascii "Start\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xbc,0xa1
+	.byte 0x03,0x0d
+	.ascii "Count\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xc0,0xa1
+	.byte 0x03,0x0d
+	.ascii "Free\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xc4,0xa1
+	.byte 0x03,0x0d
+	.ascii "VertexSizeMask\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xc8,0xa1
+	.byte 0x03,0x0d
+	.ascii "TexCoordSize\0"
+	.byte 0x00,0x00,0x0b,0x91,0x04,0x23,0xcc,0xa1
+	.byte 0x03,0x0d
+	.ascii "MonoColor\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xd0,0xa1
+	.byte 0x03,0x0d
+	.ascii "MonoNormal\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xd1,0xa1
+	.byte 0x03,0x0d
+	.ascii "MonoMaterial\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x04,0x23,0xd2,0xa1
+	.byte 0x03,0x0d
+	.ascii "MaterialMask\0"
+	.byte 0x00,0x00,0xa0,0x6e,0x04,0x23,0xd4,0xa1
+	.byte 0x03,0x0d
+	.ascii "Material\0"
+	.byte 0x00,0x00,0xa0,0x93,0x04,0x23,0xb4,0xb1
+	.byte 0x03,0x00,0x0b,0x00,0x00,0xa0,0xa8,0x0e
+	.ascii "pixel_buffer\0"
+	.byte 0x01,0x0b,0x00,0x00,0xa2,0x9d,0x09,0x00
+	.byte 0x00,0x40,0x43
+	.ascii "GLcontext\0"
+	.byte 0x03,0x0b,0x00,0x00,0xa2,0xb1,0x02
+	.ascii "make_empty_list\0"
+	.byte 0x03,0x01,0x01,0xab
+	.uaword make_empty_list
+	.uaword .L66
+	.byte 0x01,0x6e,0x01,0x00,0x00,0x3c,0x1a,0x01
+	.byte 0x00,0x00,0xa2,0xfe,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x01,0xac
+	.byte 0x02,0x91,0x78,0x00,0x1c
+	.ascii "gl_destroy_list\0"
+	.byte 0x01,0x02,0x01,0x01,0xb8
+	.uaword gl_destroy_list
+	.uaword .L164
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa3,0xeb
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x01,0xb7,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x01,0xb7,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x01,0xb9
+	.byte 0x02,0x91,0x7c,0x04
+	.ascii "block\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x01,0xb9
+	.byte 0x02,0x91,0x78,0x04
+	.ascii "done\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x01,0x01,0x01,0xba
+	.byte 0x02,0x91,0x77,0x1d
+	.uaword .L78
+	.uaword .L161
+	.byte 0x1d
+	.uaword .L84
+	.uaword .L158
+	.byte 0x1d
+	.uaword .L85
+	.uaword .L157
+	.byte 0x1d
+	.uaword .L86
+	.uaword .L156
+	.byte 0x1d
+	.uaword .L90
+	.uaword .L153
+	.byte 0x1d
+	.uaword .L91
+	.uaword .L152
+	.byte 0x1d
+	.uaword .L129
+	.uaword .L132
+	.byte 0x04
+	.ascii "image\0"
+	.byte 0x00,0x00,0x4b,0x57,0x01,0x01,0x01,0xe9
+	.byte 0x02,0x91,0x6c,0x00,0x1d
+	.uaword .L135
+	.uaword .L138
+	.byte 0x04
+	.ascii "image\0"
+	.byte 0x00,0x00,0x4b,0x57,0x01,0x01,0x01,0xf0
+	.byte 0x02,0x91,0x6c,0x00,0x00,0x00,0x00,0x00
+	.byte 0x00,0x00,0x00,0x02
+	.ascii "translate_id\0"
+	.byte 0x03,0x01,0x02,0x0e
+	.uaword translate_id
+	.uaword .L214
+	.byte 0x01,0x6e,0x01,0x00,0x00,0x0b,0x91,0x01
+	.byte 0x00,0x00,0xa4,0xbc,0x03,0x00,0x00,0x92
+	.byte 0xaf
+	.ascii "n\0"
+	.byte 0x01,0x02,0x0d,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x02,0x0d,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xa4,0xc1
+	.ascii "list\0"
+	.byte 0x01,0x02,0x0d,0x03,0x91,0xcc,0x00,0x04
+	.ascii "bptr\0"
+	.byte 0x00,0x00,0xa4,0xe2,0x01,0x01,0x02,0x0f
+	.byte 0x02,0x91,0x78,0x04
+	.ascii "ubptr\0"
+	.byte 0x00,0x00,0x3c,0x49,0x01,0x01,0x02,0x10
+	.byte 0x02,0x91,0x74,0x04
+	.ascii "sptr\0"
+	.byte 0x00,0x00,0xa4,0xe7,0x01,0x01,0x02,0x11
+	.byte 0x02,0x91,0x70,0x04
+	.ascii "usptr\0"
+	.byte 0x00,0x00,0xa4,0xec,0x01,0x01,0x02,0x12
+	.byte 0x02,0x91,0x6c,0x04
+	.ascii "iptr\0"
+	.byte 0x00,0x00,0xa4,0xf1,0x01,0x01,0x02,0x13
+	.byte 0x02,0x91,0x68,0x04
+	.ascii "uiptr\0"
+	.byte 0x00,0x00,0x9e,0x20,0x01,0x01,0x02,0x14
+	.byte 0x02,0x91,0x64,0x04
+	.ascii "fptr\0"
+	.byte 0x00,0x00,0x9b,0x65,0x01,0x01,0x02,0x15
+	.byte 0x02,0x91,0x60,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x66,0x0b,0x00,0x00,0xa4,0xbc,0x08
+	.ascii "signed char\0"
+	.byte 0x06,0x01,0x09,0x00,0x00,0xa4,0xc6
+	.ascii "GLbyte\0"
+	.byte 0x02,0x0b,0x00,0x00,0xa4,0xd5,0x0b,0x00
+	.byte 0x00,0x0b,0x4f,0x0b,0x00,0x00,0x0b,0x6f
+	.byte 0x0b,0x00,0x00,0x0b,0x85,0x1c
+	.ascii "gl_init_lists\0"
+	.byte 0x01,0x02,0x01,0x02,0x48
+	.uaword gl_init_lists
+	.uaword .L349
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa5,0x34
+	.byte 0x04
+	.ascii "init_flag\0"
+	.byte 0x00,0x00,0x0b,0x7e,0x03,0x01,0x02,0x49
+	.byte 0x05,0x03
+	.uaword $XBa59JCQsd3LGqK.gl_init_lists.init_flag
+	.byte 0x00,0x1e
+	.ascii "gl_list_index\0"
+	.byte 0x01,0x02,0x01,0x02,0xcd
+	.uaword gl_list_index
+	.uaword .L357
+	.byte 0x01,0x6e,0x01,0x00,0x00,0x0b,0x85,0x01
+	.byte 0x1c
+	.ascii "gl_save_Accum\0"
+	.byte 0x01,0x02,0x01,0x02,0xd9
+	.uaword gl_save_Accum
+	.uaword .L386
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa5,0xbc
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x02,0xd8,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "op\0"
+	.byte 0x01,0x02,0xd8,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "value\0"
+	.byte 0x01,0x02,0xd8,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x02,0xda
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_AlphaFunc\0"
+	.byte 0x01,0x02,0x01,0x02,0xe6
+	.uaword gl_save_AlphaFunc
+	.uaword .L415
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa6,0x24
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x02,0xe5,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "func\0"
+	.byte 0x01,0x02,0xe5,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xa6,0x24
+	.ascii "ref\0"
+	.byte 0x01,0x02,0xe5,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x02,0xe7
+	.byte 0x02,0x91,0x7c,0x00,0x09,0x00,0x00,0x3b
+	.byte 0x47
+	.ascii "GLclampf\0"
+	.byte 0x02,0x1c
+	.ascii "gl_save_Begin\0"
+	.byte 0x01,0x02,0x01,0x02,0xf3
+	.uaword gl_save_Begin
+	.uaword .L443
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa6,0x87
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x02,0xf2,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x02,0xf2,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x02,0xf4
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_BindTexture\0"
+	.byte 0x01,0x02,0x01,0x02,0xff
+	.uaword gl_save_BindTexture
+	.uaword .L472
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa6,0xf7
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x02,0xfe,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x02,0xfe,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "texture\0"
+	.byte 0x01,0x02,0xfe,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x00
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Bitmap\0"
+	.byte 0x01,0x02,0x01,0x03,0x10
+	.uaword gl_save_Bitmap
+	.uaword .L506
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa7,0xbb
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x0b,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x03,0x0c,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x03,0x0c,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "xorig\0"
+	.byte 0x01,0x03,0x0d,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "yorig\0"
+	.byte 0x01,0x03,0x0d,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "xmove\0"
+	.byte 0x01,0x03,0x0e,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "ymove\0"
+	.byte 0x01,0x03,0x0e,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0xa7,0xc0
+	.ascii "bitmap\0"
+	.byte 0x01,0x03,0x0f,0x03,0x91,0xe0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x11
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x47
+	.byte 0xc6,0x0b,0x00,0x00,0xa7,0xbb,0x1c
+	.ascii "gl_save_BlendEquation\0"
+	.byte 0x01,0x02,0x01,0x03,0x23
+	.uaword gl_save_BlendEquation
+	.uaword .L534
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa8,0x21
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x22,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x03,0x22,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x24
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_BlendFunc\0"
+	.byte 0x01,0x02,0x01,0x03,0x2f
+	.uaword gl_save_BlendFunc
+	.uaword .L563
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa8,0x90
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x2e,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "sfactor\0"
+	.byte 0x01,0x03,0x2e,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "dfactor\0"
+	.byte 0x01,0x03,0x2e,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x30
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_BlendColor\0"
+	.byte 0x01,0x02,0x01,0x03,0x3d
+	.uaword gl_save_BlendColor
+	.uaword .L594
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa9,0x1d
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x3b,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "red\0"
+	.byte 0x01,0x03,0x3b,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "green\0"
+	.byte 0x01,0x03,0x3b,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "blue\0"
+	.byte 0x01,0x03,0x3c,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "alpha\0"
+	.byte 0x01,0x03,0x3c,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x3e
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CallList\0"
+	.byte 0x01,0x02,0x01,0x03,0x4c
+	.uaword gl_save_CallList
+	.uaword .L622
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xa9,0x74
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x4b,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x03,0x4b,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x4d
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CallLists\0"
+	.byte 0x01,0x02,0x01,0x03,0x59
+	.uaword gl_save_CallLists
+	.uaword .L664
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xaa,0x29
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x57,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "n\0"
+	.byte 0x01,0x03,0x58,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x03,0x58,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xaa,0x2e
+	.ascii "lists\0"
+	.byte 0x01,0x03,0x58,0x03,0x91,0xd0,0x00,0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x03,0x5a
+	.byte 0x02,0x91,0x7c,0x1d
+	.uaword .L628
+	.uaword .L652
+	.byte 0x1d
+	.uaword .L634
+	.uaword .L649
+	.byte 0x1d
+	.uaword .L635
+	.uaword .L648
+	.byte 0x04
+	.ascii "list\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x03,0x5d
+	.byte 0x02,0x91,0x78,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x5e
+	.byte 0x02,0x91,0x74,0x00,0x00,0x00,0x00,0x15
+	.byte 0x00,0x00,0x3b,0x66,0x0b,0x00,0x00,0xaa
+	.byte 0x29,0x1c
+	.ascii "gl_save_Clear\0"
+	.byte 0x01,0x02,0x01,0x03,0x6a
+	.uaword gl_save_Clear
+	.uaword .L692
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xaa,0x87
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x69,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x27
+	.ascii "mask\0"
+	.byte 0x01,0x03,0x69,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x6b
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ClearAccum\0"
+	.byte 0x01,0x02,0x01,0x03,0x77
+	.uaword gl_save_ClearAccum
+	.uaword .L723
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xab,0x14
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x75,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "red\0"
+	.byte 0x01,0x03,0x75,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "green\0"
+	.byte 0x01,0x03,0x75,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "blue\0"
+	.byte 0x01,0x03,0x76,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "alpha\0"
+	.byte 0x01,0x03,0x76,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x78
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ClearColor\0"
+	.byte 0x01,0x02,0x01,0x03,0x87
+	.uaword gl_save_ClearColor
+	.uaword .L754
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xab,0xa1
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x85,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xa6,0x24
+	.ascii "red\0"
+	.byte 0x01,0x03,0x85,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xa6,0x24
+	.ascii "green\0"
+	.byte 0x01,0x03,0x85,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xa6,0x24
+	.ascii "blue\0"
+	.byte 0x01,0x03,0x86,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0xa6,0x24
+	.ascii "alpha\0"
+	.byte 0x01,0x03,0x86,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x88
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ClearDepth\0"
+	.byte 0x01,0x02,0x01,0x03,0x96
+	.uaword gl_save_ClearDepth
+	.uaword .L782
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xab,0xfb
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0x95,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xab,0xfb
+	.ascii "depth\0"
+	.byte 0x01,0x03,0x95,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0x97
+	.byte 0x02,0x91,0x7c,0x00,0x09,0x00,0x00,0x49
+	.byte 0xa0
+	.ascii "GLclampd\0"
+	.byte 0x02,0x1c
+	.ascii "gl_save_ClearIndex\0"
+	.byte 0x01,0x02,0x01,0x03,0xa2
+	.uaword gl_save_ClearIndex
+	.uaword .L810
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xac,0x60
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xa1,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "c\0"
+	.byte 0x01,0x03,0xa1,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xa3
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ClearStencil\0"
+	.byte 0x01,0x02,0x01,0x03,0xae
+	.uaword gl_save_ClearStencil
+	.uaword .L838
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xac,0xb8
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xad,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "s\0"
+	.byte 0x01,0x03,0xad,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xaf
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ClipPlane\0"
+	.byte 0x01,0x02,0x01,0x03,0xba
+	.uaword gl_save_ClipPlane
+	.uaword .L870
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xad,0x21
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xb9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "plane\0"
+	.byte 0x01,0x03,0xb9,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xad,0x26
+	.ascii "equ\0"
+	.byte 0x01,0x03,0xb9,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xbb
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xad,0x21,0x1c
+	.ascii "gl_save_Color3f\0"
+	.byte 0x01,0x02,0x01,0x03,0xca
+	.uaword gl_save_Color3f
+	.uaword .L900
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xad,0x9a
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xc9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "r\0"
+	.byte 0x01,0x03,0xc9,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "g\0"
+	.byte 0x01,0x03,0xc9,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "b\0"
+	.byte 0x01,0x03,0xc9,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xcb
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Color3fv\0"
+	.byte 0x01,0x02,0x01,0x03,0xd8
+	.uaword gl_save_Color3fv
+	.uaword .L930
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xad,0xee
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xd7,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xad,0xf3
+	.ascii "c\0"
+	.byte 0x01,0x03,0xd7,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xd9
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xad,0xee,0x1c
+	.ascii "gl_save_Color4f\0"
+	.byte 0x01,0x02,0x01,0x03,0xe7
+	.uaword gl_save_Color4f
+	.uaword .L961
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xae,0x75
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xe5,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "r\0"
+	.byte 0x01,0x03,0xe5,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "g\0"
+	.byte 0x01,0x03,0xe5,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "b\0"
+	.byte 0x01,0x03,0xe6,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "a\0"
+	.byte 0x01,0x03,0xe6,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xe8
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Color4fv\0"
+	.byte 0x01,0x02,0x01,0x03,0xf6
+	.uaword gl_save_Color4fv
+	.uaword .L992
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xae,0xc9
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x03,0xf5,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xae,0xce
+	.ascii "c\0"
+	.byte 0x01,0x03,0xf5,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x03,0xf7
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xae,0xc9,0x1c
+	.ascii "gl_save_Color4ub\0"
+	.byte 0x01,0x02,0x01,0x04,0x06
+	.uaword gl_save_Color4ub
+	.uaword .L1023
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xaf,0x51
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x04,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x38
+	.ascii "r\0"
+	.byte 0x01,0x04,0x04,0x03,0x91,0xcb,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x38
+	.ascii "g\0"
+	.byte 0x01,0x04,0x04,0x03,0x91,0xcf,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x38
+	.ascii "b\0"
+	.byte 0x01,0x04,0x05,0x03,0x91,0xd3,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x38
+	.ascii "a\0"
+	.byte 0x01,0x04,0x05,0x03,0x91,0xd7,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x07
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Color4ubv\0"
+	.byte 0x01,0x02,0x01,0x04,0x15
+	.uaword gl_save_Color4ubv
+	.uaword .L1054
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xaf,0xa6
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x14,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xaf,0xab
+	.ascii "c\0"
+	.byte 0x01,0x04,0x14,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x16
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x0b
+	.byte 0x38,0x0b,0x00,0x00,0xaf,0xa6,0x1c
+	.ascii "gl_save_ColorMask\0"
+	.byte 0x01,0x02,0x01,0x04,0x25
+	.uaword gl_save_ColorMask
+	.uaword .L1085
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb0,0x3c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x23,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "red\0"
+	.byte 0x01,0x04,0x23,0x03,0x91,0xcb,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "green\0"
+	.byte 0x01,0x04,0x23,0x03,0x91,0xcf,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "blue\0"
+	.byte 0x01,0x04,0x24,0x03,0x91,0xd3,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "alpha\0"
+	.byte 0x01,0x04,0x24,0x03,0x91,0xd7,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x26
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ColorMaterial\0"
+	.byte 0x01,0x02,0x01,0x04,0x34
+	.uaword gl_save_ColorMaterial
+	.uaword .L1114
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb0,0xa9
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x33,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "face\0"
+	.byte 0x01,0x04,0x33,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x04,0x33,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x35
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ColorTable\0"
+	.byte 0x01,0x02,0x01,0x04,0x42
+	.uaword gl_save_ColorTable
+	.uaword .L1154
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb1,0x31
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x40,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0x40,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "internalFormat\0"
+	.byte 0x01,0x04,0x40,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "table\0"
+	.byte 0x01,0x04,0x41,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x43
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ColorSubTable\0"
+	.byte 0x01,0x02,0x01,0x04,0x55
+	.uaword gl_save_ColorSubTable
+	.uaword .L1194
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb1,0xb2
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x53,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0x53,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "start\0"
+	.byte 0x01,0x04,0x54,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "data\0"
+	.byte 0x01,0x04,0x54,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x56
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CopyPixels\0"
+	.byte 0x01,0x02,0x01,0x04,0x69
+	.uaword gl_save_CopyPixels
+	.uaword .L1226
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb2,0x4c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x67,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x04,0x67,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x04,0x67,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x04,0x68,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x04,0x68,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x04,0x68,0x03,0x91,0xd8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x6a
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CopyTexImage1D\0"
+	.byte 0x01,0x02,0x01,0x04,0x7e
+	.uaword gl_save_CopyTexImage1D
+	.uaword .L1260
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb3,0x19
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x79,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0x7a,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x04,0x7a,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "internalformat\0"
+	.byte 0x01,0x04,0x7b,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x04,0x7c,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x04,0x7c,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x04,0x7c,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "border\0"
+	.byte 0x01,0x04,0x7d,0x03,0x91,0xe0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x7f
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CopyTexImage2D\0"
+	.byte 0x01,0x02,0x01,0x04,0x95
+	.uaword gl_save_CopyTexImage2D
+	.uaword .L1295
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb3,0xf9
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0x90,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0x91,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x04,0x91,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "internalformat\0"
+	.byte 0x01,0x04,0x92,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x04,0x93,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x04,0x93,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x04,0x93,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x04,0x94,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "border\0"
+	.byte 0x01,0x04,0x94,0x03,0x91,0xe4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0x96
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CopyTexSubImage1D\0"
+	.byte 0x01,0x02,0x01,0x04,0xad
+	.uaword gl_save_CopyTexSubImage1D
+	.uaword .L1328
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb4,0xaf
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0xa9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0xaa,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x04,0xaa,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "xoffset\0"
+	.byte 0x01,0x04,0xab,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x04,0xab,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x04,0xab,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x04,0xac,0x03,0x91,0xdc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0xae
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CopyTexSubImage2D\0"
+	.byte 0x01,0x02,0x01,0x04,0xc2
+	.uaword gl_save_CopyTexSubImage2D
+	.uaword .L1363
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb5,0x8c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0xbd,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0xbe,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x04,0xbe,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "xoffset\0"
+	.byte 0x01,0x04,0xbf,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "yoffset\0"
+	.byte 0x01,0x04,0xbf,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x04,0xc0,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x04,0xc0,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x04,0xc1,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "height\0"
+	.byte 0x01,0x04,0xc1,0x03,0x91,0xe4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0xc3
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CopyTexSubImage3DEXT\0"
+	.byte 0x01,0x02,0x01,0x04,0xda
+	.uaword gl_save_CopyTexSubImage3DEXT
+	.uaword .L1399
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb6,0x80
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0xd5,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x04,0xd6,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x04,0xd6,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "xoffset\0"
+	.byte 0x01,0x04,0xd7,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "yoffset\0"
+	.byte 0x01,0x04,0xd7,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "zoffset\0"
+	.byte 0x01,0x04,0xd7,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x04,0xd8,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x04,0xd8,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x04,0xd9,0x03,0x91,0xe4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "height\0"
+	.byte 0x01,0x04,0xd9,0x03,0x91,0xe8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0xdb
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_CullFace\0"
+	.byte 0x01,0x02,0x01,0x04,0xef
+	.uaword gl_save_CullFace
+	.uaword .L1427
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb6,0xd7
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0xee,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x04,0xee,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0xf0
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_DepthFunc\0"
+	.byte 0x01,0x02,0x01,0x04,0xfb
+	.uaword gl_save_DepthFunc
+	.uaword .L1455
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb7,0x2f
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x04,0xfa,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "func\0"
+	.byte 0x01,0x04,0xfa,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x04,0xfc
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_DepthMask\0"
+	.byte 0x01,0x02,0x01,0x05,0x07
+	.uaword gl_save_DepthMask
+	.uaword .L1483
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb7,0x87
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x06,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "mask\0"
+	.byte 0x01,0x05,0x06,0x03,0x91,0xcb,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x08
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_DepthRange\0"
+	.byte 0x01,0x02,0x01,0x05,0x13
+	.uaword gl_save_DepthRange
+	.uaword .L1512
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb7,0xf6
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x12,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xab,0xfb
+	.ascii "nearval\0"
+	.byte 0x01,0x05,0x12,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xab,0xfb
+	.ascii "farval\0"
+	.byte 0x01,0x05,0x12,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x14
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Disable\0"
+	.byte 0x01,0x02,0x01,0x05,0x20
+	.uaword gl_save_Disable
+	.uaword .L1540
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb8,0x4b
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x1f,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "cap\0"
+	.byte 0x01,0x05,0x1f,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x21
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_DrawBuffer\0"
+	.byte 0x01,0x02,0x01,0x05,0x2c
+	.uaword gl_save_DrawBuffer
+	.uaword .L1568
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb8,0xa4
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x2b,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x05,0x2b,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x2d
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_DrawPixels\0"
+	.byte 0x01,0x02,0x01,0x05,0x39
+	.uaword gl_save_DrawPixels
+	.uaword .L1590
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb9,0x48
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x37,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x05,0x37,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x05,0x37,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x05,0x38,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x05,0x38,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0xb9,0x4d
+	.ascii "pixels\0"
+	.byte 0x01,0x05,0x38,0x03,0x91,0xd8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x3a
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x66,0x0b,0x00,0x00,0xb9,0x48,0x1c
+	.ascii "gl_save_EdgeFlag\0"
+	.byte 0x01,0x02,0x01,0x05,0x4b
+	.uaword gl_save_EdgeFlag
+	.uaword .L1618
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb9,0xa9
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x4a,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "flag\0"
+	.byte 0x01,0x05,0x4a,0x03,0x91,0xcb,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x4c
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Enable\0"
+	.byte 0x01,0x02,0x01,0x05,0x57
+	.uaword gl_save_Enable
+	.uaword .L1646
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xb9,0xfd
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x56,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "cap\0"
+	.byte 0x01,0x05,0x56,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x58
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_End\0"
+	.byte 0x01,0x02,0x01,0x05,0x63
+	.uaword gl_save_End
+	.uaword .L1664
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xba,0x30
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x62,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_EvalCoord1f\0"
+	.byte 0x01,0x02,0x01,0x05,0x6c
+	.uaword gl_save_EvalCoord1f
+	.uaword .L1692
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xba,0x87
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x6b,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u\0"
+	.byte 0x01,0x05,0x6b,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x6d
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_EvalCoord2f\0"
+	.byte 0x01,0x02,0x01,0x05,0x78
+	.uaword gl_save_EvalCoord2f
+	.uaword .L1721
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xba,0xec
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x77,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u\0"
+	.byte 0x01,0x05,0x77,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "v\0"
+	.byte 0x01,0x05,0x77,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x79
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_EvalMesh1\0"
+	.byte 0x01,0x02,0x01,0x05,0x86
+	.uaword gl_save_EvalMesh1
+	.uaword .L1751
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbb,0x62
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x84,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x05,0x85,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "i1\0"
+	.byte 0x01,0x05,0x85,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "i2\0"
+	.byte 0x01,0x05,0x85,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x87
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_EvalMesh2\0"
+	.byte 0x01,0x02,0x01,0x05,0x95
+	.uaword gl_save_EvalMesh2
+	.uaword .L1783
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbb,0xf6
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0x93,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x05,0x94,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "i1\0"
+	.byte 0x01,0x05,0x94,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "i2\0"
+	.byte 0x01,0x05,0x94,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "j1\0"
+	.byte 0x01,0x05,0x94,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "j2\0"
+	.byte 0x01,0x05,0x94,0x03,0x91,0xd8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0x96
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_EvalPoint1\0"
+	.byte 0x01,0x02,0x01,0x05,0xa5
+	.uaword gl_save_EvalPoint1
+	.uaword .L1811
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbc,0x4c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xa4,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "i\0"
+	.byte 0x01,0x05,0xa4,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xa6
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_EvalPoint2\0"
+	.byte 0x01,0x02,0x01,0x05,0xb1
+	.uaword gl_save_EvalPoint2
+	.uaword .L1840
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbc,0xb0
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xb0,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "i\0"
+	.byte 0x01,0x05,0xb0,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "j\0"
+	.byte 0x01,0x05,0xb0,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xb2
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Fogfv\0"
+	.byte 0x01,0x02,0x01,0x05,0xbe
+	.uaword gl_save_Fogfv
+	.uaword .L1872
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbd,0x18
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xbd,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x05,0xbd,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xbd,0x1d
+	.ascii "params\0"
+	.byte 0x01,0x05,0xbd,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xbf
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xbd,0x18,0x1c
+	.ascii "gl_save_FrontFace\0"
+	.byte 0x01,0x02,0x01,0x05,0xce
+	.uaword gl_save_FrontFace
+	.uaword .L1900
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbd,0x7a
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xcd,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x05,0xcd,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xcf
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Frustum\0"
+	.byte 0x01,0x02,0x01,0x05,0xdc
+	.uaword gl_save_Frustum
+	.uaword .L1933
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbe,0x2c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xd9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "left\0"
+	.byte 0x01,0x05,0xd9,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "right\0"
+	.byte 0x01,0x05,0xd9,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "bottom\0"
+	.byte 0x01,0x05,0xda,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "top\0"
+	.byte 0x01,0x05,0xda,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "nearval\0"
+	.byte 0x01,0x05,0xdb,0x03,0x91,0xe8,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "farval\0"
+	.byte 0x01,0x05,0xdb,0x03,0x91,0xf0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xdd
+	.byte 0x02,0x91,0x7c,0x00,0x09,0x00,0x00,0x49
+	.byte 0xa0
+	.ascii "GLdouble\0"
+	.byte 0x02,0x1c
+	.ascii "gl_save_Hint\0"
+	.byte 0x01,0x02,0x01,0x05,0xed
+	.uaword gl_save_Hint
+	.uaword .L1962
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbe,0xa1
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xec,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x05,0xec,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x05,0xec,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xee
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Indexi\0"
+	.byte 0x01,0x02,0x01,0x05,0xfa
+	.uaword gl_save_Indexi
+	.uaword .L1990
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbe,0xf7
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x05,0xf9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "index\0"
+	.byte 0x01,0x05,0xf9,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x05,0xfb
+	.byte 0x02,0x91,0x7c,0x00
+	.byte 0x1c
+	.ascii "gl_save_Indexf\0"
+	.byte 0x01,0x02,0x01,0x06,0x06
+	.uaword gl_save_Indexf
+	.uaword .L2018
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbf,0x4d
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x05,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "index\0"
+	.byte 0x01,0x06,0x05,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x07
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_IndexMask\0"
+	.byte 0x01,0x02,0x01,0x06,0x12
+	.uaword gl_save_IndexMask
+	.uaword .L2046
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbf,0xa5
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x11,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "mask\0"
+	.byte 0x01,0x06,0x11,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x13
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_InitNames\0"
+	.byte 0x01,0x02,0x01,0x06,0x1e
+	.uaword gl_save_InitNames
+	.uaword .L2064
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xbf,0xde
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x1d,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_Lightfv\0"
+	.byte 0x01,0x02,0x01,0x06,0x28
+	.uaword gl_save_Lightfv
+	.uaword .L2106
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc0,0x9c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x26,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "light\0"
+	.byte 0x01,0x06,0x26,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x06,0x26,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xc0,0xa1
+	.ascii "params\0"
+	.byte 0x01,0x06,0x27,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "numparams\0"
+	.byte 0x01,0x06,0x27,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x29
+	.byte 0x02,0x91,0x7c,0x1d
+	.uaword .L2071
+	.uaword .L2094
+	.byte 0x1d
+	.uaword .L2074
+	.uaword .L2093
+	.byte 0x1d
+	.uaword .L2075
+	.uaword .L2092
+	.byte 0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x85,0x01,0x01,0x06,0x2b
+	.byte 0x02,0x91,0x78,0x00,0x00,0x00,0x00,0x15
+	.byte 0x00,0x00,0x3b,0x50,0x0b,0x00,0x00,0xc0
+	.byte 0x9c,0x1c
+	.ascii "gl_save_LightModelfv\0"
+	.byte 0x01,0x02,0x01,0x06,0x3a
+	.uaword gl_save_LightModelfv
+	.uaword .L2138
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc1,0x15
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x38,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x06,0x39,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xc1,0x1a
+	.ascii "params\0"
+	.byte 0x01,0x06,0x39,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x3b
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xc1,0x15,0x1c
+	.ascii "gl_save_LineStipple\0"
+	.byte 0x01,0x02,0x01,0x06,0x4a
+	.uaword gl_save_LineStipple
+	.uaword .L2167
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc1,0x8f
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x49,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "factor\0"
+	.byte 0x01,0x06,0x49,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x6f
+	.ascii "pattern\0"
+	.byte 0x01,0x06,0x49,0x03,0x91,0xce,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x4b
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_LineWidth\0"
+	.byte 0x01,0x02,0x01,0x06,0x57
+	.uaword gl_save_LineWidth
+	.uaword .L2195
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc1,0xe8
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x56,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "width\0"
+	.byte 0x01,0x06,0x56,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x58
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ListBase\0"
+	.byte 0x01,0x02,0x01,0x06,0x63
+	.uaword gl_save_ListBase
+	.uaword .L2223
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc2,0x3f
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x62,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "base\0"
+	.byte 0x01,0x06,0x62,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x64
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_LoadIdentity\0"
+	.byte 0x01,0x02,0x01,0x06,0x6f
+	.uaword gl_save_LoadIdentity
+	.uaword .L2241
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc2,0x7b
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x6e,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_LoadMatrixf\0"
+	.byte 0x01,0x02,0x01,0x06,0x78
+	.uaword gl_save_LoadMatrixf
+	.uaword .L2282
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc2,0xfe
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x77,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xc3,0x03
+	.ascii "m\0"
+	.byte 0x01,0x06,0x77,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x79
+	.byte 0x02,0x91,0x7c,0x1d
+	.uaword .L2248
+	.uaword .L2270
+	.byte 0x1d
+	.uaword .L2252
+	.uaword .L2269
+	.byte 0x1d
+	.uaword .L2253
+	.uaword .L2268
+	.byte 0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x06,0x7b
+	.byte 0x02,0x91,0x78,0x00,0x00,0x00,0x00,0x15
+	.byte 0x00,0x00,0x3b,0x50,0x0b,0x00,0x00,0xc2
+	.byte 0xfe,0x1c
+	.ascii "gl_save_LoadName\0"
+	.byte 0x01,0x02,0x01,0x06,0x87
+	.uaword gl_save_LoadName
+	.uaword .L2310
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc3,0x5f
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x86,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "name\0"
+	.byte 0x01,0x06,0x86,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x88
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_LogicOp\0"
+	.byte 0x01,0x02,0x01,0x06,0x93
+	.uaword gl_save_LogicOp
+	.uaword .L2338
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc3,0xb7
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x92,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "opcode\0"
+	.byte 0x01,0x06,0x92,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0x94
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Map1f\0"
+	.byte 0x01,0x02,0x01,0x06,0xa1
+	.uaword gl_save_Map1f
+	.uaword .L2371
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc4,0x76
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0x9e,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x06,0x9f,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u1\0"
+	.byte 0x01,0x06,0x9f,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u2\0"
+	.byte 0x01,0x06,0x9f,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "stride\0"
+	.byte 0x01,0x06,0x9f,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "order\0"
+	.byte 0x01,0x06,0xa0,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0xc4,0x7b
+	.ascii "points\0"
+	.byte 0x01,0x06,0xa0,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "retain\0"
+	.byte 0x01,0x06,0xa0,0x03,0x91,0xe3,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0xa2
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xc4,0x76,0x1c
+	.ascii "gl_save_Map2f\0"
+	.byte 0x01,0x02,0x01,0x06,0xb5
+	.uaword gl_save_Map2f
+	.uaword .L2408
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc5,0x86
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0xb1,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x06,0xb1,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u1\0"
+	.byte 0x01,0x06,0xb2,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u2\0"
+	.byte 0x01,0x06,0xb2,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "ustride\0"
+	.byte 0x01,0x06,0xb2,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "uorder\0"
+	.byte 0x01,0x06,0xb2,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "v1\0"
+	.byte 0x01,0x06,0xb3,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "v2\0"
+	.byte 0x01,0x06,0xb3,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "vstride\0"
+	.byte 0x01,0x06,0xb3,0x03,0x91,0xe4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "vorder\0"
+	.byte 0x01,0x06,0xb3,0x03,0x91,0xe8,0x00,0x03
+	.byte 0x00,0x00,0xc5,0x8b
+	.ascii "points\0"
+	.byte 0x01,0x06,0xb4,0x03,0x91,0xec,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x0b
+	.ascii "retain\0"
+	.byte 0x01,0x06,0xb4,0x03,0x91,0xf3,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0xb6
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xc5,0x86,0x1c
+	.ascii "gl_save_MapGrid1f\0"
+	.byte 0x01,0x02,0x01,0x06,0xcc
+	.uaword gl_save_MapGrid1f
+	.uaword .L2438
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc6,0x04
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0xcb,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "un\0"
+	.byte 0x01,0x06,0xcb,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u1\0"
+	.byte 0x01,0x06,0xcb,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u2\0"
+	.byte 0x01,0x06,0xcb,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0xcd
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_MapGrid2f\0"
+	.byte 0x01,0x02,0x01,0x06,0xdc
+	.uaword gl_save_MapGrid2f
+	.uaword .L2471
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc6,0xa5
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0xd9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "un\0"
+	.byte 0x01,0x06,0xda,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u1\0"
+	.byte 0x01,0x06,0xda,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "u2\0"
+	.byte 0x01,0x06,0xda,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "vn\0"
+	.byte 0x01,0x06,0xdb,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "v1\0"
+	.byte 0x01,0x06,0xdb,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "v2\0"
+	.byte 0x01,0x06,0xdb,0x03,0x91,0xdc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0xdd
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Materialfv\0"
+	.byte 0x01,0x02,0x01,0x06,0xee
+	.uaword gl_save_Materialfv
+	.uaword .L2504
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc7,0x23
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0xec,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "face\0"
+	.byte 0x01,0x06,0xed,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x06,0xed,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xc7,0x28
+	.ascii "params\0"
+	.byte 0x01,0x06,0xed,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x06,0xef
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xc7,0x23,0x1c
+	.ascii "gl_save_MatrixMode\0"
+	.byte 0x01,0x02,0x01,0x06,0xff
+	.uaword gl_save_MatrixMode
+	.uaword .L2532
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc7,0x86
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x06,0xfe,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x06,0xfe,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x00
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_MultMatrixf\0"
+	.byte 0x01,0x02,0x01,0x07,0x0b
+	.uaword gl_save_MultMatrixf
+	.uaword .L2573
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc8,0x09
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x0a,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xc8,0x0e
+	.ascii "m\0"
+	.byte 0x01,0x07,0x0a,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x0c
+	.byte 0x02,0x91,0x7c,0x1d
+	.uaword .L2539
+	.uaword .L2561
+	.byte 0x1d
+	.uaword .L2543
+	.uaword .L2560
+	.byte 0x1d
+	.uaword .L2544
+	.uaword .L2559
+	.byte 0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x07,0x0e
+	.byte 0x02,0x91,0x78,0x00,0x00,0x00,0x00,0x15
+	.byte 0x00,0x00,0x3b,0x50,0x0b,0x00,0x00,0xc8
+	.byte 0x09,0x1c
+	.ascii "gl_save_NewList\0"
+	.byte 0x01,0x02,0x01,0x07,0x1a
+	.uaword gl_save_NewList
+	.uaword .L2582
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc8,0x6c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x19,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x07,0x19,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x07,0x19,0x03,0x91,0xcc,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_Normal3fv\0"
+	.byte 0x01,0x02,0x01,0x07,0x21
+	.uaword gl_save_Normal3fv
+	.uaword .L2612
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc8,0xc4
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x20,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xc8,0xc9
+	.ascii "norm\0"
+	.byte 0x01,0x07,0x20,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x22
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xc8,0xc4,0x1c
+	.ascii "gl_save_Normal3f\0"
+	.byte 0x01,0x02,0x01,0x07,0x2f
+	.uaword gl_save_Normal3f
+	.uaword .L2642
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc9,0x41
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x2e,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "nx\0"
+	.byte 0x01,0x07,0x2e,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "ny\0"
+	.byte 0x01,0x07,0x2e,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "nz\0"
+	.byte 0x01,0x07,0x2e,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x30
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Ortho\0"
+	.byte 0x01,0x02,0x01,0x07,0x3f
+	.uaword gl_save_Ortho
+	.uaword .L2675
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xc9,0xf1
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x3c,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "left\0"
+	.byte 0x01,0x07,0x3c,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "right\0"
+	.byte 0x01,0x07,0x3c,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "bottom\0"
+	.byte 0x01,0x07,0x3d,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "top\0"
+	.byte 0x01,0x07,0x3d,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "nearval\0"
+	.byte 0x01,0x07,0x3e,0x03,0x91,0xe8,0x00,0x03
+	.byte 0x00,0x00,0xbe,0x2c
+	.ascii "farval\0"
+	.byte 0x01,0x07,0x3e,0x03,0x91,0xf0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x40
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PixelMapfv\0"
+	.byte 0x01,0x02,0x01,0x07,0x51
+	.uaword gl_save_PixelMapfv
+	.uaword .L2706
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xca,0x70
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x4f,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "map\0"
+	.byte 0x01,0x07,0x50,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "mapsize\0"
+	.byte 0x01,0x07,0x50,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xca,0x75
+	.ascii "values\0"
+	.byte 0x01,0x07,0x50,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x52
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xca,0x70,0x1c
+	.ascii "gl_save_PixelTransferf\0"
+	.byte 0x01,0x02,0x01,0x07,0x60
+	.uaword gl_save_PixelTransferf
+	.uaword .L2735
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xca,0xea
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x5f,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x07,0x5f,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "param\0"
+	.byte 0x01,0x07,0x5f,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x61
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PixelZoom\0"
+	.byte 0x01,0x02,0x01,0x07,0x6d
+	.uaword gl_save_PixelZoom
+	.uaword .L2764
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcb,0x59
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x6c,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "xfactor\0"
+	.byte 0x01,0x07,0x6c,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "yfactor\0"
+	.byte 0x01,0x07,0x6c,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x6e
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PointParameterfvEXT\0"
+	.byte 0x01,0x02,0x01,0x07,0x7b
+	.uaword gl_save_PointParameterfvEXT
+	.uaword .L2795
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcb,0xcf
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x79,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x07,0x79,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xcb,0xd4
+	.ascii "params\0"
+	.byte 0x01,0x07,0x7a,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x7c
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xcb,0xcf,0x1c
+	.ascii "gl_save_PointSize\0"
+	.byte 0x01,0x02,0x01,0x07,0x8a
+	.uaword gl_save_PointSize
+	.uaword .L2823
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcc,0x31
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x89,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "size\0"
+	.byte 0x01,0x07,0x89,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x8b
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PolygonMode\0"
+	.byte 0x01,0x02,0x01,0x07,0x96
+	.uaword gl_save_PolygonMode
+	.uaword .L2852
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcc,0x9c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0x95,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "face\0"
+	.byte 0x01,0x07,0x95,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x07,0x95,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0x97
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PolygonStipple\0"
+	.byte 0x01,0x02,0x01,0x07,0xa3
+	.uaword gl_save_PolygonStipple
+	.uaword .L2882
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcd,0x28
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xa2,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xcd,0x2d
+	.ascii "mask\0"
+	.byte 0x01,0x07,0xa2,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0xa4
+	.byte 0x02,0x91,0x7c,0x1d
+	.uaword .L2859
+	.uaword .L2870
+	.byte 0x1d
+	.uaword .L2863
+	.uaword .L2869
+	.byte 0x1d
+	.uaword .L2864
+	.uaword .L2868
+	.byte 0x04
+	.ascii "data\0"
+	.byte 0x00,0x00,0x3b,0x78,0x01,0x01,0x07,0xa6
+	.byte 0x02,0x91,0x78,0x00,0x00,0x00,0x00,0x15
+	.byte 0x00,0x00,0x0b,0x38,0x0b,0x00,0x00,0xcd
+	.byte 0x28,0x1c
+	.ascii "gl_save_PolygonOffset\0"
+	.byte 0x01,0x02,0x01,0x07,0xb2
+	.uaword gl_save_PolygonOffset
+	.uaword .L2911
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcd,0xa2
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xb1,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "factor\0"
+	.byte 0x01,0x07,0xb1,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "units\0"
+	.byte 0x01,0x07,0xb1,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0xb3
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PopAttrib\0"
+	.byte 0x01,0x02,0x01,0x07,0xbf
+	.uaword gl_save_PopAttrib
+	.uaword .L2929
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcd,0xdb
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xbe,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_PopMatrix\0"
+	.byte 0x01,0x02,0x01,0x07,0xc8
+	.uaword gl_save_PopMatrix
+	.uaword .L2947
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xce,0x14
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xc7,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_PopName\0"
+	.byte 0x01,0x02,0x01,0x07,0xd1
+	.uaword gl_save_PopName
+	.uaword .L2965
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xce,0x4b
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xd0,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_PrioritizeTextures\0"
+	.byte 0x01,0x02,0x01,0x07,0xdc
+	.uaword gl_save_PrioritizeTextures
+	.uaword .L3007
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcf,0x03
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xd9,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "num\0"
+	.byte 0x01,0x07,0xda,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0xcf,0x08
+	.ascii "textures\0"
+	.byte 0x01,0x07,0xda,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xcf,0x12
+	.ascii "priorities\0"
+	.byte 0x01,0x07,0xdb,0x03,0x91,0xd0,0x00,0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x85,0x01,0x01,0x07,0xdd
+	.byte 0x02,0x91,0x7c,0x1d
+	.uaword .L2971
+	.uaword .L2995
+	.byte 0x1d
+	.uaword .L2977
+	.uaword .L2992
+	.byte 0x1d
+	.uaword .L2978
+	.uaword .L2991
+	.byte 0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0xe0
+	.byte 0x02,0x91,0x78,0x00,0x00,0x00,0x00,0x15
+	.byte 0x00,0x00,0x0b,0x91,0x0b,0x00,0x00,0xcf
+	.byte 0x03,0x15,0x00,0x00,0xa6,0x24,0x0b,0x00
+	.byte 0x00,0xcf,0x0d,0x1c
+	.ascii "gl_save_PushAttrib\0"
+	.byte 0x01,0x02,0x01,0x07,0xed
+	.uaword gl_save_PushAttrib
+	.uaword .L3035
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcf,0x70
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xec,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x27
+	.ascii "mask\0"
+	.byte 0x01,0x07,0xec,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x07,0xee
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PushMatrix\0"
+	.byte 0x01,0x02,0x01,0x07,0xf9
+	.uaword gl_save_PushMatrix
+	.uaword .L3053
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xcf,0xaa
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x07,0xf8,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_save_PushName\0"
+	.byte 0x01,0x02,0x01,0x08,0x02
+	.uaword gl_save_PushName
+	.uaword .L3081
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd0,0x01
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x01,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "name\0"
+	.byte 0x01,0x08,0x01,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x03
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_RasterPos4f\0"
+	.byte 0x01,0x02,0x01,0x08,0x0f
+	.uaword gl_save_RasterPos4f
+	.uaword .L3112
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd0,0x82
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x0d,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x08,0x0e,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x08,0x0e,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x08,0x0e,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "w\0"
+	.byte 0x01,0x08,0x0e,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x10
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_PassThrough\0"
+	.byte 0x01,0x02,0x01,0x08,0x1e
+	.uaword gl_save_PassThrough
+	.uaword .L3140
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd0,0xdd
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x1d,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "token\0"
+	.byte 0x01,0x08,0x1d,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x1f
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ReadBuffer\0"
+	.byte 0x01,0x02,0x01,0x08,0x2a
+	.uaword gl_save_ReadBuffer
+	.uaword .L3168
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd1,0x36
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x29,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x08,0x29,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x2b
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Rectf\0"
+	.byte 0x01,0x02,0x01,0x08,0x37
+	.uaword gl_save_Rectf
+	.uaword .L3199
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd1,0xb5
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x35,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x1\0"
+	.byte 0x01,0x08,0x36,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y1\0"
+	.byte 0x01,0x08,0x36,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x2\0"
+	.byte 0x01,0x08,0x36,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y2\0"
+	.byte 0x01,0x08,0x36,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x38
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Rotatef\0"
+	.byte 0x01,0x02,0x01,0x08,0x47
+	.uaword gl_save_Rotatef
+	.uaword .L3208
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd2,0x36
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x45,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "angle\0"
+	.byte 0x01,0x08,0x45,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x08,0x46,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x08,0x46,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x08,0x46,0x03,0x91,0xd4,0x00,0x04
+	.ascii "m\0"
+	.byte 0x00,0x00,0xd2,0x36,0x01,0x01,0x08,0x48
+	.byte 0x02,0x91,0x40,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x50,0x40,0x00,0x00,0xd2,0x47,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x0f,0x00,0x1c
+	.ascii "gl_save_Scalef\0"
+	.byte 0x01,0x02,0x01,0x08,0x4f
+	.uaword gl_save_Scalef
+	.uaword .L3238
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd2,0xb5
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x4e,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x08,0x4e,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x08,0x4e,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x08,0x4e,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x50
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Scissor\0"
+	.byte 0x01,0x02,0x01,0x08,0x5e
+	.uaword gl_save_Scissor
+	.uaword .L3269
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd3,0x3b
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x5c,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x08,0x5d,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x08,0x5d,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x08,0x5d,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x08,0x5d,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x5f
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_ShadeModel\0"
+	.byte 0x01,0x02,0x01,0x08,0x6d
+	.uaword gl_save_ShadeModel
+	.uaword .L3297
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd3,0x94
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x6c,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x08,0x6c,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x6e
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_StencilFunc\0"
+	.byte 0x01,0x02,0x01,0x08,0x79
+	.uaword gl_save_StencilFunc
+	.uaword .L3327
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd4,0x0f
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x78,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "func\0"
+	.byte 0x01,0x08,0x78,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "ref\0"
+	.byte 0x01,0x08,0x78,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "mask\0"
+	.byte 0x01,0x08,0x78,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x7a
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_StencilMask\0"
+	.byte 0x01,0x02,0x01,0x08,0x87
+	.uaword gl_save_StencilMask
+	.uaword .L3355
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd4,0x69
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x86,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "mask\0"
+	.byte 0x01,0x08,0x86,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x88
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_StencilOp\0"
+	.byte 0x01,0x02,0x01,0x08,0x94
+	.uaword gl_save_StencilOp
+	.uaword .L3385
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd4,0xe5
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0x92,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "fail\0"
+	.byte 0x01,0x08,0x93,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "zfail\0"
+	.byte 0x01,0x08,0x93,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "zpass\0"
+	.byte 0x01,0x08,0x93,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0x95
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexCoord2f\0"
+	.byte 0x01,0x02,0x01,0x08,0xa2
+	.uaword gl_save_TexCoord2f
+	.uaword .L3414
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd5,0x49
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0xa1,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "s\0"
+	.byte 0x01,0x08,0xa1,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "t\0"
+	.byte 0x01,0x08,0xa1,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0xa3
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexCoord4f\0"
+	.byte 0x01,0x02,0x01,0x08,0xb0
+	.uaword gl_save_TexCoord4f
+	.uaword .L3445
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd5,0xc9
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0xae,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "s\0"
+	.byte 0x01,0x08,0xae,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "t\0"
+	.byte 0x01,0x08,0xae,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "r\0"
+	.byte 0x01,0x08,0xaf,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "q\0"
+	.byte 0x01,0x08,0xaf,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0xb1
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexEnvfv\0"
+	.byte 0x01,0x02,0x01,0x08,0xc0
+	.uaword gl_save_TexEnvfv
+	.uaword .L3478
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd6,0x47
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0xbe,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x08,0xbf,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x08,0xbf,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xd6,0x4c
+	.ascii "params\0"
+	.byte 0x01,0x08,0xbf,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0xc1
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xd6,0x47,0x1c
+	.ascii "gl_save_TexGenfv\0"
+	.byte 0x01,0x02,0x01,0x08,0xd2
+	.uaword gl_save_TexGenfv
+	.uaword .L3511
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd6,0xce
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0xd0,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "coord\0"
+	.byte 0x01,0x08,0xd1,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x08,0xd1,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xd6,0xd3
+	.ascii "params\0"
+	.byte 0x01,0x08,0xd1,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0xd3
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xd6,0xce,0x1c
+	.ascii "gl_save_TexParameterfv\0"
+	.byte 0x01,0x02,0x01,0x08,0xe4
+	.uaword gl_save_TexParameterfv
+	.uaword .L3544
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd7,0x5c
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0xe2,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x08,0xe2,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "pname\0"
+	.byte 0x01,0x08,0xe3,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xd7,0x61
+	.ascii "params\0"
+	.byte 0x01,0x08,0xe3,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0xe5
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xd7,0x5c,0x1c
+	.ascii "gl_save_TexImage1D\0"
+	.byte 0x01,0x02,0x01,0x08,0xf9
+	.uaword gl_save_TexImage1D
+	.uaword .L3589
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd8,0x48
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x08,0xf4,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x08,0xf4,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x08,0xf5,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "components\0"
+	.byte 0x01,0x08,0xf5,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x08,0xf6,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "border\0"
+	.byte 0x01,0x08,0xf6,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x08,0xf7,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x08,0xf7,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "teximage\0"
+	.byte 0x01,0x08,0xf8,0x03,0x91,0xe4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x08,0xfa
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexImage2D\0"
+	.byte 0x01,0x02,0x01,0x09,0x15
+	.uaword gl_save_TexImage2D
+	.uaword .L3635
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xd9,0x3d
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0x10,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x09,0x10,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x09,0x11,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "components\0"
+	.byte 0x01,0x09,0x11,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x09,0x12,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x09,0x12,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "border\0"
+	.byte 0x01,0x09,0x12,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x09,0x13,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x09,0x13,0x03,0x91,0xe4,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "teximage\0"
+	.byte 0x01,0x09,0x14,0x03,0x91,0xe8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0x16
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexImage3DEXT\0"
+	.byte 0x01,0x02,0x01,0x09,0x33
+	.uaword gl_save_TexImage3DEXT
+	.uaword .L3672
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xda,0x47
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0x2d,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x09,0x2d,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x09,0x2e,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "components\0"
+	.byte 0x01,0x09,0x2e,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x09,0x2f,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x09,0x2f,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "depth\0"
+	.byte 0x01,0x09,0x2f,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "border\0"
+	.byte 0x01,0x09,0x30,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x09,0x31,0x03,0x91,0xe4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x09,0x31,0x03,0x91,0xe8,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "teximage\0"
+	.byte 0x01,0x09,0x32,0x03,0x91,0xec,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0x34
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexSubImage1D\0"
+	.byte 0x01,0x02,0x01,0x09,0x4c
+	.uaword gl_save_TexSubImage1D
+	.uaword .L3714
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdb,0x13
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0x48,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x09,0x49,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x09,0x49,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "xoffset\0"
+	.byte 0x01,0x09,0x49,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x09,0x4a,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x09,0x4a,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x09,0x4a,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "image\0"
+	.byte 0x01,0x09,0x4b,0x03,0x91,0xe0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0x4d
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexSubImage2D\0"
+	.byte 0x01,0x02,0x01,0x09,0x66
+	.uaword gl_save_TexSubImage2D
+	.uaword .L3758
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdc,0x06
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0x60,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x09,0x61,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x09,0x61,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "xoffset\0"
+	.byte 0x01,0x09,0x62,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "yoffset\0"
+	.byte 0x01,0x09,0x62,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x09,0x63,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x09,0x63,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x09,0x64,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x09,0x64,0x03,0x91,0xe4,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "image\0"
+	.byte 0x01,0x09,0x65,0x03,0x91,0xe8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0x67
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_TexSubImage3DEXT\0"
+	.byte 0x01,0x02,0x01,0x09,0x82
+	.uaword gl_save_TexSubImage3DEXT
+	.uaword .L3804
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdd,0x22
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0x7c,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "target\0"
+	.byte 0x01,0x09,0x7d,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "level\0"
+	.byte 0x01,0x09,0x7d,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "xoffset\0"
+	.byte 0x01,0x09,0x7e,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "yoffset\0"
+	.byte 0x01,0x09,0x7e,0x03,0x91,0xd4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "zoffset\0"
+	.byte 0x01,0x09,0x7e,0x03,0x91,0xd8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x09,0x7f,0x03,0x91,0xdc,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x09,0x7f,0x03,0x91,0xe0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "depth\0"
+	.byte 0x01,0x09,0x7f,0x03,0x91,0xe4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "format\0"
+	.byte 0x01,0x09,0x80,0x03,0x91,0xe8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x09,0x80,0x03,0x91,0xec,0x00,0x03
+	.byte 0x00,0x00,0x4b,0x57
+	.ascii "image\0"
+	.byte 0x01,0x09,0x81,0x03,0x91,0xf0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0x83
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Translatef\0"
+	.byte 0x01,0x02,0x01,0x09,0x9b
+	.uaword gl_save_Translatef
+	.uaword .L3834
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdd,0x94
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0x9a,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x09,0x9a,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x09,0x9a,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x09,0x9a,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0x9c
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Vertex2f\0"
+	.byte 0x01,0x02,0x01,0x09,0xa9
+	.uaword gl_save_Vertex2f
+	.uaword .L3863
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdd,0xf6
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0xa8,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x09,0xa8,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x09,0xa8,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0xaa
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Vertex3f\0"
+	.byte 0x01,0x02,0x01,0x09,0xb6
+	.uaword gl_save_Vertex3f
+	.uaword .L3893
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xde,0x66
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0xb5,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x09,0xb5,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x09,0xb5,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x09,0xb5,0x03,0x91,0xd0,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0xb7
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Vertex4f\0"
+	.byte 0x01,0x02,0x01,0x09,0xc5
+	.uaword gl_save_Vertex4f
+	.uaword .L3924
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xde,0xe4
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0xc3,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x09,0xc4,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x09,0xc4,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x09,0xc4,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "w\0"
+	.byte 0x01,0x09,0xc4,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0xc6
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_Vertex3fv\0"
+	.byte 0x01,0x02,0x01,0x09,0xd4
+	.uaword gl_save_Vertex3fv
+	.uaword .L3954
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdf,0x39
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0xd3,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xdf,0x3e
+	.ascii "v\0"
+	.byte 0x01,0x09,0xd3,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0xd5
+	.byte 0x02,0x91,0x7c,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x50,0x0b,0x00,0x00,0xdf,0x39,0x1c
+	.ascii "gl_save_Viewport\0"
+	.byte 0x01,0x02,0x01,0x09,0xe3
+	.uaword gl_save_Viewport
+	.uaword .L3985
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xdf,0xca
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0xe1,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "x\0"
+	.byte 0x01,0x09,0xe2,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x85
+	.ascii "y\0"
+	.byte 0x01,0x09,0xe2,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "width\0"
+	.byte 0x01,0x09,0xe2,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "height\0"
+	.byte 0x01,0x09,0xe2,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0xe4
+	.byte 0x02,0x91,0x7c,0x00,0x1c
+	.ascii "gl_save_WindowPos4fMESA\0"
+	.byte 0x01,0x02,0x01,0x09,0xf3
+	.uaword gl_save_WindowPos4fMESA
+	.uaword .L4016
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe0,0x4f
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x09,0xf1,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "x\0"
+	.byte 0x01,0x09,0xf2,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "y\0"
+	.byte 0x01,0x09,0xf2,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "z\0"
+	.byte 0x01,0x09,0xf2,0x03,0x91,0xd0,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x50
+	.ascii "w\0"
+	.byte 0x01,0x09,0xf2,0x03,0x91,0xd4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x09,0xf4
+	.byte 0x02,0x91,0x7c,0x00,0x1f
+	.ascii "execute_list\0"
+	.byte 0x03,0x01,0x0a,0x0e
+	.uaword execute_list
+	.uaword .L4579
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe2,0x87
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0a,0x0d,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0a,0x0d,0x03,0x91,0xc8,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x0a,0x0f
+	.byte 0x02,0x91,0x7c,0x04
+	.ascii "done\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x01,0x01,0x0a,0x10
+	.byte 0x02,0x91,0x7b,0x04
+	.ascii "opcode\0"
+	.byte 0x00,0x00,0x0a,0xee,0x01,0x01,0x0a,0x11
+	.byte 0x02,0x91,0x74,0x1d
+	.uaword .L4033
+	.uaword .L4576
+	.byte 0x1d
+	.uaword .L4039
+	.uaword .L4573
+	.byte 0x1d
+	.uaword .L4040
+	.uaword .L4572
+	.byte 0x1d
+	.uaword .L4042
+	.uaword .L4561
+	.byte 0x1d
+	.uaword .L4046
+	.uaword .L4558
+	.byte 0x1d
+	.uaword .L4047
+	.uaword .L4557
+	.byte 0x1d
+	.uaword .L4178
+	.uaword .L4184
+	.byte 0x04
+	.ascii "equ\0"
+	.byte 0x00,0x00,0xe2,0x87,0x01,0x01,0x0a,0x8f
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4262
+	.uaword .L4268
+	.byte 0x04
+	.ascii "p\0"
+	.byte 0x00,0x00,0xe2,0x98,0x01,0x01,0x0a,0xec
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4286
+	.uaword .L4292
+	.byte 0x04
+	.ascii "p\0"
+	.byte 0x00,0x00,0xe2,0xa9,0x01,0x01,0x0b,0x05
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4295
+	.uaword .L4301
+	.byte 0x04
+	.ascii "p\0"
+	.byte 0x00,0x00,0xe2,0xba,0x01,0x01,0x0b,0x0f
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4316
+	.uaword .L4344
+	.byte 0x1d
+	.uaword .L4325
+	.uaword .L4343
+	.byte 0x1d
+	.uaword .L4326
+	.uaword .L4342
+	.byte 0x04
+	.ascii "m\0"
+	.byte 0x00,0x00,0xe2,0xcb,0x01,0x01,0x0b,0x28
+	.byte 0x03,0x91,0xb4,0x7f,0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0b,0x29
+	.byte 0x03,0x91,0xb0,0x7f,0x00,0x00,0x00,0x1d
+	.uaword .L4365
+	.uaword .L4371
+	.byte 0x04
+	.ascii "params\0"
+	.byte 0x00,0x00,0xe2,0xdc,0x01,0x01,0x0b,0x4b
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4377
+	.uaword .L4405
+	.byte 0x1d
+	.uaword .L4386
+	.uaword .L4404
+	.byte 0x1d
+	.uaword .L4387
+	.uaword .L4403
+	.byte 0x04
+	.ascii "m\0"
+	.byte 0x00,0x00,0xe2,0xed,0x01,0x01,0x0b,0x5b
+	.byte 0x03,0x91,0xb4,0x7f,0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0b,0x5c
+	.byte 0x03,0x91,0xb0,0x7f,0x00,0x00,0x00,0x1d
+	.uaword .L4426
+	.uaword .L4431
+	.byte 0x04
+	.ascii "params\0"
+	.byte 0x00,0x00,0xe2,0xfe,0x01,0x01,0x0b,0x77
+	.byte 0x02,0x91,0x68,0x00,0x1d
+	.uaword .L4491
+	.uaword .L4497
+	.byte 0x04
+	.ascii "params\0"
+	.byte 0x00,0x00,0xe3,0x0f,0x01,0x01,0x0b,0xb9
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4500
+	.uaword .L4506
+	.byte 0x04
+	.ascii "params\0"
+	.byte 0x00,0x00,0xe3,0x20,0x01,0x01,0x0b,0xc3
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4509
+	.uaword .L4515
+	.byte 0x04
+	.ascii "params\0"
+	.byte 0x00,0x00,0xe3,0x31,0x01,0x01,0x0b,0xcd
+	.byte 0x02,0x91,0x64,0x00,0x1d
+	.uaword .L4551
+	.uaword .L4555
+	.byte 0x04
+	.ascii "msg\0"
+	.byte 0x00,0x00,0xe3,0x42,0x01,0x01,0x0c,0x19
+	.byte 0x03,0x91,0x8c,0x78,0x00,0x00,0x00,0x00
+	.byte 0x00,0x00,0x00,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x50,0x10,0x00,0x00,0xe2,0x98,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x03,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x50,0x10,0x00,0x00,0xe2,0xa9,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x0f,0x00
+	.byte 0x00,0x3b,0x50,0x10,0x00,0x00,0xe2,0xba
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x03,0x00,0x0f
+	.byte 0x00,0x00,0x3b,0x50,0x10,0x00,0x00,0xe2
+	.byte 0xcb,0x10,0x00,0x00,0x3c,0x30,0x03,0x00
+	.byte 0x0f,0x00,0x00,0x3b,0x50,0x40,0x00,0x00
+	.byte 0xe2,0xdc,0x10,0x00,0x00,0x3c,0x30,0x0f
+	.byte 0x00,0x0f,0x00,0x00,0x3b,0x50,0x10,0x00
+	.byte 0x00,0xe2,0xed,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x03,0x00,0x0f,0x00,0x00,0x3b,0x50,0x40
+	.byte 0x00,0x00,0xe2,0xfe,0x10,0x00,0x00,0x3c
+	.byte 0x30,0x0f,0x00,0x0f,0x00,0x00,0x3b,0x50
+	.byte 0x0c,0x00,0x00,0xe3,0x0f,0x10,0x00,0x00
+	.byte 0x3c,0x30,0x02,0x00,0x0f,0x00,0x00,0x3b
+	.byte 0x50,0x10,0x00,0x00,0xe3,0x20,0x10,0x00
+	.byte 0x00,0x3c,0x30,0x03,0x00,0x0f,0x00,0x00
+	.byte 0x3b,0x50,0x10,0x00,0x00,0xe3,0x31,0x10
+	.byte 0x00,0x00,0x3c,0x30,0x03,0x00,0x0f,0x00
+	.byte 0x00,0x3b,0x50,0x10,0x00,0x00,0xe3,0x42
+	.byte 0x10,0x00,0x00,0x3c,0x30,0x03,0x00,0x12
+	.byte 0x00,0x00,0x71,0x62,0x03,0xe8,0x00,0x00
+	.byte 0xe3,0x55,0x13,0x00,0x00,0x3c,0x30,0x03
+	.byte 0xe7,0x00,0x20
+	.ascii "gl_IsList\0"
+	.byte 0x01,0x02,0x01,0x0c,0x35
+	.uaword gl_IsList
+	.uaword .L4602
+	.byte 0x01,0x6e,0x01,0x00,0x00,0x0b,0x0b,0x01
+	.byte 0x00,0x00,0xe3,0x9b,0x03,0x00,0x00,0xa2
+	.byte 0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0x34,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0c,0x34,0x03,0x91,0xc8,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_DeleteLists\0"
+	.byte 0x01,0x02,0x01,0x0c,0x44
+	.uaword gl_DeleteLists
+	.uaword .L4647
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe4,0x02
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0x43,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0c,0x43,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "range\0"
+	.byte 0x01,0x0c,0x43,0x03,0x91,0xcc,0x00,0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0c,0x45
+	.byte 0x02,0x91,0x7c,0x00,0x20
+	.ascii "gl_GenLists\0"
+	.byte 0x01,0x02,0x01,0x0c,0x5b
+	.uaword gl_GenLists
+	.uaword .L4713
+	.byte 0x01,0x6e,0x01,0x00,0x00,0x0b,0x91,0x01
+	.byte 0x00,0x00,0xe4,0x88,0x03,0x00,0x00,0xa2
+	.byte 0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0x5a,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "range\0"
+	.byte 0x01,0x0c,0x5a,0x03,0x91,0xc8,0x00,0x04
+	.ascii "base\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0c,0x5c
+	.byte 0x02,0x91,0x78,0x1d
+	.uaword .L4688
+	.uaword .L4710
+	.byte 0x1d
+	.uaword .L4692
+	.uaword .L4709
+	.byte 0x1d
+	.uaword .L4693
+	.uaword .L4708
+	.byte 0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0c,0x6d
+	.byte 0x02,0x91,0x74,0x00,0x00,0x00,0x00,0x1c
+	.ascii "gl_NewList\0"
+	.byte 0x01,0x02,0x01,0x0c,0x7b
+	.uaword gl_NewList
+	.uaword .L4790
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe4,0xe0
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0x7a,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0c,0x7a,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "mode\0"
+	.byte 0x01,0x0c,0x7a,0x03,0x91,0xcc,0x00,0x21
+	.byte 0x43,0x01,0x00,0x00,0x1c
+	.ascii "gl_EndList\0"
+	.byte 0x01,0x02,0x01,0x0c,0xa5
+	.uaword gl_EndList
+	.uaword .L4817
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe5,0x24
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0xa4,0x03,0x91,0xc4,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x0c,0xa6
+	.byte 0x02,0x91,0x7c,0x21,0x43,0x01,0x00,0x00
+	.byte 0x1c
+	.ascii "gl_CallList\0"
+	.byte 0x01,0x02,0x01,0x0c,0xc0
+	.uaword gl_CallList
+	.uaword .L4828
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe5,0x86
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0xbf,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0c,0xbf,0x03,0x91,0xc8,0x00,0x04
+	.ascii "save_compile_flag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x01,0x01,0x0c,0xc3
+	.byte 0x02,0x91,0x7f,0x00,0x1c
+	.ascii "gl_CallLists\0"
+	.byte 0x01,0x02,0x01,0x0c,0xd1
+	.uaword gl_CallLists
+	.uaword .L4853
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe6,0x28
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0xcf,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x92,0xaf
+	.ascii "n\0"
+	.byte 0x01,0x0c,0xd0,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x3b,0x3a
+	.ascii "type\0"
+	.byte 0x01,0x0c,0xd0,0x03,0x91,0xcc,0x00,0x03
+	.byte 0x00,0x00,0xe6,0x2d
+	.ascii "lists\0"
+	.byte 0x01,0x0c,0xd0,0x03,0x91,0xd0,0x00,0x04
+	.ascii "i\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0c,0xd2
+	.byte 0x02,0x91,0x7c,0x04
+	.ascii "list\0"
+	.byte 0x00,0x00,0x0b,0x91,0x01,0x01,0x0c,0xd2
+	.byte 0x02,0x91,0x78,0x04
+	.ascii "save_compile_flag\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x01,0x01,0x0c,0xd3
+	.byte 0x02,0x91,0x77,0x00,0x15,0x00,0x00,0x3b
+	.byte 0x66,0x0b,0x00,0x00,0xe6,0x28,0x1c
+	.ascii "gl_ListBase\0"
+	.byte 0x01,0x02,0x01,0x0c,0xe9
+	.uaword gl_ListBase
+	.uaword .L4873
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe6,0x76
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0c,0xe8,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "base\0"
+	.byte 0x01,0x0c,0xe8,0x03,0x91,0xc8,0x00,0x00
+	.byte 0x02
+	.ascii "enum_string\0"
+	.byte 0x03,0x01,0x0c,0xfb
+	.uaword enum_string
+	.uaword .L4946
+	.byte 0x01,0x6e,0x01,0x00,0x00,0xe6,0xaa,0x01
+	.byte 0x00,0x00,0xe6,0xaa,0x03,0x00,0x00,0x3b
+	.byte 0x3a
+	.ascii "k\0"
+	.byte 0x01,0x0c,0xfa,0x03,0x91,0xc4,0x00,0x00
+	.byte 0x0b,0x00,0x00,0x71,0x62,0x1f
+	.ascii "print_list\0"
+	.byte 0x03,0x01,0x0d,0x1b
+	.uaword print_list
+	.uaword .L5194
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe7,0x31
+	.byte 0x03,0x00,0x00,0xa2,0xc1
+	.ascii "ctx\0"
+	.byte 0x01,0x0d,0x1a,0x03,0x91,0xc4,0x00,0x03
+	.byte 0x00,0x00,0xe8,0x18
+	.ascii "f\0"
+	.byte 0x01,0x0d,0x1a,0x03,0x91,0xc8,0x00,0x03
+	.byte 0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0d,0x1a,0x03,0x91,0xcc,0x00,0x04
+	.ascii "n\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x01,0x01,0x0d,0x1c
+	.byte 0x02,0x91,0x7c,0x04
+	.ascii "done\0"
+	.byte 0x00,0x00,0x0b,0x0b,0x01,0x01,0x0d,0x1d
+	.byte 0x02,0x91,0x7b,0x04
+	.ascii "opcode\0"
+	.byte 0x00,0x00,0x0a,0xee,0x01,0x01,0x0d,0x1e
+	.byte 0x02,0x91,0x74,0x00,0x11
+	.ascii "__FILE\0"
+	.byte 0x10,0x06,0x00,0x00,0xe8,0x0d,0x0d
+	.ascii "_cnt\0"
+	.byte 0x00,0x00,0x0b,0x7e,0x02,0x23,0x00,0x0d
+	.ascii "_ptr\0"
+	.byte 0x00,0x00,0x3f,0x41,0x02,0x23,0x04,0x0d
+	.ascii "_base\0"
+	.byte 0x00,0x00,0x3f,0x41,0x02,0x23,0x08,0x0d
+	.ascii "_flag\0"
+	.byte 0x00,0x00,0x0a,0xfa,0x02,0x23,0x0c,0x0d
+	.ascii "_file\0"
+	.byte 0x00,0x00,0x0a,0xfa,0x02,0x23,0x0d,0x22
+	.ascii "__orientation\0"
+	.byte 0x00,0x00,0x0b,0x1b,0x02,0x23,0x0c,0x04
+	.byte 0x10,0x02,0x22
+	.ascii "__ionolock\0"
+	.byte 0x00,0x00,0x0b,0x1b,0x02,0x23,0x0c,0x04
+	.byte 0x12,0x01,0x22
+	.ascii "__seekable\0"
+	.byte 0x00,0x00,0x0b,0x1b,0x02,0x23,0x0c,0x04
+	.byte 0x13,0x01,0x22
+	.ascii "__extendedfd\0"
+	.byte 0x00,0x00,0x0b,0x1b,0x02,0x23,0x0c,0x04
+	.byte 0x14,0x01,0x22
+	.ascii "__xf_nocheck\0"
+	.byte 0x00,0x00,0x0b,0x1b,0x02,0x23,0x0c,0x04
+	.byte 0x15,0x01,0x22
+	.ascii "__filler\0"
+	.byte 0x00,0x00,0x0b,0x1b,0x02,0x23,0x0c,0x04
+	.byte 0x16,0x0a,0x00,0x09,0x00,0x00,0xe7,0x31
+	.ascii "FILE\0"
+	.byte 0x07,0x0b,0x00,0x00,0xe8,0x0d,0x1c
+	.ascii "mesa_print_display_list\0"
+	.byte 0x01,0x02,0x01,0x0d,0xcc
+	.uaword mesa_print_display_list
+	.uaword .L5203
+	.byte 0x01,0x6e,0x01,0x01,0x00,0x00,0xe8,0x6d
+	.byte 0x03,0x00,0x00,0x0b,0x91
+	.ascii "list\0"
+	.byte 0x01,0x0d,0xcb,0x03,0x91,0xc4,0x00,0x04
+	.ascii "ctx\0"
+	.byte 0x00,0x00,0xa2,0xc1,0x01,0x01,0x0d,0xcd
+	.byte 0x02,0x91,0x7c,0x00,0x12,0x00,0x00,0x71
+	.byte 0x62,0x03,0xe8,0x00,0x00,0xe8,0x80,0x13
+	.byte 0x00,0x00,0x3c,0x30,0x03,0xe7,0x00,0x04
+	.ascii "tmp\0"
+	.byte 0x00,0x00,0xe8,0x6d,0x03,0x01,0x0c,0xf8
+	.byte 0x05,0x03
+	.uaword $XAa59JCQsd3LGqK.tmp
+	.byte 0x04
+	.ascii "CurrentPos\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x01,0x01,0x77
+	.byte 0x05,0x03
+	.uaword $XAa59JCQsd3LGqK.CurrentPos
+	.byte 0x04
+	.ascii "CurrentBlock\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x03,0x01,0x01,0x76
+	.byte 0x05,0x03
+	.uaword $XAa59JCQsd3LGqK.CurrentBlock
+	.byte 0x04
+	.ascii "CurrentListNum\0"
+	.byte 0x00,0x00,0x0b,0x91,0x03,0x01,0x01,0x75
+	.byte 0x05,0x03
+	.uaword $XAa59JCQsd3LGqK.CurrentListNum
+	.byte 0x04
+	.ascii "CurrentListPtr\0"
+	.byte 0x00,0x00,0x3c,0x1a,0x03,0x01,0x01,0x74
+	.byte 0x05,0x03
+	.uaword $XAa59JCQsd3LGqK.CurrentListPtr
+	.byte 0x12,0x00,0x00,0x0b,0x91,0x01,0xd0,0x00
+	.byte 0x00,0xe9,0x17,0x10,0x00,0x00,0x3c,0x30
+	.byte 0x73,0x00,0x04
+	.ascii "InstSize\0"
+	.byte 0x00,0x00,0xe9,0x05,0x03,0x01,0x01,0x70
+	.byte 0x05,0x03
+	.uaword $XAa59JCQsd3LGqK.InstSize
+	.byte 0x23
+	.ascii "gl_WindowPos4fMESA\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xe9,0x65
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x23
+	.ascii "gl_End\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xe9,0x7b
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_Begin\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xe9,0x98
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_set_vertex_function\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xe9,0xbe
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x15,0x00
+	.byte 0x00,0x3b,0x47,0x0b,0x00,0x00,0xe9,0xbe
+	.byte 0x23
+	.ascii "gl_TexGenfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xe9,0xf2
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0xe9,0xc3,0x00,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0xe9,0xf2,0x23
+	.ascii "gl_TexParameterfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xea,0x2c
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0xe9,0xf7,0x00,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0xea,0x2c,0x23
+	.ascii "gl_TexEnvfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xea,0x60
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0xea,0x31,0x00,0x23
+	.ascii "gl_CopyTexSubImage3DEXT\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xea,0xb4
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x00,0x23
+	.ascii "gl_CopyTexSubImage2D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xeb,0x00
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x00,0x23
+	.ascii "gl_CopyTexSubImage1D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xeb,0x42
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x00,0x23
+	.ascii "gl_CopyTexImage2D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xeb,0x8b
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x00,0x23
+	.ascii "gl_CopyTexImage1D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xeb,0xcf
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x00,0x23
+	.ascii "gl_TexSubImage3DEXT\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xec,0x29
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x4b,0x57,0x00,0x23
+	.ascii "gl_TexSubImage2D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xec,0x76
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x4b,0x57,0x00,0x23
+	.ascii "gl_TexSubImage1D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xec,0xb9
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x9e,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x4b,0x57
+	.byte 0x00,0x23
+	.ascii "gl_TexImage3DEXT\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xed,0x0b
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4b,0x57,0x00
+	.byte 0x23
+	.ascii "gl_TexImage2D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xed,0x55
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x0b,0x9e,0x17,0x00,0x00
+	.byte 0x4b,0x57,0x00,0x23
+	.ascii "gl_TexImage1D\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xed,0x9a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e
+	.byte 0x17,0x00,0x00,0x4b,0x57,0x00,0x15,0x00
+	.byte 0x00,0x0b,0x1b,0x0b,0x00,0x00,0xed,0x9a
+	.byte 0x15,0x00,0x00,0x3b,0x47,0x0b,0x00,0x00
+	.byte 0xed,0xa4,0x23
+	.ascii "gl_PrioritizeTextures\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xed,0xe2
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0xed,0x9f,0x17
+	.byte 0x00,0x00,0xed,0xa9,0x00,0x23
+	.ascii "gl_BindTexture\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xee,0x0a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x1b,0x00
+	.byte 0x23
+	.ascii "gl_StencilOp\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xee,0x35
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x00,0x23
+	.ascii "gl_StencilMask\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xee,0x58
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "gl_StencilFunc\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xee,0x85
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x1b,0x00,0x23
+	.ascii "gl_ClearStencil\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xee,0xa9
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x00,0x23
+	.ascii "gl_Scissor\0"
+	.byte 0x01,0x01,0x01
+	.byte 0x01,0x00,0x00,0xee,0xd7,0x17,0x00,0x00
+	.byte 0x47,0x10,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x00,0x23
+	.ascii "gl_Rectf\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0x03
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x23
+	.ascii "gl_RasterPos4f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0x35
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x15,0x00,0x00,0x0a,0xfa,0x0b
+	.byte 0x00,0x00,0xef,0x35,0x23
+	.ascii "gl_PolygonStipple\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0x65
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0xef,0x3a,0x00,0x23
+	.ascii "gl_PolygonOffset\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0x8f
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x23
+	.ascii "gl_PolygonMode\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0xb7
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x00
+	.byte 0x23
+	.ascii "gl_FrontFace\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0xd8
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_CullFace\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xef,0xf8
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x15,0x00,0x00,0x3b,0x47
+	.byte 0x0b,0x00,0x00,0xef,0xf8,0x23
+	.ascii "gl_PointParameterfvEXT\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf0,0x32
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0xef,0xfd,0x00
+	.byte 0x23
+	.ascii "gl_PointSize\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf0,0x53
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x23
+	.ascii "gl_PixelZoom\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf0,0x79
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x23
+	.ascii "gl_PixelTransferf\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf0,0xa4
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x15,0x00,0x00,0x3b,0x47,0x0b,0x00,0x00
+	.byte 0xf0,0xa4,0x23
+	.ascii "gl_PixelMapfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf0,0xda
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0xf0,0xa9,0x00,0x23
+	.ascii "gl_ReadBuffer\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf0,0xfc
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_DrawBuffer\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf1,0x1e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_Hint\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf1,0x3f
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x00
+	.byte 0x23
+	.ascii "gl_Clear\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf1,0x5c
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "gl_ClearColor\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf1,0x8d
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x23
+	.ascii "gl_ClearIndex\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf1,0xaf
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x23
+	.ascii "gl_Translatef\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf1,0xdb
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x00,0x23
+	.ascii "gl_Scalef\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0x03
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x00,0x23
+	.ascii "gl_Viewport\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0x32
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x00,0x15,0x00,0x00,0x3b,0x47,0x0b
+	.byte 0x00,0x00,0xf2,0x32,0x23
+	.ascii "gl_MultMatrixf\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0x5f
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0xf2,0x37,0x00,0x23
+	.ascii "gl_MatrixMode\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0x81
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x15,0x00,0x00,0x3b,0x47
+	.byte 0x0b,0x00,0x00,0xf2,0x81,0x23
+	.ascii "gl_LoadMatrixf\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0xae
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0xf2,0x86,0x00,0x23
+	.ascii "gl_LoadIdentity\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0xcd
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_PopMatrix\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf2,0xe9
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_PushMatrix\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf3,0x06
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_Ortho\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf3,0x3c
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x49,0xa0,0x17,0x00,0x00,0x49,0xa0,0x17
+	.byte 0x00,0x00,0x49,0xa0,0x17,0x00,0x00,0x49
+	.byte 0xa0,0x17,0x00,0x00,0x49,0xa0,0x17,0x00
+	.byte 0x00,0x49,0xa0,0x00,0x23
+	.ascii "gl_Frustum\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf3,0x74
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x49,0xa0,0x17,0x00,0x00,0x49,0xa0,0x17
+	.byte 0x00,0x00,0x49,0xa0,0x17,0x00,0x00,0x49
+	.byte 0xa0,0x17,0x00,0x00,0x49,0xa0,0x17,0x00
+	.byte 0x00,0x49,0xa0,0x00,0x23
+	.ascii "gl_rotation_matrix\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf3,0xaa
+	.byte 0x17,0x00,0x00,0x3b,0x47,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x4f
+	.byte 0x90,0x00,0x23
+	.ascii "gl_ColorMask\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf3,0xda
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0a,0xfa,0x17,0x00,0x00,0x0a,0xfa,0x17
+	.byte 0x00,0x00,0x0a,0xfa,0x17,0x00,0x00,0x0a
+	.byte 0xfa,0x00,0x23
+	.ascii "gl_IndexMask\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf3,0xfb
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "gl_LogicOp\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf4,0x1a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_LineStipple\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf4,0x42
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x5d,0x00
+	.byte 0x23
+	.ascii "gl_LineWidth\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf4,0x63
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x15,0x00,0x00,0x3b,0x47
+	.byte 0x0b,0x00,0x00,0xf4,0x63,0x23
+	.ascii "gl_Materialfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf4,0x99
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0xf4,0x68,0x00,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0xf4,0x99,0x23
+	.ascii "gl_LightModelfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf4,0xcc
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0xf4,0x9e,0x00
+	.byte 0x15,0x00,0x00,0x3b,0x47,0x0b,0x00,0x00
+	.byte 0xf4,0xcc,0x23
+	.ascii "gl_Lightfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf5,0x04
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0xf4,0xd1,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x00,0x23
+	.ascii "gl_ColorMaterial\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf5,0x2e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x00
+	.byte 0x23
+	.ascii "gl_ShadeModel\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf5,0x50
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_free_image\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf5,0x6d
+	.byte 0x17,0x00,0x00,0x4b,0x57,0x00,0x15,0x00
+	.byte 0x00,0x3c,0x1f,0x0b,0x00,0x00,0xf5,0x6d
+	.byte 0x24
+	.ascii "HashFindFreeKeyBlock\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x0b,0x91,0x01
+	.byte 0x00,0x00,0xf5,0xa4,0x17,0x00,0x00,0xf5
+	.byte 0x72,0x17,0x00,0x00,0x0b,0x91,0x00,0x23
+	.ascii "HashRemove\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf5,0xc3
+	.byte 0x17,0x00,0x00,0x3c,0x2b,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "HashInsert\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf5,0xe7
+	.byte 0x17,0x00,0x00,0x3c,0x2b,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x17,0x00,0x00,0x3b,0x78,0x00
+	.byte 0x15,0x00,0x00,0x3c,0x1f,0x0b,0x00,0x00
+	.byte 0xf5,0xe7,0x24
+	.ascii "HashLookup\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x3b,0x78,0x01
+	.byte 0x00,0x00,0xf6,0x14,0x17,0x00,0x00,0xf5
+	.byte 0xec,0x17,0x00,0x00,0x0b,0x1b,0x00,0x15
+	.byte 0x00,0x00,0x3b,0x47,0x0b,0x00,0x00,0xf6
+	.byte 0x14,0x23
+	.ascii "gl_Fogfv\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf6,0x40
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0xf6,0x19,0x00
+	.byte 0x23
+	.ascii "gl_PopName\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf6,0x5a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_PushName\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf6,0x7a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "gl_LoadName\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf6,0x9a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "gl_InitNames\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf6,0xb6
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_PassThrough\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf6,0xd9
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x23
+	.ascii "gl_EvalMesh2\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf7,0x0e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x00,0x23
+	.ascii "gl_EvalMesh1\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf7,0x39
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x00,0x23
+	.ascii "gl_EvalPoint2\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf7,0x60
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x00
+	.byte 0x23
+	.ascii "gl_EvalPoint1\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf7,0x82
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x00,0x23
+	.ascii "gl_MapGrid2f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf7,0xbc
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x00,0x23
+	.ascii "gl_MapGrid1f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf7,0xe7
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x00,0x23
+	.ascii "gl_EvalCoord2f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf8,0x0f
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x23
+	.ascii "gl_EvalCoord1f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf8,0x32
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x00,0x15,0x00,0x00,0x3b,0x47
+	.byte 0x0b,0x00,0x00,0xf8,0x32,0x23
+	.ascii "gl_Map2f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf8,0x8b
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0x3b,0x47
+	.byte 0x17,0x00,0x00,0x0b,0x7e,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0xf8,0x37,0x17
+	.byte 0x00,0x00,0x0a,0xfa,0x00,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0xf8,0x8b,0x23
+	.ascii "gl_Map1f\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf8,0xd0
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17,0x00
+	.byte 0x00,0xf8,0x90,0x17,0x00,0x00,0x0a,0xfa
+	.byte 0x00,0x23
+	.ascii "gl_free_control_points\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0x00
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x4f,0x90,0x00
+	.byte 0x23
+	.ascii "gl_Enable\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0x1e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_Disable\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0x3d
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x15,0x00,0x00,0x3b,0x5e
+	.byte 0x0b,0x00,0x00,0xf9,0x3d,0x23
+	.ascii "gl_DrawPixels\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0x7d
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x9e,0x17,0x00,0x00,0x0b
+	.byte 0x9e,0x17,0x00,0x00,0xf9,0x42,0x00,0x23
+	.ascii "gl_DepthRange\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0xa4
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x49,0xa0,0x17,0x00,0x00,0x49,0xa0,0x00
+	.byte 0x23
+	.ascii "gl_DepthMask\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0xc5
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0a,0xfa,0x00,0x23
+	.ascii "gl_DepthFunc\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xf9,0xe6
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_ClearDepth\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfa,0x08
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x49,0xa0,0x00,0x23
+	.ascii "gl_CopyPixels\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfa,0x3e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x0b,0x7e,0x17,0x00,0x00,0x0b
+	.byte 0x7e,0x17,0x00,0x00,0x0b,0x9e,0x00,0x15
+	.byte 0x00,0x00,0x71,0x62,0x0b,0x00,0x00,0xfa
+	.byte 0x3e,0x23
+	.ascii "gl_error\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfa,0x6a
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0xfa,0x43,0x00
+	.byte 0x15,0x00,0x00,0x40,0x43,0x0b,0x00,0x00
+	.byte 0xfa,0x6a,0x15,0x00,0x00,0x71,0x62,0x0b
+	.byte 0x00,0x00,0xfa,0x74,0x23
+	.ascii "gl_problem\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfa,0x9d
+	.byte 0x17,0x00,0x00,0xfa,0x6f,0x17,0x00,0x00
+	.byte 0xfa,0x79,0x00,0x23
+	.ascii "gl_ColorSubTable\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfa,0xcc
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x4b,0x57,0x00,0x23
+	.ascii "gl_ColorTable\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfa,0xf8
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x17
+	.byte 0x00,0x00,0x4b,0x57,0x00,0x15,0x00,0x00
+	.byte 0x3b,0x47,0x0b,0x00,0x00,0xfa,0xf8,0x23
+	.ascii "gl_ClipPlane\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfb,0x28
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0xfa,0xfd,0x00
+	.byte 0x23
+	.ascii "gl_BlendColor\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfb,0x59
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x23
+	.ascii "gl_BlendEquation\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfb,0x7e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x00,0x23
+	.ascii "gl_BlendFunc\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfb,0xa4
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x0b,0x9e,0x00
+	.byte 0x15,0x00,0x00,0x47,0xc6,0x0b,0x00,0x00
+	.byte 0xfb,0xa4,0x23
+	.ascii "gl_Bitmap\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfb,0xea
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x7e,0x17,0x00,0x00,0x0b,0x7e,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x17,0x00,0x00,0x3b,0x47,0x17,0x00
+	.byte 0x00,0x3b,0x47,0x17,0x00,0x00,0xfb,0xa9
+	.byte 0x00,0x23
+	.ascii "gl_PopAttrib\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfc,0x06
+	.byte 0x17,0x00,0x00,0x47,0x10,0x00,0x23
+	.ascii "gl_PushAttrib\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfc,0x28
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x1b,0x00,0x23
+	.ascii "gl_AlphaFunc\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfc,0x4e
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x23
+	.ascii "gl_ClearAccum\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfc,0x7f
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x3b,0x47,0x17,0x00,0x00,0x3b,0x47,0x17
+	.byte 0x00,0x00,0x3b,0x47,0x17,0x00,0x00,0x3b
+	.byte 0x47,0x00,0x23
+	.ascii "gl_Accum\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfc,0xa1
+	.byte 0x17,0x00,0x00,0x47,0x10,0x17,0x00,0x00
+	.byte 0x0b,0x9e,0x17,0x00,0x00,0x3b,0x47,0x00
+	.byte 0x24
+	.ascii "glIsList\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x0b,0x0b,0x01
+	.byte 0x00,0x00,0xfc,0xbd,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x15,0x00,0x00,0x3b,0x5e,0x0b
+	.byte 0x00,0x00,0xfc,0xbd,0x24
+	.ascii "memcpy\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x3b,0x78,0x01
+	.byte 0x00,0x00,0xfc,0xeb,0x17,0x00,0x00,0x3b
+	.byte 0x78,0x17,0x00,0x00,0xfc,0xc2,0x17,0x00
+	.byte 0x00,0x0b,0x1b,0x00,0x24
+	.ascii "malloc\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x3b,0x78,0x01
+	.byte 0x00,0x00,0xfd,0x05,0x17,0x00,0x00,0x0b
+	.byte 0x1b,0x00,0x23
+	.ascii "free\0"
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0xfd,0x19
+	.byte 0x17,0x00,0x00,0x3b,0x78,0x00,0x15,0x00
+	.byte 0x00,0x71,0x62,0x0b,0x00,0x00,0xfd,0x19
+	.byte 0x24
+	.ascii "sprintf\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x0b,0x7e,0x01
+	.byte 0x00,0x00,0xfd,0x44,0x17,0x00,0x00,0xe6
+	.byte 0xaa,0x17,0x00,0x00,0xfd,0x1e,0x25,0x00
+	.byte 0x0b,0x00,0x00,0xe7,0x31,0x15,0x00,0x00
+	.byte 0x71,0x62,0x0b,0x00,0x00,0xfd,0x49,0x24
+	.ascii "fprintf\0"
+	.byte 0x01,0x01,0x01,0x00,0x00,0x0b,0x7e,0x01
+	.byte 0x00,0x00,0xfd,0x74,0x17,0x00,0x00,0xfd
+	.byte 0x44,0x17,0x00,0x00,0xfd,0x4e,0x25,0x00
+	.byte 0x15,0x00,0x00,0x71,0x62,0x0b,0x00,0x00
+	.byte 0xfd,0x74,0x15,0x00,0x00,0x71,0x62,0x0b
+	.byte 0x00,0x00,0xfd,0x7e,0x26
+	.ascii "__assert\0"
+	.byte 0x01,0x01,0x01,0x01,0x17,0x00,0x00,0xfd
+	.byte 0x79,0x17,0x00,0x00,0xfd,0x83,0x17,0x00
+	.byte 0x00,0x0b,0x7e,0x00,0x00,0x00
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_line
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+!   reloc[0]: knd=0, off=194, siz=4, lab1=alloc_instruction, lab2=, loff=0
+!   reloc[1]: knd=0, off=201, siz=4, lab1=.L16, lab2=, loff=0
+!   reloc[2]: knd=0, off=213, siz=4, lab1=.L17, lab2=, loff=0
+!   reloc[3]: knd=0, off=221, siz=4, lab1=.L26, lab2=, loff=0
+!   reloc[4]: knd=0, off=229, siz=4, lab1=.L30, lab2=, loff=0
+!   reloc[5]: knd=0, off=237, siz=4, lab1=.L31, lab2=, loff=0
+!   reloc[6]: knd=0, off=245, siz=4, lab1=.L32, lab2=, loff=0
+!   reloc[7]: knd=0, off=253, siz=4, lab1=.L35, lab2=, loff=0
+!   reloc[8]: knd=0, off=261, siz=4, lab1=.L39, lab2=, loff=0
+!   reloc[9]: knd=0, off=269, siz=4, lab1=.L41, lab2=, loff=0
+!   reloc[10]: knd=0, off=277, siz=4, lab1=.L45, lab2=, loff=0
+!   reloc[11]: knd=0, off=285, siz=4, lab1=.L46, lab2=, loff=0
+!   reloc[12]: knd=0, off=293, siz=4, lab1=.L47, lab2=, loff=0
+!   reloc[13]: knd=0, off=301, siz=4, lab1=.L51, lab2=, loff=0
+!   reloc[14]: knd=0, off=311, siz=4, lab1=.L52, lab2=, loff=0
+!   reloc[15]: knd=0, off=319, siz=4, lab1=.L53, lab2=, loff=0
+!   reloc[16]: knd=0, off=327, siz=4, lab1=.L54, lab2=, loff=0
+!   reloc[17]: knd=0, off=335, siz=4, lab1=.L55, lab2=, loff=0
+!   reloc[18]: knd=0, off=348, siz=4, lab1=make_empty_list, lab2=, loff=0
+!   reloc[19]: knd=0, off=355, siz=4, lab1=.L62, lab2=, loff=0
+!   reloc[20]: knd=0, off=367, siz=4, lab1=.L63, lab2=, loff=0
+!   reloc[21]: knd=0, off=375, siz=4, lab1=.L64, lab2=, loff=0
+!   reloc[22]: knd=0, off=383, siz=4, lab1=.L65, lab2=, loff=0
+!   reloc[23]: knd=0, off=396, siz=4, lab1=gl_destroy_list, lab2=, loff=0
+!   reloc[24]: knd=0, off=403, siz=4, lab1=.L72, lab2=, loff=0
+!   reloc[25]: knd=0, off=415, siz=4, lab1=.L73, lab2=, loff=0
+!   reloc[26]: knd=0, off=423, siz=4, lab1=.L74, lab2=, loff=0
+!   reloc[27]: knd=0, off=431, siz=4, lab1=.L82, lab2=, loff=0
+!   reloc[28]: knd=0, off=439, siz=4, lab1=.L89, lab2=, loff=0
+!   reloc[29]: knd=0, off=447, siz=4, lab1=.L93, lab2=, loff=0
+!   reloc[30]: knd=0, off=457, siz=4, lab1=.L94, lab2=, loff=0
+!   reloc[31]: knd=0, off=465, siz=4, lab1=.L95, lab2=, loff=0
+!   reloc[32]: knd=0, off=473, siz=4, lab1=.L97, lab2=, loff=0
+!   reloc[33]: knd=0, off=481, siz=4, lab1=.L98, lab2=, loff=0
+!   reloc[34]: knd=0, off=489, siz=4, lab1=.L99, lab2=, loff=0
+!   reloc[35]: knd=0, off=497, siz=4, lab1=.L101, lab2=, loff=0
+!   reloc[36]: knd=0, off=505, siz=4, lab1=.L102, lab2=, loff=0
+!   reloc[37]: knd=0, off=513, siz=4, lab1=.L103, lab2=, loff=0
+!   reloc[38]: knd=0, off=521, siz=4, lab1=.L105, lab2=, loff=0
+!   reloc[39]: knd=0, off=529, siz=4, lab1=.L106, lab2=, loff=0
+!   reloc[40]: knd=0, off=537, siz=4, lab1=.L107, lab2=, loff=0
+!   reloc[41]: knd=0, off=545, siz=4, lab1=.L109, lab2=, loff=0
+!   reloc[42]: knd=0, off=553, siz=4, lab1=.L110, lab2=, loff=0
+!   reloc[43]: knd=0, off=561, siz=4, lab1=.L111, lab2=, loff=0
+!   reloc[44]: knd=0, off=569, siz=4, lab1=.L113, lab2=, loff=0
+!   reloc[45]: knd=0, off=577, siz=4, lab1=.L114, lab2=, loff=0
+!   reloc[46]: knd=0, off=585, siz=4, lab1=.L115, lab2=, loff=0
+!   reloc[47]: knd=0, off=593, siz=4, lab1=.L117, lab2=, loff=0
+!   reloc[48]: knd=0, off=601, siz=4, lab1=.L118, lab2=, loff=0
+!   reloc[49]: knd=0, off=609, siz=4, lab1=.L119, lab2=, loff=0
+!   reloc[50]: knd=0, off=617, siz=4, lab1=.L121, lab2=, loff=0
+!   reloc[51]: knd=0, off=625, siz=4, lab1=.L122, lab2=, loff=0
+!   reloc[52]: knd=0, off=633, siz=4, lab1=.L123, lab2=, loff=0
+!   reloc[53]: knd=0, off=641, siz=4, lab1=.L125, lab2=, loff=0
+!   reloc[54]: knd=0, off=649, siz=4, lab1=.L126, lab2=, loff=0
+!   reloc[55]: knd=0, off=657, siz=4, lab1=.L127, lab2=, loff=0
+!   reloc[56]: knd=0, off=665, siz=4, lab1=.L130, lab2=, loff=0
+!   reloc[57]: knd=0, off=675, siz=4, lab1=.L131, lab2=, loff=0
+!   reloc[58]: knd=0, off=683, siz=4, lab1=.L133, lab2=, loff=0
+!   reloc[59]: knd=0, off=691, siz=4, lab1=.L136, lab2=, loff=0
+!   reloc[60]: knd=0, off=701, siz=4, lab1=.L137, lab2=, loff=0
+!   reloc[61]: knd=0, off=709, siz=4, lab1=.L139, lab2=, loff=0
+!   reloc[62]: knd=0, off=717, siz=4, lab1=.L141, lab2=, loff=0
+!   reloc[63]: knd=0, off=725, siz=4, lab1=.L142, lab2=, loff=0
+!   reloc[64]: knd=0, off=733, siz=4, lab1=.L143, lab2=, loff=0
+!   reloc[65]: knd=0, off=741, siz=4, lab1=.L144, lab2=, loff=0
+!   reloc[66]: knd=0, off=749, siz=4, lab1=.L146, lab2=, loff=0
+!   reloc[67]: knd=0, off=757, siz=4, lab1=.L147, lab2=, loff=0
+!   reloc[68]: knd=0, off=765, siz=4, lab1=.L148, lab2=, loff=0
+!   reloc[69]: knd=0, off=773, siz=4, lab1=.L150, lab2=, loff=0
+!   reloc[70]: knd=0, off=783, siz=4, lab1=.L151, lab2=, loff=0
+!   reloc[71]: knd=0, off=791, siz=4, lab1=.L154, lab2=, loff=0
+!   reloc[72]: knd=0, off=801, siz=4, lab1=.L159, lab2=, loff=0
+!   reloc[73]: knd=0, off=809, siz=4, lab1=.L162, lab2=, loff=0
+!   reloc[74]: knd=0, off=820, siz=4, lab1=.L163, lab2=, loff=0
+!   reloc[75]: knd=0, off=833, siz=4, lab1=translate_id, lab2=, loff=0
+!   reloc[76]: knd=0, off=840, siz=4, lab1=.L173, lab2=, loff=0
+!   reloc[77]: knd=0, off=852, siz=4, lab1=.L177, lab2=, loff=0
+!   reloc[78]: knd=0, off=860, siz=4, lab1=.L178, lab2=, loff=0
+!   reloc[79]: knd=0, off=868, siz=4, lab1=.L180, lab2=, loff=0
+!   reloc[80]: knd=0, off=876, siz=4, lab1=.L181, lab2=, loff=0
+!   reloc[81]: knd=0, off=884, siz=4, lab1=.L183, lab2=, loff=0
+!   reloc[82]: knd=0, off=892, siz=4, lab1=.L184, lab2=, loff=0
+!   reloc[83]: knd=0, off=900, siz=4, lab1=.L186, lab2=, loff=0
+!   reloc[84]: knd=0, off=908, siz=4, lab1=.L187, lab2=, loff=0
+!   reloc[85]: knd=0, off=916, siz=4, lab1=.L189, lab2=, loff=0
+!   reloc[86]: knd=0, off=924, siz=4, lab1=.L190, lab2=, loff=0
+!   reloc[87]: knd=0, off=932, siz=4, lab1=.L192, lab2=, loff=0
+!   reloc[88]: knd=0, off=940, siz=4, lab1=.L193, lab2=, loff=0
+!   reloc[89]: knd=0, off=948, siz=4, lab1=.L195, lab2=, loff=0
+!   reloc[90]: knd=0, off=956, siz=4, lab1=.L196, lab2=, loff=0
+!   reloc[91]: knd=0, off=964, siz=4, lab1=.L198, lab2=, loff=0
+!   reloc[92]: knd=0, off=972, siz=4, lab1=.L199, lab2=, loff=0
+!   reloc[93]: knd=0, off=980, siz=4, lab1=.L201, lab2=, loff=0
+!   reloc[94]: knd=0, off=988, siz=4, lab1=.L202, lab2=, loff=0
+!   reloc[95]: knd=0, off=998, siz=4, lab1=.L204, lab2=, loff=0
+!   reloc[96]: knd=0, off=1006, siz=4, lab1=.L205, lab2=, loff=0
+!   reloc[97]: knd=0, off=1016, siz=4, lab1=.L207, lab2=, loff=0
+!   reloc[98]: knd=0, off=1024, siz=4, lab1=.L210, lab2=, loff=0
+!   reloc[99]: knd=0, off=1034, siz=4, lab1=.L213, lab2=, loff=0
+!   reloc[100]: knd=0, off=1049, siz=4, lab1=gl_init_lists, lab2=, loff=0
+!   reloc[101]: knd=0, off=1056, siz=4, lab1=.L223, lab2=, loff=0
+!   reloc[102]: knd=0, off=1068, siz=4, lab1=.L227, lab2=, loff=0
+!   reloc[103]: knd=0, off=1076, siz=4, lab1=.L228, lab2=, loff=0
+!   reloc[104]: knd=0, off=1084, siz=4, lab1=.L229, lab2=, loff=0
+!   reloc[105]: knd=0, off=1092, siz=4, lab1=.L230, lab2=, loff=0
+!   reloc[106]: knd=0, off=1100, siz=4, lab1=.L231, lab2=, loff=0
+!   reloc[107]: knd=0, off=1108, siz=4, lab1=.L232, lab2=, loff=0
+!   reloc[108]: knd=0, off=1116, siz=4, lab1=.L233, lab2=, loff=0
+!   reloc[109]: knd=0, off=1124, siz=4, lab1=.L234, lab2=, loff=0
+!   reloc[110]: knd=0, off=1132, siz=4, lab1=.L235, lab2=, loff=0
+!   reloc[111]: knd=0, off=1140, siz=4, lab1=.L236, lab2=, loff=0
+!   reloc[112]: knd=0, off=1148, siz=4, lab1=.L237, lab2=, loff=0
+!   reloc[113]: knd=0, off=1156, siz=4, lab1=.L238, lab2=, loff=0
+!   reloc[114]: knd=0, off=1164, siz=4, lab1=.L239, lab2=, loff=0
+!   reloc[115]: knd=0, off=1172, siz=4, lab1=.L240, lab2=, loff=0
+!   reloc[116]: knd=0, off=1180, siz=4, lab1=.L241, lab2=, loff=0
+!   reloc[117]: knd=0, off=1188, siz=4, lab1=.L242, lab2=, loff=0
+!   reloc[118]: knd=0, off=1196, siz=4, lab1=.L243, lab2=, loff=0
+!   reloc[119]: knd=0, off=1204, siz=4, lab1=.L244, lab2=, loff=0
+!   reloc[120]: knd=0, off=1212, siz=4, lab1=.L245, lab2=, loff=0
+!   reloc[121]: knd=0, off=1220, siz=4, lab1=.L246, lab2=, loff=0
+!   reloc[122]: knd=0, off=1228, siz=4, lab1=.L247, lab2=, loff=0
+!   reloc[123]: knd=0, off=1236, siz=4, lab1=.L248, lab2=, loff=0
+!   reloc[124]: knd=0, off=1244, siz=4, lab1=.L249, lab2=, loff=0
+!   reloc[125]: knd=0, off=1252, siz=4, lab1=.L250, lab2=, loff=0
+!   reloc[126]: knd=0, off=1260, siz=4, lab1=.L251, lab2=, loff=0
+!   reloc[127]: knd=0, off=1268, siz=4, lab1=.L252, lab2=, loff=0
+!   reloc[128]: knd=0, off=1276, siz=4, lab1=.L253, lab2=, loff=0
+!   reloc[129]: knd=0, off=1284, siz=4, lab1=.L254, lab2=, loff=0
+!   reloc[130]: knd=0, off=1292, siz=4, lab1=.L255, lab2=, loff=0
+!   reloc[131]: knd=0, off=1300, siz=4, lab1=.L256, lab2=, loff=0
+!   reloc[132]: knd=0, off=1308, siz=4, lab1=.L257, lab2=, loff=0
+!   reloc[133]: knd=0, off=1316, siz=4, lab1=.L258, lab2=, loff=0
+!   reloc[134]: knd=0, off=1324, siz=4, lab1=.L259, lab2=, loff=0
+!   reloc[135]: knd=0, off=1332, siz=4, lab1=.L260, lab2=, loff=0
+!   reloc[136]: knd=0, off=1340, siz=4, lab1=.L261, lab2=, loff=0
+!   reloc[137]: knd=0, off=1348, siz=4, lab1=.L262, lab2=, loff=0
+!   reloc[138]: knd=0, off=1356, siz=4, lab1=.L263, lab2=, loff=0
+!   reloc[139]: knd=0, off=1364, siz=4, lab1=.L264, lab2=, loff=0
+!   reloc[140]: knd=0, off=1372, siz=4, lab1=.L265, lab2=, loff=0
+!   reloc[141]: knd=0, off=1380, siz=4, lab1=.L266, lab2=, loff=0
+!   reloc[142]: knd=0, off=1388, siz=4, lab1=.L267, lab2=, loff=0
+!   reloc[143]: knd=0, off=1396, siz=4, lab1=.L268, lab2=, loff=0
+!   reloc[144]: knd=0, off=1404, siz=4, lab1=.L269, lab2=, loff=0
+!   reloc[145]: knd=0, off=1412, siz=4, lab1=.L270, lab2=, loff=0
+!   reloc[146]: knd=0, off=1420, siz=4, lab1=.L271, lab2=, loff=0
+!   reloc[147]: knd=0, off=1428, siz=4, lab1=.L272, lab2=, loff=0
+!   reloc[148]: knd=0, off=1436, siz=4, lab1=.L273, lab2=, loff=0
+!   reloc[149]: knd=0, off=1444, siz=4, lab1=.L274, lab2=, loff=0
+!   reloc[150]: knd=0, off=1452, siz=4, lab1=.L275, lab2=, loff=0
+!   reloc[151]: knd=0, off=1460, siz=4, lab1=.L276, lab2=, loff=0
+!   reloc[152]: knd=0, off=1468, siz=4, lab1=.L277, lab2=, loff=0
+!   reloc[153]: knd=0, off=1476, siz=4, lab1=.L278, lab2=, loff=0
+!   reloc[154]: knd=0, off=1484, siz=4, lab1=.L279, lab2=, loff=0
+!   reloc[155]: knd=0, off=1492, siz=4, lab1=.L280, lab2=, loff=0
+!   reloc[156]: knd=0, off=1500, siz=4, lab1=.L281, lab2=, loff=0
+!   reloc[157]: knd=0, off=1508, siz=4, lab1=.L282, lab2=, loff=0
+!   reloc[158]: knd=0, off=1516, siz=4, lab1=.L283, lab2=, loff=0
+!   reloc[159]: knd=0, off=1524, siz=4, lab1=.L284, lab2=, loff=0
+!   reloc[160]: knd=0, off=1532, siz=4, lab1=.L285, lab2=, loff=0
+!   reloc[161]: knd=0, off=1540, siz=4, lab1=.L286, lab2=, loff=0
+!   reloc[162]: knd=0, off=1548, siz=4, lab1=.L287, lab2=, loff=0
+!   reloc[163]: knd=0, off=1556, siz=4, lab1=.L288, lab2=, loff=0
+!   reloc[164]: knd=0, off=1564, siz=4, lab1=.L289, lab2=, loff=0
+!   reloc[165]: knd=0, off=1572, siz=4, lab1=.L290, lab2=, loff=0
+!   reloc[166]: knd=0, off=1580, siz=4, lab1=.L291, lab2=, loff=0
+!   reloc[167]: knd=0, off=1588, siz=4, lab1=.L292, lab2=, loff=0
+!   reloc[168]: knd=0, off=1596, siz=4, lab1=.L293, lab2=, loff=0
+!   reloc[169]: knd=0, off=1604, siz=4, lab1=.L294, lab2=, loff=0
+!   reloc[170]: knd=0, off=1612, siz=4, lab1=.L295, lab2=, loff=0
+!   reloc[171]: knd=0, off=1620, siz=4, lab1=.L296, lab2=, loff=0
+!   reloc[172]: knd=0, off=1628, siz=4, lab1=.L297, lab2=, loff=0
+!   reloc[173]: knd=0, off=1636, siz=4, lab1=.L298, lab2=, loff=0
+!   reloc[174]: knd=0, off=1644, siz=4, lab1=.L299, lab2=, loff=0
+!   reloc[175]: knd=0, off=1652, siz=4, lab1=.L300, lab2=, loff=0
+!   reloc[176]: knd=0, off=1660, siz=4, lab1=.L301, lab2=, loff=0
+!   reloc[177]: knd=0, off=1668, siz=4, lab1=.L302, lab2=, loff=0
+!   reloc[178]: knd=0, off=1676, siz=4, lab1=.L303, lab2=, loff=0
+!   reloc[179]: knd=0, off=1684, siz=4, lab1=.L304, lab2=, loff=0
+!   reloc[180]: knd=0, off=1692, siz=4, lab1=.L305, lab2=, loff=0
+!   reloc[181]: knd=0, off=1700, siz=4, lab1=.L306, lab2=, loff=0
+!   reloc[182]: knd=0, off=1708, siz=4, lab1=.L307, lab2=, loff=0
+!   reloc[183]: knd=0, off=1716, siz=4, lab1=.L308, lab2=, loff=0
+!   reloc[184]: knd=0, off=1724, siz=4, lab1=.L309, lab2=, loff=0
+!   reloc[185]: knd=0, off=1732, siz=4, lab1=.L310, lab2=, loff=0
+!   reloc[186]: knd=0, off=1740, siz=4, lab1=.L311, lab2=, loff=0
+!   reloc[187]: knd=0, off=1748, siz=4, lab1=.L312, lab2=, loff=0
+!   reloc[188]: knd=0, off=1756, siz=4, lab1=.L313, lab2=, loff=0
+!   reloc[189]: knd=0, off=1764, siz=4, lab1=.L314, lab2=, loff=0
+!   reloc[190]: knd=0, off=1772, siz=4, lab1=.L315, lab2=, loff=0
+!   reloc[191]: knd=0, off=1780, siz=4, lab1=.L316, lab2=, loff=0
+!   reloc[192]: knd=0, off=1788, siz=4, lab1=.L317, lab2=, loff=0
+!   reloc[193]: knd=0, off=1796, siz=4, lab1=.L318, lab2=, loff=0
+!   reloc[194]: knd=0, off=1804, siz=4, lab1=.L319, lab2=, loff=0
+!   reloc[195]: knd=0, off=1812, siz=4, lab1=.L320, lab2=, loff=0
+!   reloc[196]: knd=0, off=1820, siz=4, lab1=.L321, lab2=, loff=0
+!   reloc[197]: knd=0, off=1828, siz=4, lab1=.L322, lab2=, loff=0
+!   reloc[198]: knd=0, off=1836, siz=4, lab1=.L323, lab2=, loff=0
+!   reloc[199]: knd=0, off=1844, siz=4, lab1=.L324, lab2=, loff=0
+!   reloc[200]: knd=0, off=1852, siz=4, lab1=.L325, lab2=, loff=0
+!   reloc[201]: knd=0, off=1860, siz=4, lab1=.L326, lab2=, loff=0
+!   reloc[202]: knd=0, off=1868, siz=4, lab1=.L327, lab2=, loff=0
+!   reloc[203]: knd=0, off=1876, siz=4, lab1=.L328, lab2=, loff=0
+!   reloc[204]: knd=0, off=1884, siz=4, lab1=.L329, lab2=, loff=0
+!   reloc[205]: knd=0, off=1892, siz=4, lab1=.L330, lab2=, loff=0
+!   reloc[206]: knd=0, off=1900, siz=4, lab1=.L331, lab2=, loff=0
+!   reloc[207]: knd=0, off=1908, siz=4, lab1=.L332, lab2=, loff=0
+!   reloc[208]: knd=0, off=1916, siz=4, lab1=.L333, lab2=, loff=0
+!   reloc[209]: knd=0, off=1924, siz=4, lab1=.L334, lab2=, loff=0
+!   reloc[210]: knd=0, off=1932, siz=4, lab1=.L335, lab2=, loff=0
+!   reloc[211]: knd=0, off=1940, siz=4, lab1=.L336, lab2=, loff=0
+!   reloc[212]: knd=0, off=1948, siz=4, lab1=.L337, lab2=, loff=0
+!   reloc[213]: knd=0, off=1956, siz=4, lab1=.L338, lab2=, loff=0
+!   reloc[214]: knd=0, off=1964, siz=4, lab1=.L339, lab2=, loff=0
+!   reloc[215]: knd=0, off=1972, siz=4, lab1=.L340, lab2=, loff=0
+!   reloc[216]: knd=0, off=1980, siz=4, lab1=.L341, lab2=, loff=0
+!   reloc[217]: knd=0, off=1988, siz=4, lab1=.L342, lab2=, loff=0
+!   reloc[218]: knd=0, off=1996, siz=4, lab1=.L343, lab2=, loff=0
+!   reloc[219]: knd=0, off=2004, siz=4, lab1=.L347, lab2=, loff=0
+!   reloc[220]: knd=0, off=2012, siz=4, lab1=.L348, lab2=, loff=0
+!   reloc[221]: knd=0, off=2025, siz=4, lab1=gl_list_index, lab2=, loff=0
+!   reloc[222]: knd=0, off=2032, siz=4, lab1=.L355, lab2=, loff=0
+!   reloc[223]: knd=0, off=2044, siz=4, lab1=.L356, lab2=, loff=0
+!   reloc[224]: knd=0, off=2057, siz=4, lab1=gl_save_Accum, lab2=, loff=0
+!   reloc[225]: knd=0, off=2064, siz=4, lab1=.L363, lab2=, loff=0
+!   reloc[226]: knd=0, off=2076, siz=4, lab1=.L366, lab2=, loff=0
+!   reloc[227]: knd=0, off=2084, siz=4, lab1=.L370, lab2=, loff=0
+!   reloc[228]: knd=0, off=2092, siz=4, lab1=.L371, lab2=, loff=0
+!   reloc[229]: knd=0, off=2100, siz=4, lab1=.L377, lab2=, loff=0
+!   reloc[230]: knd=0, off=2108, siz=4, lab1=.L381, lab2=, loff=0
+!   reloc[231]: knd=0, off=2116, siz=4, lab1=.L385, lab2=, loff=0
+!   reloc[232]: knd=0, off=2129, siz=4, lab1=gl_save_AlphaFunc, lab2=, loff=0
+!   reloc[233]: knd=0, off=2136, siz=4, lab1=.L392, lab2=, loff=0
+!   reloc[234]: knd=0, off=2148, siz=4, lab1=.L395, lab2=, loff=0
+!   reloc[235]: knd=0, off=2156, siz=4, lab1=.L399, lab2=, loff=0
+!   reloc[236]: knd=0, off=2164, siz=4, lab1=.L400, lab2=, loff=0
+!   reloc[237]: knd=0, off=2172, siz=4, lab1=.L406, lab2=, loff=0
+!   reloc[238]: knd=0, off=2180, siz=4, lab1=.L410, lab2=, loff=0
+!   reloc[239]: knd=0, off=2188, siz=4, lab1=.L414, lab2=, loff=0
+!   reloc[240]: knd=0, off=2201, siz=4, lab1=gl_save_Begin, lab2=, loff=0
+!   reloc[241]: knd=0, off=2208, siz=4, lab1=.L421, lab2=, loff=0
+!   reloc[242]: knd=0, off=2220, siz=4, lab1=.L424, lab2=, loff=0
+!   reloc[243]: knd=0, off=2228, siz=4, lab1=.L428, lab2=, loff=0
+!   reloc[244]: knd=0, off=2236, siz=4, lab1=.L434, lab2=, loff=0
+!   reloc[245]: knd=0, off=2244, siz=4, lab1=.L438, lab2=, loff=0
+!   reloc[246]: knd=0, off=2252, siz=4, lab1=.L442, lab2=, loff=0
+!   reloc[247]: knd=0, off=2265, siz=4, lab1=gl_save_BindTexture, lab2=, loff=0
+!   reloc[248]: knd=0, off=2272, siz=4, lab1=.L449, lab2=, loff=0
+!   reloc[249]: knd=0, off=2284, siz=4, lab1=.L452, lab2=, loff=0
+!   reloc[250]: knd=0, off=2292, siz=4, lab1=.L456, lab2=, loff=0
+!   reloc[251]: knd=0, off=2300, siz=4, lab1=.L457, lab2=, loff=0
+!   reloc[252]: knd=0, off=2308, siz=4, lab1=.L463, lab2=, loff=0
+!   reloc[253]: knd=0, off=2316, siz=4, lab1=.L467, lab2=, loff=0
+!   reloc[254]: knd=0, off=2324, siz=4, lab1=.L471, lab2=, loff=0
+!   reloc[255]: knd=0, off=2337, siz=4, lab1=gl_save_Bitmap, lab2=, loff=0
+!   reloc[256]: knd=0, off=2344, siz=4, lab1=.L478, lab2=, loff=0
+!   reloc[257]: knd=0, off=2356, siz=4, lab1=.L481, lab2=, loff=0
+!   reloc[258]: knd=0, off=2364, siz=4, lab1=.L485, lab2=, loff=0
+!   reloc[259]: knd=0, off=2372, siz=4, lab1=.L486, lab2=, loff=0
+!   reloc[260]: knd=0, off=2380, siz=4, lab1=.L487, lab2=, loff=0
+!   reloc[261]: knd=0, off=2388, siz=4, lab1=.L488, lab2=, loff=0
+!   reloc[262]: knd=0, off=2396, siz=4, lab1=.L489, lab2=, loff=0
+!   reloc[263]: knd=0, off=2404, siz=4, lab1=.L490, lab2=, loff=0
+!   reloc[264]: knd=0, off=2412, siz=4, lab1=.L491, lab2=, loff=0
+!   reloc[265]: knd=0, off=2420, siz=4, lab1=.L497, lab2=, loff=0
+!   reloc[266]: knd=0, off=2428, siz=4, lab1=.L501, lab2=, loff=0
+!   reloc[267]: knd=0, off=2436, siz=4, lab1=.L505, lab2=, loff=0
+!   reloc[268]: knd=0, off=2449, siz=4, lab1=gl_save_BlendEquation, lab2=, loff=0
+!   reloc[269]: knd=0, off=2456, siz=4, lab1=.L512, lab2=, loff=0
+!   reloc[270]: knd=0, off=2468, siz=4, lab1=.L515, lab2=, loff=0
+!   reloc[271]: knd=0, off=2476, siz=4, lab1=.L519, lab2=, loff=0
+!   reloc[272]: knd=0, off=2484, siz=4, lab1=.L525, lab2=, loff=0
+!   reloc[273]: knd=0, off=2492, siz=4, lab1=.L529, lab2=, loff=0
+!   reloc[274]: knd=0, off=2500, siz=4, lab1=.L533, lab2=, loff=0
+!   reloc[275]: knd=0, off=2513, siz=4, lab1=gl_save_BlendFunc, lab2=, loff=0
+!   reloc[276]: knd=0, off=2520, siz=4, lab1=.L540, lab2=, loff=0
+!   reloc[277]: knd=0, off=2532, siz=4, lab1=.L543, lab2=, loff=0
+!   reloc[278]: knd=0, off=2540, siz=4, lab1=.L547, lab2=, loff=0
+!   reloc[279]: knd=0, off=2548, siz=4, lab1=.L548, lab2=, loff=0
+!   reloc[280]: knd=0, off=2556, siz=4, lab1=.L554, lab2=, loff=0
+!   reloc[281]: knd=0, off=2564, siz=4, lab1=.L558, lab2=, loff=0
+!   reloc[282]: knd=0, off=2572, siz=4, lab1=.L562, lab2=, loff=0
+!   reloc[283]: knd=0, off=2585, siz=4, lab1=gl_save_BlendColor, lab2=, loff=0
+!   reloc[284]: knd=0, off=2592, siz=4, lab1=.L569, lab2=, loff=0
+!   reloc[285]: knd=0, off=2604, siz=4, lab1=.L572, lab2=, loff=0
+!   reloc[286]: knd=0, off=2612, siz=4, lab1=.L576, lab2=, loff=0
+!   reloc[287]: knd=0, off=2620, siz=4, lab1=.L577, lab2=, loff=0
+!   reloc[288]: knd=0, off=2628, siz=4, lab1=.L578, lab2=, loff=0
+!   reloc[289]: knd=0, off=2636, siz=4, lab1=.L579, lab2=, loff=0
+!   reloc[290]: knd=0, off=2644, siz=4, lab1=.L585, lab2=, loff=0
+!   reloc[291]: knd=0, off=2652, siz=4, lab1=.L589, lab2=, loff=0
+!   reloc[292]: knd=0, off=2660, siz=4, lab1=.L593, lab2=, loff=0
+!   reloc[293]: knd=0, off=2673, siz=4, lab1=gl_save_CallList, lab2=, loff=0
+!   reloc[294]: knd=0, off=2680, siz=4, lab1=.L600, lab2=, loff=0
+!   reloc[295]: knd=0, off=2692, siz=4, lab1=.L603, lab2=, loff=0
+!   reloc[296]: knd=0, off=2700, siz=4, lab1=.L607, lab2=, loff=0
+!   reloc[297]: knd=0, off=2708, siz=4, lab1=.L613, lab2=, loff=0
+!   reloc[298]: knd=0, off=2716, siz=4, lab1=.L617, lab2=, loff=0
+!   reloc[299]: knd=0, off=2724, siz=4, lab1=.L621, lab2=, loff=0
+!   reloc[300]: knd=0, off=2737, siz=4, lab1=gl_save_CallLists, lab2=, loff=0
+!   reloc[301]: knd=0, off=2744, siz=4, lab1=.L629, lab2=, loff=0
+!   reloc[302]: knd=0, off=2756, siz=4, lab1=.L636, lab2=, loff=0
+!   reloc[303]: knd=0, off=2764, siz=4, lab1=.L637, lab2=, loff=0
+!   reloc[304]: knd=0, off=2772, siz=4, lab1=.L640, lab2=, loff=0
+!   reloc[305]: knd=0, off=2780, siz=4, lab1=.L644, lab2=, loff=0
+!   reloc[306]: knd=0, off=2788, siz=4, lab1=.L650, lab2=, loff=0
+!   reloc[307]: knd=0, off=2798, siz=4, lab1=.L655, lab2=, loff=0
+!   reloc[308]: knd=0, off=2808, siz=4, lab1=.L659, lab2=, loff=0
+!   reloc[309]: knd=0, off=2816, siz=4, lab1=.L663, lab2=, loff=0
+!   reloc[310]: knd=0, off=2829, siz=4, lab1=gl_save_Clear, lab2=, loff=0
+!   reloc[311]: knd=0, off=2836, siz=4, lab1=.L670, lab2=, loff=0
+!   reloc[312]: knd=0, off=2848, siz=4, lab1=.L673, lab2=, loff=0
+!   reloc[313]: knd=0, off=2856, siz=4, lab1=.L677, lab2=, loff=0
+!   reloc[314]: knd=0, off=2864, siz=4, lab1=.L683, lab2=, loff=0
+!   reloc[315]: knd=0, off=2872, siz=4, lab1=.L687, lab2=, loff=0
+!   reloc[316]: knd=0, off=2880, siz=4, lab1=.L691, lab2=, loff=0
+!   reloc[317]: knd=0, off=2893, siz=4, lab1=gl_save_ClearAccum, lab2=, loff=0
+!   reloc[318]: knd=0, off=2900, siz=4, lab1=.L698, lab2=, loff=0
+!   reloc[319]: knd=0, off=2912, siz=4, lab1=.L701, lab2=, loff=0
+!   reloc[320]: knd=0, off=2920, siz=4, lab1=.L705, lab2=, loff=0
+!   reloc[321]: knd=0, off=2928, siz=4, lab1=.L706, lab2=, loff=0
+!   reloc[322]: knd=0, off=2936, siz=4, lab1=.L707, lab2=, loff=0
+!   reloc[323]: knd=0, off=2944, siz=4, lab1=.L708, lab2=, loff=0
+!   reloc[324]: knd=0, off=2952, siz=4, lab1=.L714, lab2=, loff=0
+!   reloc[325]: knd=0, off=2960, siz=4, lab1=.L718, lab2=, loff=0
+!   reloc[326]: knd=0, off=2968, siz=4, lab1=.L722, lab2=, loff=0
+!   reloc[327]: knd=0, off=2981, siz=4, lab1=gl_save_ClearColor, lab2=, loff=0
+!   reloc[328]: knd=0, off=2988, siz=4, lab1=.L729, lab2=, loff=0
+!   reloc[329]: knd=0, off=3000, siz=4, lab1=.L732, lab2=, loff=0
+!   reloc[330]: knd=0, off=3008, siz=4, lab1=.L736, lab2=, loff=0
+!   reloc[331]: knd=0, off=3016, siz=4, lab1=.L737, lab2=, loff=0
+!   reloc[332]: knd=0, off=3024, siz=4, lab1=.L738, lab2=, loff=0
+!   reloc[333]: knd=0, off=3032, siz=4, lab1=.L739, lab2=, loff=0
+!   reloc[334]: knd=0, off=3040, siz=4, lab1=.L745, lab2=, loff=0
+!   reloc[335]: knd=0, off=3048, siz=4, lab1=.L749, lab2=, loff=0
+!   reloc[336]: knd=0, off=3056, siz=4, lab1=.L753, lab2=, loff=0
+!   reloc[337]: knd=0, off=3069, siz=4, lab1=gl_save_ClearDepth, lab2=, loff=0
+!   reloc[338]: knd=0, off=3076, siz=4, lab1=.L760, lab2=, loff=0
+!   reloc[339]: knd=0, off=3088, siz=4, lab1=.L763, lab2=, loff=0
+!   reloc[340]: knd=0, off=3096, siz=4, lab1=.L767, lab2=, loff=0
+!   reloc[341]: knd=0, off=3104, siz=4, lab1=.L773, lab2=, loff=0
+!   reloc[342]: knd=0, off=3112, siz=4, lab1=.L777, lab2=, loff=0
+!   reloc[343]: knd=0, off=3120, siz=4, lab1=.L781, lab2=, loff=0
+!   reloc[344]: knd=0, off=3133, siz=4, lab1=gl_save_ClearIndex, lab2=, loff=0
+!   reloc[345]: knd=0, off=3140, siz=4, lab1=.L788, lab2=, loff=0
+!   reloc[346]: knd=0, off=3152, siz=4, lab1=.L791, lab2=, loff=0
+!   reloc[347]: knd=0, off=3160, siz=4, lab1=.L795, lab2=, loff=0
+!   reloc[348]: knd=0, off=3168, siz=4, lab1=.L801, lab2=, loff=0
+!   reloc[349]: knd=0, off=3176, siz=4, lab1=.L805, lab2=, loff=0
+!   reloc[350]: knd=0, off=3184, siz=4, lab1=.L809, lab2=, loff=0
+!   reloc[351]: knd=0, off=3197, siz=4, lab1=gl_save_ClearStencil, lab2=, loff=0
+!   reloc[352]: knd=0, off=3204, siz=4, lab1=.L816, lab2=, loff=0
+!   reloc[353]: knd=0, off=3216, siz=4, lab1=.L819, lab2=, loff=0
+!   reloc[354]: knd=0, off=3224, siz=4, lab1=.L823, lab2=, loff=0
+!   reloc[355]: knd=0, off=3232, siz=4, lab1=.L829, lab2=, loff=0
+!   reloc[356]: knd=0, off=3240, siz=4, lab1=.L833, lab2=, loff=0
+!   reloc[357]: knd=0, off=3248, siz=4, lab1=.L837, lab2=, loff=0
+!   reloc[358]: knd=0, off=3261, siz=4, lab1=gl_save_ClipPlane, lab2=, loff=0
+!   reloc[359]: knd=0, off=3268, siz=4, lab1=.L844, lab2=, loff=0
+!   reloc[360]: knd=0, off=3280, siz=4, lab1=.L847, lab2=, loff=0
+!   reloc[361]: knd=0, off=3288, siz=4, lab1=.L851, lab2=, loff=0
+!   reloc[362]: knd=0, off=3296, siz=4, lab1=.L852, lab2=, loff=0
+!   reloc[363]: knd=0, off=3304, siz=4, lab1=.L853, lab2=, loff=0
+!   reloc[364]: knd=0, off=3312, siz=4, lab1=.L854, lab2=, loff=0
+!   reloc[365]: knd=0, off=3320, siz=4, lab1=.L855, lab2=, loff=0
+!   reloc[366]: knd=0, off=3328, siz=4, lab1=.L861, lab2=, loff=0
+!   reloc[367]: knd=0, off=3336, siz=4, lab1=.L865, lab2=, loff=0
+!   reloc[368]: knd=0, off=3344, siz=4, lab1=.L869, lab2=, loff=0
+!   reloc[369]: knd=0, off=3357, siz=4, lab1=gl_save_Color3f, lab2=, loff=0
+!   reloc[370]: knd=0, off=3364, siz=4, lab1=.L876, lab2=, loff=0
+!   reloc[371]: knd=0, off=3376, siz=4, lab1=.L879, lab2=, loff=0
+!   reloc[372]: knd=0, off=3384, siz=4, lab1=.L883, lab2=, loff=0
+!   reloc[373]: knd=0, off=3392, siz=4, lab1=.L884, lab2=, loff=0
+!   reloc[374]: knd=0, off=3400, siz=4, lab1=.L885, lab2=, loff=0
+!   reloc[375]: knd=0, off=3408, siz=4, lab1=.L891, lab2=, loff=0
+!   reloc[376]: knd=0, off=3416, siz=4, lab1=.L895, lab2=, loff=0
+!   reloc[377]: knd=0, off=3424, siz=4, lab1=.L899, lab2=, loff=0
+!   reloc[378]: knd=0, off=3437, siz=4, lab1=gl_save_Color3fv, lab2=, loff=0
+!   reloc[379]: knd=0, off=3444, siz=4, lab1=.L906, lab2=, loff=0
+!   reloc[380]: knd=0, off=3456, siz=4, lab1=.L909, lab2=, loff=0
+!   reloc[381]: knd=0, off=3464, siz=4, lab1=.L913, lab2=, loff=0
+!   reloc[382]: knd=0, off=3472, siz=4, lab1=.L914, lab2=, loff=0
+!   reloc[383]: knd=0, off=3480, siz=4, lab1=.L915, lab2=, loff=0
+!   reloc[384]: knd=0, off=3488, siz=4, lab1=.L921, lab2=, loff=0
+!   reloc[385]: knd=0, off=3496, siz=4, lab1=.L925, lab2=, loff=0
+!   reloc[386]: knd=0, off=3504, siz=4, lab1=.L929, lab2=, loff=0
+!   reloc[387]: knd=0, off=3517, siz=4, lab1=gl_save_Color4f, lab2=, loff=0
+!   reloc[388]: knd=0, off=3524, siz=4, lab1=.L936, lab2=, loff=0
+!   reloc[389]: knd=0, off=3536, siz=4, lab1=.L939, lab2=, loff=0
+!   reloc[390]: knd=0, off=3544, siz=4, lab1=.L943, lab2=, loff=0
+!   reloc[391]: knd=0, off=3552, siz=4, lab1=.L944, lab2=, loff=0
+!   reloc[392]: knd=0, off=3560, siz=4, lab1=.L945, lab2=, loff=0
+!   reloc[393]: knd=0, off=3568, siz=4, lab1=.L946, lab2=, loff=0
+!   reloc[394]: knd=0, off=3576, siz=4, lab1=.L952, lab2=, loff=0
+!   reloc[395]: knd=0, off=3584, siz=4, lab1=.L956, lab2=, loff=0
+!   reloc[396]: knd=0, off=3592, siz=4, lab1=.L960, lab2=, loff=0
+!   reloc[397]: knd=0, off=3605, siz=4, lab1=gl_save_Color4fv, lab2=, loff=0
+!   reloc[398]: knd=0, off=3612, siz=4, lab1=.L967, lab2=, loff=0
+!   reloc[399]: knd=0, off=3624, siz=4, lab1=.L970, lab2=, loff=0
+!   reloc[400]: knd=0, off=3632, siz=4, lab1=.L974, lab2=, loff=0
+!   reloc[401]: knd=0, off=3640, siz=4, lab1=.L975, lab2=, loff=0
+!   reloc[402]: knd=0, off=3648, siz=4, lab1=.L976, lab2=, loff=0
+!   reloc[403]: knd=0, off=3656, siz=4, lab1=.L977, lab2=, loff=0
+!   reloc[404]: knd=0, off=3664, siz=4, lab1=.L983, lab2=, loff=0
+!   reloc[405]: knd=0, off=3672, siz=4, lab1=.L987, lab2=, loff=0
+!   reloc[406]: knd=0, off=3680, siz=4, lab1=.L991, lab2=, loff=0
+!   reloc[407]: knd=0, off=3693, siz=4, lab1=gl_save_Color4ub, lab2=, loff=0
+!   reloc[408]: knd=0, off=3700, siz=4, lab1=.L998, lab2=, loff=0
+!   reloc[409]: knd=0, off=3712, siz=4, lab1=.L1001, lab2=, loff=0
+!   reloc[410]: knd=0, off=3720, siz=4, lab1=.L1005, lab2=, loff=0
+!   reloc[411]: knd=0, off=3728, siz=4, lab1=.L1006, lab2=, loff=0
+!   reloc[412]: knd=0, off=3736, siz=4, lab1=.L1007, lab2=, loff=0
+!   reloc[413]: knd=0, off=3744, siz=4, lab1=.L1008, lab2=, loff=0
+!   reloc[414]: knd=0, off=3752, siz=4, lab1=.L1014, lab2=, loff=0
+!   reloc[415]: knd=0, off=3760, siz=4, lab1=.L1018, lab2=, loff=0
+!   reloc[416]: knd=0, off=3768, siz=4, lab1=.L1022, lab2=, loff=0
+!   reloc[417]: knd=0, off=3781, siz=4, lab1=gl_save_Color4ubv, lab2=, loff=0
+!   reloc[418]: knd=0, off=3788, siz=4, lab1=.L1029, lab2=, loff=0
+!   reloc[419]: knd=0, off=3800, siz=4, lab1=.L1032, lab2=, loff=0
+!   reloc[420]: knd=0, off=3808, siz=4, lab1=.L1036, lab2=, loff=0
+!   reloc[421]: knd=0, off=3816, siz=4, lab1=.L1037, lab2=, loff=0
+!   reloc[422]: knd=0, off=3824, siz=4, lab1=.L1038, lab2=, loff=0
+!   reloc[423]: knd=0, off=3832, siz=4, lab1=.L1039, lab2=, loff=0
+!   reloc[424]: knd=0, off=3840, siz=4, lab1=.L1045, lab2=, loff=0
+!   reloc[425]: knd=0, off=3848, siz=4, lab1=.L1049, lab2=, loff=0
+!   reloc[426]: knd=0, off=3856, siz=4, lab1=.L1053, lab2=, loff=0
+!   reloc[427]: knd=0, off=3869, siz=4, lab1=gl_save_ColorMask, lab2=, loff=0
+!   reloc[428]: knd=0, off=3876, siz=4, lab1=.L1060, lab2=, loff=0
+!   reloc[429]: knd=0, off=3888, siz=4, lab1=.L1063, lab2=, loff=0
+!   reloc[430]: knd=0, off=3896, siz=4, lab1=.L1067, lab2=, loff=0
+!   reloc[431]: knd=0, off=3904, siz=4, lab1=.L1068, lab2=, loff=0
+!   reloc[432]: knd=0, off=3912, siz=4, lab1=.L1069, lab2=, loff=0
+!   reloc[433]: knd=0, off=3920, siz=4, lab1=.L1070, lab2=, loff=0
+!   reloc[434]: knd=0, off=3928, siz=4, lab1=.L1076, lab2=, loff=0
+!   reloc[435]: knd=0, off=3936, siz=4, lab1=.L1080, lab2=, loff=0
+!   reloc[436]: knd=0, off=3944, siz=4, lab1=.L1084, lab2=, loff=0
+!   reloc[437]: knd=0, off=3957, siz=4, lab1=gl_save_ColorMaterial, lab2=, loff=0
+!   reloc[438]: knd=0, off=3964, siz=4, lab1=.L1091, lab2=, loff=0
+!   reloc[439]: knd=0, off=3976, siz=4, lab1=.L1094, lab2=, loff=0
+!   reloc[440]: knd=0, off=3984, siz=4, lab1=.L1098, lab2=, loff=0
+!   reloc[441]: knd=0, off=3992, siz=4, lab1=.L1099, lab2=, loff=0
+!   reloc[442]: knd=0, off=4000, siz=4, lab1=.L1105, lab2=, loff=0
+!   reloc[443]: knd=0, off=4008, siz=4, lab1=.L1109, lab2=, loff=0
+!   reloc[444]: knd=0, off=4016, siz=4, lab1=.L1113, lab2=, loff=0
+!   reloc[445]: knd=0, off=4029, siz=4, lab1=gl_save_ColorTable, lab2=, loff=0
+!   reloc[446]: knd=0, off=4036, siz=4, lab1=.L1120, lab2=, loff=0
+!   reloc[447]: knd=0, off=4048, siz=4, lab1=.L1123, lab2=, loff=0
+!   reloc[448]: knd=0, off=4056, siz=4, lab1=.L1127, lab2=, loff=0
+!   reloc[449]: knd=0, off=4064, siz=4, lab1=.L1128, lab2=, loff=0
+!   reloc[450]: knd=0, off=4072, siz=4, lab1=.L1129, lab2=, loff=0
+!   reloc[451]: knd=0, off=4080, siz=4, lab1=.L1132, lab2=, loff=0
+!   reloc[452]: knd=0, off=4088, siz=4, lab1=.L1136, lab2=, loff=0
+!   reloc[453]: knd=0, off=4096, siz=4, lab1=.L1145, lab2=, loff=0
+!   reloc[454]: knd=0, off=4106, siz=4, lab1=.L1149, lab2=, loff=0
+!   reloc[455]: knd=0, off=4114, siz=4, lab1=.L1153, lab2=, loff=0
+!   reloc[456]: knd=0, off=4127, siz=4, lab1=gl_save_ColorSubTable, lab2=, loff=0
+!   reloc[457]: knd=0, off=4134, siz=4, lab1=.L1160, lab2=, loff=0
+!   reloc[458]: knd=0, off=4146, siz=4, lab1=.L1163, lab2=, loff=0
+!   reloc[459]: knd=0, off=4154, siz=4, lab1=.L1167, lab2=, loff=0
+!   reloc[460]: knd=0, off=4162, siz=4, lab1=.L1168, lab2=, loff=0
+!   reloc[461]: knd=0, off=4170, siz=4, lab1=.L1169, lab2=, loff=0
+!   reloc[462]: knd=0, off=4178, siz=4, lab1=.L1172, lab2=, loff=0
+!   reloc[463]: knd=0, off=4186, siz=4, lab1=.L1176, lab2=, loff=0
+!   reloc[464]: knd=0, off=4194, siz=4, lab1=.L1185, lab2=, loff=0
+!   reloc[465]: knd=0, off=4204, siz=4, lab1=.L1189, lab2=, loff=0
+!   reloc[466]: knd=0, off=4212, siz=4, lab1=.L1193, lab2=, loff=0
+!   reloc[467]: knd=0, off=4225, siz=4, lab1=gl_save_CopyPixels, lab2=, loff=0
+!   reloc[468]: knd=0, off=4232, siz=4, lab1=.L1200, lab2=, loff=0
+!   reloc[469]: knd=0, off=4244, siz=4, lab1=.L1203, lab2=, loff=0
+!   reloc[470]: knd=0, off=4252, siz=4, lab1=.L1207, lab2=, loff=0
+!   reloc[471]: knd=0, off=4260, siz=4, lab1=.L1208, lab2=, loff=0
+!   reloc[472]: knd=0, off=4268, siz=4, lab1=.L1209, lab2=, loff=0
+!   reloc[473]: knd=0, off=4276, siz=4, lab1=.L1210, lab2=, loff=0
+!   reloc[474]: knd=0, off=4284, siz=4, lab1=.L1211, lab2=, loff=0
+!   reloc[475]: knd=0, off=4292, siz=4, lab1=.L1217, lab2=, loff=0
+!   reloc[476]: knd=0, off=4300, siz=4, lab1=.L1221, lab2=, loff=0
+!   reloc[477]: knd=0, off=4308, siz=4, lab1=.L1225, lab2=, loff=0
+!   reloc[478]: knd=0, off=4321, siz=4, lab1=gl_save_CopyTexImage1D, lab2=, loff=0
+!   reloc[479]: knd=0, off=4328, siz=4, lab1=.L1232, lab2=, loff=0
+!   reloc[480]: knd=0, off=4340, siz=4, lab1=.L1235, lab2=, loff=0
+!   reloc[481]: knd=0, off=4348, siz=4, lab1=.L1239, lab2=, loff=0
+!   reloc[482]: knd=0, off=4356, siz=4, lab1=.L1240, lab2=, loff=0
+!   reloc[483]: knd=0, off=4364, siz=4, lab1=.L1241, lab2=, loff=0
+!   reloc[484]: knd=0, off=4372, siz=4, lab1=.L1242, lab2=, loff=0
+!   reloc[485]: knd=0, off=4380, siz=4, lab1=.L1243, lab2=, loff=0
+!   reloc[486]: knd=0, off=4388, siz=4, lab1=.L1244, lab2=, loff=0
+!   reloc[487]: knd=0, off=4396, siz=4, lab1=.L1245, lab2=, loff=0
+!   reloc[488]: knd=0, off=4404, siz=4, lab1=.L1251, lab2=, loff=0
+!   reloc[489]: knd=0, off=4412, siz=4, lab1=.L1255, lab2=, loff=0
+!   reloc[490]: knd=0, off=4420, siz=4, lab1=.L1259, lab2=, loff=0
+!   reloc[491]: knd=0, off=4433, siz=4, lab1=gl_save_CopyTexImage2D, lab2=, loff=0
+!   reloc[492]: knd=0, off=4440, siz=4, lab1=.L1266, lab2=, loff=0
+!   reloc[493]: knd=0, off=4452, siz=4, lab1=.L1269, lab2=, loff=0
+!   reloc[494]: knd=0, off=4460, siz=4, lab1=.L1273, lab2=, loff=0
+!   reloc[495]: knd=0, off=4468, siz=4, lab1=.L1274, lab2=, loff=0
+!   reloc[496]: knd=0, off=4476, siz=4, lab1=.L1275, lab2=, loff=0
+!   reloc[497]: knd=0, off=4484, siz=4, lab1=.L1276, lab2=, loff=0
+!   reloc[498]: knd=0, off=4492, siz=4, lab1=.L1277, lab2=, loff=0
+!   reloc[499]: knd=0, off=4500, siz=4, lab1=.L1278, lab2=, loff=0
+!   reloc[500]: knd=0, off=4508, siz=4, lab1=.L1279, lab2=, loff=0
+!   reloc[501]: knd=0, off=4516, siz=4, lab1=.L1280, lab2=, loff=0
+!   reloc[502]: knd=0, off=4524, siz=4, lab1=.L1286, lab2=, loff=0
+!   reloc[503]: knd=0, off=4532, siz=4, lab1=.L1290, lab2=, loff=0
+!   reloc[504]: knd=0, off=4540, siz=4, lab1=.L1294, lab2=, loff=0
+!   reloc[505]: knd=0, off=4553, siz=4, lab1=gl_save_CopyTexSubImage1D, lab2=, loff=0
+!   reloc[506]: knd=0, off=4560, siz=4, lab1=.L1301, lab2=, loff=0
+!   reloc[507]: knd=0, off=4572, siz=4, lab1=.L1304, lab2=, loff=0
+!   reloc[508]: knd=0, off=4580, siz=4, lab1=.L1308, lab2=, loff=0
+!   reloc[509]: knd=0, off=4588, siz=4, lab1=.L1309, lab2=, loff=0
+!   reloc[510]: knd=0, off=4596, siz=4, lab1=.L1310, lab2=, loff=0
+!   reloc[511]: knd=0, off=4604, siz=4, lab1=.L1311, lab2=, loff=0
+!   reloc[512]: knd=0, off=4612, siz=4, lab1=.L1312, lab2=, loff=0
+!   reloc[513]: knd=0, off=4620, siz=4, lab1=.L1313, lab2=, loff=0
+!   reloc[514]: knd=0, off=4628, siz=4, lab1=.L1319, lab2=, loff=0
+!   reloc[515]: knd=0, off=4636, siz=4, lab1=.L1323, lab2=, loff=0
+!   reloc[516]: knd=0, off=4644, siz=4, lab1=.L1327, lab2=, loff=0
+!   reloc[517]: knd=0, off=4657, siz=4, lab1=gl_save_CopyTexSubImage2D, lab2=, loff=0
+!   reloc[518]: knd=0, off=4664, siz=4, lab1=.L1334, lab2=, loff=0
+!   reloc[519]: knd=0, off=4676, siz=4, lab1=.L1337, lab2=, loff=0
+!   reloc[520]: knd=0, off=4684, siz=4, lab1=.L1341, lab2=, loff=0
+!   reloc[521]: knd=0, off=4692, siz=4, lab1=.L1342, lab2=, loff=0
+!   reloc[522]: knd=0, off=4700, siz=4, lab1=.L1343, lab2=, loff=0
+!   reloc[523]: knd=0, off=4708, siz=4, lab1=.L1344, lab2=, loff=0
+!   reloc[524]: knd=0, off=4716, siz=4, lab1=.L1345, lab2=, loff=0
+!   reloc[525]: knd=0, off=4724, siz=4, lab1=.L1346, lab2=, loff=0
+!   reloc[526]: knd=0, off=4732, siz=4, lab1=.L1347, lab2=, loff=0
+!   reloc[527]: knd=0, off=4740, siz=4, lab1=.L1348, lab2=, loff=0
+!   reloc[528]: knd=0, off=4748, siz=4, lab1=.L1354, lab2=, loff=0
+!   reloc[529]: knd=0, off=4756, siz=4, lab1=.L1358, lab2=, loff=0
+!   reloc[530]: knd=0, off=4764, siz=4, lab1=.L1362, lab2=, loff=0
+!   reloc[531]: knd=0, off=4777, siz=4, lab1=gl_save_CopyTexSubImage3DEXT, lab2=, loff=0
+!   reloc[532]: knd=0, off=4784, siz=4, lab1=.L1369, lab2=, loff=0
+!   reloc[533]: knd=0, off=4796, siz=4, lab1=.L1372, lab2=, loff=0
+!   reloc[534]: knd=0, off=4804, siz=4, lab1=.L1376, lab2=, loff=0
+!   reloc[535]: knd=0, off=4812, siz=4, lab1=.L1377, lab2=, loff=0
+!   reloc[536]: knd=0, off=4820, siz=4, lab1=.L1378, lab2=, loff=0
+!   reloc[537]: knd=0, off=4828, siz=4, lab1=.L1379, lab2=, loff=0
+!   reloc[538]: knd=0, off=4836, siz=4, lab1=.L1380, lab2=, loff=0
+!   reloc[539]: knd=0, off=4844, siz=4, lab1=.L1381, lab2=, loff=0
+!   reloc[540]: knd=0, off=4852, siz=4, lab1=.L1382, lab2=, loff=0
+!   reloc[541]: knd=0, off=4860, siz=4, lab1=.L1383, lab2=, loff=0
+!   reloc[542]: knd=0, off=4868, siz=4, lab1=.L1384, lab2=, loff=0
+!   reloc[543]: knd=0, off=4876, siz=4, lab1=.L1390, lab2=, loff=0
+!   reloc[544]: knd=0, off=4884, siz=4, lab1=.L1394, lab2=, loff=0
+!   reloc[545]: knd=0, off=4892, siz=4, lab1=.L1398, lab2=, loff=0
+!   reloc[546]: knd=0, off=4905, siz=4, lab1=gl_save_CullFace, lab2=, loff=0
+!   reloc[547]: knd=0, off=4912, siz=4, lab1=.L1405, lab2=, loff=0
+!   reloc[548]: knd=0, off=4924, siz=4, lab1=.L1408, lab2=, loff=0
+!   reloc[549]: knd=0, off=4932, siz=4, lab1=.L1412, lab2=, loff=0
+!   reloc[550]: knd=0, off=4940, siz=4, lab1=.L1418, lab2=, loff=0
+!   reloc[551]: knd=0, off=4948, siz=4, lab1=.L1422, lab2=, loff=0
+!   reloc[552]: knd=0, off=4956, siz=4, lab1=.L1426, lab2=, loff=0
+!   reloc[553]: knd=0, off=4969, siz=4, lab1=gl_save_DepthFunc, lab2=, loff=0
+!   reloc[554]: knd=0, off=4976, siz=4, lab1=.L1433, lab2=, loff=0
+!   reloc[555]: knd=0, off=4988, siz=4, lab1=.L1436, lab2=, loff=0
+!   reloc[556]: knd=0, off=4996, siz=4, lab1=.L1440, lab2=, loff=0
+!   reloc[557]: knd=0, off=5004, siz=4, lab1=.L1446, lab2=, loff=0
+!   reloc[558]: knd=0, off=5012, siz=4, lab1=.L1450, lab2=, loff=0
+!   reloc[559]: knd=0, off=5020, siz=4, lab1=.L1454, lab2=, loff=0
+!   reloc[560]: knd=0, off=5033, siz=4, lab1=gl_save_DepthMask, lab2=, loff=0
+!   reloc[561]: knd=0, off=5040, siz=4, lab1=.L1461, lab2=, loff=0
+!   reloc[562]: knd=0, off=5052, siz=4, lab1=.L1464, lab2=, loff=0
+!   reloc[563]: knd=0, off=5060, siz=4, lab1=.L1468, lab2=, loff=0
+!   reloc[564]: knd=0, off=5068, siz=4, lab1=.L1474, lab2=, loff=0
+!   reloc[565]: knd=0, off=5076, siz=4, lab1=.L1478, lab2=, loff=0
+!   reloc[566]: knd=0, off=5084, siz=4, lab1=.L1482, lab2=, loff=0
+!   reloc[567]: knd=0, off=5097, siz=4, lab1=gl_save_DepthRange, lab2=, loff=0
+!   reloc[568]: knd=0, off=5104, siz=4, lab1=.L1489, lab2=, loff=0
+!   reloc[569]: knd=0, off=5116, siz=4, lab1=.L1492, lab2=, loff=0
+!   reloc[570]: knd=0, off=5124, siz=4, lab1=.L1496, lab2=, loff=0
+!   reloc[571]: knd=0, off=5132, siz=4, lab1=.L1497, lab2=, loff=0
+!   reloc[572]: knd=0, off=5140, siz=4, lab1=.L1503, lab2=, loff=0
+!   reloc[573]: knd=0, off=5148, siz=4, lab1=.L1507, lab2=, loff=0
+!   reloc[574]: knd=0, off=5156, siz=4, lab1=.L1511, lab2=, loff=0
+!   reloc[575]: knd=0, off=5169, siz=4, lab1=gl_save_Disable, lab2=, loff=0
+!   reloc[576]: knd=0, off=5176, siz=4, lab1=.L1518, lab2=, loff=0
+!   reloc[577]: knd=0, off=5188, siz=4, lab1=.L1521, lab2=, loff=0
+!   reloc[578]: knd=0, off=5196, siz=4, lab1=.L1525, lab2=, loff=0
+!   reloc[579]: knd=0, off=5204, siz=4, lab1=.L1531, lab2=, loff=0
+!   reloc[580]: knd=0, off=5212, siz=4, lab1=.L1535, lab2=, loff=0
+!   reloc[581]: knd=0, off=5220, siz=4, lab1=.L1539, lab2=, loff=0
+!   reloc[582]: knd=0, off=5233, siz=4, lab1=gl_save_DrawBuffer, lab2=, loff=0
+!   reloc[583]: knd=0, off=5240, siz=4, lab1=.L1546, lab2=, loff=0
+!   reloc[584]: knd=0, off=5252, siz=4, lab1=.L1549, lab2=, loff=0
+!   reloc[585]: knd=0, off=5260, siz=4, lab1=.L1553, lab2=, loff=0
+!   reloc[586]: knd=0, off=5268, siz=4, lab1=.L1559, lab2=, loff=0
+!   reloc[587]: knd=0, off=5276, siz=4, lab1=.L1563, lab2=, loff=0
+!   reloc[588]: knd=0, off=5284, siz=4, lab1=.L1567, lab2=, loff=0
+!   reloc[589]: knd=0, off=5297, siz=4, lab1=gl_save_DrawPixels, lab2=, loff=0
+!   reloc[590]: knd=0, off=5304, siz=4, lab1=.L1574, lab2=, loff=0
+!   reloc[591]: knd=0, off=5316, siz=4, lab1=.L1577, lab2=, loff=0
+!   reloc[592]: knd=0, off=5324, siz=4, lab1=.L1581, lab2=, loff=0
+!   reloc[593]: knd=0, off=5332, siz=4, lab1=.L1582, lab2=, loff=0
+!   reloc[594]: knd=0, off=5340, siz=4, lab1=.L1583, lab2=, loff=0
+!   reloc[595]: knd=0, off=5348, siz=4, lab1=.L1584, lab2=, loff=0
+!   reloc[596]: knd=0, off=5356, siz=4, lab1=.L1585, lab2=, loff=0
+!   reloc[597]: knd=0, off=5364, siz=4, lab1=.L1589, lab2=, loff=0
+!   reloc[598]: knd=0, off=5379, siz=4, lab1=gl_save_EdgeFlag, lab2=, loff=0
+!   reloc[599]: knd=0, off=5386, siz=4, lab1=.L1596, lab2=, loff=0
+!   reloc[600]: knd=0, off=5398, siz=4, lab1=.L1599, lab2=, loff=0
+!   reloc[601]: knd=0, off=5406, siz=4, lab1=.L1603, lab2=, loff=0
+!   reloc[602]: knd=0, off=5414, siz=4, lab1=.L1609, lab2=, loff=0
+!   reloc[603]: knd=0, off=5422, siz=4, lab1=.L1613, lab2=, loff=0
+!   reloc[604]: knd=0, off=5430, siz=4, lab1=.L1617, lab2=, loff=0
+!   reloc[605]: knd=0, off=5443, siz=4, lab1=gl_save_Enable, lab2=, loff=0
+!   reloc[606]: knd=0, off=5450, siz=4, lab1=.L1624, lab2=, loff=0
+!   reloc[607]: knd=0, off=5462, siz=4, lab1=.L1627, lab2=, loff=0
+!   reloc[608]: knd=0, off=5470, siz=4, lab1=.L1631, lab2=, loff=0
+!   reloc[609]: knd=0, off=5478, siz=4, lab1=.L1637, lab2=, loff=0
+!   reloc[610]: knd=0, off=5486, siz=4, lab1=.L1641, lab2=, loff=0
+!   reloc[611]: knd=0, off=5494, siz=4, lab1=.L1645, lab2=, loff=0
+!   reloc[612]: knd=0, off=5507, siz=4, lab1=gl_save_End, lab2=, loff=0
+!   reloc[613]: knd=0, off=5514, siz=4, lab1=.L1652, lab2=, loff=0
+!   reloc[614]: knd=0, off=5526, siz=4, lab1=.L1655, lab2=, loff=0
+!   reloc[615]: knd=0, off=5534, siz=4, lab1=.L1659, lab2=, loff=0
+!   reloc[616]: knd=0, off=5542, siz=4, lab1=.L1663, lab2=, loff=0
+!   reloc[617]: knd=0, off=5555, siz=4, lab1=gl_save_EvalCoord1f, lab2=, loff=0
+!   reloc[618]: knd=0, off=5562, siz=4, lab1=.L1670, lab2=, loff=0
+!   reloc[619]: knd=0, off=5574, siz=4, lab1=.L1673, lab2=, loff=0
+!   reloc[620]: knd=0, off=5582, siz=4, lab1=.L1677, lab2=, loff=0
+!   reloc[621]: knd=0, off=5590, siz=4, lab1=.L1683, lab2=, loff=0
+!   reloc[622]: knd=0, off=5598, siz=4, lab1=.L1687, lab2=, loff=0
+!   reloc[623]: knd=0, off=5606, siz=4, lab1=.L1691, lab2=, loff=0
+!   reloc[624]: knd=0, off=5619, siz=4, lab1=gl_save_EvalCoord2f, lab2=, loff=0
+!   reloc[625]: knd=0, off=5626, siz=4, lab1=.L1698, lab2=, loff=0
+!   reloc[626]: knd=0, off=5638, siz=4, lab1=.L1701, lab2=, loff=0
+!   reloc[627]: knd=0, off=5646, siz=4, lab1=.L1705, lab2=, loff=0
+!   reloc[628]: knd=0, off=5654, siz=4, lab1=.L1706, lab2=, loff=0
+!   reloc[629]: knd=0, off=5662, siz=4, lab1=.L1712, lab2=, loff=0
+!   reloc[630]: knd=0, off=5670, siz=4, lab1=.L1716, lab2=, loff=0
+!   reloc[631]: knd=0, off=5678, siz=4, lab1=.L1720, lab2=, loff=0
+!   reloc[632]: knd=0, off=5691, siz=4, lab1=gl_save_EvalMesh1, lab2=, loff=0
+!   reloc[633]: knd=0, off=5698, siz=4, lab1=.L1727, lab2=, loff=0
+!   reloc[634]: knd=0, off=5710, siz=4, lab1=.L1730, lab2=, loff=0
+!   reloc[635]: knd=0, off=5718, siz=4, lab1=.L1734, lab2=, loff=0
+!   reloc[636]: knd=0, off=5726, siz=4, lab1=.L1735, lab2=, loff=0
+!   reloc[637]: knd=0, off=5734, siz=4, lab1=.L1736, lab2=, loff=0
+!   reloc[638]: knd=0, off=5742, siz=4, lab1=.L1742, lab2=, loff=0
+!   reloc[639]: knd=0, off=5750, siz=4, lab1=.L1746, lab2=, loff=0
+!   reloc[640]: knd=0, off=5758, siz=4, lab1=.L1750, lab2=, loff=0
+!   reloc[641]: knd=0, off=5771, siz=4, lab1=gl_save_EvalMesh2, lab2=, loff=0
+!   reloc[642]: knd=0, off=5778, siz=4, lab1=.L1757, lab2=, loff=0
+!   reloc[643]: knd=0, off=5790, siz=4, lab1=.L1760, lab2=, loff=0
+!   reloc[644]: knd=0, off=5798, siz=4, lab1=.L1764, lab2=, loff=0
+!   reloc[645]: knd=0, off=5806, siz=4, lab1=.L1765, lab2=, loff=0
+!   reloc[646]: knd=0, off=5814, siz=4, lab1=.L1766, lab2=, loff=0
+!   reloc[647]: knd=0, off=5822, siz=4, lab1=.L1767, lab2=, loff=0
+!   reloc[648]: knd=0, off=5830, siz=4, lab1=.L1768, lab2=, loff=0
+!   reloc[649]: knd=0, off=5838, siz=4, lab1=.L1774, lab2=, loff=0
+!   reloc[650]: knd=0, off=5846, siz=4, lab1=.L1778, lab2=, loff=0
+!   reloc[651]: knd=0, off=5854, siz=4, lab1=.L1782, lab2=, loff=0
+!   reloc[652]: knd=0, off=5867, siz=4, lab1=gl_save_EvalPoint1, lab2=, loff=0
+!   reloc[653]: knd=0, off=5874, siz=4, lab1=.L1789, lab2=, loff=0
+!   reloc[654]: knd=0, off=5886, siz=4, lab1=.L1792, lab2=, loff=0
+!   reloc[655]: knd=0, off=5894, siz=4, lab1=.L1796, lab2=, loff=0
+!   reloc[656]: knd=0, off=5902, siz=4, lab1=.L1802, lab2=, loff=0
+!   reloc[657]: knd=0, off=5910, siz=4, lab1=.L1806, lab2=, loff=0
+!   reloc[658]: knd=0, off=5918, siz=4, lab1=.L1810, lab2=, loff=0
+!   reloc[659]: knd=0, off=5931, siz=4, lab1=gl_save_EvalPoint2, lab2=, loff=0
+!   reloc[660]: knd=0, off=5938, siz=4, lab1=.L1817, lab2=, loff=0
+!   reloc[661]: knd=0, off=5950, siz=4, lab1=.L1820, lab2=, loff=0
+!   reloc[662]: knd=0, off=5958, siz=4, lab1=.L1824, lab2=, loff=0
+!   reloc[663]: knd=0, off=5966, siz=4, lab1=.L1825, lab2=, loff=0
+!   reloc[664]: knd=0, off=5974, siz=4, lab1=.L1831, lab2=, loff=0
+!   reloc[665]: knd=0, off=5982, siz=4, lab1=.L1835, lab2=, loff=0
+!   reloc[666]: knd=0, off=5990, siz=4, lab1=.L1839, lab2=, loff=0
+!   reloc[667]: knd=0, off=6003, siz=4, lab1=gl_save_Fogfv, lab2=, loff=0
+!   reloc[668]: knd=0, off=6010, siz=4, lab1=.L1846, lab2=, loff=0
+!   reloc[669]: knd=0, off=6022, siz=4, lab1=.L1849, lab2=, loff=0
+!   reloc[670]: knd=0, off=6030, siz=4, lab1=.L1853, lab2=, loff=0
+!   reloc[671]: knd=0, off=6038, siz=4, lab1=.L1854, lab2=, loff=0
+!   reloc[672]: knd=0, off=6046, siz=4, lab1=.L1855, lab2=, loff=0
+!   reloc[673]: knd=0, off=6054, siz=4, lab1=.L1856, lab2=, loff=0
+!   reloc[674]: knd=0, off=6062, siz=4, lab1=.L1857, lab2=, loff=0
+!   reloc[675]: knd=0, off=6070, siz=4, lab1=.L1863, lab2=, loff=0
+!   reloc[676]: knd=0, off=6078, siz=4, lab1=.L1867, lab2=, loff=0
+!   reloc[677]: knd=0, off=6086, siz=4, lab1=.L1871, lab2=, loff=0
+!   reloc[678]: knd=0, off=6099, siz=4, lab1=gl_save_FrontFace, lab2=, loff=0
+!   reloc[679]: knd=0, off=6106, siz=4, lab1=.L1878, lab2=, loff=0
+!   reloc[680]: knd=0, off=6118, siz=4, lab1=.L1881, lab2=, loff=0
+!   reloc[681]: knd=0, off=6126, siz=4, lab1=.L1885, lab2=, loff=0
+!   reloc[682]: knd=0, off=6134, siz=4, lab1=.L1891, lab2=, loff=0
+!   reloc[683]: knd=0, off=6142, siz=4, lab1=.L1895, lab2=, loff=0
+!   reloc[684]: knd=0, off=6150, siz=4, lab1=.L1899, lab2=, loff=0
+!   reloc[685]: knd=0, off=6163, siz=4, lab1=gl_save_Frustum, lab2=, loff=0
+!   reloc[686]: knd=0, off=6170, siz=4, lab1=.L1906, lab2=, loff=0
+!   reloc[687]: knd=0, off=6182, siz=4, lab1=.L1909, lab2=, loff=0
+!   reloc[688]: knd=0, off=6190, siz=4, lab1=.L1913, lab2=, loff=0
+!   reloc[689]: knd=0, off=6198, siz=4, lab1=.L1914, lab2=, loff=0
+!   reloc[690]: knd=0, off=6206, siz=4, lab1=.L1915, lab2=, loff=0
+!   reloc[691]: knd=0, off=6214, siz=4, lab1=.L1916, lab2=, loff=0
+!   reloc[692]: knd=0, off=6222, siz=4, lab1=.L1917, lab2=, loff=0
+!   reloc[693]: knd=0, off=6230, siz=4, lab1=.L1918, lab2=, loff=0
+!   reloc[694]: knd=0, off=6238, siz=4, lab1=.L1924, lab2=, loff=0
+!   reloc[695]: knd=0, off=6246, siz=4, lab1=.L1928, lab2=, loff=0
+!   reloc[696]: knd=0, off=6254, siz=4, lab1=.L1932, lab2=, loff=0
+!   reloc[697]: knd=0, off=6267, siz=4, lab1=gl_save_Hint, lab2=, loff=0
+!   reloc[698]: knd=0, off=6274, siz=4, lab1=.L1939, lab2=, loff=0
+!   reloc[699]: knd=0, off=6286, siz=4, lab1=.L1942, lab2=, loff=0
+!   reloc[700]: knd=0, off=6294, siz=4, lab1=.L1946, lab2=, loff=0
+!   reloc[701]: knd=0, off=6302, siz=4, lab1=.L1947, lab2=, loff=0
+!   reloc[702]: knd=0, off=6310, siz=4, lab1=.L1953, lab2=, loff=0
+!   reloc[703]: knd=0, off=6318, siz=4, lab1=.L1957, lab2=, loff=0
+!   reloc[704]: knd=0, off=6326, siz=4, lab1=.L1961, lab2=, loff=0
+!   reloc[705]: knd=0, off=6339, siz=4, lab1=gl_save_Indexi, lab2=, loff=0
+!   reloc[706]: knd=0, off=6346, siz=4, lab1=.L1968, lab2=, loff=0
+!   reloc[707]: knd=0, off=6358, siz=4, lab1=.L1971, lab2=, loff=0
+!   reloc[708]: knd=0, off=6366, siz=4, lab1=.L1975, lab2=, loff=0
+!   reloc[709]: knd=0, off=6374, siz=4, lab1=.L1981, lab2=, loff=0
+!   reloc[710]: knd=0, off=6382, siz=4, lab1=.L1985, lab2=, loff=0
+!   reloc[711]: knd=0, off=6390, siz=4, lab1=.L1989, lab2=, loff=0
+!   reloc[712]: knd=0, off=6403, siz=4, lab1=gl_save_Indexf, lab2=, loff=0
+!   reloc[713]: knd=0, off=6410, siz=4, lab1=.L1996, lab2=, loff=0
+!   reloc[714]: knd=0, off=6422, siz=4, lab1=.L1999, lab2=, loff=0
+!   reloc[715]: knd=0, off=6430, siz=4, lab1=.L2003, lab2=, loff=0
+!   reloc[716]: knd=0, off=6438, siz=4, lab1=.L2009, lab2=, loff=0
+!   reloc[717]: knd=0, off=6446, siz=4, lab1=.L2013, lab2=, loff=0
+!   reloc[718]: knd=0, off=6454, siz=4, lab1=.L2017, lab2=, loff=0
+!   reloc[719]: knd=0, off=6467, siz=4, lab1=gl_save_IndexMask, lab2=, loff=0
+!   reloc[720]: knd=0, off=6474, siz=4, lab1=.L2024, lab2=, loff=0
+!   reloc[721]: knd=0, off=6486, siz=4, lab1=.L2027, lab2=, loff=0
+!   reloc[722]: knd=0, off=6494, siz=4, lab1=.L2031, lab2=, loff=0
+!   reloc[723]: knd=0, off=6502, siz=4, lab1=.L2037, lab2=, loff=0
+!   reloc[724]: knd=0, off=6510, siz=4, lab1=.L2041, lab2=, loff=0
+!   reloc[725]: knd=0, off=6518, siz=4, lab1=.L2045, lab2=, loff=0
+!   reloc[726]: knd=0, off=6531, siz=4, lab1=gl_save_InitNames, lab2=, loff=0
+!   reloc[727]: knd=0, off=6538, siz=4, lab1=.L2052, lab2=, loff=0
+!   reloc[728]: knd=0, off=6550, siz=4, lab1=.L2055, lab2=, loff=0
+!   reloc[729]: knd=0, off=6558, siz=4, lab1=.L2059, lab2=, loff=0
+!   reloc[730]: knd=0, off=6566, siz=4, lab1=.L2063, lab2=, loff=0
+!   reloc[731]: knd=0, off=6579, siz=4, lab1=gl_save_Lightfv, lab2=, loff=0
+!   reloc[732]: knd=0, off=6586, siz=4, lab1=.L2070, lab2=, loff=0
+!   reloc[733]: knd=0, off=6598, siz=4, lab1=.L2073, lab2=, loff=0
+!   reloc[734]: knd=0, off=6606, siz=4, lab1=.L2076, lab2=, loff=0
+!   reloc[735]: knd=0, off=6614, siz=4, lab1=.L2077, lab2=, loff=0
+!   reloc[736]: knd=0, off=6622, siz=4, lab1=.L2079, lab2=, loff=0
+!   reloc[737]: knd=0, off=6630, siz=4, lab1=.L2086, lab2=, loff=0
+!   reloc[738]: knd=0, off=6638, siz=4, lab1=.L2089, lab2=, loff=0
+!   reloc[739]: knd=0, off=6646, siz=4, lab1=.L2097, lab2=, loff=0
+!   reloc[740]: knd=0, off=6656, siz=4, lab1=.L2101, lab2=, loff=0
+!   reloc[741]: knd=0, off=6664, siz=4, lab1=.L2105, lab2=, loff=0
+!   reloc[742]: knd=0, off=6677, siz=4, lab1=gl_save_LightModelfv, lab2=, loff=0
+!   reloc[743]: knd=0, off=6684, siz=4, lab1=.L2112, lab2=, loff=0
+!   reloc[744]: knd=0, off=6696, siz=4, lab1=.L2115, lab2=, loff=0
+!   reloc[745]: knd=0, off=6704, siz=4, lab1=.L2119, lab2=, loff=0
+!   reloc[746]: knd=0, off=6712, siz=4, lab1=.L2120, lab2=, loff=0
+!   reloc[747]: knd=0, off=6720, siz=4, lab1=.L2121, lab2=, loff=0
+!   reloc[748]: knd=0, off=6728, siz=4, lab1=.L2122, lab2=, loff=0
+!   reloc[749]: knd=0, off=6736, siz=4, lab1=.L2123, lab2=, loff=0
+!   reloc[750]: knd=0, off=6744, siz=4, lab1=.L2129, lab2=, loff=0
+!   reloc[751]: knd=0, off=6752, siz=4, lab1=.L2133, lab2=, loff=0
+!   reloc[752]: knd=0, off=6760, siz=4, lab1=.L2137, lab2=, loff=0
+!   reloc[753]: knd=0, off=6773, siz=4, lab1=gl_save_LineStipple, lab2=, loff=0
+!   reloc[754]: knd=0, off=6780, siz=4, lab1=.L2144, lab2=, loff=0
+!   reloc[755]: knd=0, off=6792, siz=4, lab1=.L2147, lab2=, loff=0
+!   reloc[756]: knd=0, off=6800, siz=4, lab1=.L2151, lab2=, loff=0
+!   reloc[757]: knd=0, off=6808, siz=4, lab1=.L2152, lab2=, loff=0
+!   reloc[758]: knd=0, off=6816, siz=4, lab1=.L2158, lab2=, loff=0
+!   reloc[759]: knd=0, off=6824, siz=4, lab1=.L2162, lab2=, loff=0
+!   reloc[760]: knd=0, off=6832, siz=4, lab1=.L2166, lab2=, loff=0
+!   reloc[761]: knd=0, off=6845, siz=4, lab1=gl_save_LineWidth, lab2=, loff=0
+!   reloc[762]: knd=0, off=6852, siz=4, lab1=.L2173, lab2=, loff=0
+!   reloc[763]: knd=0, off=6864, siz=4, lab1=.L2176, lab2=, loff=0
+!   reloc[764]: knd=0, off=6872, siz=4, lab1=.L2180, lab2=, loff=0
+!   reloc[765]: knd=0, off=6880, siz=4, lab1=.L2186, lab2=, loff=0
+!   reloc[766]: knd=0, off=6888, siz=4, lab1=.L2190, lab2=, loff=0
+!   reloc[767]: knd=0, off=6896, siz=4, lab1=.L2194, lab2=, loff=0
+!   reloc[768]: knd=0, off=6909, siz=4, lab1=gl_save_ListBase, lab2=, loff=0
+!   reloc[769]: knd=0, off=6916, siz=4, lab1=.L2201, lab2=, loff=0
+!   reloc[770]: knd=0, off=6928, siz=4, lab1=.L2204, lab2=, loff=0
+!   reloc[771]: knd=0, off=6936, siz=4, lab1=.L2208, lab2=, loff=0
+!   reloc[772]: knd=0, off=6944, siz=4, lab1=.L2214, lab2=, loff=0
+!   reloc[773]: knd=0, off=6952, siz=4, lab1=.L2218, lab2=, loff=0
+!   reloc[774]: knd=0, off=6960, siz=4, lab1=.L2222, lab2=, loff=0
+!   reloc[775]: knd=0, off=6973, siz=4, lab1=gl_save_LoadIdentity, lab2=, loff=0
+!   reloc[776]: knd=0, off=6980, siz=4, lab1=.L2229, lab2=, loff=0
+!   reloc[777]: knd=0, off=6992, siz=4, lab1=.L2232, lab2=, loff=0
+!   reloc[778]: knd=0, off=7000, siz=4, lab1=.L2236, lab2=, loff=0
+!   reloc[779]: knd=0, off=7008, siz=4, lab1=.L2240, lab2=, loff=0
+!   reloc[780]: knd=0, off=7021, siz=4, lab1=gl_save_LoadMatrixf, lab2=, loff=0
+!   reloc[781]: knd=0, off=7028, siz=4, lab1=.L2247, lab2=, loff=0
+!   reloc[782]: knd=0, off=7040, siz=4, lab1=.L2250, lab2=, loff=0
+!   reloc[783]: knd=0, off=7048, siz=4, lab1=.L2255, lab2=, loff=0
+!   reloc[784]: knd=0, off=7056, siz=4, lab1=.L2262, lab2=, loff=0
+!   reloc[785]: knd=0, off=7064, siz=4, lab1=.L2265, lab2=, loff=0
+!   reloc[786]: knd=0, off=7072, siz=4, lab1=.L2273, lab2=, loff=0
+!   reloc[787]: knd=0, off=7082, siz=4, lab1=.L2277, lab2=, loff=0
+!   reloc[788]: knd=0, off=7090, siz=4, lab1=.L2281, lab2=, loff=0
+!   reloc[789]: knd=0, off=7103, siz=4, lab1=gl_save_LoadName, lab2=, loff=0
+!   reloc[790]: knd=0, off=7110, siz=4, lab1=.L2288, lab2=, loff=0
+!   reloc[791]: knd=0, off=7122, siz=4, lab1=.L2291, lab2=, loff=0
+!   reloc[792]: knd=0, off=7130, siz=4, lab1=.L2295, lab2=, loff=0
+!   reloc[793]: knd=0, off=7138, siz=4, lab1=.L2301, lab2=, loff=0
+!   reloc[794]: knd=0, off=7146, siz=4, lab1=.L2305, lab2=, loff=0
+!   reloc[795]: knd=0, off=7154, siz=4, lab1=.L2309, lab2=, loff=0
+!   reloc[796]: knd=0, off=7167, siz=4, lab1=gl_save_LogicOp, lab2=, loff=0
+!   reloc[797]: knd=0, off=7174, siz=4, lab1=.L2316, lab2=, loff=0
+!   reloc[798]: knd=0, off=7186, siz=4, lab1=.L2319, lab2=, loff=0
+!   reloc[799]: knd=0, off=7194, siz=4, lab1=.L2323, lab2=, loff=0
+!   reloc[800]: knd=0, off=7202, siz=4, lab1=.L2329, lab2=, loff=0
+!   reloc[801]: knd=0, off=7210, siz=4, lab1=.L2333, lab2=, loff=0
+!   reloc[802]: knd=0, off=7218, siz=4, lab1=.L2337, lab2=, loff=0
+!   reloc[803]: knd=0, off=7231, siz=4, lab1=gl_save_Map1f, lab2=, loff=0
+!   reloc[804]: knd=0, off=7238, siz=4, lab1=.L2344, lab2=, loff=0
+!   reloc[805]: knd=0, off=7250, siz=4, lab1=.L2347, lab2=, loff=0
+!   reloc[806]: knd=0, off=7258, siz=4, lab1=.L2351, lab2=, loff=0
+!   reloc[807]: knd=0, off=7266, siz=4, lab1=.L2352, lab2=, loff=0
+!   reloc[808]: knd=0, off=7274, siz=4, lab1=.L2353, lab2=, loff=0
+!   reloc[809]: knd=0, off=7282, siz=4, lab1=.L2354, lab2=, loff=0
+!   reloc[810]: knd=0, off=7290, siz=4, lab1=.L2355, lab2=, loff=0
+!   reloc[811]: knd=0, off=7298, siz=4, lab1=.L2356, lab2=, loff=0
+!   reloc[812]: knd=0, off=7306, siz=4, lab1=.L2362, lab2=, loff=0
+!   reloc[813]: knd=0, off=7314, siz=4, lab1=.L2366, lab2=, loff=0
+!   reloc[814]: knd=0, off=7322, siz=4, lab1=.L2370, lab2=, loff=0
+!   reloc[815]: knd=0, off=7335, siz=4, lab1=gl_save_Map2f, lab2=, loff=0
+!   reloc[816]: knd=0, off=7342, siz=4, lab1=.L2377, lab2=, loff=0
+!   reloc[817]: knd=0, off=7354, siz=4, lab1=.L2380, lab2=, loff=0
+!   reloc[818]: knd=0, off=7362, siz=4, lab1=.L2384, lab2=, loff=0
+!   reloc[819]: knd=0, off=7370, siz=4, lab1=.L2385, lab2=, loff=0
+!   reloc[820]: knd=0, off=7378, siz=4, lab1=.L2386, lab2=, loff=0
+!   reloc[821]: knd=0, off=7386, siz=4, lab1=.L2387, lab2=, loff=0
+!   reloc[822]: knd=0, off=7394, siz=4, lab1=.L2388, lab2=, loff=0
+!   reloc[823]: knd=0, off=7402, siz=4, lab1=.L2389, lab2=, loff=0
+!   reloc[824]: knd=0, off=7410, siz=4, lab1=.L2390, lab2=, loff=0
+!   reloc[825]: knd=0, off=7418, siz=4, lab1=.L2391, lab2=, loff=0
+!   reloc[826]: knd=0, off=7426, siz=4, lab1=.L2392, lab2=, loff=0
+!   reloc[827]: knd=0, off=7434, siz=4, lab1=.L2393, lab2=, loff=0
+!   reloc[828]: knd=0, off=7442, siz=4, lab1=.L2399, lab2=, loff=0
+!   reloc[829]: knd=0, off=7450, siz=4, lab1=.L2403, lab2=, loff=0
+!   reloc[830]: knd=0, off=7460, siz=4, lab1=.L2407, lab2=, loff=0
+!   reloc[831]: knd=0, off=7473, siz=4, lab1=gl_save_MapGrid1f, lab2=, loff=0
+!   reloc[832]: knd=0, off=7480, siz=4, lab1=.L2414, lab2=, loff=0
+!   reloc[833]: knd=0, off=7492, siz=4, lab1=.L2417, lab2=, loff=0
+!   reloc[834]: knd=0, off=7500, siz=4, lab1=.L2421, lab2=, loff=0
+!   reloc[835]: knd=0, off=7508, siz=4, lab1=.L2422, lab2=, loff=0
+!   reloc[836]: knd=0, off=7516, siz=4, lab1=.L2423, lab2=, loff=0
+!   reloc[837]: knd=0, off=7524, siz=4, lab1=.L2429, lab2=, loff=0
+!   reloc[838]: knd=0, off=7532, siz=4, lab1=.L2433, lab2=, loff=0
+!   reloc[839]: knd=0, off=7540, siz=4, lab1=.L2437, lab2=, loff=0
+!   reloc[840]: knd=0, off=7553, siz=4, lab1=gl_save_MapGrid2f, lab2=, loff=0
+!   reloc[841]: knd=0, off=7560, siz=4, lab1=.L2444, lab2=, loff=0
+!   reloc[842]: knd=0, off=7572, siz=4, lab1=.L2447, lab2=, loff=0
+!   reloc[843]: knd=0, off=7580, siz=4, lab1=.L2451, lab2=, loff=0
+!   reloc[844]: knd=0, off=7588, siz=4, lab1=.L2452, lab2=, loff=0
+!   reloc[845]: knd=0, off=7596, siz=4, lab1=.L2453, lab2=, loff=0
+!   reloc[846]: knd=0, off=7604, siz=4, lab1=.L2454, lab2=, loff=0
+!   reloc[847]: knd=0, off=7612, siz=4, lab1=.L2455, lab2=, loff=0
+!   reloc[848]: knd=0, off=7620, siz=4, lab1=.L2456, lab2=, loff=0
+!   reloc[849]: knd=0, off=7628, siz=4, lab1=.L2462, lab2=, loff=0
+!   reloc[850]: knd=0, off=7636, siz=4, lab1=.L2466, lab2=, loff=0
+!   reloc[851]: knd=0, off=7644, siz=4, lab1=.L2470, lab2=, loff=0
+!   reloc[852]: knd=0, off=7657, siz=4, lab1=gl_save_Materialfv, lab2=, loff=0
+!   reloc[853]: knd=0, off=7664, siz=4, lab1=.L2477, lab2=, loff=0
+!   reloc[854]: knd=0, off=7676, siz=4, lab1=.L2480, lab2=, loff=0
+!   reloc[855]: knd=0, off=7684, siz=4, lab1=.L2484, lab2=, loff=0
+!   reloc[856]: knd=0, off=7692, siz=4, lab1=.L2485, lab2=, loff=0
+!   reloc[857]: knd=0, off=7700, siz=4, lab1=.L2486, lab2=, loff=0
+!   reloc[858]: knd=0, off=7708, siz=4, lab1=.L2487, lab2=, loff=0
+!   reloc[859]: knd=0, off=7716, siz=4, lab1=.L2488, lab2=, loff=0
+!   reloc[860]: knd=0, off=7724, siz=4, lab1=.L2489, lab2=, loff=0
+!   reloc[861]: knd=0, off=7732, siz=4, lab1=.L2495, lab2=, loff=0
+!   reloc[862]: knd=0, off=7740, siz=4, lab1=.L2499, lab2=, loff=0
+!   reloc[863]: knd=0, off=7748, siz=4, lab1=.L2503, lab2=, loff=0
+!   reloc[864]: knd=0, off=7761, siz=4, lab1=gl_save_MatrixMode, lab2=, loff=0
+!   reloc[865]: knd=0, off=7768, siz=4, lab1=.L2510, lab2=, loff=0
+!   reloc[866]: knd=0, off=7780, siz=4, lab1=.L2513, lab2=, loff=0
+!   reloc[867]: knd=0, off=7788, siz=4, lab1=.L2517, lab2=, loff=0
+!   reloc[868]: knd=0, off=7796, siz=4, lab1=.L2523, lab2=, loff=0
+!   reloc[869]: knd=0, off=7804, siz=4, lab1=.L2527, lab2=, loff=0
+!   reloc[870]: knd=0, off=7812, siz=4, lab1=.L2531, lab2=, loff=0
+!   reloc[871]: knd=0, off=7825, siz=4, lab1=gl_save_MultMatrixf, lab2=, loff=0
+!   reloc[872]: knd=0, off=7832, siz=4, lab1=.L2538, lab2=, loff=0
+!   reloc[873]: knd=0, off=7844, siz=4, lab1=.L2541, lab2=, loff=0
+!   reloc[874]: knd=0, off=7852, siz=4, lab1=.L2546, lab2=, loff=0
+!   reloc[875]: knd=0, off=7860, siz=4, lab1=.L2553, lab2=, loff=0
+!   reloc[876]: knd=0, off=7868, siz=4, lab1=.L2556, lab2=, loff=0
+!   reloc[877]: knd=0, off=7876, siz=4, lab1=.L2564, lab2=, loff=0
+!   reloc[878]: knd=0, off=7886, siz=4, lab1=.L2568, lab2=, loff=0
+!   reloc[879]: knd=0, off=7894, siz=4, lab1=.L2572, lab2=, loff=0
+!   reloc[880]: knd=0, off=7907, siz=4, lab1=gl_save_NewList, lab2=, loff=0
+!   reloc[881]: knd=0, off=7914, siz=4, lab1=.L2579, lab2=, loff=0
+!   reloc[882]: knd=0, off=7926, siz=4, lab1=.L2581, lab2=, loff=0
+!   reloc[883]: knd=0, off=7939, siz=4, lab1=gl_save_Normal3fv, lab2=, loff=0
+!   reloc[884]: knd=0, off=7946, siz=4, lab1=.L2588, lab2=, loff=0
+!   reloc[885]: knd=0, off=7958, siz=4, lab1=.L2591, lab2=, loff=0
+!   reloc[886]: knd=0, off=7966, siz=4, lab1=.L2595, lab2=, loff=0
+!   reloc[887]: knd=0, off=7974, siz=4, lab1=.L2596, lab2=, loff=0
+!   reloc[888]: knd=0, off=7982, siz=4, lab1=.L2597, lab2=, loff=0
+!   reloc[889]: knd=0, off=7990, siz=4, lab1=.L2603, lab2=, loff=0
+!   reloc[890]: knd=0, off=7998, siz=4, lab1=.L2607, lab2=, loff=0
+!   reloc[891]: knd=0, off=8006, siz=4, lab1=.L2611, lab2=, loff=0
+!   reloc[892]: knd=0, off=8019, siz=4, lab1=gl_save_Normal3f, lab2=, loff=0
+!   reloc[893]: knd=0, off=8026, siz=4, lab1=.L2618, lab2=, loff=0
+!   reloc[894]: knd=0, off=8038, siz=4, lab1=.L2621, lab2=, loff=0
+!   reloc[895]: knd=0, off=8046, siz=4, lab1=.L2625, lab2=, loff=0
+!   reloc[896]: knd=0, off=8054, siz=4, lab1=.L2626, lab2=, loff=0
+!   reloc[897]: knd=0, off=8062, siz=4, lab1=.L2627, lab2=, loff=0
+!   reloc[898]: knd=0, off=8070, siz=4, lab1=.L2633, lab2=, loff=0
+!   reloc[899]: knd=0, off=8078, siz=4, lab1=.L2637, lab2=, loff=0
+!   reloc[900]: knd=0, off=8086, siz=4, lab1=.L2641, lab2=, loff=0
+!   reloc[901]: knd=0, off=8099, siz=4, lab1=gl_save_Ortho, lab2=, loff=0
+!   reloc[902]: knd=0, off=8106, siz=4, lab1=.L2648, lab2=, loff=0
+!   reloc[903]: knd=0, off=8118, siz=4, lab1=.L2651, lab2=, loff=0
+!   reloc[904]: knd=0, off=8126, siz=4, lab1=.L2655, lab2=, loff=0
+!   reloc[905]: knd=0, off=8134, siz=4, lab1=.L2656, lab2=, loff=0
+!   reloc[906]: knd=0, off=8142, siz=4, lab1=.L2657, lab2=, loff=0
+!   reloc[907]: knd=0, off=8150, siz=4, lab1=.L2658, lab2=, loff=0
+!   reloc[908]: knd=0, off=8158, siz=4, lab1=.L2659, lab2=, loff=0
+!   reloc[909]: knd=0, off=8166, siz=4, lab1=.L2660, lab2=, loff=0
+!   reloc[910]: knd=0, off=8174, siz=4, lab1=.L2666, lab2=, loff=0
+!   reloc[911]: knd=0, off=8182, siz=4, lab1=.L2670, lab2=, loff=0
+!   reloc[912]: knd=0, off=8190, siz=4, lab1=.L2674, lab2=, loff=0
+!   reloc[913]: knd=0, off=8203, siz=4, lab1=gl_save_PixelMapfv, lab2=, loff=0
+!   reloc[914]: knd=0, off=8210, siz=4, lab1=.L2681, lab2=, loff=0
+!   reloc[915]: knd=0, off=8222, siz=4, lab1=.L2684, lab2=, loff=0
+!   reloc[916]: knd=0, off=8230, siz=4, lab1=.L2688, lab2=, loff=0
+!   reloc[917]: knd=0, off=8238, siz=4, lab1=.L2689, lab2=, loff=0
+!   reloc[918]: knd=0, off=8246, siz=4, lab1=.L2690, lab2=, loff=0
+!   reloc[919]: knd=0, off=8254, siz=4, lab1=.L2691, lab2=, loff=0
+!   reloc[920]: knd=0, off=8262, siz=4, lab1=.L2697, lab2=, loff=0
+!   reloc[921]: knd=0, off=8270, siz=4, lab1=.L2701, lab2=, loff=0
+!   reloc[922]: knd=0, off=8278, siz=4, lab1=.L2705, lab2=, loff=0
+!   reloc[923]: knd=0, off=8291, siz=4, lab1=gl_save_PixelTransferf, lab2=, loff=0
+!   reloc[924]: knd=0, off=8298, siz=4, lab1=.L2712, lab2=, loff=0
+!   reloc[925]: knd=0, off=8310, siz=4, lab1=.L2715, lab2=, loff=0
+!   reloc[926]: knd=0, off=8318, siz=4, lab1=.L2719, lab2=, loff=0
+!   reloc[927]: knd=0, off=8326, siz=4, lab1=.L2720, lab2=, loff=0
+!   reloc[928]: knd=0, off=8334, siz=4, lab1=.L2726, lab2=, loff=0
+!   reloc[929]: knd=0, off=8342, siz=4, lab1=.L2730, lab2=, loff=0
+!   reloc[930]: knd=0, off=8350, siz=4, lab1=.L2734, lab2=, loff=0
+!   reloc[931]: knd=0, off=8363, siz=4, lab1=gl_save_PixelZoom, lab2=, loff=0
+!   reloc[932]: knd=0, off=8370, siz=4, lab1=.L2741, lab2=, loff=0
+!   reloc[933]: knd=0, off=8382, siz=4, lab1=.L2744, lab2=, loff=0
+!   reloc[934]: knd=0, off=8390, siz=4, lab1=.L2748, lab2=, loff=0
+!   reloc[935]: knd=0, off=8398, siz=4, lab1=.L2749, lab2=, loff=0
+!   reloc[936]: knd=0, off=8406, siz=4, lab1=.L2755, lab2=, loff=0
+!   reloc[937]: knd=0, off=8414, siz=4, lab1=.L2759, lab2=, loff=0
+!   reloc[938]: knd=0, off=8422, siz=4, lab1=.L2763, lab2=, loff=0
+!   reloc[939]: knd=0, off=8435, siz=4, lab1=gl_save_PointParameterfvEXT, lab2=, loff=0
+!   reloc[940]: knd=0, off=8442, siz=4, lab1=.L2770, lab2=, loff=0
+!   reloc[941]: knd=0, off=8454, siz=4, lab1=.L2773, lab2=, loff=0
+!   reloc[942]: knd=0, off=8462, siz=4, lab1=.L2777, lab2=, loff=0
+!   reloc[943]: knd=0, off=8470, siz=4, lab1=.L2778, lab2=, loff=0
+!   reloc[944]: knd=0, off=8478, siz=4, lab1=.L2779, lab2=, loff=0
+!   reloc[945]: knd=0, off=8486, siz=4, lab1=.L2780, lab2=, loff=0
+!   reloc[946]: knd=0, off=8494, siz=4, lab1=.L2786, lab2=, loff=0
+!   reloc[947]: knd=0, off=8502, siz=4, lab1=.L2790, lab2=, loff=0
+!   reloc[948]: knd=0, off=8510, siz=4, lab1=.L2794, lab2=, loff=0
+!   reloc[949]: knd=0, off=8523, siz=4, lab1=gl_save_PointSize, lab2=, loff=0
+!   reloc[950]: knd=0, off=8530, siz=4, lab1=.L2801, lab2=, loff=0
+!   reloc[951]: knd=0, off=8542, siz=4, lab1=.L2804, lab2=, loff=0
+!   reloc[952]: knd=0, off=8550, siz=4, lab1=.L2808, lab2=, loff=0
+!   reloc[953]: knd=0, off=8558, siz=4, lab1=.L2814, lab2=, loff=0
+!   reloc[954]: knd=0, off=8566, siz=4, lab1=.L2818, lab2=, loff=0
+!   reloc[955]: knd=0, off=8574, siz=4, lab1=.L2822, lab2=, loff=0
+!   reloc[956]: knd=0, off=8587, siz=4, lab1=gl_save_PolygonMode, lab2=, loff=0
+!   reloc[957]: knd=0, off=8594, siz=4, lab1=.L2829, lab2=, loff=0
+!   reloc[958]: knd=0, off=8606, siz=4, lab1=.L2832, lab2=, loff=0
+!   reloc[959]: knd=0, off=8614, siz=4, lab1=.L2836, lab2=, loff=0
+!   reloc[960]: knd=0, off=8622, siz=4, lab1=.L2837, lab2=, loff=0
+!   reloc[961]: knd=0, off=8630, siz=4, lab1=.L2843, lab2=, loff=0
+!   reloc[962]: knd=0, off=8638, siz=4, lab1=.L2847, lab2=, loff=0
+!   reloc[963]: knd=0, off=8646, siz=4, lab1=.L2851, lab2=, loff=0
+!   reloc[964]: knd=0, off=8659, siz=4, lab1=gl_save_PolygonStipple, lab2=, loff=0
+!   reloc[965]: knd=0, off=8666, siz=4, lab1=.L2858, lab2=, loff=0
+!   reloc[966]: knd=0, off=8678, siz=4, lab1=.L2861, lab2=, loff=0
+!   reloc[967]: knd=0, off=8686, siz=4, lab1=.L2865, lab2=, loff=0
+!   reloc[968]: knd=0, off=8694, siz=4, lab1=.L2866, lab2=, loff=0
+!   reloc[969]: knd=0, off=8702, siz=4, lab1=.L2867, lab2=, loff=0
+!   reloc[970]: knd=0, off=8710, siz=4, lab1=.L2873, lab2=, loff=0
+!   reloc[971]: knd=0, off=8718, siz=4, lab1=.L2877, lab2=, loff=0
+!   reloc[972]: knd=0, off=8726, siz=4, lab1=.L2881, lab2=, loff=0
+!   reloc[973]: knd=0, off=8739, siz=4, lab1=gl_save_PolygonOffset, lab2=, loff=0
+!   reloc[974]: knd=0, off=8746, siz=4, lab1=.L2888, lab2=, loff=0
+!   reloc[975]: knd=0, off=8758, siz=4, lab1=.L2891, lab2=, loff=0
+!   reloc[976]: knd=0, off=8766, siz=4, lab1=.L2895, lab2=, loff=0
+!   reloc[977]: knd=0, off=8774, siz=4, lab1=.L2896, lab2=, loff=0
+!   reloc[978]: knd=0, off=8782, siz=4, lab1=.L2902, lab2=, loff=0
+!   reloc[979]: knd=0, off=8790, siz=4, lab1=.L2906, lab2=, loff=0
+!   reloc[980]: knd=0, off=8798, siz=4, lab1=.L2910, lab2=, loff=0
+!   reloc[981]: knd=0, off=8811, siz=4, lab1=gl_save_PopAttrib, lab2=, loff=0
+!   reloc[982]: knd=0, off=8818, siz=4, lab1=.L2917, lab2=, loff=0
+!   reloc[983]: knd=0, off=8830, siz=4, lab1=.L2920, lab2=, loff=0
+!   reloc[984]: knd=0, off=8838, siz=4, lab1=.L2924, lab2=, loff=0
+!   reloc[985]: knd=0, off=8846, siz=4, lab1=.L2928, lab2=, loff=0
+!   reloc[986]: knd=0, off=8859, siz=4, lab1=gl_save_PopMatrix, lab2=, loff=0
+!   reloc[987]: knd=0, off=8866, siz=4, lab1=.L2935, lab2=, loff=0
+!   reloc[988]: knd=0, off=8878, siz=4, lab1=.L2938, lab2=, loff=0
+!   reloc[989]: knd=0, off=8886, siz=4, lab1=.L2942, lab2=, loff=0
+!   reloc[990]: knd=0, off=8894, siz=4, lab1=.L2946, lab2=, loff=0
+!   reloc[991]: knd=0, off=8907, siz=4, lab1=gl_save_PopName, lab2=, loff=0
+!   reloc[992]: knd=0, off=8914, siz=4, lab1=.L2953, lab2=, loff=0
+!   reloc[993]: knd=0, off=8926, siz=4, lab1=.L2956, lab2=, loff=0
+!   reloc[994]: knd=0, off=8934, siz=4, lab1=.L2960, lab2=, loff=0
+!   reloc[995]: knd=0, off=8942, siz=4, lab1=.L2964, lab2=, loff=0
+!   reloc[996]: knd=0, off=8955, siz=4, lab1=gl_save_PrioritizeTextures, lab2=, loff=0
+!   reloc[997]: knd=0, off=8962, siz=4, lab1=.L2972, lab2=, loff=0
+!   reloc[998]: knd=0, off=8974, siz=4, lab1=.L2979, lab2=, loff=0
+!   reloc[999]: knd=0, off=8982, siz=4, lab1=.L2982, lab2=, loff=0
+!   reloc[1000]: knd=0, off=8990, siz=4, lab1=.L2986, lab2=, loff=0
+!   reloc[1001]: knd=0, off=8998, siz=4, lab1=.L2987, lab2=, loff=0
+!   reloc[1002]: knd=0, off=9006, siz=4, lab1=.L2993, lab2=, loff=0
+!   reloc[1003]: knd=0, off=9016, siz=4, lab1=.L2998, lab2=, loff=0
+!   reloc[1004]: knd=0, off=9026, siz=4, lab1=.L3002, lab2=, loff=0
+!   reloc[1005]: knd=0, off=9034, siz=4, lab1=.L3006, lab2=, loff=0
+!   reloc[1006]: knd=0, off=9047, siz=4, lab1=gl_save_PushAttrib, lab2=, loff=0
+!   reloc[1007]: knd=0, off=9054, siz=4, lab1=.L3013, lab2=, loff=0
+!   reloc[1008]: knd=0, off=9066, siz=4, lab1=.L3016, lab2=, loff=0
+!   reloc[1009]: knd=0, off=9074, siz=4, lab1=.L3020, lab2=, loff=0
+!   reloc[1010]: knd=0, off=9082, siz=4, lab1=.L3026, lab2=, loff=0
+!   reloc[1011]: knd=0, off=9090, siz=4, lab1=.L3030, lab2=, loff=0
+!   reloc[1012]: knd=0, off=9098, siz=4, lab1=.L3034, lab2=, loff=0
+!   reloc[1013]: knd=0, off=9111, siz=4, lab1=gl_save_PushMatrix, lab2=, loff=0
+!   reloc[1014]: knd=0, off=9118, siz=4, lab1=.L3041, lab2=, loff=0
+!   reloc[1015]: knd=0, off=9130, siz=4, lab1=.L3044, lab2=, loff=0
+!   reloc[1016]: knd=0, off=9138, siz=4, lab1=.L3048, lab2=, loff=0
+!   reloc[1017]: knd=0, off=9146, siz=4, lab1=.L3052, lab2=, loff=0
+!   reloc[1018]: knd=0, off=9159, siz=4, lab1=gl_save_PushName, lab2=, loff=0
+!   reloc[1019]: knd=0, off=9166, siz=4, lab1=.L3059, lab2=, loff=0
+!   reloc[1020]: knd=0, off=9178, siz=4, lab1=.L3062, lab2=, loff=0
+!   reloc[1021]: knd=0, off=9186, siz=4, lab1=.L3066, lab2=, loff=0
+!   reloc[1022]: knd=0, off=9194, siz=4, lab1=.L3072, lab2=, loff=0
+!   reloc[1023]: knd=0, off=9202, siz=4, lab1=.L3076, lab2=, loff=0
+!   reloc[1024]: knd=0, off=9210, siz=4, lab1=.L3080, lab2=, loff=0
+!   reloc[1025]: knd=0, off=9223, siz=4, lab1=gl_save_RasterPos4f, lab2=, loff=0
+!   reloc[1026]: knd=0, off=9230, siz=4, lab1=.L3087, lab2=, loff=0
+!   reloc[1027]: knd=0, off=9242, siz=4, lab1=.L3090, lab2=, loff=0
+!   reloc[1028]: knd=0, off=9250, siz=4, lab1=.L3094, lab2=, loff=0
+!   reloc[1029]: knd=0, off=9258, siz=4, lab1=.L3095, lab2=, loff=0
+!   reloc[1030]: knd=0, off=9266, siz=4, lab1=.L3096, lab2=, loff=0
+!   reloc[1031]: knd=0, off=9274, siz=4, lab1=.L3097, lab2=, loff=0
+!   reloc[1032]: knd=0, off=9282, siz=4, lab1=.L3103, lab2=, loff=0
+!   reloc[1033]: knd=0, off=9290, siz=4, lab1=.L3107, lab2=, loff=0
+!   reloc[1034]: knd=0, off=9298, siz=4, lab1=.L3111, lab2=, loff=0
+!   reloc[1035]: knd=0, off=9311, siz=4, lab1=gl_save_PassThrough, lab2=, loff=0
+!   reloc[1036]: knd=0, off=9318, siz=4, lab1=.L3118, lab2=, loff=0
+!   reloc[1037]: knd=0, off=9330, siz=4, lab1=.L3121, lab2=, loff=0
+!   reloc[1038]: knd=0, off=9338, siz=4, lab1=.L3125, lab2=, loff=0
+!   reloc[1039]: knd=0, off=9346, siz=4, lab1=.L3131, lab2=, loff=0
+!   reloc[1040]: knd=0, off=9354, siz=4, lab1=.L3135, lab2=, loff=0
+!   reloc[1041]: knd=0, off=9362, siz=4, lab1=.L3139, lab2=, loff=0
+!   reloc[1042]: knd=0, off=9375, siz=4, lab1=gl_save_ReadBuffer, lab2=, loff=0
+!   reloc[1043]: knd=0, off=9382, siz=4, lab1=.L3146, lab2=, loff=0
+!   reloc[1044]: knd=0, off=9394, siz=4, lab1=.L3149, lab2=, loff=0
+!   reloc[1045]: knd=0, off=9402, siz=4, lab1=.L3153, lab2=, loff=0
+!   reloc[1046]: knd=0, off=9410, siz=4, lab1=.L3159, lab2=, loff=0
+!   reloc[1047]: knd=0, off=9418, siz=4, lab1=.L3163, lab2=, loff=0
+!   reloc[1048]: knd=0, off=9426, siz=4, lab1=.L3167, lab2=, loff=0
+!   reloc[1049]: knd=0, off=9439, siz=4, lab1=gl_save_Rectf, lab2=, loff=0
+!   reloc[1050]: knd=0, off=9446, siz=4, lab1=.L3174, lab2=, loff=0
+!   reloc[1051]: knd=0, off=9458, siz=4, lab1=.L3177, lab2=, loff=0
+!   reloc[1052]: knd=0, off=9466, siz=4, lab1=.L3181, lab2=, loff=0
+!   reloc[1053]: knd=0, off=9474, siz=4, lab1=.L3182, lab2=, loff=0
+!   reloc[1054]: knd=0, off=9482, siz=4, lab1=.L3183, lab2=, loff=0
+!   reloc[1055]: knd=0, off=9490, siz=4, lab1=.L3184, lab2=, loff=0
+!   reloc[1056]: knd=0, off=9498, siz=4, lab1=.L3190, lab2=, loff=0
+!   reloc[1057]: knd=0, off=9506, siz=4, lab1=.L3194, lab2=, loff=0
+!   reloc[1058]: knd=0, off=9514, siz=4, lab1=.L3198, lab2=, loff=0
+!   reloc[1059]: knd=0, off=9527, siz=4, lab1=gl_save_Rotatef, lab2=, loff=0
+!   reloc[1060]: knd=0, off=9534, siz=4, lab1=.L3205, lab2=, loff=0
+!   reloc[1061]: knd=0, off=9546, siz=4, lab1=.L3206, lab2=, loff=0
+!   reloc[1062]: knd=0, off=9554, siz=4, lab1=.L3207, lab2=, loff=0
+!   reloc[1063]: knd=0, off=9567, siz=4, lab1=gl_save_Scalef, lab2=, loff=0
+!   reloc[1064]: knd=0, off=9574, siz=4, lab1=.L3214, lab2=, loff=0
+!   reloc[1065]: knd=0, off=9586, siz=4, lab1=.L3217, lab2=, loff=0
+!   reloc[1066]: knd=0, off=9594, siz=4, lab1=.L3221, lab2=, loff=0
+!   reloc[1067]: knd=0, off=9602, siz=4, lab1=.L3222, lab2=, loff=0
+!   reloc[1068]: knd=0, off=9610, siz=4, lab1=.L3223, lab2=, loff=0
+!   reloc[1069]: knd=0, off=9618, siz=4, lab1=.L3229, lab2=, loff=0
+!   reloc[1070]: knd=0, off=9626, siz=4, lab1=.L3233, lab2=, loff=0
+!   reloc[1071]: knd=0, off=9634, siz=4, lab1=.L3237, lab2=, loff=0
+!   reloc[1072]: knd=0, off=9647, siz=4, lab1=gl_save_Scissor, lab2=, loff=0
+!   reloc[1073]: knd=0, off=9654, siz=4, lab1=.L3244, lab2=, loff=0
+!   reloc[1074]: knd=0, off=9666, siz=4, lab1=.L3247, lab2=, loff=0
+!   reloc[1075]: knd=0, off=9674, siz=4, lab1=.L3251, lab2=, loff=0
+!   reloc[1076]: knd=0, off=9682, siz=4, lab1=.L3252, lab2=, loff=0
+!   reloc[1077]: knd=0, off=9690, siz=4, lab1=.L3253, lab2=, loff=0
+!   reloc[1078]: knd=0, off=9698, siz=4, lab1=.L3254, lab2=, loff=0
+!   reloc[1079]: knd=0, off=9706, siz=4, lab1=.L3260, lab2=, loff=0
+!   reloc[1080]: knd=0, off=9714, siz=4, lab1=.L3264, lab2=, loff=0
+!   reloc[1081]: knd=0, off=9722, siz=4, lab1=.L3268, lab2=, loff=0
+!   reloc[1082]: knd=0, off=9735, siz=4, lab1=gl_save_ShadeModel, lab2=, loff=0
+!   reloc[1083]: knd=0, off=9742, siz=4, lab1=.L3275, lab2=, loff=0
+!   reloc[1084]: knd=0, off=9754, siz=4, lab1=.L3278, lab2=, loff=0
+!   reloc[1085]: knd=0, off=9762, siz=4, lab1=.L3282, lab2=, loff=0
+!   reloc[1086]: knd=0, off=9770, siz=4, lab1=.L3288, lab2=, loff=0
+!   reloc[1087]: knd=0, off=9778, siz=4, lab1=.L3292, lab2=, loff=0
+!   reloc[1088]: knd=0, off=9786, siz=4, lab1=.L3296, lab2=, loff=0
+!   reloc[1089]: knd=0, off=9799, siz=4, lab1=gl_save_StencilFunc, lab2=, loff=0
+!   reloc[1090]: knd=0, off=9806, siz=4, lab1=.L3303, lab2=, loff=0
+!   reloc[1091]: knd=0, off=9818, siz=4, lab1=.L3306, lab2=, loff=0
+!   reloc[1092]: knd=0, off=9826, siz=4, lab1=.L3310, lab2=, loff=0
+!   reloc[1093]: knd=0, off=9834, siz=4, lab1=.L3311, lab2=, loff=0
+!   reloc[1094]: knd=0, off=9842, siz=4, lab1=.L3312, lab2=, loff=0
+!   reloc[1095]: knd=0, off=9850, siz=4, lab1=.L3318, lab2=, loff=0
+!   reloc[1096]: knd=0, off=9858, siz=4, lab1=.L3322, lab2=, loff=0
+!   reloc[1097]: knd=0, off=9866, siz=4, lab1=.L3326, lab2=, loff=0
+!   reloc[1098]: knd=0, off=9879, siz=4, lab1=gl_save_StencilMask, lab2=, loff=0
+!   reloc[1099]: knd=0, off=9886, siz=4, lab1=.L3333, lab2=, loff=0
+!   reloc[1100]: knd=0, off=9898, siz=4, lab1=.L3336, lab2=, loff=0
+!   reloc[1101]: knd=0, off=9906, siz=4, lab1=.L3340, lab2=, loff=0
+!   reloc[1102]: knd=0, off=9914, siz=4, lab1=.L3346, lab2=, loff=0
+!   reloc[1103]: knd=0, off=9922, siz=4, lab1=.L3350, lab2=, loff=0
+!   reloc[1104]: knd=0, off=9930, siz=4, lab1=.L3354, lab2=, loff=0
+!   reloc[1105]: knd=0, off=9943, siz=4, lab1=gl_save_StencilOp, lab2=, loff=0
+!   reloc[1106]: knd=0, off=9950, siz=4, lab1=.L3361, lab2=, loff=0
+!   reloc[1107]: knd=0, off=9962, siz=4, lab1=.L3364, lab2=, loff=0
+!   reloc[1108]: knd=0, off=9970, siz=4, lab1=.L3368, lab2=, loff=0
+!   reloc[1109]: knd=0, off=9978, siz=4, lab1=.L3369, lab2=, loff=0
+!   reloc[1110]: knd=0, off=9986, siz=4, lab1=.L3370, lab2=, loff=0
+!   reloc[1111]: knd=0, off=9994, siz=4, lab1=.L3376, lab2=, loff=0
+!   reloc[1112]: knd=0, off=10002, siz=4, lab1=.L3380, lab2=, loff=0
+!   reloc[1113]: knd=0, off=10010, siz=4, lab1=.L3384, lab2=, loff=0
+!   reloc[1114]: knd=0, off=10023, siz=4, lab1=gl_save_TexCoord2f, lab2=, loff=0
+!   reloc[1115]: knd=0, off=10030, siz=4, lab1=.L3391, lab2=, loff=0
+!   reloc[1116]: knd=0, off=10042, siz=4, lab1=.L3394, lab2=, loff=0
+!   reloc[1117]: knd=0, off=10050, siz=4, lab1=.L3398, lab2=, loff=0
+!   reloc[1118]: knd=0, off=10058, siz=4, lab1=.L3399, lab2=, loff=0
+!   reloc[1119]: knd=0, off=10066, siz=4, lab1=.L3405, lab2=, loff=0
+!   reloc[1120]: knd=0, off=10074, siz=4, lab1=.L3409, lab2=, loff=0
+!   reloc[1121]: knd=0, off=10082, siz=4, lab1=.L3413, lab2=, loff=0
+!   reloc[1122]: knd=0, off=10095, siz=4, lab1=gl_save_TexCoord4f, lab2=, loff=0
+!   reloc[1123]: knd=0, off=10102, siz=4, lab1=.L3420, lab2=, loff=0
+!   reloc[1124]: knd=0, off=10114, siz=4, lab1=.L3423, lab2=, loff=0
+!   reloc[1125]: knd=0, off=10122, siz=4, lab1=.L3427, lab2=, loff=0
+!   reloc[1126]: knd=0, off=10130, siz=4, lab1=.L3428, lab2=, loff=0
+!   reloc[1127]: knd=0, off=10138, siz=4, lab1=.L3429, lab2=, loff=0
+!   reloc[1128]: knd=0, off=10146, siz=4, lab1=.L3430, lab2=, loff=0
+!   reloc[1129]: knd=0, off=10154, siz=4, lab1=.L3436, lab2=, loff=0
+!   reloc[1130]: knd=0, off=10162, siz=4, lab1=.L3440, lab2=, loff=0
+!   reloc[1131]: knd=0, off=10170, siz=4, lab1=.L3444, lab2=, loff=0
+!   reloc[1132]: knd=0, off=10183, siz=4, lab1=gl_save_TexEnvfv, lab2=, loff=0
+!   reloc[1133]: knd=0, off=10190, siz=4, lab1=.L3451, lab2=, loff=0
+!   reloc[1134]: knd=0, off=10202, siz=4, lab1=.L3454, lab2=, loff=0
+!   reloc[1135]: knd=0, off=10210, siz=4, lab1=.L3458, lab2=, loff=0
+!   reloc[1136]: knd=0, off=10218, siz=4, lab1=.L3459, lab2=, loff=0
+!   reloc[1137]: knd=0, off=10226, siz=4, lab1=.L3460, lab2=, loff=0
+!   reloc[1138]: knd=0, off=10234, siz=4, lab1=.L3461, lab2=, loff=0
+!   reloc[1139]: knd=0, off=10242, siz=4, lab1=.L3462, lab2=, loff=0
+!   reloc[1140]: knd=0, off=10250, siz=4, lab1=.L3463, lab2=, loff=0
+!   reloc[1141]: knd=0, off=10258, siz=4, lab1=.L3469, lab2=, loff=0
+!   reloc[1142]: knd=0, off=10266, siz=4, lab1=.L3473, lab2=, loff=0
+!   reloc[1143]: knd=0, off=10274, siz=4, lab1=.L3477, lab2=, loff=0
+!   reloc[1144]: knd=0, off=10287, siz=4, lab1=gl_save_TexGenfv, lab2=, loff=0
+!   reloc[1145]: knd=0, off=10294, siz=4, lab1=.L3484, lab2=, loff=0
+!   reloc[1146]: knd=0, off=10306, siz=4, lab1=.L3487, lab2=, loff=0
+!   reloc[1147]: knd=0, off=10314, siz=4, lab1=.L3491, lab2=, loff=0
+!   reloc[1148]: knd=0, off=10322, siz=4, lab1=.L3492, lab2=, loff=0
+!   reloc[1149]: knd=0, off=10330, siz=4, lab1=.L3493, lab2=, loff=0
+!   reloc[1150]: knd=0, off=10338, siz=4, lab1=.L3494, lab2=, loff=0
+!   reloc[1151]: knd=0, off=10346, siz=4, lab1=.L3495, lab2=, loff=0
+!   reloc[1152]: knd=0, off=10354, siz=4, lab1=.L3496, lab2=, loff=0
+!   reloc[1153]: knd=0, off=10362, siz=4, lab1=.L3502, lab2=, loff=0
+!   reloc[1154]: knd=0, off=10370, siz=4, lab1=.L3506, lab2=, loff=0
+!   reloc[1155]: knd=0, off=10378, siz=4, lab1=.L3510, lab2=, loff=0
+!   reloc[1156]: knd=0, off=10391, siz=4, lab1=gl_save_TexParameterfv, lab2=, loff=0
+!   reloc[1157]: knd=0, off=10398, siz=4, lab1=.L3517, lab2=, loff=0
+!   reloc[1158]: knd=0, off=10410, siz=4, lab1=.L3520, lab2=, loff=0
+!   reloc[1159]: knd=0, off=10418, siz=4, lab1=.L3524, lab2=, loff=0
+!   reloc[1160]: knd=0, off=10426, siz=4, lab1=.L3525, lab2=, loff=0
+!   reloc[1161]: knd=0, off=10434, siz=4, lab1=.L3526, lab2=, loff=0
+!   reloc[1162]: knd=0, off=10442, siz=4, lab1=.L3527, lab2=, loff=0
+!   reloc[1163]: knd=0, off=10450, siz=4, lab1=.L3528, lab2=, loff=0
+!   reloc[1164]: knd=0, off=10458, siz=4, lab1=.L3529, lab2=, loff=0
+!   reloc[1165]: knd=0, off=10466, siz=4, lab1=.L3535, lab2=, loff=0
+!   reloc[1166]: knd=0, off=10474, siz=4, lab1=.L3539, lab2=, loff=0
+!   reloc[1167]: knd=0, off=10482, siz=4, lab1=.L3543, lab2=, loff=0
+!   reloc[1168]: knd=0, off=10495, siz=4, lab1=gl_save_TexImage1D, lab2=, loff=0
+!   reloc[1169]: knd=0, off=10502, siz=4, lab1=.L3550, lab2=, loff=0
+!   reloc[1170]: knd=0, off=10514, siz=4, lab1=.L3553, lab2=, loff=0
+!   reloc[1171]: knd=0, off=10522, siz=4, lab1=.L3557, lab2=, loff=0
+!   reloc[1172]: knd=0, off=10530, siz=4, lab1=.L3558, lab2=, loff=0
+!   reloc[1173]: knd=0, off=10538, siz=4, lab1=.L3559, lab2=, loff=0
+!   reloc[1174]: knd=0, off=10546, siz=4, lab1=.L3560, lab2=, loff=0
+!   reloc[1175]: knd=0, off=10554, siz=4, lab1=.L3561, lab2=, loff=0
+!   reloc[1176]: knd=0, off=10562, siz=4, lab1=.L3562, lab2=, loff=0
+!   reloc[1177]: knd=0, off=10570, siz=4, lab1=.L3563, lab2=, loff=0
+!   reloc[1178]: knd=0, off=10578, siz=4, lab1=.L3564, lab2=, loff=0
+!   reloc[1179]: knd=0, off=10586, siz=4, lab1=.L3567, lab2=, loff=0
+!   reloc[1180]: knd=0, off=10594, siz=4, lab1=.L3571, lab2=, loff=0
+!   reloc[1181]: knd=0, off=10602, siz=4, lab1=.L3580, lab2=, loff=0
+!   reloc[1182]: knd=0, off=10612, siz=4, lab1=.L3584, lab2=, loff=0
+!   reloc[1183]: knd=0, off=10620, siz=4, lab1=.L3588, lab2=, loff=0
+!   reloc[1184]: knd=0, off=10633, siz=4, lab1=gl_save_TexImage2D, lab2=, loff=0
+!   reloc[1185]: knd=0, off=10640, siz=4, lab1=.L3595, lab2=, loff=0
+!   reloc[1186]: knd=0, off=10652, siz=4, lab1=.L3598, lab2=, loff=0
+!   reloc[1187]: knd=0, off=10660, siz=4, lab1=.L3602, lab2=, loff=0
+!   reloc[1188]: knd=0, off=10668, siz=4, lab1=.L3603, lab2=, loff=0
+!   reloc[1189]: knd=0, off=10676, siz=4, lab1=.L3604, lab2=, loff=0
+!   reloc[1190]: knd=0, off=10684, siz=4, lab1=.L3605, lab2=, loff=0
+!   reloc[1191]: knd=0, off=10692, siz=4, lab1=.L3606, lab2=, loff=0
+!   reloc[1192]: knd=0, off=10700, siz=4, lab1=.L3607, lab2=, loff=0
+!   reloc[1193]: knd=0, off=10708, siz=4, lab1=.L3608, lab2=, loff=0
+!   reloc[1194]: knd=0, off=10716, siz=4, lab1=.L3609, lab2=, loff=0
+!   reloc[1195]: knd=0, off=10724, siz=4, lab1=.L3610, lab2=, loff=0
+!   reloc[1196]: knd=0, off=10732, siz=4, lab1=.L3613, lab2=, loff=0
+!   reloc[1197]: knd=0, off=10740, siz=4, lab1=.L3617, lab2=, loff=0
+!   reloc[1198]: knd=0, off=10748, siz=4, lab1=.L3626, lab2=, loff=0
+!   reloc[1199]: knd=0, off=10758, siz=4, lab1=.L3630, lab2=, loff=0
+!   reloc[1200]: knd=0, off=10766, siz=4, lab1=.L3634, lab2=, loff=0
+!   reloc[1201]: knd=0, off=10779, siz=4, lab1=gl_save_TexImage3DEXT, lab2=, loff=0
+!   reloc[1202]: knd=0, off=10786, siz=4, lab1=.L3641, lab2=, loff=0
+!   reloc[1203]: knd=0, off=10798, siz=4, lab1=.L3644, lab2=, loff=0
+!   reloc[1204]: knd=0, off=10806, siz=4, lab1=.L3648, lab2=, loff=0
+!   reloc[1205]: knd=0, off=10814, siz=4, lab1=.L3649, lab2=, loff=0
+!   reloc[1206]: knd=0, off=10822, siz=4, lab1=.L3650, lab2=, loff=0
+!   reloc[1207]: knd=0, off=10830, siz=4, lab1=.L3651, lab2=, loff=0
+!   reloc[1208]: knd=0, off=10838, siz=4, lab1=.L3652, lab2=, loff=0
+!   reloc[1209]: knd=0, off=10846, siz=4, lab1=.L3653, lab2=, loff=0
+!   reloc[1210]: knd=0, off=10854, siz=4, lab1=.L3654, lab2=, loff=0
+!   reloc[1211]: knd=0, off=10862, siz=4, lab1=.L3655, lab2=, loff=0
+!   reloc[1212]: knd=0, off=10870, siz=4, lab1=.L3656, lab2=, loff=0
+!   reloc[1213]: knd=0, off=10878, siz=4, lab1=.L3657, lab2=, loff=0
+!   reloc[1214]: knd=0, off=10886, siz=4, lab1=.L3663, lab2=, loff=0
+!   reloc[1215]: knd=0, off=10894, siz=4, lab1=.L3667, lab2=, loff=0
+!   reloc[1216]: knd=0, off=10902, siz=4, lab1=.L3671, lab2=, loff=0
+!   reloc[1217]: knd=0, off=10915, siz=4, lab1=gl_save_TexSubImage1D, lab2=, loff=0
+!   reloc[1218]: knd=0, off=10922, siz=4, lab1=.L3678, lab2=, loff=0
+!   reloc[1219]: knd=0, off=10934, siz=4, lab1=.L3681, lab2=, loff=0
+!   reloc[1220]: knd=0, off=10942, siz=4, lab1=.L3685, lab2=, loff=0
+!   reloc[1221]: knd=0, off=10950, siz=4, lab1=.L3686, lab2=, loff=0
+!   reloc[1222]: knd=0, off=10958, siz=4, lab1=.L3687, lab2=, loff=0
+!   reloc[1223]: knd=0, off=10966, siz=4, lab1=.L3688, lab2=, loff=0
+!   reloc[1224]: knd=0, off=10974, siz=4, lab1=.L3689, lab2=, loff=0
+!   reloc[1225]: knd=0, off=10982, siz=4, lab1=.L3690, lab2=, loff=0
+!   reloc[1226]: knd=0, off=10990, siz=4, lab1=.L3691, lab2=, loff=0
+!   reloc[1227]: knd=0, off=10998, siz=4, lab1=.L3694, lab2=, loff=0
+!   reloc[1228]: knd=0, off=11006, siz=4, lab1=.L3697, lab2=, loff=0
+!   reloc[1229]: knd=0, off=11014, siz=4, lab1=.L3705, lab2=, loff=0
+!   reloc[1230]: knd=0, off=11022, siz=4, lab1=.L3709, lab2=, loff=0
+!   reloc[1231]: knd=0, off=11030, siz=4, lab1=.L3713, lab2=, loff=0
+!   reloc[1232]: knd=0, off=11043, siz=4, lab1=gl_save_TexSubImage2D, lab2=, loff=0
+!   reloc[1233]: knd=0, off=11050, siz=4, lab1=.L3720, lab2=, loff=0
+!   reloc[1234]: knd=0, off=11062, siz=4, lab1=.L3723, lab2=, loff=0
+!   reloc[1235]: knd=0, off=11070, siz=4, lab1=.L3727, lab2=, loff=0
+!   reloc[1236]: knd=0, off=11078, siz=4, lab1=.L3728, lab2=, loff=0
+!   reloc[1237]: knd=0, off=11086, siz=4, lab1=.L3729, lab2=, loff=0
+!   reloc[1238]: knd=0, off=11094, siz=4, lab1=.L3730, lab2=, loff=0
+!   reloc[1239]: knd=0, off=11102, siz=4, lab1=.L3731, lab2=, loff=0
+!   reloc[1240]: knd=0, off=11110, siz=4, lab1=.L3732, lab2=, loff=0
+!   reloc[1241]: knd=0, off=11118, siz=4, lab1=.L3733, lab2=, loff=0
+!   reloc[1242]: knd=0, off=11126, siz=4, lab1=.L3734, lab2=, loff=0
+!   reloc[1243]: knd=0, off=11134, siz=4, lab1=.L3735, lab2=, loff=0
+!   reloc[1244]: knd=0, off=11142, siz=4, lab1=.L3738, lab2=, loff=0
+!   reloc[1245]: knd=0, off=11150, siz=4, lab1=.L3741, lab2=, loff=0
+!   reloc[1246]: knd=0, off=11158, siz=4, lab1=.L3749, lab2=, loff=0
+!   reloc[1247]: knd=0, off=11166, siz=4, lab1=.L3753, lab2=, loff=0
+!   reloc[1248]: knd=0, off=11174, siz=4, lab1=.L3757, lab2=, loff=0
+!   reloc[1249]: knd=0, off=11187, siz=4, lab1=gl_save_TexSubImage3DEXT, lab2=, loff=0
+!   reloc[1250]: knd=0, off=11194, siz=4, lab1=.L3764, lab2=, loff=0
+!   reloc[1251]: knd=0, off=11206, siz=4, lab1=.L3767, lab2=, loff=0
+!   reloc[1252]: knd=0, off=11214, siz=4, lab1=.L3771, lab2=, loff=0
+!   reloc[1253]: knd=0, off=11222, siz=4, lab1=.L3772, lab2=, loff=0
+!   reloc[1254]: knd=0, off=11230, siz=4, lab1=.L3773, lab2=, loff=0
+!   reloc[1255]: knd=0, off=11238, siz=4, lab1=.L3774, lab2=, loff=0
+!   reloc[1256]: knd=0, off=11246, siz=4, lab1=.L3775, lab2=, loff=0
+!   reloc[1257]: knd=0, off=11254, siz=4, lab1=.L3776, lab2=, loff=0
+!   reloc[1258]: knd=0, off=11262, siz=4, lab1=.L3777, lab2=, loff=0
+!   reloc[1259]: knd=0, off=11270, siz=4, lab1=.L3778, lab2=, loff=0
+!   reloc[1260]: knd=0, off=11278, siz=4, lab1=.L3779, lab2=, loff=0
+!   reloc[1261]: knd=0, off=11286, siz=4, lab1=.L3780, lab2=, loff=0
+!   reloc[1262]: knd=0, off=11294, siz=4, lab1=.L3781, lab2=, loff=0
+!   reloc[1263]: knd=0, off=11302, siz=4, lab1=.L3784, lab2=, loff=0
+!   reloc[1264]: knd=0, off=11310, siz=4, lab1=.L3787, lab2=, loff=0
+!   reloc[1265]: knd=0, off=11318, siz=4, lab1=.L3795, lab2=, loff=0
+!   reloc[1266]: knd=0, off=11326, siz=4, lab1=.L3799, lab2=, loff=0
+!   reloc[1267]: knd=0, off=11334, siz=4, lab1=.L3803, lab2=, loff=0
+!   reloc[1268]: knd=0, off=11347, siz=4, lab1=gl_save_Translatef, lab2=, loff=0
+!   reloc[1269]: knd=0, off=11354, siz=4, lab1=.L3810, lab2=, loff=0
+!   reloc[1270]: knd=0, off=11366, siz=4, lab1=.L3813, lab2=, loff=0
+!   reloc[1271]: knd=0, off=11374, siz=4, lab1=.L3817, lab2=, loff=0
+!   reloc[1272]: knd=0, off=11382, siz=4, lab1=.L3818, lab2=, loff=0
+!   reloc[1273]: knd=0, off=11390, siz=4, lab1=.L3819, lab2=, loff=0
+!   reloc[1274]: knd=0, off=11398, siz=4, lab1=.L3825, lab2=, loff=0
+!   reloc[1275]: knd=0, off=11406, siz=4, lab1=.L3829, lab2=, loff=0
+!   reloc[1276]: knd=0, off=11414, siz=4, lab1=.L3833, lab2=, loff=0
+!   reloc[1277]: knd=0, off=11427, siz=4, lab1=gl_save_Vertex2f, lab2=, loff=0
+!   reloc[1278]: knd=0, off=11434, siz=4, lab1=.L3840, lab2=, loff=0
+!   reloc[1279]: knd=0, off=11446, siz=4, lab1=.L3843, lab2=, loff=0
+!   reloc[1280]: knd=0, off=11454, siz=4, lab1=.L3847, lab2=, loff=0
+!   reloc[1281]: knd=0, off=11462, siz=4, lab1=.L3848, lab2=, loff=0
+!   reloc[1282]: knd=0, off=11470, siz=4, lab1=.L3854, lab2=, loff=0
+!   reloc[1283]: knd=0, off=11478, siz=4, lab1=.L3858, lab2=, loff=0
+!   reloc[1284]: knd=0, off=11486, siz=4, lab1=.L3862, lab2=, loff=0
+!   reloc[1285]: knd=0, off=11499, siz=4, lab1=gl_save_Vertex3f, lab2=, loff=0
+!   reloc[1286]: knd=0, off=11506, siz=4, lab1=.L3869, lab2=, loff=0
+!   reloc[1287]: knd=0, off=11518, siz=4, lab1=.L3872, lab2=, loff=0
+!   reloc[1288]: knd=0, off=11526, siz=4, lab1=.L3876, lab2=, loff=0
+!   reloc[1289]: knd=0, off=11534, siz=4, lab1=.L3877, lab2=, loff=0
+!   reloc[1290]: knd=0, off=11542, siz=4, lab1=.L3878, lab2=, loff=0
+!   reloc[1291]: knd=0, off=11550, siz=4, lab1=.L3884, lab2=, loff=0
+!   reloc[1292]: knd=0, off=11558, siz=4, lab1=.L3888, lab2=, loff=0
+!   reloc[1293]: knd=0, off=11566, siz=4, lab1=.L3892, lab2=, loff=0
+!   reloc[1294]: knd=0, off=11579, siz=4, lab1=gl_save_Vertex4f, lab2=, loff=0
+!   reloc[1295]: knd=0, off=11586, siz=4, lab1=.L3899, lab2=, loff=0
+!   reloc[1296]: knd=0, off=11598, siz=4, lab1=.L3902, lab2=, loff=0
+!   reloc[1297]: knd=0, off=11606, siz=4, lab1=.L3906, lab2=, loff=0
+!   reloc[1298]: knd=0, off=11614, siz=4, lab1=.L3907, lab2=, loff=0
+!   reloc[1299]: knd=0, off=11622, siz=4, lab1=.L3908, lab2=, loff=0
+!   reloc[1300]: knd=0, off=11630, siz=4, lab1=.L3909, lab2=, loff=0
+!   reloc[1301]: knd=0, off=11638, siz=4, lab1=.L3915, lab2=, loff=0
+!   reloc[1302]: knd=0, off=11646, siz=4, lab1=.L3919, lab2=, loff=0
+!   reloc[1303]: knd=0, off=11654, siz=4, lab1=.L3923, lab2=, loff=0
+!   reloc[1304]: knd=0, off=11667, siz=4, lab1=gl_save_Vertex3fv, lab2=, loff=0
+!   reloc[1305]: knd=0, off=11674, siz=4, lab1=.L3930, lab2=, loff=0
+!   reloc[1306]: knd=0, off=11686, siz=4, lab1=.L3933, lab2=, loff=0
+!   reloc[1307]: knd=0, off=11694, siz=4, lab1=.L3937, lab2=, loff=0
+!   reloc[1308]: knd=0, off=11702, siz=4, lab1=.L3938, lab2=, loff=0
+!   reloc[1309]: knd=0, off=11710, siz=4, lab1=.L3939, lab2=, loff=0
+!   reloc[1310]: knd=0, off=11718, siz=4, lab1=.L3945, lab2=, loff=0
+!   reloc[1311]: knd=0, off=11726, siz=4, lab1=.L3949, lab2=, loff=0
+!   reloc[1312]: knd=0, off=11734, siz=4, lab1=.L3953, lab2=, loff=0
+!   reloc[1313]: knd=0, off=11747, siz=4, lab1=gl_save_Viewport, lab2=, loff=0
+!   reloc[1314]: knd=0, off=11754, siz=4, lab1=.L3960, lab2=, loff=0
+!   reloc[1315]: knd=0, off=11766, siz=4, lab1=.L3963, lab2=, loff=0
+!   reloc[1316]: knd=0, off=11774, siz=4, lab1=.L3967, lab2=, loff=0
+!   reloc[1317]: knd=0, off=11782, siz=4, lab1=.L3968, lab2=, loff=0
+!   reloc[1318]: knd=0, off=11790, siz=4, lab1=.L3969, lab2=, loff=0
+!   reloc[1319]: knd=0, off=11798, siz=4, lab1=.L3970, lab2=, loff=0
+!   reloc[1320]: knd=0, off=11806, siz=4, lab1=.L3976, lab2=, loff=0
+!   reloc[1321]: knd=0, off=11814, siz=4, lab1=.L3980, lab2=, loff=0
+!   reloc[1322]: knd=0, off=11822, siz=4, lab1=.L3984, lab2=, loff=0
+!   reloc[1323]: knd=0, off=11835, siz=4, lab1=gl_save_WindowPos4fMESA, lab2=, loff=0
+!   reloc[1324]: knd=0, off=11842, siz=4, lab1=.L3991, lab2=, loff=0
+!   reloc[1325]: knd=0, off=11854, siz=4, lab1=.L3994, lab2=, loff=0
+!   reloc[1326]: knd=0, off=11862, siz=4, lab1=.L3998, lab2=, loff=0
+!   reloc[1327]: knd=0, off=11870, siz=4, lab1=.L3999, lab2=, loff=0
+!   reloc[1328]: knd=0, off=11878, siz=4, lab1=.L4000, lab2=, loff=0
+!   reloc[1329]: knd=0, off=11886, siz=4, lab1=.L4001, lab2=, loff=0
+!   reloc[1330]: knd=0, off=11894, siz=4, lab1=.L4007, lab2=, loff=0
+!   reloc[1331]: knd=0, off=11902, siz=4, lab1=.L4011, lab2=, loff=0
+!   reloc[1332]: knd=0, off=11910, siz=4, lab1=.L4015, lab2=, loff=0
+!   reloc[1333]: knd=0, off=11923, siz=4, lab1=execute_list, lab2=, loff=0
+!   reloc[1334]: knd=0, off=11930, siz=4, lab1=.L4024, lab2=, loff=0
+!   reloc[1335]: knd=0, off=11942, siz=4, lab1=.L4027, lab2=, loff=0
+!   reloc[1336]: knd=0, off=11950, siz=4, lab1=.L4030, lab2=, loff=0
+!   reloc[1337]: knd=0, off=11958, siz=4, lab1=.L4031, lab2=, loff=0
+!   reloc[1338]: knd=0, off=11966, siz=4, lab1=.L4032, lab2=, loff=0
+!   reloc[1339]: knd=0, off=11974, siz=4, lab1=.L4037, lab2=, loff=0
+!   reloc[1340]: knd=0, off=11982, siz=4, lab1=.L4041, lab2=, loff=0
+!   reloc[1341]: knd=0, off=11990, siz=4, lab1=.L4045, lab2=, loff=0
+!   reloc[1342]: knd=0, off=11998, siz=4, lab1=.L4049, lab2=, loff=0
+!   reloc[1343]: knd=0, off=12008, siz=4, lab1=.L4050, lab2=, loff=0
+!   reloc[1344]: knd=0, off=12016, siz=4, lab1=.L4052, lab2=, loff=0
+!   reloc[1345]: knd=0, off=12024, siz=4, lab1=.L4053, lab2=, loff=0
+!   reloc[1346]: knd=0, off=12032, siz=4, lab1=.L4055, lab2=, loff=0
+!   reloc[1347]: knd=0, off=12040, siz=4, lab1=.L4056, lab2=, loff=0
+!   reloc[1348]: knd=0, off=12048, siz=4, lab1=.L4058, lab2=, loff=0
+!   reloc[1349]: knd=0, off=12056, siz=4, lab1=.L4059, lab2=, loff=0
+!   reloc[1350]: knd=0, off=12064, siz=4, lab1=.L4060, lab2=, loff=0
+!   reloc[1351]: knd=0, off=12072, siz=4, lab1=.L4061, lab2=, loff=0
+!   reloc[1352]: knd=0, off=12080, siz=4, lab1=.L4062, lab2=, loff=0
+!   reloc[1353]: knd=0, off=12088, siz=4, lab1=.L4064, lab2=, loff=0
+!   reloc[1354]: knd=0, off=12096, siz=4, lab1=.L4065, lab2=, loff=0
+!   reloc[1355]: knd=0, off=12104, siz=4, lab1=.L4067, lab2=, loff=0
+!   reloc[1356]: knd=0, off=12112, siz=4, lab1=.L4068, lab2=, loff=0
+!   reloc[1357]: knd=0, off=12120, siz=4, lab1=.L4070, lab2=, loff=0
+!   reloc[1358]: knd=0, off=12128, siz=4, lab1=.L4071, lab2=, loff=0
+!   reloc[1359]: knd=0, off=12136, siz=4, lab1=.L4073, lab2=, loff=0
+!   reloc[1360]: knd=0, off=12144, siz=4, lab1=.L4074, lab2=, loff=0
+!   reloc[1361]: knd=0, off=12152, siz=4, lab1=.L4075, lab2=, loff=0
+!   reloc[1362]: knd=0, off=12160, siz=4, lab1=.L4077, lab2=, loff=0
+!   reloc[1363]: knd=0, off=12168, siz=4, lab1=.L4078, lab2=, loff=0
+!   reloc[1364]: knd=0, off=12176, siz=4, lab1=.L4080, lab2=, loff=0
+!   reloc[1365]: knd=0, off=12184, siz=4, lab1=.L4081, lab2=, loff=0
+!   reloc[1366]: knd=0, off=12192, siz=4, lab1=.L4083, lab2=, loff=0
+!   reloc[1367]: knd=0, off=12200, siz=4, lab1=.L4084, lab2=, loff=0
+!   reloc[1368]: knd=0, off=12208, siz=4, lab1=.L4087, lab2=, loff=0
+!   reloc[1369]: knd=0, off=12216, siz=4, lab1=.L4091, lab2=, loff=0
+!   reloc[1370]: knd=0, off=12224, siz=4, lab1=.L4092, lab2=, loff=0
+!   reloc[1371]: knd=0, off=12232, siz=4, lab1=.L4096, lab2=, loff=0
+!   reloc[1372]: knd=0, off=12240, siz=4, lab1=.L4098, lab2=, loff=0
+!   reloc[1373]: knd=0, off=12248, siz=4, lab1=.L4099, lab2=, loff=0
+!   reloc[1374]: knd=0, off=12256, siz=4, lab1=.L4100, lab2=, loff=0
+!   reloc[1375]: knd=0, off=12264, siz=4, lab1=.L4101, lab2=, loff=0
+!   reloc[1376]: knd=0, off=12272, siz=4, lab1=.L4104, lab2=, loff=0
+!   reloc[1377]: knd=0, off=12280, siz=4, lab1=.L4108, lab2=, loff=0
+!   reloc[1378]: knd=0, off=12288, siz=4, lab1=.L4109, lab2=, loff=0
+!   reloc[1379]: knd=0, off=12296, siz=4, lab1=.L4113, lab2=, loff=0
+!   reloc[1380]: knd=0, off=12304, siz=4, lab1=.L4115, lab2=, loff=0
+!   reloc[1381]: knd=0, off=12314, siz=4, lab1=.L4116, lab2=, loff=0
+!   reloc[1382]: knd=0, off=12322, siz=4, lab1=.L4118, lab2=, loff=0
+!   reloc[1383]: knd=0, off=12330, siz=4, lab1=.L4119, lab2=, loff=0
+!   reloc[1384]: knd=0, off=12338, siz=4, lab1=.L4121, lab2=, loff=0
+!   reloc[1385]: knd=0, off=12346, siz=4, lab1=.L4122, lab2=, loff=0
+!   reloc[1386]: knd=0, off=12354, siz=4, lab1=.L4124, lab2=, loff=0
+!   reloc[1387]: knd=0, off=12364, siz=4, lab1=.L4125, lab2=, loff=0
+!   reloc[1388]: knd=0, off=12372, siz=4, lab1=.L4127, lab2=, loff=0
+!   reloc[1389]: knd=0, off=12380, siz=4, lab1=.L4128, lab2=, loff=0
+!   reloc[1390]: knd=0, off=12388, siz=4, lab1=.L4130, lab2=, loff=0
+!   reloc[1391]: knd=0, off=12396, siz=4, lab1=.L4131, lab2=, loff=0
+!   reloc[1392]: knd=0, off=12404, siz=4, lab1=.L4133, lab2=, loff=0
+!   reloc[1393]: knd=0, off=12412, siz=4, lab1=.L4134, lab2=, loff=0
+!   reloc[1394]: knd=0, off=12420, siz=4, lab1=.L4138, lab2=, loff=0
+!   reloc[1395]: knd=0, off=12430, siz=4, lab1=.L4142, lab2=, loff=0
+!   reloc[1396]: knd=0, off=12438, siz=4, lab1=.L4146, lab2=, loff=0
+!   reloc[1397]: knd=0, off=12446, siz=4, lab1=.L4150, lab2=, loff=0
+!   reloc[1398]: knd=0, off=12456, siz=4, lab1=.L4154, lab2=, loff=0
+!   reloc[1399]: knd=0, off=12464, siz=4, lab1=.L4158, lab2=, loff=0
+!   reloc[1400]: knd=0, off=12472, siz=4, lab1=.L4160, lab2=, loff=0
+!   reloc[1401]: knd=0, off=12480, siz=4, lab1=.L4161, lab2=, loff=0
+!   reloc[1402]: knd=0, off=12488, siz=4, lab1=.L4163, lab2=, loff=0
+!   reloc[1403]: knd=0, off=12496, siz=4, lab1=.L4164, lab2=, loff=0
+!   reloc[1404]: knd=0, off=12504, siz=4, lab1=.L4166, lab2=, loff=0
+!   reloc[1405]: knd=0, off=12512, siz=4, lab1=.L4167, lab2=, loff=0
+!   reloc[1406]: knd=0, off=12520, siz=4, lab1=.L4169, lab2=, loff=0
+!   reloc[1407]: knd=0, off=12528, siz=4, lab1=.L4170, lab2=, loff=0
+!   reloc[1408]: knd=0, off=12536, siz=4, lab1=.L4172, lab2=, loff=0
+!   reloc[1409]: knd=0, off=12544, siz=4, lab1=.L4173, lab2=, loff=0
+!   reloc[1410]: knd=0, off=12552, siz=4, lab1=.L4175, lab2=, loff=0
+!   reloc[1411]: knd=0, off=12560, siz=4, lab1=.L4176, lab2=, loff=0
+!   reloc[1412]: knd=0, off=12568, siz=4, lab1=.L4179, lab2=, loff=0
+!   reloc[1413]: knd=0, off=12578, siz=4, lab1=.L4180, lab2=, loff=0
+!   reloc[1414]: knd=0, off=12586, siz=4, lab1=.L4181, lab2=, loff=0
+!   reloc[1415]: knd=0, off=12594, siz=4, lab1=.L4182, lab2=, loff=0
+!   reloc[1416]: knd=0, off=12602, siz=4, lab1=.L4183, lab2=, loff=0
+!   reloc[1417]: knd=0, off=12610, siz=4, lab1=.L4185, lab2=, loff=0
+!   reloc[1418]: knd=0, off=12618, siz=4, lab1=.L4187, lab2=, loff=0
+!   reloc[1419]: knd=0, off=12626, siz=4, lab1=.L4188, lab2=, loff=0
+!   reloc[1420]: knd=0, off=12634, siz=4, lab1=.L4190, lab2=, loff=0
+!   reloc[1421]: knd=0, off=12642, siz=4, lab1=.L4191, lab2=, loff=0
+!   reloc[1422]: knd=0, off=12650, siz=4, lab1=.L4193, lab2=, loff=0
+!   reloc[1423]: knd=0, off=12658, siz=4, lab1=.L4194, lab2=, loff=0
+!   reloc[1424]: knd=0, off=12666, siz=4, lab1=.L4196, lab2=, loff=0
+!   reloc[1425]: knd=0, off=12676, siz=4, lab1=.L4197, lab2=, loff=0
+!   reloc[1426]: knd=0, off=12684, siz=4, lab1=.L4199, lab2=, loff=0
+!   reloc[1427]: knd=0, off=12694, siz=4, lab1=.L4200, lab2=, loff=0
+!   reloc[1428]: knd=0, off=12702, siz=4, lab1=.L4202, lab2=, loff=0
+!   reloc[1429]: knd=0, off=12712, siz=4, lab1=.L4203, lab2=, loff=0
+!   reloc[1430]: knd=0, off=12720, siz=4, lab1=.L4205, lab2=, loff=0
+!   reloc[1431]: knd=0, off=12730, siz=4, lab1=.L4206, lab2=, loff=0
+!   reloc[1432]: knd=0, off=12738, siz=4, lab1=.L4208, lab2=, loff=0
+!   reloc[1433]: knd=0, off=12748, siz=4, lab1=.L4209, lab2=, loff=0
+!   reloc[1434]: knd=0, off=12756, siz=4, lab1=.L4211, lab2=, loff=0
+!   reloc[1435]: knd=0, off=12766, siz=4, lab1=.L4212, lab2=, loff=0
+!   reloc[1436]: knd=0, off=12774, siz=4, lab1=.L4214, lab2=, loff=0
+!   reloc[1437]: knd=0, off=12784, siz=4, lab1=.L4215, lab2=, loff=0
+!   reloc[1438]: knd=0, off=12792, siz=4, lab1=.L4217, lab2=, loff=0
+!   reloc[1439]: knd=0, off=12800, siz=4, lab1=.L4218, lab2=, loff=0
+!   reloc[1440]: knd=0, off=12808, siz=4, lab1=.L4220, lab2=, loff=0
+!   reloc[1441]: knd=0, off=12816, siz=4, lab1=.L4221, lab2=, loff=0
+!   reloc[1442]: knd=0, off=12824, siz=4, lab1=.L4223, lab2=, loff=0
+!   reloc[1443]: knd=0, off=12832, siz=4, lab1=.L4224, lab2=, loff=0
+!   reloc[1444]: knd=0, off=12840, siz=4, lab1=.L4226, lab2=, loff=0
+!   reloc[1445]: knd=0, off=12848, siz=4, lab1=.L4227, lab2=, loff=0
+!   reloc[1446]: knd=0, off=12856, siz=4, lab1=.L4229, lab2=, loff=0
+!   reloc[1447]: knd=0, off=12864, siz=4, lab1=.L4230, lab2=, loff=0
+!   reloc[1448]: knd=0, off=12872, siz=4, lab1=.L4232, lab2=, loff=0
+!   reloc[1449]: knd=0, off=12880, siz=4, lab1=.L4233, lab2=, loff=0
+!   reloc[1450]: knd=0, off=12888, siz=4, lab1=.L4235, lab2=, loff=0
+!   reloc[1451]: knd=0, off=12898, siz=4, lab1=.L4236, lab2=, loff=0
+!   reloc[1452]: knd=0, off=12906, siz=4, lab1=.L4238, lab2=, loff=0
+!   reloc[1453]: knd=0, off=12914, siz=4, lab1=.L4239, lab2=, loff=0
+!   reloc[1454]: knd=0, off=12922, siz=4, lab1=.L4241, lab2=, loff=0
+!   reloc[1455]: knd=0, off=12930, siz=4, lab1=.L4242, lab2=, loff=0
+!   reloc[1456]: knd=0, off=12938, siz=4, lab1=.L4244, lab2=, loff=0
+!   reloc[1457]: knd=0, off=12946, siz=4, lab1=.L4245, lab2=, loff=0
+!   reloc[1458]: knd=0, off=12954, siz=4, lab1=.L4247, lab2=, loff=0
+!   reloc[1459]: knd=0, off=12962, siz=4, lab1=.L4248, lab2=, loff=0
+!   reloc[1460]: knd=0, off=12970, siz=4, lab1=.L4250, lab2=, loff=0
+!   reloc[1461]: knd=0, off=12978, siz=4, lab1=.L4251, lab2=, loff=0
+!   reloc[1462]: knd=0, off=12986, siz=4, lab1=.L4253, lab2=, loff=0
+!   reloc[1463]: knd=0, off=12994, siz=4, lab1=.L4254, lab2=, loff=0
+!   reloc[1464]: knd=0, off=13002, siz=4, lab1=.L4256, lab2=, loff=0
+!   reloc[1465]: knd=0, off=13010, siz=4, lab1=.L4257, lab2=, loff=0
+!   reloc[1466]: knd=0, off=13018, siz=4, lab1=.L4259, lab2=, loff=0
+!   reloc[1467]: knd=0, off=13026, siz=4, lab1=.L4260, lab2=, loff=0
+!   reloc[1468]: knd=0, off=13034, siz=4, lab1=.L4263, lab2=, loff=0
+!   reloc[1469]: knd=0, off=13044, siz=4, lab1=.L4264, lab2=, loff=0
+!   reloc[1470]: knd=0, off=13052, siz=4, lab1=.L4265, lab2=, loff=0
+!   reloc[1471]: knd=0, off=13060, siz=4, lab1=.L4266, lab2=, loff=0
+!   reloc[1472]: knd=0, off=13068, siz=4, lab1=.L4267, lab2=, loff=0
+!   reloc[1473]: knd=0, off=13076, siz=4, lab1=.L4269, lab2=, loff=0
+!   reloc[1474]: knd=0, off=13084, siz=4, lab1=.L4271, lab2=, loff=0
+!   reloc[1475]: knd=0, off=13092, siz=4, lab1=.L4272, lab2=, loff=0
+!   reloc[1476]: knd=0, off=13100, siz=4, lab1=.L4274, lab2=, loff=0
+!   reloc[1477]: knd=0, off=13108, siz=4, lab1=.L4275, lab2=, loff=0
+!   reloc[1478]: knd=0, off=13116, siz=4, lab1=.L4277, lab2=, loff=0
+!   reloc[1479]: knd=0, off=13124, siz=4, lab1=.L4278, lab2=, loff=0
+!   reloc[1480]: knd=0, off=13132, siz=4, lab1=.L4280, lab2=, loff=0
+!   reloc[1481]: knd=0, off=13140, siz=4, lab1=.L4281, lab2=, loff=0
+!   reloc[1482]: knd=0, off=13148, siz=4, lab1=.L4283, lab2=, loff=0
+!   reloc[1483]: knd=0, off=13156, siz=4, lab1=.L4284, lab2=, loff=0
+!   reloc[1484]: knd=0, off=13164, siz=4, lab1=.L4287, lab2=, loff=0
+!   reloc[1485]: knd=0, off=13174, siz=4, lab1=.L4288, lab2=, loff=0
+!   reloc[1486]: knd=0, off=13182, siz=4, lab1=.L4289, lab2=, loff=0
+!   reloc[1487]: knd=0, off=13190, siz=4, lab1=.L4290, lab2=, loff=0
+!   reloc[1488]: knd=0, off=13198, siz=4, lab1=.L4291, lab2=, loff=0
+!   reloc[1489]: knd=0, off=13206, siz=4, lab1=.L4293, lab2=, loff=0
+!   reloc[1490]: knd=0, off=13214, siz=4, lab1=.L4296, lab2=, loff=0
+!   reloc[1491]: knd=0, off=13224, siz=4, lab1=.L4297, lab2=, loff=0
+!   reloc[1492]: knd=0, off=13232, siz=4, lab1=.L4298, lab2=, loff=0
+!   reloc[1493]: knd=0, off=13240, siz=4, lab1=.L4299, lab2=, loff=0
+!   reloc[1494]: knd=0, off=13248, siz=4, lab1=.L4300, lab2=, loff=0
+!   reloc[1495]: knd=0, off=13256, siz=4, lab1=.L4302, lab2=, loff=0
+!   reloc[1496]: knd=0, off=13264, siz=4, lab1=.L4304, lab2=, loff=0
+!   reloc[1497]: knd=0, off=13272, siz=4, lab1=.L4305, lab2=, loff=0
+!   reloc[1498]: knd=0, off=13280, siz=4, lab1=.L4307, lab2=, loff=0
+!   reloc[1499]: knd=0, off=13288, siz=4, lab1=.L4308, lab2=, loff=0
+!   reloc[1500]: knd=0, off=13296, siz=4, lab1=.L4310, lab2=, loff=0
+!   reloc[1501]: knd=0, off=13304, siz=4, lab1=.L4311, lab2=, loff=0
+!   reloc[1502]: knd=0, off=13312, siz=4, lab1=.L4313, lab2=, loff=0
+!   reloc[1503]: knd=0, off=13320, siz=4, lab1=.L4314, lab2=, loff=0
+!   reloc[1504]: knd=0, off=13328, siz=4, lab1=.L4318, lab2=, loff=0
+!   reloc[1505]: knd=0, off=13336, siz=4, lab1=.L4321, lab2=, loff=0
+!   reloc[1506]: knd=0, off=13344, siz=4, lab1=.L4328, lab2=, loff=0
+!   reloc[1507]: knd=0, off=13354, siz=4, lab1=.L4335, lab2=, loff=0
+!   reloc[1508]: knd=0, off=13362, siz=4, lab1=.L4338, lab2=, loff=0
+!   reloc[1509]: knd=0, off=13370, siz=4, lab1=.L4341, lab2=, loff=0
+!   reloc[1510]: knd=0, off=13380, siz=4, lab1=.L4345, lab2=, loff=0
+!   reloc[1511]: knd=0, off=13388, siz=4, lab1=.L4347, lab2=, loff=0
+!   reloc[1512]: knd=0, off=13396, siz=4, lab1=.L4348, lab2=, loff=0
+!   reloc[1513]: knd=0, off=13404, siz=4, lab1=.L4350, lab2=, loff=0
+!   reloc[1514]: knd=0, off=13412, siz=4, lab1=.L4351, lab2=, loff=0
+!   reloc[1515]: knd=0, off=13420, siz=4, lab1=.L4353, lab2=, loff=0
+!   reloc[1516]: knd=0, off=13430, siz=4, lab1=.L4354, lab2=, loff=0
+!   reloc[1517]: knd=0, off=13438, siz=4, lab1=.L4356, lab2=, loff=0
+!   reloc[1518]: knd=0, off=13448, siz=4, lab1=.L4357, lab2=, loff=0
+!   reloc[1519]: knd=0, off=13456, siz=4, lab1=.L4359, lab2=, loff=0
+!   reloc[1520]: knd=0, off=13464, siz=4, lab1=.L4360, lab2=, loff=0
+!   reloc[1521]: knd=0, off=13472, siz=4, lab1=.L4362, lab2=, loff=0
+!   reloc[1522]: knd=0, off=13480, siz=4, lab1=.L4363, lab2=, loff=0
+!   reloc[1523]: knd=0, off=13488, siz=4, lab1=.L4366, lab2=, loff=0
+!   reloc[1524]: knd=0, off=13498, siz=4, lab1=.L4367, lab2=, loff=0
+!   reloc[1525]: knd=0, off=13506, siz=4, lab1=.L4368, lab2=, loff=0
+!   reloc[1526]: knd=0, off=13514, siz=4, lab1=.L4369, lab2=, loff=0
+!   reloc[1527]: knd=0, off=13522, siz=4, lab1=.L4370, lab2=, loff=0
+!   reloc[1528]: knd=0, off=13530, siz=4, lab1=.L4372, lab2=, loff=0
+!   reloc[1529]: knd=0, off=13538, siz=4, lab1=.L4374, lab2=, loff=0
+!   reloc[1530]: knd=0, off=13546, siz=4, lab1=.L4375, lab2=, loff=0
+!   reloc[1531]: knd=0, off=13554, siz=4, lab1=.L4379, lab2=, loff=0
+!   reloc[1532]: knd=0, off=13562, siz=4, lab1=.L4382, lab2=, loff=0
+!   reloc[1533]: knd=0, off=13570, siz=4, lab1=.L4389, lab2=, loff=0
+!   reloc[1534]: knd=0, off=13580, siz=4, lab1=.L4396, lab2=, loff=0
+!   reloc[1535]: knd=0, off=13588, siz=4, lab1=.L4399, lab2=, loff=0
+!   reloc[1536]: knd=0, off=13596, siz=4, lab1=.L4402, lab2=, loff=0
+!   reloc[1537]: knd=0, off=13606, siz=4, lab1=.L4406, lab2=, loff=0
+!   reloc[1538]: knd=0, off=13614, siz=4, lab1=.L4408, lab2=, loff=0
+!   reloc[1539]: knd=0, off=13622, siz=4, lab1=.L4409, lab2=, loff=0
+!   reloc[1540]: knd=0, off=13630, siz=4, lab1=.L4411, lab2=, loff=0
+!   reloc[1541]: knd=0, off=13638, siz=4, lab1=.L4412, lab2=, loff=0
+!   reloc[1542]: knd=0, off=13646, siz=4, lab1=.L4414, lab2=, loff=0
+!   reloc[1543]: knd=0, off=13654, siz=4, lab1=.L4415, lab2=, loff=0
+!   reloc[1544]: knd=0, off=13662, siz=4, lab1=.L4417, lab2=, loff=0
+!   reloc[1545]: knd=0, off=13670, siz=4, lab1=.L4418, lab2=, loff=0
+!   reloc[1546]: knd=0, off=13678, siz=4, lab1=.L4420, lab2=, loff=0
+!   reloc[1547]: knd=0, off=13686, siz=4, lab1=.L4421, lab2=, loff=0
+!   reloc[1548]: knd=0, off=13694, siz=4, lab1=.L4423, lab2=, loff=0
+!   reloc[1549]: knd=0, off=13702, siz=4, lab1=.L4424, lab2=, loff=0
+!   reloc[1550]: knd=0, off=13710, siz=4, lab1=.L4427, lab2=, loff=0
+!   reloc[1551]: knd=0, off=13720, siz=4, lab1=.L4428, lab2=, loff=0
+!   reloc[1552]: knd=0, off=13728, siz=4, lab1=.L4429, lab2=, loff=0
+!   reloc[1553]: knd=0, off=13736, siz=4, lab1=.L4430, lab2=, loff=0
+!   reloc[1554]: knd=0, off=13744, siz=4, lab1=.L4432, lab2=, loff=0
+!   reloc[1555]: knd=0, off=13752, siz=4, lab1=.L4434, lab2=, loff=0
+!   reloc[1556]: knd=0, off=13760, siz=4, lab1=.L4435, lab2=, loff=0
+!   reloc[1557]: knd=0, off=13768, siz=4, lab1=.L4437, lab2=, loff=0
+!   reloc[1558]: knd=0, off=13776, siz=4, lab1=.L4438, lab2=, loff=0
+!   reloc[1559]: knd=0, off=13784, siz=4, lab1=.L4440, lab2=, loff=0
+!   reloc[1560]: knd=0, off=13792, siz=4, lab1=.L4441, lab2=, loff=0
+!   reloc[1561]: knd=0, off=13800, siz=4, lab1=.L4443, lab2=, loff=0
+!   reloc[1562]: knd=0, off=13808, siz=4, lab1=.L4444, lab2=, loff=0
+!   reloc[1563]: knd=0, off=13816, siz=4, lab1=.L4446, lab2=, loff=0
+!   reloc[1564]: knd=0, off=13824, siz=4, lab1=.L4447, lab2=, loff=0
+!   reloc[1565]: knd=0, off=13832, siz=4, lab1=.L4449, lab2=, loff=0
+!   reloc[1566]: knd=0, off=13840, siz=4, lab1=.L4450, lab2=, loff=0
+!   reloc[1567]: knd=0, off=13848, siz=4, lab1=.L4452, lab2=, loff=0
+!   reloc[1568]: knd=0, off=13856, siz=4, lab1=.L4453, lab2=, loff=0
+!   reloc[1569]: knd=0, off=13864, siz=4, lab1=.L4455, lab2=, loff=0
+!   reloc[1570]: knd=0, off=13872, siz=4, lab1=.L4456, lab2=, loff=0
+!   reloc[1571]: knd=0, off=13880, siz=4, lab1=.L4458, lab2=, loff=0
+!   reloc[1572]: knd=0, off=13888, siz=4, lab1=.L4459, lab2=, loff=0
+!   reloc[1573]: knd=0, off=13896, siz=4, lab1=.L4461, lab2=, loff=0
+!   reloc[1574]: knd=0, off=13904, siz=4, lab1=.L4462, lab2=, loff=0
+!   reloc[1575]: knd=0, off=13912, siz=4, lab1=.L4464, lab2=, loff=0
+!   reloc[1576]: knd=0, off=13920, siz=4, lab1=.L4465, lab2=, loff=0
+!   reloc[1577]: knd=0, off=13928, siz=4, lab1=.L4467, lab2=, loff=0
+!   reloc[1578]: knd=0, off=13936, siz=4, lab1=.L4468, lab2=, loff=0
+!   reloc[1579]: knd=0, off=13944, siz=4, lab1=.L4470, lab2=, loff=0
+!   reloc[1580]: knd=0, off=13952, siz=4, lab1=.L4471, lab2=, loff=0
+!   reloc[1581]: knd=0, off=13960, siz=4, lab1=.L4473, lab2=, loff=0
+!   reloc[1582]: knd=0, off=13968, siz=4, lab1=.L4474, lab2=, loff=0
+!   reloc[1583]: knd=0, off=13976, siz=4, lab1=.L4476, lab2=, loff=0
+!   reloc[1584]: knd=0, off=13984, siz=4, lab1=.L4477, lab2=, loff=0
+!   reloc[1585]: knd=0, off=13992, siz=4, lab1=.L4479, lab2=, loff=0
+!   reloc[1586]: knd=0, off=14000, siz=4, lab1=.L4480, lab2=, loff=0
+!   reloc[1587]: knd=0, off=14008, siz=4, lab1=.L4482, lab2=, loff=0
+!   reloc[1588]: knd=0, off=14016, siz=4, lab1=.L4483, lab2=, loff=0
+!   reloc[1589]: knd=0, off=14024, siz=4, lab1=.L4485, lab2=, loff=0
+!   reloc[1590]: knd=0, off=14032, siz=4, lab1=.L4486, lab2=, loff=0
+!   reloc[1591]: knd=0, off=14040, siz=4, lab1=.L4488, lab2=, loff=0
+!   reloc[1592]: knd=0, off=14048, siz=4, lab1=.L4489, lab2=, loff=0
+!   reloc[1593]: knd=0, off=14056, siz=4, lab1=.L4492, lab2=, loff=0
+!   reloc[1594]: knd=0, off=14066, siz=4, lab1=.L4493, lab2=, loff=0
+!   reloc[1595]: knd=0, off=14074, siz=4, lab1=.L4494, lab2=, loff=0
+!   reloc[1596]: knd=0, off=14082, siz=4, lab1=.L4495, lab2=, loff=0
+!   reloc[1597]: knd=0, off=14090, siz=4, lab1=.L4496, lab2=, loff=0
+!   reloc[1598]: knd=0, off=14098, siz=4, lab1=.L4498, lab2=, loff=0
+!   reloc[1599]: knd=0, off=14106, siz=4, lab1=.L4501, lab2=, loff=0
+!   reloc[1600]: knd=0, off=14116, siz=4, lab1=.L4502, lab2=, loff=0
+!   reloc[1601]: knd=0, off=14124, siz=4, lab1=.L4503, lab2=, loff=0
+!   reloc[1602]: knd=0, off=14132, siz=4, lab1=.L4504, lab2=, loff=0
+!   reloc[1603]: knd=0, off=14140, siz=4, lab1=.L4505, lab2=, loff=0
+!   reloc[1604]: knd=0, off=14148, siz=4, lab1=.L4507, lab2=, loff=0
+!   reloc[1605]: knd=0, off=14156, siz=4, lab1=.L4510, lab2=, loff=0
+!   reloc[1606]: knd=0, off=14166, siz=4, lab1=.L4511, lab2=, loff=0
+!   reloc[1607]: knd=0, off=14174, siz=4, lab1=.L4512, lab2=, loff=0
+!   reloc[1608]: knd=0, off=14182, siz=4, lab1=.L4513, lab2=, loff=0
+!   reloc[1609]: knd=0, off=14190, siz=4, lab1=.L4514, lab2=, loff=0
+!   reloc[1610]: knd=0, off=14198, siz=4, lab1=.L4516, lab2=, loff=0
+!   reloc[1611]: knd=0, off=14206, siz=4, lab1=.L4518, lab2=, loff=0
+!   reloc[1612]: knd=0, off=14216, siz=4, lab1=.L4519, lab2=, loff=0
+!   reloc[1613]: knd=0, off=14224, siz=4, lab1=.L4521, lab2=, loff=0
+!   reloc[1614]: knd=0, off=14234, siz=4, lab1=.L4522, lab2=, loff=0
+!   reloc[1615]: knd=0, off=14242, siz=4, lab1=.L4524, lab2=, loff=0
+!   reloc[1616]: knd=0, off=14252, siz=4, lab1=.L4525, lab2=, loff=0
+!   reloc[1617]: knd=0, off=14260, siz=4, lab1=.L4527, lab2=, loff=0
+!   reloc[1618]: knd=0, off=14270, siz=4, lab1=.L4528, lab2=, loff=0
+!   reloc[1619]: knd=0, off=14278, siz=4, lab1=.L4530, lab2=, loff=0
+!   reloc[1620]: knd=0, off=14288, siz=4, lab1=.L4531, lab2=, loff=0
+!   reloc[1621]: knd=0, off=14296, siz=4, lab1=.L4533, lab2=, loff=0
+!   reloc[1622]: knd=0, off=14306, siz=4, lab1=.L4534, lab2=, loff=0
+!   reloc[1623]: knd=0, off=14314, siz=4, lab1=.L4536, lab2=, loff=0
+!   reloc[1624]: knd=0, off=14322, siz=4, lab1=.L4537, lab2=, loff=0
+!   reloc[1625]: knd=0, off=14330, siz=4, lab1=.L4539, lab2=, loff=0
+!   reloc[1626]: knd=0, off=14340, siz=4, lab1=.L4540, lab2=, loff=0
+!   reloc[1627]: knd=0, off=14348, siz=4, lab1=.L4542, lab2=, loff=0
+!   reloc[1628]: knd=0, off=14356, siz=4, lab1=.L4543, lab2=, loff=0
+!   reloc[1629]: knd=0, off=14364, siz=4, lab1=.L4545, lab2=, loff=0
+!   reloc[1630]: knd=0, off=14372, siz=4, lab1=.L4546, lab2=, loff=0
+!   reloc[1631]: knd=0, off=14380, siz=4, lab1=.L4548, lab2=, loff=0
+!   reloc[1632]: knd=0, off=14388, siz=4, lab1=.L4549, lab2=, loff=0
+!   reloc[1633]: knd=0, off=14396, siz=4, lab1=.L4552, lab2=, loff=0
+!   reloc[1634]: knd=0, off=14406, siz=4, lab1=.L4554, lab2=, loff=0
+!   reloc[1635]: knd=0, off=14414, siz=4, lab1=.L4556, lab2=, loff=0
+!   reloc[1636]: knd=0, off=14422, siz=4, lab1=.L4559, lab2=, loff=0
+!   reloc[1637]: knd=0, off=14433, siz=4, lab1=.L4564, lab2=, loff=0
+!   reloc[1638]: knd=0, off=14444, siz=4, lab1=.L4568, lab2=, loff=0
+!   reloc[1639]: knd=0, off=14452, siz=4, lab1=.L4574, lab2=, loff=0
+!   reloc[1640]: knd=0, off=14463, siz=4, lab1=.L4577, lab2=, loff=0
+!   reloc[1641]: knd=0, off=14474, siz=4, lab1=.L4578, lab2=, loff=0
+!   reloc[1642]: knd=0, off=14487, siz=4, lab1=gl_IsList, lab2=, loff=0
+!   reloc[1643]: knd=0, off=14494, siz=4, lab1=.L4587, lab2=, loff=0
+!   reloc[1644]: knd=0, off=14506, siz=4, lab1=.L4592, lab2=, loff=0
+!   reloc[1645]: knd=0, off=14514, siz=4, lab1=.L4597, lab2=, loff=0
+!   reloc[1646]: knd=0, off=14524, siz=4, lab1=.L4601, lab2=, loff=0
+!   reloc[1647]: knd=0, off=14537, siz=4, lab1=gl_DeleteLists, lab2=, loff=0
+!   reloc[1648]: knd=0, off=14544, siz=4, lab1=.L4610, lab2=, loff=0
+!   reloc[1649]: knd=0, off=14556, siz=4, lab1=.L4614, lab2=, loff=0
+!   reloc[1650]: knd=0, off=14564, siz=4, lab1=.L4616, lab2=, loff=0
+!   reloc[1651]: knd=0, off=14572, siz=4, lab1=.L4622, lab2=, loff=0
+!   reloc[1652]: knd=0, off=14580, siz=4, lab1=.L4626, lab2=, loff=0
+!   reloc[1653]: knd=0, off=14588, siz=4, lab1=.L4628, lab2=, loff=0
+!   reloc[1654]: knd=0, off=14596, siz=4, lab1=.L4633, lab2=, loff=0
+!   reloc[1655]: knd=0, off=14604, siz=4, lab1=.L4640, lab2=, loff=0
+!   reloc[1656]: knd=0, off=14612, siz=4, lab1=.L4643, lab2=, loff=0
+!   reloc[1657]: knd=0, off=14620, siz=4, lab1=.L4646, lab2=, loff=0
+!   reloc[1658]: knd=0, off=14635, siz=4, lab1=gl_GenLists, lab2=, loff=0
+!   reloc[1659]: knd=0, off=14642, siz=4, lab1=.L4655, lab2=, loff=0
+!   reloc[1660]: knd=0, off=14654, siz=4, lab1=.L4659, lab2=, loff=0
+!   reloc[1661]: knd=0, off=14662, siz=4, lab1=.L4661, lab2=, loff=0
+!   reloc[1662]: knd=0, off=14670, siz=4, lab1=.L4667, lab2=, loff=0
+!   reloc[1663]: knd=0, off=14678, siz=4, lab1=.L4671, lab2=, loff=0
+!   reloc[1664]: knd=0, off=14686, siz=4, lab1=.L4673, lab2=, loff=0
+!   reloc[1665]: knd=0, off=14694, siz=4, lab1=.L4679, lab2=, loff=0
+!   reloc[1666]: knd=0, off=14702, siz=4, lab1=.L4683, lab2=, loff=0
+!   reloc[1667]: knd=0, off=14710, siz=4, lab1=.L4687, lab2=, loff=0
+!   reloc[1668]: knd=0, off=14720, siz=4, lab1=.L4690, lab2=, loff=0
+!   reloc[1669]: knd=0, off=14728, siz=4, lab1=.L4695, lab2=, loff=0
+!   reloc[1670]: knd=0, off=14738, siz=4, lab1=.L4702, lab2=, loff=0
+!   reloc[1671]: knd=0, off=14746, siz=4, lab1=.L4705, lab2=, loff=0
+!   reloc[1672]: knd=0, off=14754, siz=4, lab1=.L4711, lab2=, loff=0
+!   reloc[1673]: knd=0, off=14764, siz=4, lab1=.L4712, lab2=, loff=0
+!   reloc[1674]: knd=0, off=14777, siz=4, lab1=gl_NewList, lab2=, loff=0
+!   reloc[1675]: knd=0, off=14784, siz=4, lab1=.L4721, lab2=, loff=0
+!   reloc[1676]: knd=0, off=14796, siz=4, lab1=.L4725, lab2=, loff=0
+!   reloc[1677]: knd=0, off=14804, siz=4, lab1=.L4727, lab2=, loff=0
+!   reloc[1678]: knd=0, off=14812, siz=4, lab1=.L4733, lab2=, loff=0
+!   reloc[1679]: knd=0, off=14820, siz=4, lab1=.L4737, lab2=, loff=0
+!   reloc[1680]: knd=0, off=14828, siz=4, lab1=.L4739, lab2=, loff=0
+!   reloc[1681]: knd=0, off=14836, siz=4, lab1=.L4745, lab2=, loff=0
+!   reloc[1682]: knd=0, off=14844, siz=4, lab1=.L4750, lab2=, loff=0
+!   reloc[1683]: knd=0, off=14852, siz=4, lab1=.L4752, lab2=, loff=0
+!   reloc[1684]: knd=0, off=14860, siz=4, lab1=.L4758, lab2=, loff=0
+!   reloc[1685]: knd=0, off=14868, siz=4, lab1=.L4762, lab2=, loff=0
+!   reloc[1686]: knd=0, off=14876, siz=4, lab1=.L4764, lab2=, loff=0
+!   reloc[1687]: knd=0, off=14884, siz=4, lab1=.L4768, lab2=, loff=0
+!   reloc[1688]: knd=0, off=14894, siz=4, lab1=.L4769, lab2=, loff=0
+!   reloc[1689]: knd=0, off=14902, siz=4, lab1=.L4770, lab2=, loff=0
+!   reloc[1690]: knd=0, off=14910, siz=4, lab1=.L4771, lab2=, loff=0
+!   reloc[1691]: knd=0, off=14918, siz=4, lab1=.L4774, lab2=, loff=0
+!   reloc[1692]: knd=0, off=14926, siz=4, lab1=.L4778, lab2=, loff=0
+!   reloc[1693]: knd=0, off=14934, siz=4, lab1=.L4784, lab2=, loff=0
+!   reloc[1694]: knd=0, off=14944, siz=4, lab1=.L4788, lab2=, loff=0
+!   reloc[1695]: knd=0, off=14954, siz=4, lab1=.L4789, lab2=, loff=0
+!   reloc[1696]: knd=0, off=14967, siz=4, lab1=gl_EndList, lab2=, loff=0
+!   reloc[1697]: knd=0, off=14974, siz=4, lab1=.L4798, lab2=, loff=0
+!   reloc[1698]: knd=0, off=14986, siz=4, lab1=.L4802, lab2=, loff=0
+!   reloc[1699]: knd=0, off=14994, siz=4, lab1=.L4804, lab2=, loff=0
+!   reloc[1700]: knd=0, off=15002, siz=4, lab1=.L4808, lab2=, loff=0
+!   reloc[1701]: knd=0, off=15012, siz=4, lab1=.L4809, lab2=, loff=0
+!   reloc[1702]: knd=0, off=15022, siz=4, lab1=.L4810, lab2=, loff=0
+!   reloc[1703]: knd=0, off=15030, siz=4, lab1=.L4811, lab2=, loff=0
+!   reloc[1704]: knd=0, off=15038, siz=4, lab1=.L4812, lab2=, loff=0
+!   reloc[1705]: knd=0, off=15046, siz=4, lab1=.L4813, lab2=, loff=0
+!   reloc[1706]: knd=0, off=15054, siz=4, lab1=.L4814, lab2=, loff=0
+!   reloc[1707]: knd=0, off=15062, siz=4, lab1=.L4815, lab2=, loff=0
+!   reloc[1708]: knd=0, off=15070, siz=4, lab1=.L4816, lab2=, loff=0
+!   reloc[1709]: knd=0, off=15083, siz=4, lab1=gl_CallList, lab2=, loff=0
+!   reloc[1710]: knd=0, off=15090, siz=4, lab1=.L4823, lab2=, loff=0
+!   reloc[1711]: knd=0, off=15102, siz=4, lab1=.L4824, lab2=, loff=0
+!   reloc[1712]: knd=0, off=15110, siz=4, lab1=.L4825, lab2=, loff=0
+!   reloc[1713]: knd=0, off=15118, siz=4, lab1=.L4826, lab2=, loff=0
+!   reloc[1714]: knd=0, off=15126, siz=4, lab1=.L4827, lab2=, loff=0
+!   reloc[1715]: knd=0, off=15139, siz=4, lab1=gl_CallLists, lab2=, loff=0
+!   reloc[1716]: knd=0, off=15146, siz=4, lab1=.L4834, lab2=, loff=0
+!   reloc[1717]: knd=0, off=15158, siz=4, lab1=.L4835, lab2=, loff=0
+!   reloc[1718]: knd=0, off=15166, siz=4, lab1=.L4837, lab2=, loff=0
+!   reloc[1719]: knd=0, off=15174, siz=4, lab1=.L4844, lab2=, loff=0
+!   reloc[1720]: knd=0, off=15182, siz=4, lab1=.L4845, lab2=, loff=0
+!   reloc[1721]: knd=0, off=15190, siz=4, lab1=.L4848, lab2=, loff=0
+!   reloc[1722]: knd=0, off=15200, siz=4, lab1=.L4851, lab2=, loff=0
+!   reloc[1723]: knd=0, off=15210, siz=4, lab1=.L4852, lab2=, loff=0
+!   reloc[1724]: knd=0, off=15223, siz=4, lab1=gl_ListBase, lab2=, loff=0
+!   reloc[1725]: knd=0, off=15230, siz=4, lab1=.L4861, lab2=, loff=0
+!   reloc[1726]: knd=0, off=15242, siz=4, lab1=.L4865, lab2=, loff=0
+!   reloc[1727]: knd=0, off=15250, siz=4, lab1=.L4867, lab2=, loff=0
+!   reloc[1728]: knd=0, off=15258, siz=4, lab1=.L4871, lab2=, loff=0
+!   reloc[1729]: knd=0, off=15266, siz=4, lab1=.L4872, lab2=, loff=0
+!   reloc[1730]: knd=0, off=15279, siz=4, lab1=enum_string, lab2=, loff=0
+!   reloc[1731]: knd=0, off=15286, siz=4, lab1=.L4882, lab2=, loff=0
+!   reloc[1732]: knd=0, off=15298, siz=4, lab1=.L4886, lab2=, loff=0
+!   reloc[1733]: knd=0, off=15306, siz=4, lab1=.L4889, lab2=, loff=0
+!   reloc[1734]: knd=0, off=15314, siz=4, lab1=.L4892, lab2=, loff=0
+!   reloc[1735]: knd=0, off=15322, siz=4, lab1=.L4895, lab2=, loff=0
+!   reloc[1736]: knd=0, off=15330, siz=4, lab1=.L4898, lab2=, loff=0
+!   reloc[1737]: knd=0, off=15338, siz=4, lab1=.L4901, lab2=, loff=0
+!   reloc[1738]: knd=0, off=15346, siz=4, lab1=.L4904, lab2=, loff=0
+!   reloc[1739]: knd=0, off=15354, siz=4, lab1=.L4907, lab2=, loff=0
+!   reloc[1740]: knd=0, off=15362, siz=4, lab1=.L4910, lab2=, loff=0
+!   reloc[1741]: knd=0, off=15370, siz=4, lab1=.L4913, lab2=, loff=0
+!   reloc[1742]: knd=0, off=15378, siz=4, lab1=.L4916, lab2=, loff=0
+!   reloc[1743]: knd=0, off=15386, siz=4, lab1=.L4919, lab2=, loff=0
+!   reloc[1744]: knd=0, off=15394, siz=4, lab1=.L4922, lab2=, loff=0
+!   reloc[1745]: knd=0, off=15402, siz=4, lab1=.L4925, lab2=, loff=0
+!   reloc[1746]: knd=0, off=15410, siz=4, lab1=.L4928, lab2=, loff=0
+!   reloc[1747]: knd=0, off=15418, siz=4, lab1=.L4931, lab2=, loff=0
+!   reloc[1748]: knd=0, off=15426, siz=4, lab1=.L4934, lab2=, loff=0
+!   reloc[1749]: knd=0, off=15434, siz=4, lab1=.L4937, lab2=, loff=0
+!   reloc[1750]: knd=0, off=15442, siz=4, lab1=.L4939, lab2=, loff=0
+!   reloc[1751]: knd=0, off=15450, siz=4, lab1=.L4942, lab2=, loff=0
+!   reloc[1752]: knd=0, off=15460, siz=4, lab1=.L4945, lab2=, loff=0
+!   reloc[1753]: knd=0, off=15475, siz=4, lab1=print_list, lab2=, loff=0
+!   reloc[1754]: knd=0, off=15482, siz=4, lab1=.L4954, lab2=, loff=0
+!   reloc[1755]: knd=0, off=15494, siz=4, lab1=.L4958, lab2=, loff=0
+!   reloc[1756]: knd=0, off=15502, siz=4, lab1=.L4960, lab2=, loff=0
+!   reloc[1757]: knd=0, off=15510, siz=4, lab1=.L4964, lab2=, loff=0
+!   reloc[1758]: knd=0, off=15520, siz=4, lab1=.L4965, lab2=, loff=0
+!   reloc[1759]: knd=0, off=15528, siz=4, lab1=.L4967, lab2=, loff=0
+!   reloc[1760]: knd=0, off=15536, siz=4, lab1=.L4975, lab2=, loff=0
+!   reloc[1761]: knd=0, off=15544, siz=4, lab1=.L4979, lab2=, loff=0
+!   reloc[1762]: knd=0, off=15552, siz=4, lab1=.L4983, lab2=, loff=0
+!   reloc[1763]: knd=0, off=15560, siz=4, lab1=.L4987, lab2=, loff=0
+!   reloc[1764]: knd=0, off=15568, siz=4, lab1=.L4989, lab2=, loff=0
+!   reloc[1765]: knd=0, off=15576, siz=4, lab1=.L4991, lab2=, loff=0
+!   reloc[1766]: knd=0, off=15584, siz=4, lab1=.L4993, lab2=, loff=0
+!   reloc[1767]: knd=0, off=15592, siz=4, lab1=.L4995, lab2=, loff=0
+!   reloc[1768]: knd=0, off=15602, siz=4, lab1=.L4997, lab2=, loff=0
+!   reloc[1769]: knd=0, off=15610, siz=4, lab1=.L4999, lab2=, loff=0
+!   reloc[1770]: knd=0, off=15618, siz=4, lab1=.L5001, lab2=, loff=0
+!   reloc[1771]: knd=0, off=15626, siz=4, lab1=.L5003, lab2=, loff=0
+!   reloc[1772]: knd=0, off=15636, siz=4, lab1=.L5005, lab2=, loff=0
+!   reloc[1773]: knd=0, off=15644, siz=4, lab1=.L5007, lab2=, loff=0
+!   reloc[1774]: knd=0, off=15652, siz=4, lab1=.L5009, lab2=, loff=0
+!   reloc[1775]: knd=0, off=15660, siz=4, lab1=.L5011, lab2=, loff=0
+!   reloc[1776]: knd=0, off=15668, siz=4, lab1=.L5013, lab2=, loff=0
+!   reloc[1777]: knd=0, off=15676, siz=4, lab1=.L5015, lab2=, loff=0
+!   reloc[1778]: knd=0, off=15686, siz=4, lab1=.L5017, lab2=, loff=0
+!   reloc[1779]: knd=0, off=15694, siz=4, lab1=.L5019, lab2=, loff=0
+!   reloc[1780]: knd=0, off=15702, siz=4, lab1=.L5021, lab2=, loff=0
+!   reloc[1781]: knd=0, off=15710, siz=4, lab1=.L5023, lab2=, loff=0
+!   reloc[1782]: knd=0, off=15718, siz=4, lab1=.L5025, lab2=, loff=0
+!   reloc[1783]: knd=0, off=15726, siz=4, lab1=.L5027, lab2=, loff=0
+!   reloc[1784]: knd=0, off=15734, siz=4, lab1=.L5029, lab2=, loff=0
+!   reloc[1785]: knd=0, off=15742, siz=4, lab1=.L5031, lab2=, loff=0
+!   reloc[1786]: knd=0, off=15752, siz=4, lab1=.L5033, lab2=, loff=0
+!   reloc[1787]: knd=0, off=15760, siz=4, lab1=.L5035, lab2=, loff=0
+!   reloc[1788]: knd=0, off=15768, siz=4, lab1=.L5037, lab2=, loff=0
+!   reloc[1789]: knd=0, off=15776, siz=4, lab1=.L5039, lab2=, loff=0
+!   reloc[1790]: knd=0, off=15784, siz=4, lab1=.L5041, lab2=, loff=0
+!   reloc[1791]: knd=0, off=15792, siz=4, lab1=.L5043, lab2=, loff=0
+!   reloc[1792]: knd=0, off=15800, siz=4, lab1=.L5045, lab2=, loff=0
+!   reloc[1793]: knd=0, off=15808, siz=4, lab1=.L5047, lab2=, loff=0
+!   reloc[1794]: knd=0, off=15816, siz=4, lab1=.L5049, lab2=, loff=0
+!   reloc[1795]: knd=0, off=15824, siz=4, lab1=.L5051, lab2=, loff=0
+!   reloc[1796]: knd=0, off=15832, siz=4, lab1=.L5053, lab2=, loff=0
+!   reloc[1797]: knd=0, off=15840, siz=4, lab1=.L5055, lab2=, loff=0
+!   reloc[1798]: knd=0, off=15848, siz=4, lab1=.L5057, lab2=, loff=0
+!   reloc[1799]: knd=0, off=15856, siz=4, lab1=.L5059, lab2=, loff=0
+!   reloc[1800]: knd=0, off=15866, siz=4, lab1=.L5061, lab2=, loff=0
+!   reloc[1801]: knd=0, off=15874, siz=4, lab1=.L5063, lab2=, loff=0
+!   reloc[1802]: knd=0, off=15882, siz=4, lab1=.L5065, lab2=, loff=0
+!   reloc[1803]: knd=0, off=15890, siz=4, lab1=.L5067, lab2=, loff=0
+!   reloc[1804]: knd=0, off=15898, siz=4, lab1=.L5069, lab2=, loff=0
+!   reloc[1805]: knd=0, off=15906, siz=4, lab1=.L5071, lab2=, loff=0
+!   reloc[1806]: knd=0, off=15914, siz=4, lab1=.L5073, lab2=, loff=0
+!   reloc[1807]: knd=0, off=15922, siz=4, lab1=.L5075, lab2=, loff=0
+!   reloc[1808]: knd=0, off=15930, siz=4, lab1=.L5077, lab2=, loff=0
+!   reloc[1809]: knd=0, off=15938, siz=4, lab1=.L5079, lab2=, loff=0
+!   reloc[1810]: knd=0, off=15948, siz=4, lab1=.L5081, lab2=, loff=0
+!   reloc[1811]: knd=0, off=15956, siz=4, lab1=.L5083, lab2=, loff=0
+!   reloc[1812]: knd=0, off=15964, siz=4, lab1=.L5085, lab2=, loff=0
+!   reloc[1813]: knd=0, off=15972, siz=4, lab1=.L5087, lab2=, loff=0
+!   reloc[1814]: knd=0, off=15980, siz=4, lab1=.L5089, lab2=, loff=0
+!   reloc[1815]: knd=0, off=15988, siz=4, lab1=.L5091, lab2=, loff=0
+!   reloc[1816]: knd=0, off=15996, siz=4, lab1=.L5093, lab2=, loff=0
+!   reloc[1817]: knd=0, off=16004, siz=4, lab1=.L5095, lab2=, loff=0
+!   reloc[1818]: knd=0, off=16012, siz=4, lab1=.L5097, lab2=, loff=0
+!   reloc[1819]: knd=0, off=16020, siz=4, lab1=.L5099, lab2=, loff=0
+!   reloc[1820]: knd=0, off=16028, siz=4, lab1=.L5101, lab2=, loff=0
+!   reloc[1821]: knd=0, off=16036, siz=4, lab1=.L5103, lab2=, loff=0
+!   reloc[1822]: knd=0, off=16044, siz=4, lab1=.L5105, lab2=, loff=0
+!   reloc[1823]: knd=0, off=16052, siz=4, lab1=.L5107, lab2=, loff=0
+!   reloc[1824]: knd=0, off=16060, siz=4, lab1=.L5109, lab2=, loff=0
+!   reloc[1825]: knd=0, off=16068, siz=4, lab1=.L5111, lab2=, loff=0
+!   reloc[1826]: knd=0, off=16076, siz=4, lab1=.L5113, lab2=, loff=0
+!   reloc[1827]: knd=0, off=16084, siz=4, lab1=.L5115, lab2=, loff=0
+!   reloc[1828]: knd=0, off=16092, siz=4, lab1=.L5117, lab2=, loff=0
+!   reloc[1829]: knd=0, off=16100, siz=4, lab1=.L5119, lab2=, loff=0
+!   reloc[1830]: knd=0, off=16108, siz=4, lab1=.L5121, lab2=, loff=0
+!   reloc[1831]: knd=0, off=16116, siz=4, lab1=.L5123, lab2=, loff=0
+!   reloc[1832]: knd=0, off=16124, siz=4, lab1=.L5125, lab2=, loff=0
+!   reloc[1833]: knd=0, off=16132, siz=4, lab1=.L5127, lab2=, loff=0
+!   reloc[1834]: knd=0, off=16140, siz=4, lab1=.L5129, lab2=, loff=0
+!   reloc[1835]: knd=0, off=16148, siz=4, lab1=.L5131, lab2=, loff=0
+!   reloc[1836]: knd=0, off=16156, siz=4, lab1=.L5133, lab2=, loff=0
+!   reloc[1837]: knd=0, off=16164, siz=4, lab1=.L5135, lab2=, loff=0
+!   reloc[1838]: knd=0, off=16172, siz=4, lab1=.L5137, lab2=, loff=0
+!   reloc[1839]: knd=0, off=16180, siz=4, lab1=.L5139, lab2=, loff=0
+!   reloc[1840]: knd=0, off=16188, siz=4, lab1=.L5141, lab2=, loff=0
+!   reloc[1841]: knd=0, off=16196, siz=4, lab1=.L5143, lab2=, loff=0
+!   reloc[1842]: knd=0, off=16206, siz=4, lab1=.L5145, lab2=, loff=0
+!   reloc[1843]: knd=0, off=16214, siz=4, lab1=.L5146, lab2=, loff=0
+!   reloc[1844]: knd=0, off=16222, siz=4, lab1=.L5148, lab2=, loff=0
+!   reloc[1845]: knd=0, off=16230, siz=4, lab1=.L5150, lab2=, loff=0
+!   reloc[1846]: knd=0, off=16238, siz=4, lab1=.L5151, lab2=, loff=0
+!   reloc[1847]: knd=0, off=16246, siz=4, lab1=.L5155, lab2=, loff=0
+!   reloc[1848]: knd=0, off=16254, siz=4, lab1=.L5161, lab2=, loff=0
+!   reloc[1849]: knd=0, off=16262, siz=4, lab1=.L5163, lab2=, loff=0
+!   reloc[1850]: knd=0, off=16270, siz=4, lab1=.L5168, lab2=, loff=0
+!   reloc[1851]: knd=0, off=16280, siz=4, lab1=.L5175, lab2=, loff=0
+!   reloc[1852]: knd=0, off=16291, siz=4, lab1=.L5180, lab2=, loff=0
+!   reloc[1853]: knd=0, off=16302, siz=4, lab1=.L5184, lab2=, loff=0
+!   reloc[1854]: knd=0, off=16310, siz=4, lab1=.L5190, lab2=, loff=0
+!   reloc[1855]: knd=0, off=16321, siz=4, lab1=.L5193, lab2=, loff=0
+!   reloc[1856]: knd=0, off=16337, siz=4, lab1=mesa_print_display_list, lab2=, loff=0
+!   reloc[1857]: knd=0, off=16344, siz=4, lab1=.L5200, lab2=, loff=0
+!   reloc[1858]: knd=0, off=16356, siz=4, lab1=.L5201, lab2=, loff=0
+!   reloc[1859]: knd=0, off=16364, siz=4, lab1=.L5202, lab2=, loff=0
+	.section ".debug_line"
+	.byte 0x00,0x00,0x3f,0xf2,0x00,0x02,0x00,0x00
+	.byte 0x00,0xb5,0x04,0x00,0xff,0x04,0x0a,0x00
+	.byte 0x01,0x01,0x01,0x01,0x00,0x00,0x00,0x01
+	.byte 0x2f,0x68,0x6f,0x6d,0x65,0x2f,0x66,0x61
+	.byte 0x63,0x75,0x6c,0x74,0x79,0x2f,0x6b,0x6f
+	.byte 0x70,0x70,0x65,0x6c,0x2f,0x74,0x65,0x61
+	.byte 0x63,0x68,0x2f,0x67,0x70,0x63,0x6f,0x6d
+	.byte 0x2f,0x67,0x70,0x75,0x70,0x2f,0x72,0x73
+	.byte 0x69,0x6d,0x2f,0x6d,0x65,0x73,0x61,0x2f
+	.byte 0x6e,0x6f,0x2d,0x6f,0x70,0x74,0x00,0x47
+	.byte 0x4c,0x00,0x2f,0x75,0x73,0x72,0x2f,0x69
+	.byte 0x6e,0x63,0x6c,0x75,0x64,0x65,0x00,0x2f
+	.byte 0x75,0x73,0x72,0x2f,0x69,0x6e,0x63,0x6c
+	.byte 0x75,0x64,0x65,0x2f,0x69,0x73,0x6f,0x00
+	.byte 0x00,0x64,0x6c,0x69,0x73,0x74,0x2e,0x63
+	.byte 0x00,0x01,0x00,0x00,0x67,0x6c,0x2e,0x68
+	.byte 0x00,0x02,0x00,0x00,0x74,0x79,0x70,0x65
+	.byte 0x73,0x2e,0x68,0x00,0x01,0x00,0x00,0x64
+	.byte 0x64,0x2e,0x68,0x00,0x01,0x00,0x00,0x76
+	.byte 0x62,0x2e,0x68,0x00,0x01,0x00,0x00,0x73
+	.byte 0x74,0x64,0x69,0x6f,0x5f,0x69,0x6d,0x70
+	.byte 0x6c,0x2e,0x68,0x00,0x03,0x00,0x00,0x73
+	.byte 0x74,0x64,0x69,0x6f,0x5f,0x69,0x73,0x6f
+	.byte 0x2e,0x68,0x00,0x04,0x00,0x00,0x00,0x00
+	.byte 0x05,0x02
+	.uaword alloc_instruction
+	.byte 0x00,0x05,0x02
+	.uaword .L16
+	.byte 0x06,0x03,0x89,0x03,0x01,0x00,0x05,0x02
+	.uaword .L17
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L26
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L30
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L31
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L32
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L35
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L39
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L41
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L45
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L46
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L47
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L51
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L52
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L53
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L54
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L55
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword make_empty_list
+	.byte 0x00,0x05,0x02
+	.uaword .L62
+	.byte 0x06,0x03,0xab,0x03,0x01,0x00,0x05,0x02
+	.uaword .L63
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L64
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L65
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_destroy_list
+	.byte 0x00,0x05,0x02
+	.uaword .L72
+	.byte 0x06,0x03,0xbb,0x03,0x01,0x00,0x05,0x02
+	.uaword .L73
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L74
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L82
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L89
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L93
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L94
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L95
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L97
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L98
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L99
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L101
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L102
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L103
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L105
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L106
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L107
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L109
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L110
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L111
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L113
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L114
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L115
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L117
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L118
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L119
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L121
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L122
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L123
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L125
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L126
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L127
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L130
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L131
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L133
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L136
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L137
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L139
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L141
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L142
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L143
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L144
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L146
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L147
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L148
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L150
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L151
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L154
+	.byte 0x03,0x40,0x01,0x00,0x05,0x02
+	.uaword .L159
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L162
+	.byte 0x03,0xc5,0x00,0x01,0x00,0x05,0x02
+	.uaword .L163
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword translate_id
+	.byte 0x00,0x05,0x02
+	.uaword .L173
+	.byte 0x06,0x03,0x96,0x04,0x01,0x00,0x05,0x02
+	.uaword .L177
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L178
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L180
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L181
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L183
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L184
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L186
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L187
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L189
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L190
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L192
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L193
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L195
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L196
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L198
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L199
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L201
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L202
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L204
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L205
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L207
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L210
+	.byte 0x03,0x5b,0x01,0x00,0x05,0x02
+	.uaword .L213
+	.byte 0x03,0x27,0x01,0x02,0x01,0x00,0x01,0x01
+	.byte 0x00,0x05,0x02
+	.uaword gl_init_lists
+	.byte 0x00,0x05,0x02
+	.uaword .L223
+	.byte 0x06,0x03,0xca,0x04,0x01,0x00,0x05,0x02
+	.uaword .L227
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L228
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L229
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L230
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L231
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L232
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L233
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L234
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L235
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L236
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L237
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L238
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L239
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L240
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L241
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L242
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L243
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L244
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L245
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L246
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L247
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L248
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L249
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L250
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L251
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L252
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L253
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L254
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L255
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L256
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L257
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L258
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L259
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L260
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L261
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L262
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L263
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L264
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L265
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L266
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L267
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L268
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L269
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L270
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L271
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L272
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L273
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L274
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L275
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L276
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L277
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L278
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L279
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L280
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L281
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L282
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L283
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L284
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L285
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L286
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L287
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L288
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L289
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L290
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L291
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L292
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L293
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L294
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L295
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L296
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L297
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L298
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L299
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L300
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L301
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L302
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L303
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L304
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L305
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L306
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L307
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L308
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L309
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L310
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L311
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L312
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L313
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L314
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L315
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L316
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L317
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L318
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L319
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L320
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L321
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L322
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L323
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L324
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L325
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L326
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L327
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L328
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L329
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L330
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L331
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L332
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L333
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L334
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L335
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L336
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L337
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L338
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L339
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L340
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L341
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L342
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L343
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L347
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L348
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_list_index
+	.byte 0x00,0x05,0x02
+	.uaword .L355
+	.byte 0x06,0x03,0xcd,0x05,0x01,0x00,0x05,0x02
+	.uaword .L356
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Accum
+	.byte 0x00,0x05,0x02
+	.uaword .L363
+	.byte 0x06,0x03,0xd9,0x05,0x01,0x00,0x05,0x02
+	.uaword .L366
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L370
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L371
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L377
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L381
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L385
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_AlphaFunc
+	.byte 0x00,0x05,0x02
+	.uaword .L392
+	.byte 0x06,0x03,0xe6,0x05,0x01,0x00,0x05,0x02
+	.uaword .L395
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L399
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L400
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L406
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L410
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L414
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Begin
+	.byte 0x00,0x05,0x02
+	.uaword .L421
+	.byte 0x06,0x03,0xf3,0x05,0x01,0x00,0x05,0x02
+	.uaword .L424
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L428
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L434
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L438
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L442
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_BindTexture
+	.byte 0x00,0x05,0x02
+	.uaword .L449
+	.byte 0x06,0x03,0xff,0x05,0x01,0x00,0x05,0x02
+	.uaword .L452
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L456
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L457
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L463
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L467
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L471
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Bitmap
+	.byte 0x00,0x05,0x02
+	.uaword .L478
+	.byte 0x06,0x03,0x90,0x06,0x01,0x00,0x05,0x02
+	.uaword .L481
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L485
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L486
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L487
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L488
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L489
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L490
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L491
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L497
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L501
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L505
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_BlendEquation
+	.byte 0x00,0x05,0x02
+	.uaword .L512
+	.byte 0x06,0x03,0xa3,0x06,0x01,0x00,0x05,0x02
+	.uaword .L515
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L519
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L525
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L529
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L533
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_BlendFunc
+	.byte 0x00,0x05,0x02
+	.uaword .L540
+	.byte 0x06,0x03,0xaf,0x06,0x01,0x00,0x05,0x02
+	.uaword .L543
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L547
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L548
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L554
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L558
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L562
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_BlendColor
+	.byte 0x00,0x05,0x02
+	.uaword .L569
+	.byte 0x06,0x03,0xbd,0x06,0x01,0x00,0x05,0x02
+	.uaword .L572
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L576
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L577
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L578
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L579
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L585
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L589
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L593
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CallList
+	.byte 0x00,0x05,0x02
+	.uaword .L600
+	.byte 0x06,0x03,0xcc,0x06,0x01,0x00,0x05,0x02
+	.uaword .L603
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L607
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L613
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L617
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L621
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CallLists
+	.byte 0x00,0x05,0x02
+	.uaword .L629
+	.byte 0x06,0x03,0xdb,0x06,0x01,0x00,0x05,0x02
+	.uaword .L636
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L637
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L640
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L644
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L650
+	.byte 0x03,0x7c,0x01,0x00,0x05,0x02
+	.uaword .L655
+	.byte 0x03,0x07,0x01,0x00,0x05,0x02
+	.uaword .L659
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L663
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Clear
+	.byte 0x00,0x05,0x02
+	.uaword .L670
+	.byte 0x06,0x03,0xea,0x06,0x01,0x00,0x05,0x02
+	.uaword .L673
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L677
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L683
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L687
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L691
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ClearAccum
+	.byte 0x00,0x05,0x02
+	.uaword .L698
+	.byte 0x06,0x03,0xf7,0x06,0x01,0x00,0x05,0x02
+	.uaword .L701
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L705
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L706
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L707
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L708
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L714
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L718
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L722
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ClearColor
+	.byte 0x00,0x05,0x02
+	.uaword .L729
+	.byte 0x06,0x03,0x87,0x07,0x01,0x00,0x05,0x02
+	.uaword .L732
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L736
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L737
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L738
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L739
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L745
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L749
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L753
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ClearDepth
+	.byte 0x00,0x05,0x02
+	.uaword .L760
+	.byte 0x06,0x03,0x96,0x07,0x01,0x00,0x05,0x02
+	.uaword .L763
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L767
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L773
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L777
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L781
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ClearIndex
+	.byte 0x00,0x05,0x02
+	.uaword .L788
+	.byte 0x06,0x03,0xa2,0x07,0x01,0x00,0x05,0x02
+	.uaword .L791
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L795
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L801
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L805
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L809
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ClearStencil
+	.byte 0x00,0x05,0x02
+	.uaword .L816
+	.byte 0x06,0x03,0xae,0x07,0x01,0x00,0x05,0x02
+	.uaword .L819
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L823
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L829
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L833
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L837
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ClipPlane
+	.byte 0x00,0x05,0x02
+	.uaword .L844
+	.byte 0x06,0x03,0xba,0x07,0x01,0x00,0x05,0x02
+	.uaword .L847
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L851
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L852
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L853
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L854
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L855
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L861
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L865
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L869
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Color3f
+	.byte 0x00,0x05,0x02
+	.uaword .L876
+	.byte 0x06,0x03,0xca,0x07,0x01,0x00,0x05,0x02
+	.uaword .L879
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L883
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L884
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L885
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L891
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L895
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L899
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Color3fv
+	.byte 0x00,0x05,0x02
+	.uaword .L906
+	.byte 0x06,0x03,0xd8,0x07,0x01,0x00,0x05,0x02
+	.uaword .L909
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L913
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L914
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L915
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L921
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L925
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L929
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Color4f
+	.byte 0x00,0x05,0x02
+	.uaword .L936
+	.byte 0x06,0x03,0xe7,0x07,0x01,0x00,0x05,0x02
+	.uaword .L939
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L943
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L944
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L945
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L946
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L952
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L956
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L960
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Color4fv
+	.byte 0x00,0x05,0x02
+	.uaword .L967
+	.byte 0x06,0x03,0xf6,0x07,0x01,0x00,0x05,0x02
+	.uaword .L970
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L974
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L975
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L976
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L977
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L983
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L987
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L991
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Color4ub
+	.byte 0x00,0x05,0x02
+	.uaword .L998
+	.byte 0x06,0x03,0x86,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1001
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1005
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1006
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1007
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1008
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1014
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1018
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1022
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Color4ubv
+	.byte 0x00,0x05,0x02
+	.uaword .L1029
+	.byte 0x06,0x03,0x95,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1032
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1036
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1037
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1038
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1039
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1045
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1049
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1053
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ColorMask
+	.byte 0x00,0x05,0x02
+	.uaword .L1060
+	.byte 0x06,0x03,0xa5,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1063
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1067
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1068
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1069
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1070
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1076
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1080
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1084
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ColorMaterial
+	.byte 0x00,0x05,0x02
+	.uaword .L1091
+	.byte 0x06,0x03,0xb4,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1094
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1098
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1099
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1105
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1109
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1113
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ColorTable
+	.byte 0x00,0x05,0x02
+	.uaword .L1120
+	.byte 0x06,0x03,0xc2,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1123
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1127
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1128
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1129
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1132
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1136
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1145
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L1149
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1153
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ColorSubTable
+	.byte 0x00,0x05,0x02
+	.uaword .L1160
+	.byte 0x06,0x03,0xd5,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1163
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1167
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1168
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1169
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1172
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1176
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1185
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L1189
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1193
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CopyPixels
+	.byte 0x00,0x05,0x02
+	.uaword .L1200
+	.byte 0x06,0x03,0xe9,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1203
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1207
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1208
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1209
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1210
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1211
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1217
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1221
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1225
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CopyTexImage1D
+	.byte 0x00,0x05,0x02
+	.uaword .L1232
+	.byte 0x06,0x03,0xfe,0x08,0x01,0x00,0x05,0x02
+	.uaword .L1235
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1239
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1240
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1241
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1242
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1243
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1244
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1245
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1251
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1255
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1259
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CopyTexImage2D
+	.byte 0x00,0x05,0x02
+	.uaword .L1266
+	.byte 0x06,0x03,0x95,0x09,0x01,0x00,0x05,0x02
+	.uaword .L1269
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1273
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1274
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1275
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1276
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1277
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1278
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1279
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1280
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1286
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1290
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1294
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CopyTexSubImage1D
+	.byte 0x00,0x05,0x02
+	.uaword .L1301
+	.byte 0x06,0x03,0xad,0x09,0x01,0x00,0x05,0x02
+	.uaword .L1304
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1308
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1309
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1310
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1311
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1312
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1313
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1319
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1323
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1327
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CopyTexSubImage2D
+	.byte 0x00,0x05,0x02
+	.uaword .L1334
+	.byte 0x06,0x03,0xc2,0x09,0x01,0x00,0x05,0x02
+	.uaword .L1337
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1341
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1342
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1343
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1344
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1345
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1346
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1347
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1348
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1354
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1358
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1362
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CopyTexSubImage3DEXT
+	.byte 0x00,0x05,0x02
+	.uaword .L1369
+	.byte 0x06,0x03,0xda,0x09,0x01,0x00,0x05,0x02
+	.uaword .L1372
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1376
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1377
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1378
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1379
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1380
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1381
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1382
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1383
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1384
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1390
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1394
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1398
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_CullFace
+	.byte 0x00,0x05,0x02
+	.uaword .L1405
+	.byte 0x06,0x03,0xef,0x09,0x01,0x00,0x05,0x02
+	.uaword .L1408
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1412
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1418
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1422
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1426
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_DepthFunc
+	.byte 0x00,0x05,0x02
+	.uaword .L1433
+	.byte 0x06,0x03,0xfb,0x09,0x01,0x00,0x05,0x02
+	.uaword .L1436
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1440
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1446
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1450
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1454
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_DepthMask
+	.byte 0x00,0x05,0x02
+	.uaword .L1461
+	.byte 0x06,0x03,0x87,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1464
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1468
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1474
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1478
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1482
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_DepthRange
+	.byte 0x00,0x05,0x02
+	.uaword .L1489
+	.byte 0x06,0x03,0x93,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1492
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1496
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1497
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1503
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1507
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1511
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Disable
+	.byte 0x00,0x05,0x02
+	.uaword .L1518
+	.byte 0x06,0x03,0xa0,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1521
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1525
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1531
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1535
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1539
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_DrawBuffer
+	.byte 0x00,0x05,0x02
+	.uaword .L1546
+	.byte 0x06,0x03,0xac,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1549
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1553
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1559
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1563
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1567
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_DrawPixels
+	.byte 0x00,0x05,0x02
+	.uaword .L1574
+	.byte 0x06,0x03,0xb9,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1577
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1581
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1582
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1583
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1584
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1585
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1589
+	.byte 0x03,0x07,0x01,0x02,0x01,0x00,0x01,0x01
+	.byte 0x00,0x05,0x02
+	.uaword gl_save_EdgeFlag
+	.byte 0x00,0x05,0x02
+	.uaword .L1596
+	.byte 0x06,0x03,0xcb,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1599
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1603
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1609
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1613
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1617
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Enable
+	.byte 0x00,0x05,0x02
+	.uaword .L1624
+	.byte 0x06,0x03,0xd7,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1627
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1631
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1637
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1641
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1645
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_End
+	.byte 0x00,0x05,0x02
+	.uaword .L1652
+	.byte 0x06,0x03,0xe3,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1655
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1659
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1663
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_EvalCoord1f
+	.byte 0x00,0x05,0x02
+	.uaword .L1670
+	.byte 0x06,0x03,0xec,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1673
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1677
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1683
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1687
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1691
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_EvalCoord2f
+	.byte 0x00,0x05,0x02
+	.uaword .L1698
+	.byte 0x06,0x03,0xf8,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L1701
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1705
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1706
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1712
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1716
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1720
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_EvalMesh1
+	.byte 0x00,0x05,0x02
+	.uaword .L1727
+	.byte 0x06,0x03,0x86,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1730
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1734
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1735
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1736
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1742
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1746
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1750
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_EvalMesh2
+	.byte 0x00,0x05,0x02
+	.uaword .L1757
+	.byte 0x06,0x03,0x95,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1760
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1764
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1765
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1766
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1767
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1768
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1774
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1778
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1782
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_EvalPoint1
+	.byte 0x00,0x05,0x02
+	.uaword .L1789
+	.byte 0x06,0x03,0xa5,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1792
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1796
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1802
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1806
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1810
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_EvalPoint2
+	.byte 0x00,0x05,0x02
+	.uaword .L1817
+	.byte 0x06,0x03,0xb1,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1820
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1824
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1825
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1831
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1835
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1839
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Fogfv
+	.byte 0x00,0x05,0x02
+	.uaword .L1846
+	.byte 0x06,0x03,0xbe,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1849
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1853
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1854
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1855
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1856
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1857
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1863
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1867
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1871
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_FrontFace
+	.byte 0x00,0x05,0x02
+	.uaword .L1878
+	.byte 0x06,0x03,0xce,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1881
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1885
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1891
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1895
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1899
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Frustum
+	.byte 0x00,0x05,0x02
+	.uaword .L1906
+	.byte 0x06,0x03,0xdc,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1909
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1913
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1914
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1915
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1916
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1917
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1918
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1924
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1928
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1932
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Hint
+	.byte 0x00,0x05,0x02
+	.uaword .L1939
+	.byte 0x06,0x03,0xed,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1942
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1946
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1947
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1953
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1957
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1961
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Indexi
+	.byte 0x00,0x05,0x02
+	.uaword .L1968
+	.byte 0x06,0x03,0xfa,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L1971
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1975
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1981
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L1985
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L1989
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Indexf
+	.byte 0x00,0x05,0x02
+	.uaword .L1996
+	.byte 0x06,0x03,0x86,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L1999
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2003
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2009
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2013
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2017
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_IndexMask
+	.byte 0x00,0x05,0x02
+	.uaword .L2024
+	.byte 0x06,0x03,0x92,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2027
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2031
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2037
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2041
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2045
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_InitNames
+	.byte 0x00,0x05,0x02
+	.uaword .L2052
+	.byte 0x06,0x03,0x9e,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2055
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2059
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2063
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Lightfv
+	.byte 0x00,0x05,0x02
+	.uaword .L2070
+	.byte 0x06,0x03,0xa8,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2073
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2076
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2077
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2079
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2086
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2089
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L2097
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L2101
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2105
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LightModelfv
+	.byte 0x00,0x05,0x02
+	.uaword .L2112
+	.byte 0x06,0x03,0xba,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2115
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2119
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2120
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2121
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2122
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2123
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2129
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2133
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2137
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LineStipple
+	.byte 0x00,0x05,0x02
+	.uaword .L2144
+	.byte 0x06,0x03,0xca,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2147
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2151
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2152
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2158
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2162
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2166
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LineWidth
+	.byte 0x00,0x05,0x02
+	.uaword .L2173
+	.byte 0x06,0x03,0xd7,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2176
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2180
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2186
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2190
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2194
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ListBase
+	.byte 0x00,0x05,0x02
+	.uaword .L2201
+	.byte 0x06,0x03,0xe3,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2204
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2208
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2214
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2218
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2222
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LoadIdentity
+	.byte 0x00,0x05,0x02
+	.uaword .L2229
+	.byte 0x06,0x03,0xef,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2232
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2236
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2240
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LoadMatrixf
+	.byte 0x00,0x05,0x02
+	.uaword .L2247
+	.byte 0x06,0x03,0xf8,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L2250
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2255
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2262
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2265
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L2273
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L2277
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2281
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LoadName
+	.byte 0x00,0x05,0x02
+	.uaword .L2288
+	.byte 0x06,0x03,0x87,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2291
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2295
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2301
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2305
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2309
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_LogicOp
+	.byte 0x00,0x05,0x02
+	.uaword .L2316
+	.byte 0x06,0x03,0x93,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2319
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2323
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2329
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2333
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2337
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Map1f
+	.byte 0x00,0x05,0x02
+	.uaword .L2344
+	.byte 0x06,0x03,0xa1,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2347
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2351
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2352
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2353
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2354
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2355
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2356
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2362
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2366
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2370
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Map2f
+	.byte 0x00,0x05,0x02
+	.uaword .L2377
+	.byte 0x06,0x03,0xb5,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2380
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2384
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2385
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2386
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2387
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2388
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2389
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2390
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2391
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2392
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2393
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2399
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2403
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L2407
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_MapGrid1f
+	.byte 0x00,0x05,0x02
+	.uaword .L2414
+	.byte 0x06,0x03,0xcc,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2417
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2421
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2422
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2423
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2429
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2433
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2437
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_MapGrid2f
+	.byte 0x00,0x05,0x02
+	.uaword .L2444
+	.byte 0x06,0x03,0xdc,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2447
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2451
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2452
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2453
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2454
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2455
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2456
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2462
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2466
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2470
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Materialfv
+	.byte 0x00,0x05,0x02
+	.uaword .L2477
+	.byte 0x06,0x03,0xee,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2480
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2484
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2485
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2486
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2487
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2488
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2489
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2495
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2499
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2503
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_MatrixMode
+	.byte 0x00,0x05,0x02
+	.uaword .L2510
+	.byte 0x06,0x03,0xff,0x0d,0x01,0x00,0x05,0x02
+	.uaword .L2513
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2517
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2523
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2527
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2531
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_MultMatrixf
+	.byte 0x00,0x05,0x02
+	.uaword .L2538
+	.byte 0x06,0x03,0x8b,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2541
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2546
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2553
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2556
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L2564
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L2568
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2572
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_NewList
+	.byte 0x00,0x05,0x02
+	.uaword .L2579
+	.byte 0x06,0x03,0x9b,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2581
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Normal3fv
+	.byte 0x00,0x05,0x02
+	.uaword .L2588
+	.byte 0x06,0x03,0xa1,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2591
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2595
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2596
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2597
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2603
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2607
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2611
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Normal3f
+	.byte 0x00,0x05,0x02
+	.uaword .L2618
+	.byte 0x06,0x03,0xaf,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2621
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2625
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2626
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2627
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2633
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2637
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2641
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Ortho
+	.byte 0x00,0x05,0x02
+	.uaword .L2648
+	.byte 0x06,0x03,0xbf,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2651
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2655
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2656
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2657
+	.byte 0x0c,0x00,0x05
+	.byte 0x02
+	.uaword .L2658
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2659
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2660
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2666
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2670
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2674
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PixelMapfv
+	.byte 0x00,0x05,0x02
+	.uaword .L2681
+	.byte 0x06,0x03,0xd1,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2684
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2688
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2689
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2690
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2691
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2697
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2701
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2705
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PixelTransferf
+	.byte 0x00,0x05,0x02
+	.uaword .L2712
+	.byte 0x06,0x03,0xe0,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2715
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2719
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2720
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2726
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2730
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2734
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PixelZoom
+	.byte 0x00,0x05,0x02
+	.uaword .L2741
+	.byte 0x06,0x03,0xed,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2744
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2748
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2749
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2755
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2759
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2763
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PointParameterfvEXT
+	.byte 0x00,0x05,0x02
+	.uaword .L2770
+	.byte 0x06,0x03,0xfb,0x0e,0x01,0x00,0x05,0x02
+	.uaword .L2773
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2777
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2778
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2779
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2780
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2786
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2790
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2794
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PointSize
+	.byte 0x00,0x05,0x02
+	.uaword .L2801
+	.byte 0x06,0x03,0x8a,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2804
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2808
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2814
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2818
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2822
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PolygonMode
+	.byte 0x00,0x05,0x02
+	.uaword .L2829
+	.byte 0x06,0x03,0x96,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2832
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2836
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2837
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2843
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2847
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2851
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PolygonStipple
+	.byte 0x00,0x05,0x02
+	.uaword .L2858
+	.byte 0x06,0x03,0xa3,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2861
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2865
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2866
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2867
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2873
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2877
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2881
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PolygonOffset
+	.byte 0x00,0x05,0x02
+	.uaword .L2888
+	.byte 0x06,0x03,0xb2,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2891
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2895
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2896
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2902
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L2906
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2910
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PopAttrib
+	.byte 0x00,0x05,0x02
+	.uaword .L2917
+	.byte 0x06,0x03,0xbf,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2920
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2924
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2928
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PopMatrix
+	.byte 0x00,0x05,0x02
+	.uaword .L2935
+	.byte 0x06,0x03,0xc8,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2938
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2942
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2946
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PopName
+	.byte 0x00,0x05,0x02
+	.uaword .L2953
+	.byte 0x06,0x03,0xd1,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2956
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2960
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2964
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PrioritizeTextures
+	.byte 0x00,0x05,0x02
+	.uaword .L2972
+	.byte 0x06,0x03,0xde,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L2979
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2982
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2986
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2987
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L2993
+	.byte 0x03,0x7c,0x01,0x00,0x05,0x02
+	.uaword .L2998
+	.byte 0x03,0x07,0x01,0x00,0x05,0x02
+	.uaword .L3002
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3006
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PushAttrib
+	.byte 0x00,0x05,0x02
+	.uaword .L3013
+	.byte 0x06,0x03,0xed,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L3016
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3020
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3026
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3030
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3034
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PushMatrix
+	.byte 0x00,0x05,0x02
+	.uaword .L3041
+	.byte 0x06,0x03,0xf9,0x0f,0x01,0x00,0x05,0x02
+	.uaword .L3044
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3048
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3052
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PushName
+	.byte 0x00,0x05,0x02
+	.uaword .L3059
+	.byte 0x06,0x03,0x82,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3062
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3066
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3072
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3076
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3080
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_RasterPos4f
+	.byte 0x00,0x05,0x02
+	.uaword .L3087
+	.byte 0x06,0x03,0x8f,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3090
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3094
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3095
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3096
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3097
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3103
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3107
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3111
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_PassThrough
+	.byte 0x00,0x05,0x02
+	.uaword .L3118
+	.byte 0x06,0x03,0x9e,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3121
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3125
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3131
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3135
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3139
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ReadBuffer
+	.byte 0x00,0x05,0x02
+	.uaword .L3146
+	.byte 0x06,0x03,0xaa,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3149
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3153
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3159
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3163
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3167
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Rectf
+	.byte 0x00,0x05,0x02
+	.uaword .L3174
+	.byte 0x06,0x03,0xb7,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3177
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3181
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3182
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3183
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3184
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3190
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3194
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3198
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Rotatef
+	.byte 0x00,0x05,0x02
+	.uaword .L3205
+	.byte 0x06,0x03,0xc8,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3206
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3207
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Scalef
+	.byte 0x00,0x05,0x02
+	.uaword .L3214
+	.byte 0x06,0x03,0xcf,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3217
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3221
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3222
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3223
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3229
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3233
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3237
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Scissor
+	.byte 0x00,0x05,0x02
+	.uaword .L3244
+	.byte 0x06,0x03,0xde,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3247
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3251
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3252
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3253
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3254
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3260
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3264
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3268
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_ShadeModel
+	.byte 0x00,0x05,0x02
+	.uaword .L3275
+	.byte 0x06,0x03,0xed,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3278
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3282
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3288
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3292
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3296
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_StencilFunc
+	.byte 0x00,0x05,0x02
+	.uaword .L3303
+	.byte 0x06,0x03,0xf9,0x10,0x01,0x00,0x05,0x02
+	.uaword .L3306
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3310
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3311
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3312
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3318
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3322
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3326
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_StencilMask
+	.byte 0x00,0x05,0x02
+	.uaword .L3333
+	.byte 0x06,0x03,0x87,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3336
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3340
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3346
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3350
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3354
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_StencilOp
+	.byte 0x00,0x05,0x02
+	.uaword .L3361
+	.byte 0x06,0x03,0x94,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3364
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3368
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3369
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3370
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3376
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3380
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3384
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexCoord2f
+	.byte 0x00,0x05,0x02
+	.uaword .L3391
+	.byte 0x06,0x03,0xa2,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3394
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3398
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3399
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3405
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3409
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3413
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexCoord4f
+	.byte 0x00,0x05,0x02
+	.uaword .L3420
+	.byte 0x06,0x03,0xb0,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3423
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3427
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3428
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3429
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3430
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3436
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3440
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3444
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexEnvfv
+	.byte 0x00,0x05,0x02
+	.uaword .L3451
+	.byte 0x06,0x03,0xc0,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3454
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3458
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3459
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3460
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3461
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3462
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3463
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3469
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3473
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3477
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexGenfv
+	.byte 0x00,0x05,0x02
+	.uaword .L3484
+	.byte 0x06,0x03,0xd2,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3487
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3491
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3492
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3493
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3494
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3495
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3496
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3502
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3506
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3510
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexParameterfv
+	.byte 0x00,0x05,0x02
+	.uaword .L3517
+	.byte 0x06,0x03,0xe4,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3520
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3524
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3525
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3526
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3527
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3528
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3529
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3535
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3539
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3543
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexImage1D
+	.byte 0x00,0x05,0x02
+	.uaword .L3550
+	.byte 0x06,0x03,0xf9,0x11,0x01,0x00,0x05,0x02
+	.uaword .L3553
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3557
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3558
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3559
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3560
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3561
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3562
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3563
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3564
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3567
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3571
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3580
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L3584
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3588
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexImage2D
+	.byte 0x00,0x05,0x02
+	.uaword .L3595
+	.byte 0x06,0x03,0x95,0x12,0x01,0x00,0x05,0x02
+	.uaword .L3598
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3602
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3603
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3604
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3605
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3606
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3607
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3608
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3609
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3610
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3613
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3617
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3626
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L3630
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3634
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexImage3DEXT
+	.byte 0x00,0x05,0x02
+	.uaword .L3641
+	.byte 0x06,0x03,0xb3,0x12,0x01,0x00,0x05,0x02
+	.uaword .L3644
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3648
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3649
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3650
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3651
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3652
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3653
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3654
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3655
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3656
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3657
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3663
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3667
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3671
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexSubImage1D
+	.byte 0x00,0x05,0x02
+	.uaword .L3678
+	.byte 0x06,0x03,0xcc,0x12,0x01,0x00,0x05,0x02
+	.uaword .L3681
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3685
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3686
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3687
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3688
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3689
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3690
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3691
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3694
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3697
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3705
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3709
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3713
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexSubImage2D
+	.byte 0x00,0x05,0x02
+	.uaword .L3720
+	.byte 0x06,0x03,0xe6,0x12,0x01,0x00,0x05,0x02
+	.uaword .L3723
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3727
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3728
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3729
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3730
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3731
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3732
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3733
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3734
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3735
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3738
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3741
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3749
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3753
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3757
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_TexSubImage3DEXT
+	.byte 0x00,0x05,0x02
+	.uaword .L3764
+	.byte 0x06,0x03,0x82,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3767
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3771
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3772
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3773
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3774
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3775
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3776
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3777
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3778
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3779
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3780
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3781
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3784
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3787
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3795
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3799
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3803
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Translatef
+	.byte 0x00,0x05,0x02
+	.uaword .L3810
+	.byte 0x06,0x03,0x9b,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3813
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3817
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3818
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3819
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3825
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3829
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3833
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Vertex2f
+	.byte 0x00,0x05,0x02
+	.uaword .L3840
+	.byte 0x06,0x03,0xa9,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3843
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3847
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3848
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3854
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3858
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3862
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Vertex3f
+	.byte 0x00,0x05,0x02
+	.uaword .L3869
+	.byte 0x06,0x03,0xb6,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3872
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3876
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3877
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3878
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3884
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3888
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3892
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Vertex4f
+	.byte 0x00,0x05,0x02
+	.uaword .L3899
+	.byte 0x06,0x03,0xc5,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3902
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3906
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3907
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3908
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3909
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3915
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3919
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3923
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Vertex3fv
+	.byte 0x00,0x05,0x02
+	.uaword .L3930
+	.byte 0x06,0x03,0xd4,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3933
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3937
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3938
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3939
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3945
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3949
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3953
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_Viewport
+	.byte 0x00,0x05,0x02
+	.uaword .L3960
+	.byte 0x06,0x03,0xe3,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3963
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3967
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3968
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3969
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3970
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3976
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L3980
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3984
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_save_WindowPos4fMESA
+	.byte 0x00,0x05,0x02
+	.uaword .L3991
+	.byte 0x06,0x03,0xf3,0x13,0x01,0x00,0x05,0x02
+	.uaword .L3994
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3998
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L3999
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4000
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4001
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4007
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4011
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4015
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword execute_list
+	.byte 0x00,0x05,0x02
+	.uaword .L4024
+	.byte 0x06,0x03,0x92,0x14,0x01,0x00,0x05,0x02
+	.uaword .L4027
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4030
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4031
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4032
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4037
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4041
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4045
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4049
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4050
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4052
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4053
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4055
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4056
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4058
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4059
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4060
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4061
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4062
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4064
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4065
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4067
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4068
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4070
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4071
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4073
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4074
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4075
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4077
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4078
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4080
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4081
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4083
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4084
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4087
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4091
+	.byte 0x0c,0x00,0x05
+	.byte 0x02
+	.uaword .L4092
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4096
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4098
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4099
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4100
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4101
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4104
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4108
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4109
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4113
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4115
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4116
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4118
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4119
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4121
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4122
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4124
+	.byte 0x03,0x05,0x01,0x00,0x05,0x02
+	.uaword .L4125
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4127
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4128
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4130
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4131
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4133
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4134
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4138
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4142
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4146
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4150
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4154
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4158
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4160
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4161
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4163
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4164
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4166
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4167
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4169
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4170
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4172
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4173
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4175
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4176
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4179
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4180
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4181
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4182
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4183
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4185
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4187
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4188
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4190
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4191
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4193
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4194
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4196
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4197
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4199
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4200
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4202
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4203
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4205
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4206
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4208
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4209
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4211
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4212
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4214
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4215
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4217
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4218
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4220
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4221
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4223
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4224
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4226
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4227
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4229
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4230
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4232
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4233
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4235
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4236
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4238
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4239
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4241
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4242
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4244
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4245
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4247
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4248
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4250
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4251
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4253
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4254
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4256
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4257
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4259
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4260
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4263
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4264
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4265
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4266
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4267
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4269
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4271
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4272
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4274
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4275
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4277
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4278
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4280
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4281
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4283
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4284
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4287
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4288
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4289
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4290
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4291
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4293
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4296
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4297
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4298
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4299
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4300
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4302
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4304
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4305
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4307
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4308
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4310
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4311
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4313
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4314
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4318
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4321
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4328
+	.byte 0x03,0x05,0x01,0x00,0x05,0x02
+	.uaword .L4335
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4338
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L4341
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4345
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4347
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4348
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4350
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4351
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4353
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4354
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4356
+	.byte 0x03,0x08,0x01,0x00,0x05,0x02
+	.uaword .L4357
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4359
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4360
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4362
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4363
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4366
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4367
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4368
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4369
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4370
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4372
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4374
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4375
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4379
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4382
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4389
+	.byte 0x03,0x05,0x01,0x00,0x05,0x02
+	.uaword .L4396
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4399
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L4402
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4406
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4408
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4409
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4411
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4412
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4414
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4415
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4417
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4418
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4420
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4421
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4423
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4424
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4427
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4428
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4429
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4430
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4432
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4434
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4435
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4437
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4438
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4440
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4441
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4443
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4444
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4446
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4447
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4449
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4450
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4452
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4453
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4455
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4456
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4458
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4459
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4461
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4462
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4464
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4465
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4467
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4468
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4470
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4471
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4473
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4474
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4476
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4477
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4479
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4480
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4482
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4483
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4485
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4486
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4488
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4489
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4492
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4493
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4494
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4495
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4496
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4498
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4501
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4502
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4503
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4504
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4505
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4507
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4510
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4511
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4512
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4513
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4514
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4516
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4518
+	.byte 0x03,0x0a,0x01,0x00,0x05,0x02
+	.uaword .L4519
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4521
+	.byte 0x03,0x0b,0x01,0x00,0x05,0x02
+	.uaword .L4522
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4524
+	.byte 0x03,0x0c,0x01,0x00,0x05,0x02
+	.uaword .L4525
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4527
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4528
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4530
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4531
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4533
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4534
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4536
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4537
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4539
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4540
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4542
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4543
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4545
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4546
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4548
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4549
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4552
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4554
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4556
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4559
+	.byte 0x03,0x81,0x7c,0x01,0x00,0x05,0x02
+	.uaword .L4564
+	.byte 0x03,0x83,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4568
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4574
+	.byte 0x03,0xf9,0x7b,0x01,0x00,0x05,0x02
+	.uaword .L4577
+	.byte 0x03,0x8b,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4578
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_IsList
+	.byte 0x00,0x05,0x02
+	.uaword .L4587
+	.byte 0x06,0x03,0xb5,0x18,0x01,0x00,0x05,0x02
+	.uaword .L4592
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4597
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4601
+	.byte 0x0d,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_DeleteLists
+	.byte 0x00,0x05,0x02
+	.uaword .L4610
+	.byte 0x06,0x03,0xc6,0x18,0x01,0x00,0x05,0x02
+	.uaword .L4614
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4616
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4622
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4626
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4628
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4633
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4640
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4643
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L4646
+	.byte 0x03,0x03,0x01,0x02,0x01,0x00,0x01,0x01
+	.byte 0x00,0x05,0x02
+	.uaword gl_GenLists
+	.byte 0x00,0x05,0x02
+	.uaword .L4655
+	.byte 0x06,0x03,0xdd,0x18,0x01,0x00,0x05,0x02
+	.uaword .L4659
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4661
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4667
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4671
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4673
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4679
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4683
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4687
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4690
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4695
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4702
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4705
+	.byte 0x0a,0x00,0x05,0x02
+	.uaword .L4711
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4712
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_NewList
+	.byte 0x00,0x05,0x02
+	.uaword .L4721
+	.byte 0x06,0x03,0xfb,0x18,0x01,0x00,0x05,0x02
+	.uaword .L4725
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4727
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4733
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4737
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4739
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4745
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4750
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4752
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4758
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4762
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4764
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4768
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4769
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4770
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4771
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4774
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4778
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4784
+	.byte 0x03,0x04,0x01,0x00,0x05,0x02
+	.uaword .L4788
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4789
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_EndList
+	.byte 0x00,0x05,0x02
+	.uaword .L4798
+	.byte 0x06,0x03,0xa8,0x19,0x01,0x00,0x05,0x02
+	.uaword .L4802
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4804
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4808
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4809
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4810
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4811
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4812
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4813
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4814
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4815
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4816
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_CallList
+	.byte 0x00,0x05,0x02
+	.uaword .L4823
+	.byte 0x06,0x03,0xc3,0x19,0x01,0x00,0x05,0x02
+	.uaword .L4824
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4825
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4826
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4827
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_CallLists
+	.byte 0x00,0x05,0x02
+	.uaword .L4834
+	.byte 0x06,0x03,0xd7,0x19,0x01,0x00,0x05,0x02
+	.uaword .L4835
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4837
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4844
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4845
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4848
+	.byte 0x03,0x7e,0x01,0x00,0x05,0x02
+	.uaword .L4851
+	.byte 0x03,0x05,0x01,0x00,0x05,0x02
+	.uaword .L4852
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword gl_ListBase
+	.byte 0x00,0x05,0x02
+	.uaword .L4861
+	.byte 0x06,0x03,0xe9,0x19,0x01,0x00,0x05,0x02
+	.uaword .L4865
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4867
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4871
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4872
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01,0x00,0x05
+	.byte 0x02
+	.uaword enum_string
+	.byte 0x00,0x05,0x02
+	.uaword .L4882
+	.byte 0x06,0x03,0xfc,0x19,0x01,0x00,0x05,0x02
+	.uaword .L4886
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4889
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4892
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4895
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4898
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4901
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4904
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4907
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4910
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4913
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4916
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4919
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4922
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4925
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4928
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4931
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4934
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4937
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4939
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4942
+	.byte 0x03,0x6c,0x01,0x00,0x05,0x02
+	.uaword .L4945
+	.byte 0x03,0x16,0x01,0x02,0x01,0x00,0x01,0x01
+	.byte 0x00,0x05,0x02
+	.uaword print_list
+	.byte 0x00,0x05,0x02
+	.uaword .L4954
+	.byte 0x06,0x03,0x9f,0x1a,0x01,0x00,0x05,0x02
+	.uaword .L4958
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4960
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4964
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4965
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4967
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4975
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4979
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4983
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4987
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4989
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4991
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L4993
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4995
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L4997
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L4999
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5001
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5003
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L5005
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5007
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5009
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5011
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5013
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5015
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L5017
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5019
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5021
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5023
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5025
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5027
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5029
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5031
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L5033
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5035
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5037
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5039
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5041
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5043
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5045
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5047
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5049
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5051
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5053
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5055
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5057
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5059
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L5061
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5063
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5065
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5067
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5069
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5071
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5073
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5075
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5077
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5079
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L5081
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5083
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5085
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5087
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5089
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5091
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5093
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5095
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5097
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5099
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5101
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5103
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5105
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5107
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5109
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5111
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5113
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5115
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5117
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5119
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5121
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5123
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5125
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5127
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5129
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5131
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5133
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5135
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5137
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5139
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5141
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5143
+	.byte 0x03,0x06,0x01,0x00,0x05,0x02
+	.uaword .L5145
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5146
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5148
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5150
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5151
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5155
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5161
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5163
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5168
+	.byte 0x03,0x03,0x01,0x00,0x05,0x02
+	.uaword .L5175
+	.byte 0x03,0xf5,0x7e,0x01,0x00,0x05,0x02
+	.uaword .L5180
+	.byte 0x03,0x90,0x01,0x01
+	.byte 0x00,0x05,0x02
+	.uaword .L5184
+	.byte 0x0c,0x00,0x05,0x02
+	.uaword .L5190
+	.byte 0x03,0xec,0x7e,0x01,0x00,0x05,0x02
+	.uaword .L5193
+	.byte 0x03,0x98,0x01,0x01,0x02,0x01,0x00,0x01
+	.byte 0x01,0x00,0x05,0x02
+	.uaword mesa_print_display_list
+	.byte 0x00,0x05,0x02
+	.uaword .L5200
+	.byte 0x06,0x03,0xd0,0x1b,0x01,0x00,0x05,0x02
+	.uaword .L5201
+	.byte 0x0d,0x00,0x05,0x02
+	.uaword .L5202
+	.byte 0x0c,0x02,0x01,0x00,0x01,0x01
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_abbrev
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+	.section ".debug_abbrev"
+	.byte 0x01,0x11,0x01,0x03,0x08,0x13,0x0b,0x1b
+	.byte 0x08,0x85,0x44,0x08,0x87,0x44,0x08,0x25
+	.byte 0x08,0x10,0x06,0x00,0x00,0x02,0x2e,0x01
+	.byte 0x03,0x08,0x17,0x0b,0x3a,0x0b,0x3b,0x05
+	.byte 0x11,0x01,0x12,0x01,0x40,0x0a,0x27,0x0c
+	.byte 0x49,0x13,0x88,0x44,0x0b,0x01,0x13,0x00
+	.byte 0x00,0x03,0x05,0x00,0x49,0x13,0x03,0x08
+	.byte 0x3a,0x0b,0x3b,0x05,0x02,0x0a,0x00,0x00
+	.byte 0x04,0x34,0x00,0x03,0x08,0x49,0x13,0x17
+	.byte 0x0b,0x3a,0x0b,0x3b,0x05,0x02,0x0a,0x00
+	.byte 0x00,0x05,0x04,0x01,0x0b,0x0b,0x01,0x13
+	.byte 0x00,0x00,0x06,0x28,0x00,0x03,0x08,0x1c
+	.byte 0x0d,0x00,0x00,0x07,0x16,0x00,0x49,0x13
+	.byte 0x03,0x08,0x00,0x00,0x08,0x24,0x00,0x03
+	.byte 0x08,0x3e,0x0b,0x0b,0x0b,0x00,0x00,0x09
+	.byte 0x16,0x00,0x49,0x13,0x03,0x08,0x3a,0x0b
+	.byte 0x00,0x00,0x0a,0x04,0x01,0x0b,0x0b,0x3a
+	.byte 0x0b,0x01,0x13,0x00,0x00,0x0b,0x0f,0x00
+	.byte 0x49,0x13,0x00,0x00,0x0c,0x17,0x01,0x03
+	.byte 0x08,0x0b,0x0b,0x01,0x13,0x00,0x00,0x0d
+	.byte 0x0d,0x00,0x03,0x08,0x49,0x13,0x38,0x0a
+	.byte 0x00,0x00,0x0e,0x13,0x00,0x03,0x08,0x3c
+	.byte 0x0c,0x00,0x00,0x0f,0x01,0x01,0x49,0x13
+	.byte 0x0b,0x0b,0x01,0x13,0x00,0x00,0x10,0x21
+	.byte 0x00,0x49,0x13,0x2f,0x0b,0x00,0x00,0x11
+	.byte 0x13,0x01,0x03,0x08,0x0b,0x0b,0x3a,0x0b
+	.byte 0x01,0x13,0x00,0x00,0x12,0x01,0x01,0x49
+	.byte 0x13,0x0b,0x05,0x01,0x13,0x00,0x00,0x13
+	.byte 0x21,0x00,0x49,0x13,0x2f,0x05,0x00,0x00
+	.byte 0x14,0x13,0x01,0x03,0x08,0x0b,0x05,0x3a
+	.byte 0x0b,0x01,0x13,0x00,0x00,0x15,0x26,0x00
+	.byte 0x49,0x13,0x00,0x00,0x16,0x15,0x01,0x27
+	.byte 0x0c,0x88,0x44,0x0b,0x01,0x13,0x00,0x00
+	.byte 0x17,0x05,0x00,0x49,0x13,0x00,0x00,0x18
+	.byte 0x15,0x01,0x27,0x0c,0x49,0x13,0x88,0x44
+	.byte 0x0b,0x01,0x13,0x00,0x00,0x19,0x15,0x00
+	.byte 0x27,0x0c,0x49,0x13,0x88,0x44,0x0b,0x00
+	.byte 0x00,0x1a,0x01,0x01,0x49,0x13,0x0b,0x06
+	.byte 0x01,0x13,0x00,0x00,0x1b,0x13,0x01,0x03
+	.byte 0x08,0x0b,0x06,0x3a,0x0b,0x01,0x13,0x00
+	.byte 0x00,0x1c,0x2e,0x01,0x03,0x08,0x3f,0x0c
+	.byte 0x17,0x0b,0x3a,0x0b,0x3b,0x05,0x11,0x01
+	.byte 0x12,0x01,0x40,0x0a,0x27,0x0c,0x88,0x44
+	.byte 0x0b,0x01,0x13,0x00,0x00,0x1d,0x0b,0x01
+	.byte 0x11,0x01,0x12,0x01,0x00,0x00,0x1e,0x2e
+	.byte 0x00,0x03,0x08,0x3f,0x0c,0x17,0x0b,0x3a
+	.byte 0x0b,0x3b,0x05,0x11,0x01,0x12,0x01,0x40
+	.byte 0x0a,0x27,0x0c,0x49,0x13,0x88,0x44,0x0b
+	.byte 0x00,0x00,0x1f,0x2e,0x01,0x03,0x08,0x17
+	.byte 0x0b,0x3a,0x0b,0x3b,0x05,0x11,0x01,0x12
+	.byte 0x01,0x40,0x0a,0x27,0x0c,0x88,0x44,0x0b
+	.byte 0x01,0x13,0x00,0x00,0x20,0x2e,0x01,0x03
+	.byte 0x08,0x3f,0x0c,0x17,0x0b,0x3a,0x0b,0x3b
+	.byte 0x05,0x11,0x01,0x12,0x01,0x40,0x0a,0x27
+	.byte 0x0c,0x49,0x13,0x88,0x44,0x0b,0x01,0x13
+	.byte 0x00,0x00,0x21,0x86,0x84,0x01,0x00,0x92
+	.byte 0x44,0x0b,0x91,0x44,0x09,0x00,0x00,0x22
+	.byte 0x0d,0x00,0x03,0x08,0x49,0x13,0x38,0x0a
+	.byte 0x0b,0x0b,0x0c,0x0b,0x0d,0x0b,0x00,0x00
+	.byte 0x23,0x2e,0x01,0x03,0x08,0x3f,0x0c,0x3c
+	.byte 0x0c,0x27,0x0c,0x88,0x44,0x0b,0x01,0x13
+	.byte 0x00,0x00,0x24,0x2e,0x01,0x03,0x08,0x3f
+	.byte 0x0c,0x3c,0x0c,0x27,0x0c,0x49,0x13,0x88
+	.byte 0x44,0x0b,0x01,0x13,0x00,0x00,0x25,0x18
+	.byte 0x00,0x00,0x00,0x26,0x2e,0x01,0x03,0x08
+	.byte 0x3f,0x0c,0x3c,0x0c,0x27,0x0c,0x88,0x44
+	.byte 0x0b,0x00,0x00,0x00
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_pubnames
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+!   reloc[0]: knd=2, off=6, siz=4, lab1=.debug_info, lab2=, loff=0
+	.section ".debug_pubnames"
+	.byte 0x00,0x00,0x0b,0x94,0x00,0x02
+	.uaword %section_symbol(".debug_info")
+	.byte 0x00,0x00,0xfd,0xa8,0x00,0x00,0xa2,0xfe
+	.byte 0x67,0x6c,0x5f,0x64,0x65,0x73,0x74,0x72
+	.byte 0x6f,0x79,0x5f,0x6c,0x69,0x73,0x74,0x00
+	.byte 0x00,0x00,0xa4,0xf6,0x67,0x6c,0x5f,0x69
+	.byte 0x6e,0x69,0x74,0x5f,0x6c,0x69,0x73,0x74
+	.byte 0x73,0x00,0x00,0x00,0xa5,0x34,0x67,0x6c
+	.byte 0x5f,0x6c,0x69,0x73,0x74,0x5f,0x69,0x6e
+	.byte 0x64,0x65,0x78,0x00,0x00,0x00,0xa5,0x58
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x41,0x63,0x63,0x75,0x6d,0x00,0x00,0x00
+	.byte 0xa5,0xbc,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x41,0x6c,0x70,0x68,0x61,0x46
+	.byte 0x75,0x6e,0x63,0x00,0x00,0x00,0xa6,0x33
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x42,0x65,0x67,0x69,0x6e,0x00,0x00,0x00
+	.byte 0xa6,0x87,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x42,0x69,0x6e,0x64,0x54,0x65
+	.byte 0x78,0x74,0x75,0x72,0x65,0x00,0x00,0x00
+	.byte 0xa6,0xf7,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x42,0x69,0x74,0x6d,0x61,0x70
+	.byte 0x00,0x00,0x00,0xa7,0xc5,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x42,0x6c,0x65
+	.byte 0x6e,0x64,0x45,0x71,0x75,0x61,0x74,0x69
+	.byte 0x6f,0x6e,0x00,0x00,0x00,0xa8,0x21,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x42
+	.byte 0x6c,0x65,0x6e,0x64,0x46,0x75,0x6e,0x63
+	.byte 0x00,0x00,0x00,0xa8,0x90,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x42,0x6c,0x65
+	.byte 0x6e,0x64,0x43,0x6f,0x6c,0x6f,0x72,0x00
+	.byte 0x00,0x00,0xa9,0x1d,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x43,0x61,0x6c,0x6c
+	.byte 0x4c,0x69,0x73,0x74,0x00,0x00,0x00,0xa9
+	.byte 0x74,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x43,0x61,0x6c,0x6c,0x4c,0x69,0x73
+	.byte 0x74,0x73,0x00,0x00,0x00,0xaa,0x33,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x43
+	.byte 0x6c,0x65,0x61,0x72,0x00,0x00,0x00,0xaa
+	.byte 0x87,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x43,0x6c,0x65,0x61,0x72,0x41,0x63
+	.byte 0x63,0x75,0x6d,0x00,0x00,0x00,0xab,0x14
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x43,0x6c,0x65,0x61,0x72,0x43,0x6f,0x6c
+	.byte 0x6f,0x72,0x00,0x00,0x00,0xab,0xa1,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x43
+	.byte 0x6c,0x65,0x61,0x72,0x44,0x65,0x70,0x74
+	.byte 0x68,0x00,0x00,0x00,0xac,0x0a,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x43,0x6c
+	.byte 0x65,0x61,0x72,0x49,0x6e,0x64,0x65,0x78
+	.byte 0x00,0x00,0x00,0xac,0x60,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x43,0x6c,0x65
+	.byte 0x61,0x72,0x53,0x74,0x65,0x6e,0x63,0x69
+	.byte 0x6c,0x00,0x00,0x00,0xac,0xb8,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x43,0x6c
+	.byte 0x69,0x70,0x50,0x6c,0x61,0x6e,0x65,0x00
+	.byte 0x00,0x00,0xad,0x2b,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x43,0x6f,0x6c,0x6f
+	.byte 0x72,0x33,0x66,0x00,0x00,0x00,0xad,0x9a
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x43,0x6f,0x6c,0x6f,0x72,0x33,0x66,0x76
+	.byte 0x00,0x00,0x00,0xad,0xf8,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x43,0x6f,0x6c
+	.byte 0x6f,0x72,0x34,0x66,0x00,0x00,0x00,0xae
+	.byte 0x75,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x43,0x6f,0x6c,0x6f,0x72,0x34,0x66
+	.byte 0x76,0x00,0x00,0x00,0xae,0xd3,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x43,0x6f
+	.byte 0x6c,0x6f,0x72,0x34,0x75,0x62,0x00,0x00
+	.byte 0x00,0xaf,0x51,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x43,0x6f,0x6c,0x6f,0x72
+	.byte 0x34,0x75,0x62,0x76,0x00,0x00,0x00,0xaf
+	.byte 0xb0,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x43,0x6f,0x6c,0x6f,0x72,0x4d,0x61
+	.byte 0x73,0x6b,0x00,0x00,0x00,0xb0,0x3c,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x43
+	.byte 0x6f,0x6c,0x6f,0x72,0x4d,0x61,0x74,0x65
+	.byte 0x72,0x69,0x61,0x6c,0x00,0x00,0x00,0xb0
+	.byte 0xa9,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x43,0x6f,0x6c,0x6f,0x72,0x54,0x61
+	.byte 0x62,0x6c,0x65,0x00,0x00,0x00,0xb1,0x31
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x43,0x6f,0x6c,0x6f,0x72,0x53,0x75,0x62
+	.byte 0x54,0x61,0x62,0x6c,0x65,0x00,0x00,0x00
+	.byte 0xb1,0xb2,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x43,0x6f,0x70,0x79,0x50,0x69
+	.byte 0x78,0x65,0x6c,0x73,0x00,0x00,0x00,0xb2
+	.byte 0x4c,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x43,0x6f,0x70,0x79,0x54,0x65,0x78
+	.byte 0x49,0x6d,0x61,0x67,0x65,0x31,0x44,0x00
+	.byte 0x00,0x00,0xb3,0x19,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x43,0x6f,0x70,0x79
+	.byte 0x54,0x65,0x78,0x49,0x6d,0x61,0x67,0x65
+	.byte 0x32,0x44,0x00,0x00,0x00,0xb3,0xf9,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x43
+	.byte 0x6f,0x70,0x79,0x54,0x65,0x78,0x53,0x75
+	.byte 0x62,0x49,0x6d,0x61,0x67,0x65,0x31,0x44
+	.byte 0x00,0x00,0x00,0xb4,0xaf,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x43,0x6f,0x70
+	.byte 0x79,0x54,0x65,0x78,0x53,0x75,0x62,0x49
+	.byte 0x6d,0x61,0x67,0x65,0x32,0x44,0x00,0x00
+	.byte 0x00,0xb5,0x8c,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x43,0x6f,0x70,0x79,0x54
+	.byte 0x65,0x78,0x53,0x75,0x62,0x49,0x6d,0x61
+	.byte 0x67,0x65,0x33,0x44,0x45,0x58,0x54,0x00
+	.byte 0x00,0x00,0xb6,0x80,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x43,0x75,0x6c,0x6c
+	.byte 0x46,0x61,0x63,0x65,0x00,0x00,0x00,0xb6
+	.byte 0xd7,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x44,0x65,0x70,0x74,0x68,0x46,0x75
+	.byte 0x6e,0x63,0x00,0x00,0x00,0xb7,0x2f,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x44
+	.byte 0x65,0x70,0x74,0x68,0x4d,0x61,0x73,0x6b
+	.byte 0x00,0x00,0x00,0xb7,0x87,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x44,0x65,0x70
+	.byte 0x74,0x68,0x52,0x61,0x6e,0x67,0x65,0x00
+	.byte 0x00,0x00,0xb7,0xf6,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x44,0x69,0x73,0x61
+	.byte 0x62,0x6c,0x65,0x00,0x00,0x00,0xb8,0x4b
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x44,0x72,0x61,0x77,0x42,0x75,0x66,0x66
+	.byte 0x65,0x72,0x00,0x00,0x00,0xb8,0xa4,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x44
+	.byte 0x72,0x61,0x77,0x50,0x69,0x78,0x65,0x6c
+	.byte 0x73,0x00,0x00,0x00,0xb9,0x52,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x45,0x64
+	.byte 0x67,0x65,0x46,0x6c,0x61,0x67,0x00,0x00
+	.byte 0x00,0xb9,0xa9,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x45,0x6e,0x61,0x62,0x6c
+	.byte 0x65,0x00,0x00,0x00,0xb9,0xfd,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x45,0x6e
+	.byte 0x64,0x00,0x00,0x00,0xba,0x30,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x45,0x76
+	.byte 0x61,0x6c,0x43,0x6f,0x6f,0x72,0x64,0x31
+	.byte 0x66,0x00,0x00,0x00,0xba,0x87,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x45,0x76
+	.byte 0x61,0x6c,0x43,0x6f,0x6f,0x72,0x64,0x32
+	.byte 0x66,0x00,0x00,0x00,0xba,0xec,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x45,0x76
+	.byte 0x61,0x6c,0x4d,0x65,0x73,0x68,0x31,0x00
+	.byte 0x00,0x00,0xbb,0x62,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x45,0x76,0x61,0x6c
+	.byte 0x4d,0x65,0x73,0x68,0x32,0x00,0x00,0x00
+	.byte 0xbb,0xf6,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x45,0x76,0x61,0x6c,0x50,0x6f
+	.byte 0x69,0x6e,0x74,0x31,0x00,0x00,0x00,0xbc
+	.byte 0x4c,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x45,0x76,0x61,0x6c,0x50,0x6f,0x69
+	.byte 0x6e,0x74,0x32,0x00,0x00,0x00,0xbc,0xb0
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x46,0x6f,0x67,0x66,0x76,0x00,0x00,0x00
+	.byte 0xbd,0x22,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x46,0x72,0x6f,0x6e,0x74,0x46
+	.byte 0x61,0x63,0x65,0x00,0x00,0x00,0xbd,0x7a
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x46,0x72,0x75,0x73,0x74,0x75,0x6d,0x00
+	.byte 0x00,0x00,0xbe,0x3b,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x48,0x69,0x6e,0x74
+	.byte 0x00,0x00,0x00,0xbe,0xa1,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x49,0x6e,0x64
+	.byte 0x65,0x78,0x69,0x00,0x00,0x00,0xbe,0xf7
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x49,0x6e,0x64,0x65,0x78,0x66,0x00,0x00
+	.byte 0x00,0xbf,0x4d,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x49,0x6e,0x64,0x65,0x78
+	.byte 0x4d,0x61,0x73,0x6b,0x00,0x00,0x00,0xbf
+	.byte 0xa5,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x49,0x6e,0x69,0x74,0x4e,0x61,0x6d
+	.byte 0x65,0x73,0x00,0x00,0x00,0xbf,0xde,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x4c
+	.byte 0x69,0x67,0x68,0x74,0x66,0x76,0x00,0x00
+	.byte 0x00,0xc0,0xa6,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x4c,0x69,0x67,0x68,0x74
+	.byte 0x4d,0x6f,0x64,0x65,0x6c,0x66,0x76,0x00
+	.byte 0x00,0x00,0xc1,0x1f,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x4c,0x69,0x6e,0x65
+	.byte 0x53,0x74,0x69,0x70,0x70,0x6c,0x65,0x00
+	.byte 0x00,0x00,0xc1,0x8f,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x4c,0x69,0x6e,0x65
+	.byte 0x57,0x69,0x64,0x74,0x68,0x00,0x00,0x00
+	.byte 0xc1,0xe8,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x4c,0x69,0x73,0x74,0x42,0x61
+	.byte 0x73,0x65,0x00,0x00,0x00,0xc2,0x3f,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x4c
+	.byte 0x6f,0x61,0x64,0x49,0x64,0x65,0x6e,0x74
+	.byte 0x69,0x74,0x79,0x00,0x00,0x00,0xc2,0x7b
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x4c,0x6f,0x61,0x64,0x4d,0x61,0x74,0x72
+	.byte 0x69,0x78,0x66,0x00,0x00,0x00,0xc3,0x08
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x4c,0x6f,0x61,0x64,0x4e,0x61,0x6d,0x65
+	.byte 0x00,0x00,0x00,0xc3,0x5f,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x4c,0x6f,0x67
+	.byte 0x69,0x63,0x4f,0x70,0x00,0x00,0x00,0xc3
+	.byte 0xb7,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x4d,0x61,0x70,0x31,0x66,0x00,0x00
+	.byte 0x00,0xc4,0x80,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x4d,0x61,0x70,0x32,0x66
+	.byte 0x00,0x00,0x00,0xc5,0x90,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x4d,0x61,0x70
+	.byte 0x47,0x72,0x69,0x64,0x31,0x66,0x00,0x00
+	.byte 0x00,0xc6,0x04,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x4d,0x61,0x70,0x47,0x72
+	.byte 0x69,0x64,0x32,0x66,0x00,0x00,0x00,0xc6
+	.byte 0xa5,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x4d,0x61,0x74,0x65,0x72,0x69,0x61
+	.byte 0x6c,0x66,0x76,0x00,0x00,0x00,0xc7,0x2d
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x4d,0x61,0x74,0x72,0x69,0x78,0x4d,0x6f
+	.byte 0x64,0x65,0x00,0x00,0x00,0xc7,0x86,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x4d
+	.byte 0x75,0x6c,0x74,0x4d,0x61,0x74,0x72,0x69
+	.byte 0x78,0x66,0x00,0x00,0x00,0xc8,0x13,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x4e
+	.byte 0x65,0x77,0x4c,0x69,0x73,0x74,0x00,0x00
+	.byte 0x00,0xc8,0x6c,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x4e,0x6f,0x72,0x6d,0x61
+	.byte 0x6c,0x33,0x66,0x76,0x00,0x00,0x00,0xc8
+	.byte 0xce,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x4e,0x6f,0x72,0x6d,0x61,0x6c,0x33
+	.byte 0x66,0x00,0x00,0x00,0xc9,0x41,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x4f,0x72
+	.byte 0x74,0x68,0x6f,0x00,0x00,0x00,0xc9,0xf1
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x50,0x69,0x78,0x65,0x6c,0x4d,0x61,0x70
+	.byte 0x66,0x76,0x00,0x00,0x00,0xca,0x7a,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x50
+	.byte 0x69,0x78,0x65,0x6c,0x54,0x72,0x61,0x6e
+	.byte 0x73,0x66,0x65,0x72,0x66,0x00,0x00,0x00
+	.byte 0xca,0xea,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x50,0x69,0x78,0x65,0x6c,0x5a
+	.byte 0x6f,0x6f,0x6d,0x00,0x00,0x00,0xcb,0x59
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x50,0x6f,0x69,0x6e,0x74,0x50,0x61,0x72
+	.byte 0x61,0x6d,0x65,0x74,0x65,0x72,0x66,0x76
+	.byte 0x45,0x58,0x54,0x00,0x00,0x00,0xcb,0xd9
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x50,0x6f,0x69,0x6e,0x74,0x53,0x69,0x7a
+	.byte 0x65,0x00,0x00,0x00,0xcc,0x31,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x50,0x6f
+	.byte 0x6c,0x79,0x67,0x6f,0x6e,0x4d,0x6f,0x64
+	.byte 0x65,0x00,0x00,0x00,0xcc,0x9c,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x50,0x6f
+	.byte 0x6c,0x79,0x67,0x6f,0x6e,0x53,0x74,0x69
+	.byte 0x70,0x70,0x6c,0x65,0x00,0x00,0x00,0xcd
+	.byte 0x32,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x50,0x6f,0x6c,0x79,0x67,0x6f,0x6e
+	.byte 0x4f,0x66,0x66,0x73,0x65,0x74,0x00,0x00
+	.byte 0x00,0xcd,0xa2,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x50,0x6f,0x70,0x41,0x74
+	.byte 0x74,0x72,0x69,0x62,0x00,0x00,0x00,0xcd
+	.byte 0xdb,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x50,0x6f,0x70,0x4d,0x61,0x74,0x72
+	.byte 0x69,0x78,0x00,0x00,0x00,0xce,0x14,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x50
+	.byte 0x6f,0x70,0x4e,0x61,0x6d,0x65,0x00,0x00
+	.byte 0x00,0xce,0x4b,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x50,0x72,0x69,0x6f,0x72
+	.byte 0x69,0x74,0x69,0x7a,0x65,0x54,0x65,0x78
+	.byte 0x74,0x75,0x72,0x65,0x73,0x00,0x00,0x00
+	.byte 0xcf,0x17,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x50,0x75,0x73,0x68,0x41,0x74
+	.byte 0x74,0x72,0x69,0x62,0x00,0x00,0x00,0xcf
+	.byte 0x70,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x50,0x75,0x73,0x68,0x4d,0x61,0x74
+	.byte 0x72,0x69,0x78,0x00,0x00,0x00,0xcf,0xaa
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x50,0x75,0x73,0x68,0x4e,0x61,0x6d,0x65
+	.byte 0x00,0x00,0x00,0xd0,0x01,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x52,0x61,0x73
+	.byte 0x74,0x65,0x72,0x50,0x6f,0x73,0x34,0x66
+	.byte 0x00,0x00,0x00,0xd0,0x82,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x50,0x61,0x73
+	.byte 0x73,0x54,0x68,0x72,0x6f,0x75,0x67,0x68
+	.byte 0x00,0x00,0x00,0xd0,0xdd,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x52,0x65,0x61
+	.byte 0x64,0x42,0x75,0x66,0x66,0x65,0x72,0x00
+	.byte 0x00,0x00,0xd1,0x36,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x52,0x65,0x63,0x74
+	.byte 0x66,0x00,0x00,0x00,0xd1,0xb5,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x52,0x6f
+	.byte 0x74,0x61,0x74,0x65,0x66,0x00,0x00,0x00
+	.byte 0xd2,0x47,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x53,0x63,0x61,0x6c,0x65,0x66
+	.byte 0x00,0x00,0x00,0xd2,0xb5,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x53,0x63,0x69
+	.byte 0x73,0x73,0x6f,0x72,0x00,0x00,0x00,0xd3
+	.byte 0x3b,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x53,0x68,0x61,0x64,0x65,0x4d,0x6f
+	.byte 0x64,0x65,0x6c,0x00,0x00,0x00,0xd3,0x94
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x53,0x74,0x65,0x6e,0x63,0x69,0x6c,0x46
+	.byte 0x75,0x6e,0x63,0x00,0x00,0x00,0xd4,0x0f
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x53,0x74,0x65,0x6e,0x63,0x69,0x6c,0x4d
+	.byte 0x61,0x73,0x6b,0x00,0x00,0x00,0xd4,0x69
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x53,0x74,0x65,0x6e,0x63,0x69,0x6c,0x4f
+	.byte 0x70,0x00,0x00,0x00,0xd4,0xe5,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x54,0x65
+	.byte 0x78,0x43,0x6f,0x6f,0x72,0x64,0x32,0x66
+	.byte 0x00,0x00,0x00,0xd5,0x49,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x54,0x65,0x78
+	.byte 0x43,0x6f,0x6f,0x72,0x64,0x34,0x66,0x00
+	.byte 0x00,0x00,0xd5,0xc9,0x67,0x6c,0x5f,0x73
+	.byte 0x61,0x76,0x65,0x5f,0x54,0x65,0x78,0x45
+	.byte 0x6e,0x76,0x66,0x76,0x00,0x00,0x00,0xd6
+	.byte 0x51,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x54,0x65,0x78,0x47,0x65,0x6e,0x66
+	.byte 0x76,0x00,0x00,0x00,0xd6,0xd8,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x54,0x65
+	.byte 0x78,0x50,0x61,0x72,0x61,0x6d,0x65,0x74
+	.byte 0x65,0x72,0x66,0x76,0x00,0x00,0x00,0xd7
+	.byte 0x66,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x54,0x65,0x78,0x49,0x6d,0x61,0x67
+	.byte 0x65,0x31,0x44,0x00,0x00,0x00,0xd8,0x48
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x54,0x65,0x78,0x49,0x6d,0x61,0x67,0x65
+	.byte 0x32,0x44,0x00,0x00,0x00,0xd9,0x3d,0x67
+	.byte 0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f,0x54
+	.byte 0x65,0x78,0x49,0x6d,0x61,0x67,0x65,0x33
+	.byte 0x44,0x45,0x58,0x54,0x00,0x00,0x00,0xda
+	.byte 0x47,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x54,0x65,0x78,0x53,0x75,0x62,0x49
+	.byte 0x6d,0x61,0x67,0x65,0x31,0x44,0x00,0x00
+	.byte 0x00,0xdb,0x13,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x54,0x65,0x78,0x53,0x75
+	.byte 0x62,0x49,0x6d,0x61,0x67,0x65,0x32,0x44
+	.byte 0x00,0x00,0x00,0xdc,0x06,0x67,0x6c,0x5f
+	.byte 0x73,0x61,0x76,0x65,0x5f,0x54,0x65,0x78
+	.byte 0x53,0x75,0x62,0x49,0x6d,0x61,0x67,0x65
+	.byte 0x33,0x44,0x45,0x58,0x54,0x00,0x00,0x00
+	.byte 0xdd,0x22,0x67,0x6c,0x5f,0x73,0x61,0x76
+	.byte 0x65,0x5f,0x54,0x72,0x61,0x6e,0x73,0x6c
+	.byte 0x61,0x74,0x65,0x66,0x00,0x00,0x00,0xdd
+	.byte 0x94,0x67,0x6c,0x5f,0x73,0x61,0x76,0x65
+	.byte 0x5f,0x56,0x65,0x72,0x74,0x65,0x78,0x32
+	.byte 0x66,0x00,0x00,0x00,0xdd,0xf6,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x56,0x65
+	.byte 0x72,0x74,0x65,0x78,0x33,0x66,0x00,0x00
+	.byte 0x00,0xde,0x66,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x56,0x65,0x72,0x74,0x65
+	.byte 0x78,0x34,0x66,0x00,0x00,0x00,0xde,0xe4
+	.byte 0x67,0x6c,0x5f,0x73,0x61,0x76,0x65,0x5f
+	.byte 0x56,0x65,0x72,0x74,0x65,0x78,0x33,0x66
+	.byte 0x76,0x00,0x00,0x00,0xdf,0x43,0x67,0x6c
+	.byte 0x5f,0x73,0x61,0x76,0x65,0x5f,0x56,0x69
+	.byte 0x65,0x77,0x70,0x6f,0x72,0x74,0x00,0x00
+	.byte 0x00,0xdf,0xca,0x67,0x6c,0x5f,0x73,0x61
+	.byte 0x76,0x65,0x5f,0x57,0x69,0x6e,0x64,0x6f
+	.byte 0x77,0x50,0x6f,0x73,0x34,0x66,0x4d,0x45
+	.byte 0x53,0x41,0x00,0x00,0x00,0xe3,0x55,0x67
+	.byte 0x6c,0x5f,0x49,0x73,0x4c,0x69,0x73,0x74
+	.byte 0x00,0x00,0x00,0xe3,0x9b,0x67,0x6c,0x5f
+	.byte 0x44,0x65,0x6c,0x65,0x74,0x65,0x4c,0x69
+	.byte 0x73,0x74,0x73,0x00,0x00,0x00,0xe4,0x02
+	.byte 0x67,0x6c,0x5f,0x47,0x65,0x6e,0x4c,0x69
+	.byte 0x73,0x74,0x73,0x00,0x00,0x00,0xe4,0x88
+	.byte 0x67,0x6c,0x5f,0x4e,0x65,0x77,0x4c,0x69
+	.byte 0x73,0x74,0x00,0x00,0x00,0xe4,0xe0,0x67
+	.byte 0x6c,0x5f,0x45,0x6e,0x64,0x4c,0x69,0x73
+	.byte 0x74,0x00,0x00,0x00,0xe5,0x24,0x67,0x6c
+	.byte 0x5f,0x43,0x61,0x6c,0x6c,0x4c,0x69,0x73
+	.byte 0x74,0x00,0x00,0x00,0xe5,0x86,0x67,0x6c
+	.byte 0x5f,0x43,0x61,0x6c,0x6c,0x4c,0x69,0x73
+	.byte 0x74,0x73,0x00,0x00,0x00,0xe6,0x32,0x67
+	.byte 0x6c,0x5f,0x4c,0x69,0x73,0x74,0x42,0x61
+	.byte 0x73,0x65,0x00,0x00,0x00,0xe8,0x1d,0x6d
+	.byte 0x65,0x73,0x61,0x5f,0x70,0x72,0x69,0x6e
+	.byte 0x74,0x5f,0x64,0x69,0x73,0x70,0x6c,0x61
+	.byte 0x79,0x5f,0x6c,0x69,0x73,0x74,0x00,0x00
+	.byte 0x00,0x00,0x00,0x00,0x00,0x00
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_funcnames
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+!   reloc[0]: knd=2, off=6, siz=4, lab1=.debug_info, lab2=, loff=0
+	.section ".debug_funcnames"
+	.byte 0x00,0x00,0x00,0x7c,0x00,0x02
+	.uaword %section_symbol(".debug_info")
+	.byte 0x00,0x00,0xfd,0xa8,0x00,0x00,0x01,0x01
+	.byte 0x61,0x6c,0x6c,0x6f,0x63,0x5f,0x69,0x6e
+	.byte 0x73,0x74,0x72,0x75,0x63,0x74,0x69,0x6f
+	.byte 0x6e,0x00,0x00,0x00,0xa2,0xc6,0x6d,0x61
+	.byte 0x6b,0x65,0x5f,0x65,0x6d,0x70,0x74,0x79
+	.byte 0x5f,0x6c,0x69,0x73,0x74,0x00,0x00,0x00
+	.byte 0xa3,0xeb,0x74,0x72,0x61,0x6e,0x73,0x6c
+	.byte 0x61,0x74,0x65,0x5f,0x69,0x64,0x00,0x00
+	.byte 0x00,0xe0,0x4f,0x65,0x78,0x65,0x63,0x75
+	.byte 0x74,0x65,0x5f,0x6c,0x69,0x73,0x74,0x00
+	.byte 0x00,0x00,0xe6,0x76,0x65,0x6e,0x75,0x6d
+	.byte 0x5f,0x73,0x74,0x72,0x69,0x6e,0x67,0x00
+	.byte 0x00,0x00,0xe6,0xaf,0x70,0x72,0x69,0x6e
+	.byte 0x74,0x5f,0x6c,0x69,0x73,0x74,0x00,0x00
+	.byte 0x00,0x00,0x00,0x00,0x00,0x00
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_typenames
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+!   reloc[0]: knd=2, off=6, siz=4, lab1=.debug_info, lab2=, loff=0
+	.section ".debug_typenames"
+	.byte 0x00,0x00,0x04,0xa8,0x00,0x02
+	.uaword %section_symbol(".debug_info")
+	.byte 0x00,0x00,0xfd,0xa8,0x00,0x00,0x01,0x9a
+	.byte 0x00,0x00,0x00,0x0a,0xee,0x4f,0x70,0x43
+	.byte 0x6f,0x64,0x65,0x00,0x00,0x00,0x0b,0x0b
+	.byte 0x47,0x4c,0x62,0x6f,0x6f,0x6c,0x65,0x61
+	.byte 0x6e,0x00,0x00,0x00,0x0b,0x27,0x47,0x4c
+	.byte 0x62,0x69,0x74,0x66,0x69,0x65,0x6c,0x64
+	.byte 0x00,0x00,0x00,0x0b,0x38,0x47,0x4c,0x75
+	.byte 0x62,0x79,0x74,0x65,0x00,0x00,0x00,0x0b
+	.byte 0x4f,0x47,0x4c,0x73,0x68,0x6f,0x72,0x74
+	.byte 0x00,0x00,0x00,0x0b,0x6f,0x47,0x4c,0x75
+	.byte 0x73,0x68,0x6f,0x72,0x74,0x00,0x00,0x00
+	.byte 0x0b,0x85,0x47,0x4c,0x69,0x6e,0x74,0x00
+	.byte 0x00,0x00,0x0b,0x91,0x47,0x4c,0x75,0x69
+	.byte 0x6e,0x74,0x00,0x00,0x00,0x0b,0x9e,0x00
+	.byte 0x00,0x00,0x3b,0x3a,0x47,0x4c,0x65,0x6e
+	.byte 0x75,0x6d,0x00,0x00,0x00,0x3b,0x50,0x47
+	.byte 0x4c,0x66,0x6c,0x6f,0x61,0x74,0x00,0x00
+	.byte 0x00,0x3b,0x66,0x47,0x4c,0x76,0x6f,0x69
+	.byte 0x64,0x00,0x00,0x00,0x3b,0x7d,0x6e,0x6f
+	.byte 0x64,0x65,0x00,0x00,0x00,0x3c,0x10,0x4e
+	.byte 0x6f,0x64,0x65,0x00,0x00,0x00,0x3c,0x4e
+	.byte 0x67,0x6c,0x5f,0x74,0x65,0x78,0x74,0x75
+	.byte 0x72,0x65,0x5f,0x69,0x6d,0x61,0x67,0x65
+	.byte 0x00,0x00,0x00,0x3f,0x85,0x54,0x65,0x78
+	.byte 0x74,0x75,0x72,0x65,0x53,0x61,0x6d,0x70
+	.byte 0x6c,0x65,0x46,0x75,0x6e,0x63,0x00,0x00
+	.byte 0x00,0x3d,0x80,0x67,0x6c,0x5f,0x74,0x65
+	.byte 0x78,0x74,0x75,0x72,0x65,0x5f,0x6f,0x62
+	.byte 0x6a,0x65,0x63,0x74,0x00,0x00,0x00,0x3f
+	.byte 0xa2,0x67,0x6c,0x5f,0x73,0x68,0x61,0x72
+	.byte 0x65,0x64,0x5f,0x73,0x74,0x61,0x74,0x65
+	.byte 0x00,0x00,0x00,0x47,0xc6,0x67,0x6c,0x5f
+	.byte 0x69,0x6d,0x61,0x67,0x65,0x00,0x00,0x00
+	.byte 0x5f,0xd7,0x67,0x6c,0x5f,0x61,0x70,0x69
+	.byte 0x5f,0x74,0x61,0x62,0x6c,0x65,0x00,0x00
+	.byte 0x00,0x6e,0x7b,0x67,0x6c,0x5f,0x76,0x69
+	.byte 0x73,0x75,0x61,0x6c,0x00,0x00,0x00,0x70
+	.byte 0x23,0x47,0x4c,0x76,0x69,0x73,0x75,0x61
+	.byte 0x6c,0x00,0x00,0x00,0x70,0x37,0x47,0x4c
+	.byte 0x64,0x65,0x70,0x74,0x68,0x00,0x00,0x00
+	.byte 0x70,0x4a,0x47,0x4c,0x73,0x74,0x65,0x6e
+	.byte 0x63,0x69,0x6c,0x00,0x00,0x00,0x70,0x5f
+	.byte 0x47,0x4c,0x61,0x63,0x63,0x75,0x6d,0x00
+	.byte 0x00,0x00,0x70,0x72,0x67,0x6c,0x5f,0x66
+	.byte 0x72,0x61,0x6d,0x65,0x5f,0x62,0x75,0x66
+	.byte 0x66,0x65,0x72,0x00,0x00,0x00,0x71,0x49
+	.byte 0x47,0x4c,0x66,0x72,0x61,0x6d,0x65,0x62
+	.byte 0x75,0x66,0x66,0x65,0x72,0x00,0x00,0x00
+	.byte 0x77,0xa7,0x70,0x6f,0x69,0x6e,0x74,0x73
+	.byte 0x5f,0x66,0x75,0x6e,0x63,0x00,0x00,0x00
+	.byte 0x77,0xda,0x6c,0x69,0x6e,0x65,0x5f,0x66
+	.byte 0x75,0x6e,0x63,0x00,0x00,0x00,0x78,0x10
+	.byte 0x74,0x72,0x69,0x61,0x6e,0x67,0x6c,0x65
+	.byte 0x5f,0x66,0x75,0x6e,0x63,0x00,0x00,0x00
+	.byte 0x78,0x4f,0x71,0x75,0x61,0x64,0x5f,0x66
+	.byte 0x75,0x6e,0x63,0x00,0x00,0x00,0x78,0x85
+	.byte 0x72,0x65,0x63,0x74,0x5f,0x66,0x75,0x6e
+	.byte 0x63,0x00,0x00,0x00,0x7a,0x6c,0x64,0x64
+	.byte 0x5f,0x66,0x75,0x6e,0x63,0x74,0x69,0x6f
+	.byte 0x6e,0x5f,0x74,0x61,0x62,0x6c,0x65,0x00
+	.byte 0x00,0x00,0x7f,0xa9,0x67,0x6c,0x5f,0x61
+	.byte 0x74,0x74,0x72,0x69,0x62,0x5f,0x6e,0x6f
+	.byte 0x64,0x65,0x00,0x00,0x00,0x80,0x09,0x67
+	.byte 0x6c,0x5f,0x61,0x63,0x63,0x75,0x6d,0x5f
+	.byte 0x61,0x74,0x74,0x72,0x69,0x62,0x00,0x00
+	.byte 0x00,0x80,0x56,0x67,0x6c,0x5f,0x63,0x6f
+	.byte 0x6c,0x6f,0x72,0x62,0x75,0x66,0x66,0x65
+	.byte 0x72,0x5f,0x61,0x74,0x74,0x72,0x69,0x62
+	.byte 0x00,0x00,0x00,0x82,0x6b,0x67,0x6c,0x5f
+	.byte 0x63,0x75,0x72,0x72,0x65,0x6e,0x74,0x5f
+	.byte 0x61,0x74,0x74,0x72,0x69,0x62,0x00,0x00
+	.byte 0x00,0x83,0x55,0x67,0x6c,0x5f,0x64,0x65
+	.byte 0x70,0x74,0x68,0x62,0x75,0x66,0x66,0x65
+	.byte 0x72,0x5f,0x61,0x74,0x74,0x72,0x69,0x62
+	.byte 0x00,0x00,0x00,0x83,0xa8,0x67,0x6c,0x5f
+	.byte 0x65,0x76,0x61,0x6c,0x5f,0x61,0x74,0x74
+	.byte 0x72,0x69,0x62,0x00,0x00,0x00,0x86,0x1e
+	.byte 0x67,0x6c,0x5f,0x66,0x6f,0x67,0x5f,0x61
+	.byte 0x74,0x74,0x72,0x69,0x62,0x00,0x00,0x00
+	.byte 0x86,0x97,0x67,0x6c,0x5f,0x68,0x69,0x6e
+	.byte 0x74,0x5f,0x61,0x74,0x74,0x72,0x69,0x62
+	.byte 0x00,0x00,0x00,0x87,0x6a,0x67,0x6c,0x5f
+	.byte 0x6c,0x69,0x67,0x68,0x74,0x00,0x00,0x00
+	.byte 0x8a,0x11,0x67,0x6c,0x5f,0x6c,0x69,0x67
+	.byte 0x68,0x74,0x6d,0x6f,0x64,0x65,0x6c,0x00
+	.byte 0x00,0x00,0x8a,0xb2,0x67,0x6c,0x5f,0x6d
+	.byte 0x61,0x74,0x65,0x72,0x69,0x61,0x6c,0x00
+	.byte 0x00,0x00,0x8b,0xa2,0x67,0x6c,0x5f,0x6c
+	.byte 0x69,0x67,0x68,0x74,0x5f,0x61,0x74,0x74
+	.byte 0x72,0x69,0x62,0x00,0x00,0x00,0x8c,0xc3
+	.byte 0x67,0x6c,0x5f,0x6c,0x69,0x6e,0x65,0x5f
+	.byte 0x61,0x74,0x74,0x72,0x69,0x62,0x00,0x00
+	.byte 0x00,0x8d,0x3c,0x67,0x6c,0x5f,0x6c,0x69
+	.byte 0x73,0x74,0x5f,0x61,0x74,0x74,0x72,0x69
+	.byte 0x62,0x00,0x00,0x00,0x8e,0x22,0x67,0x6c
+	.byte 0x5f,0x70,0x69,0x78,0x65,0x6c,0x5f,0x61
+	.byte 0x74,0x74,0x72,0x69,0x62,0x00,0x00,0x00
+	.byte 0x90,0xf2,0x67,0x6c,0x5f,0x70,0x6f,0x69
+	.byte 0x6e,0x74,0x5f,0x61,0x74,0x74,0x72,0x69
+	.byte 0x62,0x00,0x00,0x00,0x91,0x6b,0x67,0x6c
+	.byte 0x5f,0x70,0x6f,0x6c,0x79,0x67,0x6f,0x6e
+	.byte 0x5f,0x61,0x74,0x74,0x72,0x69,0x62,0x00
+	.byte 0x00,0x00,0x92,0xaf,0x47,0x4c,0x73,0x69
+	.byte 0x7a,0x65,0x69,0x00,0x00,0x00,0x92,0xbd
+	.byte 0x67,0x6c,0x5f,0x73,0x63,0x69,0x73,0x73
+	.byte 0x6f,0x72,0x5f,0x61,0x74,0x74,0x72,0x69
+	.byte 0x62,0x00,0x00,0x00,0x93,0x18,0x67,0x6c
+	.byte 0x5f,0x73,0x74,0x65,0x6e,0x63,0x69,0x6c
+	.byte 0x5f,0x61,0x74,0x74,0x72,0x69,0x62,0x00
+	.byte 0x00,0x00,0x94,0x72,0x67,0x6c,0x5f,0x74
+	.byte 0x65,0x78,0x74,0x75,0x72,0x65,0x5f,0x61
+	.byte 0x74,0x74,0x72,0x69,0x62,0x00,0x00,0x00
+	.byte 0x96,0xd4,0x67,0x6c,0x5f,0x74,0x72,0x61
+	.byte 0x6e,0x73,0x66,0x6f,0x72,0x6d,0x5f,0x61
+	.byte 0x74,0x74,0x72,0x69,0x62,0x00,0x00,0x00
+	.byte 0x97,0x4e,0x67,0x6c,0x5f,0x76,0x69,0x65
+	.byte 0x77,0x70,0x6f,0x72,0x74,0x5f,0x61,0x74
+	.byte 0x74,0x72,0x69,0x62,0x00,0x00,0x00,0x98
+	.byte 0x0b,0x67,0x6c,0x5f,0x61,0x72,0x72,0x61
+	.byte 0x79,0x5f,0x61,0x74,0x74,0x72,0x69,0x62
+	.byte 0x00,0x00,0x00,0x9a,0xb6,0x67,0x6c,0x5f
+	.byte 0x70,0x69,0x78,0x65,0x6c,0x73,0x74,0x6f
+	.byte 0x72,0x65,0x5f,0x61,0x74,0x74,0x72,0x69
+	.byte 0x62,0x00,0x00,0x00,0x9b,0x6a,0x67,0x6c
+	.byte 0x5f,0x31,0x64,0x5f,0x6d,0x61,0x70,0x00
+	.byte 0x00,0x00,0x9b,0xbe,0x67,0x6c,0x5f,0x32
+	.byte 0x64,0x5f,0x6d,0x61,0x70,0x00,0x00,0x00
+	.byte 0x9c,0x38,0x67,0x6c,0x5f,0x65,0x76,0x61
+	.byte 0x6c,0x75,0x61,0x74,0x6f,0x72,0x73,0x00
+	.byte 0x00,0x00,0x9d,0xc2,0x67,0x6c,0x5f,0x66
+	.byte 0x65,0x65,0x64,0x62,0x61,0x63,0x6b,0x00
+	.byte 0x00,0x00,0x9e,0x37,0x67,0x6c,0x5f,0x73
+	.byte 0x65,0x6c,0x65,0x63,0x74,0x69,0x6f,0x6e
+	.byte 0x00,0x00,0x00,0xa0,0xa8,0x76,0x65,0x72
+	.byte 0x74,0x65,0x78,0x5f,0x62,0x75,0x66,0x66
+	.byte 0x65,0x72,0x00,0x00,0x00,0x40,0x43,0x67
+	.byte 0x6c,0x5f,0x63,0x6f,0x6e,0x74,0x65,0x78
+	.byte 0x74,0x00,0x00,0x00,0xa2,0xb1,0x47,0x4c
+	.byte 0x63,0x6f,0x6e,0x74,0x65,0x78,0x74,0x00
+	.byte 0x00,0x00,0xa4,0xd5,0x47,0x4c,0x62,0x79
+	.byte 0x74,0x65,0x00,0x00,0x00,0xa6,0x24,0x47
+	.byte 0x4c,0x63,0x6c,0x61,0x6d,0x70,0x66,0x00
+	.byte 0x00,0x00,0xab,0xfb,0x47,0x4c,0x63,0x6c
+	.byte 0x61,0x6d,0x70,0x64,0x00,0x00,0x00,0xbe
+	.byte 0x2c,0x47,0x4c,0x64,0x6f,0x75,0x62,0x6c
+	.byte 0x65,0x00,0x00,0x00,0xe7,0x31,0x5f,0x5f
+	.byte 0x46,0x49,0x4c,0x45,0x00,0x00,0x00,0xe8
+	.byte 0x0d,0x46,0x49,0x4c,0x45,0x00,0x00,0x00
+	.byte 0x00,0x00
+!  End sdCreateSection
+!  Begin sdCreateSection : .debug_varnames
+!  Section Info: link_name/strtab=, entsize=0x1, adralign=0x1, flags=0x0
+!  Section Data Blocks:
+!   reloc[0]: knd=2, off=6, siz=4, lab1=.debug_info, lab2=, loff=0
+	.section ".debug_varnames"
+	.byte 0x00,0x00,0x00,0x78,0x00,0x02
+	.uaword %section_symbol(".debug_info")
+	.byte 0x00,0x00,0xfd,0xa8,0x00,0x00,0xa5,0x1a
+	.byte 0x69,0x6e,0x69,0x74,0x5f,0x66,0x6c,0x61
+	.byte 0x67,0x00,0x00,0x00,0xe8,0x80,0x74,0x6d
+	.byte 0x70,0x00,0x00,0x00,0xe8,0x93,0x43,0x75
+	.byte 0x72,0x72,0x65,0x6e,0x74,0x50,0x6f,0x73
+	.byte 0x00,0x00,0x00,0xe8,0xad,0x43,0x75,0x72
+	.byte 0x72,0x65,0x6e,0x74,0x42,0x6c,0x6f,0x63
+	.byte 0x6b,0x00,0x00,0x00,0xe8,0xc9,0x43,0x75
+	.byte 0x72,0x72,0x65,0x6e,0x74,0x4c,0x69,0x73
+	.byte 0x74,0x4e,0x75,0x6d,0x00,0x00,0x00,0xe8
+	.byte 0xe7,0x43,0x75,0x72,0x72,0x65,0x6e,0x74
+	.byte 0x4c,0x69,0x73,0x74,0x50,0x74,0x72,0x00
+	.byte 0x00,0x00,0xe9,0x17,0x49,0x6e,0x73,0x74
+	.byte 0x53,0x69,0x7a,0x65,0x00,0x00,0x00,0x00
+	.byte 0x00,0x00
+!  End sdCreateSection
