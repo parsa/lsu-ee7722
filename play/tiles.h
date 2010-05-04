@@ -105,7 +105,7 @@ Tile_Manager::new_tile(pCoor ll, pVect up, pVect rt)
 {
   Tile* const rv = new Tile(cuda_stale,ll,up,rt);
   tiles += rv;
-  phys_list->push(rv);
+  rv->idx = phys_list->occ();  phys_list->push(rv);
   return rv;
 }
 

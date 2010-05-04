@@ -5,6 +5,7 @@ CUDAPATH = /usr/local/cuda
 CUDAPATH2 = /usr/local/cuda23
 CUDAPATH2 = /usr/local/cuda-2.3
 DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
+LNVDIS = /home/faculty/koppel/lbuild/nv50dis/nvdis
 
 # -Xnvopencc -LIST:source=on
 
@@ -13,11 +14,11 @@ DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  -use_fast_math -keep
+ --ptxas-options=-v  -use_fast_math -keep -O3
 
 
 CC = gcc
-CXX = $(CUDAPATH)/bin/nvcc -O3
+CXX = $(CUDAPATH)/bin/nvcc
 
 .SUFFIXES: .cu .cuh
 
@@ -34,12 +35,10 @@ default: demo-x-collide cube4
 
 .cu.o:
 	$(CXX) $(CFLAGS) -c $*.cu
-	$(CUDA2) -cubin -arch sm_10 $*.ptx -o foo.cubin	
+	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
+	$(LNVDIS) $*.cubin > $*.cubin.ptx
+	$(CUDAPATH2)/bin/nvcc $(CFLAGS) -cubin $*.cu -o foo.cubin
 	$(DECUDA) -p -o $*.cubin.ptx foo.cubin
-
-#	/usr/local/cuda-2.3/bin/ptxas -arch sm_10 $*.ptx -o foo.cubin
-
-#	$(DECUDA) -p -o $*.cubin.ptx $*.sm_10.cubin 
 
 
 cube6.o: Makefile ../include/coord.h ../include/util.h shader.h 

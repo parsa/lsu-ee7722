@@ -754,6 +754,174 @@ method=[ _Z10pass_pairsiiiii ] gputime=[ 726.304 ] cputime=[ 741.000 ] occupancy
 method=[ _Z10pass_pairsiiiii ] gputime=[ 136.704 ] cputime=[ 149.000 ] occupancy=[ 0.167 ] gld_incoherent=[ 558 ] gld_coherent=[ 153 ] gst_incoherent=[ 558 ] warp_serialize=[ 130 ] 
 method=[ _Z13pass_platformi ] gputime=[ 384.000 ] cputime=[ 396.000 ] occupancy=[ 0.250 ] gld_incoherent=[ 4224 ] gld_coherent=[ 3168 ] gst_incoherent=[ 0 ] warp_serialize=[ 0 ] 
 
+::  7 April 2010, 13:44:13 CDT
+
+method=[ _Z10pass_pairsiiiii ] gputime=[ 242.304 ] cputime=[ 257.000 ] occupancy=[ 0.125 ] divergent_branch=[ 49 ] instructions=[ 11612 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 88.800 ] cputime=[ 101.000 ] occupancy=[ 0.125 ] divergent_branch=[ 9 ] instructions=[ 2058 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.792 ] cputime=[ 50.000 ] occupancy=[ 0.500 ] divergent_branch=[ 13 ] instructions=[ 1873 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z13pass_platformi ] gputime=[ 302.624 ] cputime=[ 316.000 ] occupancy=[ 0.250 ] divergent_branch=[ 101 ] instructions=[ 15598 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ memcpyDtoH ] gputime=[ 4.224 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.376 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 3.904 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 1.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 247.712 ] cputime=[ 262.000 ] occupancy=[ 0.125 ] divergent_branch=[ 76 ] instructions=[ 18096 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 88.160 ] cputime=[ 99.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 38.240 ] cputime=[ 50.000 ] occupancy=[ 0.500 ] divergent_branch=[ 14 ] instructions=[ 1965 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z13pass_platformi ] gputime=[ 300.480 ] cputime=[ 314.000 ] occupancy=[ 0.250 ] divergent_branch=[ 152 ] instructions=[ 19136 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ memcpyDtoH ] gputime=[ 4.160 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.376 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 3.968 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.616 ] cputime=[ 0.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 246.848 ] cputime=[ 261.000 ] occupancy=[ 0.125 ] divergent_branch=[ 63 ] instructions=[ 14126 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 88.352 ] cputime=[ 100.000 ] occupancy=[ 0.125 ] divergent_branch=[ 16 ] instructions=[ 3217 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 38.336 ] cputime=[ 51.000 ] occupancy=[ 0.500 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 304.832 ] cputime=[ 319.000 ] occupancy=[ 0.250 ] divergent_branch=[ 341 ] instructions=[ 35623 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.224 ] cputime=[ 14.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyDtoH ] gputime=[ 290.944 ] cputime=[ 469.000 ] memtransfersize=[ 960512 ] 
+method=[ memcpyHtoD ] gputime=[ 4.032 ] cputime=[ 7.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 31.200 ] cputime=[ 55.000 ] memtransfersize=[ 82432 ] 
+method=[ memcpyHtoD ] gputime=[ 3.584 ] cputime=[ 2.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 74.464 ] cputime=[ 589.000 ] memtransfersize=[ 1266688 ] 
+method=[ memcpyHtoD ] gputime=[ 5.376 ] cputime=[ 2.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 4.000 ] cputime=[ 0.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 4.000 ] cputime=[ 0.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 246.592 ] cputime=[ 258.000 ] occupancy=[ 0.125 ] divergent_branch=[ 39 ] instructions=[ 9053 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 90.176 ] cputime=[ 101.000 ] occupancy=[ 0.125 ] divergent_branch=[ 19 ] instructions=[ 3446 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.440 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 303.808 ] cputime=[ 318.000 ] occupancy=[ 0.250 ] divergent_branch=[ 191 ] instructions=[ 30854 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.128 ] cputime=[ 14.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.344 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 4.000 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 0.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 246.784 ] cputime=[ 261.000 ] occupancy=[ 0.125 ] divergent_branch=[ 79 ] instructions=[ 18720 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 90.272 ] cputime=[ 102.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 38.144 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 10 ] instructions=[ 1590 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 304.224 ] cputime=[ 318.000 ] occupancy=[ 0.250 ] divergent_branch=[ 159 ] instructions=[ 20484 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.288 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.344 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 1.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 246.048 ] cputime=[ 260.000 ] occupancy=[ 0.125 ] divergent_branch=[ 77 ] instructions=[ 18377 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 90.272 ] cputime=[ 102.000 ] occupancy=[ 0.125 ] divergent_branch=[ 20 ] instructions=[ 3616 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.504 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 304.096 ] cputime=[ 316.000 ] occupancy=[ 0.250 ] divergent_branch=[ 349 ] instructions=[ 36431 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.128 ] cputime=[ 15.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.312 ] cputime=[ 2.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 3.936 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.936 ] cputime=[ 0.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 250.848 ] cputime=[ 265.000 ] occupancy=[ 0.125 ] divergent_branch=[ 39 ] instructions=[ 9299 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 90.144 ] cputime=[ 102.000 ] occupancy=[ 0.125 ] divergent_branch=[ 19 ] instructions=[ 3446 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.472 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 305.376 ] cputime=[ 316.000 ] occupancy=[ 0.250 ] divergent_branch=[ 191 ] instructions=[ 30867 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.320 ] cputime=[ 12.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.344 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 4.032 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.616 ] cputime=[ 1.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 248.800 ] cputime=[ 267.000 ] occupancy=[ 0.125 ] divergent_branch=[ 79 ] instructions=[ 18719 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 90.112 ] cputime=[ 102.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.344 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 10 ] instructions=[ 1590 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 305.408 ] cputime=[ 317.000 ] occupancy=[ 0.250 ] divergent_branch=[ 158 ] instructions=[ 20618 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.160 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.376 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 3.936 ] cputime=[ 0.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 1.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 250.400 ] cputime=[ 268.000 ] occupancy=[ 0.125 ] divergent_branch=[ 78 ] instructions=[ 18384 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 89.920 ] cputime=[ 101.000 ] occupancy=[ 0.125 ] divergent_branch=[ 20 ] instructions=[ 3616 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.792 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 305.216 ] cputime=[ 317.000 ] occupancy=[ 0.250 ] divergent_branch=[ 354 ] instructions=[ 36769 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.256 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.344 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 4.032 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 1.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 248.576 ] cputime=[ 266.000 ] occupancy=[ 0.125 ] divergent_branch=[ 39 ] instructions=[ 9051 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 89.888 ] cputime=[ 102.000 ] occupancy=[ 0.125 ] divergent_branch=[ 19 ] instructions=[ 3450 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 37.344 ] cputime=[ 49.000 ] occupancy=[ 0.500 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 305.824 ] cputime=[ 317.000 ] occupancy=[ 0.250 ] divergent_branch=[ 191 ] instructions=[ 30857 ] gld_incoherent=[ 0 ] gst_incoherent=[ 6 ] 
+method=[ memcpyDtoH ] gputime=[ 4.160 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyDtoH ] gputime=[ 290.880 ] cputime=[ 485.000 ] memtransfersize=[ 960512 ] 
+method=[ memcpyHtoD ] gputime=[ 4.000 ] cputime=[ 5.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 30.880 ] cputime=[ 57.000 ] memtransfersize=[ 82432 ] 
+method=[ memcpyHtoD ] gputime=[ 3.936 ] cputime=[ 2.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 74.592 ] cputime=[ 591.000 ] memtransfersize=[ 1266688 ] 
+method=[ memcpyHtoD ] gputime=[ 5.376 ] cputime=[ 2.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 3.904 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 4.096 ] cputime=[ 0.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 237.472 ] cputime=[ 254.000 ] occupancy=[ 0.125 ] divergent_branch=[ 79 ] instructions=[ 18763 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 96.352 ] cputime=[ 108.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 43.072 ] cputime=[ 55.000 ] occupancy=[ 0.500 ] divergent_branch=[ 12 ] instructions=[ 1940 ] gld_incoherent=[ 0 ] gst_incoherent=[ 3 ] 
+method=[ _Z13pass_platformi ] gputime=[ 305.344 ] cputime=[ 316.000 ] occupancy=[ 0.250 ] divergent_branch=[ 98 ] instructions=[ 15521 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+method=[ memcpyDtoH ] gputime=[ 4.256 ] cputime=[ 13.000 ] memtransfersize=[ 136 ] 
+method=[ memcpyHtoD ] gputime=[ 5.312 ] cputime=[ 1.000 ] memtransfersize=[ 4320 ] 
+method=[ memcpyHtoD ] gputime=[ 4.032 ] cputime=[ 1.000 ] memtransfersize=[ 8 ] 
+method=[ memcpyHtoD ] gputime=[ 3.552 ] cputime=[ 1.000 ] memtransfersize=[ 4 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 240.992 ] cputime=[ 258.000 ] occupancy=[ 0.125 ] divergent_branch=[ 80 ] instructions=[ 19008 ] gld_incoherent=[ 0 ] gst_incoherent=[ 11 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 95.040 ] cputime=[ 107.000 ] occupancy=[ 0.125 ] divergent_branch=[ 0 ] instructions=[ 0 ] gld_incoherent=[ 0 ] gst_inco
+
+
+Pairs time (before tuning)
+
+(+ 237 96 43 ) = 376.0000 
+
+method=[ _Z13pass_platformi ] gputime=[ 61.856 ] cputime=[ 74.000 ] occupancy=[ 0.344 ] divergent_branch=[ 11 ] instructions=[ 4064 ] gld_incoherent=[ 0 ] gst_incoherent=[ 4 ] 
+
+Check for tile collision, but don't resolve.
+
+method=[ _Z13pass_platformi ] gputime=[ 283.840 ] cputime=[ 296.000 ] occupancy=[ 0.250 ] divergent_branch=[ 160 ] instructions=[ 17002 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+
+Prepare a work list.
+
+method=[ _Z13pass_platformi ] gputime=[ 339.104 ] cputime=[ 350.000 ] occupancy=[ 0.250 ] divergent_branch=[ 236 ] instructions=[ 30465 ] gld_incoherent=[ 0 ] gst_incoherent=[ 5 ] 
+
+Treat tiles like balls, test & resolve in pairs pass:
+
+Plat: 68
+Pairs: (+ 390 278 158) = 826.0000 
+
+No tiles: (+ 285 100 46) = 431.0000 
+
+
+Tried:
+ Assign work to warps based on code path. (Small improvement.)
+ Allow multiple uses of read-only tiles. (Small improvement, but needs more work.)
+
+Make steps narrower to help with scheduling.
+
+Plat: 59
+Pairs: (+ 299 101 47) = 447.0000 
+
+Get rid of local variable access.
+
+Plat: 56.9
+Pairs: (+ 311 103 41 ) = 455.0000 
+
+Sort Prefetch
+
+Plat: 61
+Pairs (+ 259 97 36) = 392.0000 
+
+On laptop:
+
+Plat: 404
+Pairs: (+ 2703 583 134) = 3420.0000 
+
+method=[ _Z10pass_pairsiiiii ] gputime=[ 2703.744 ] cputime=[ 2716.000 ] occupancy=[ 0.167 ] instructions=[ 91980 ] gld_incoherent=[ 25422 ] gld_coherent=[ 3327 ] gst_incoherent=[ 25400 ] 
+
+Balls: 8600
+(* 8600 4 3) = 103200.0000 
+(* 25000 2) = 50000.0000 
+(*  4 128 2209) = 1131008.0000 
+
+
+method=[ _Z10pass_pairsiiiii ] gputime=[ 2654.592 ] cputime=[ 2673.000 ] occupancy=[ 0.167 ] instructions=[ 82855 ] gld_incoherent=[ 24828 ] gld_coherent=[ 3278 ] gst_incoherent=[ 24828 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 576.704 ] cputime=[ 592.000 ] occupancy=[ 0.167 ] instructions=[ 16146 ] gld_incoherent=[ 7848 ] gld_coherent=[ 609 ] gst_incoherent=[ 7848 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 143.936 ] cputime=[ 157.000 ] occupancy=[ 0.167 ] instructions=[ 4023 ] gld_incoherent=[ 714 ] gld_coherent=[ 216 ] gst_incoherent=[ 714 ] 
+method=[ _Z13pass_platformi ] gputime=[ 393.056 ] cputime=[ 406.000 ] occupancy=[ 0.250 ] instructions=[ 18247 ] gld_incoherent=[ 4224 ] gld_coherent=[ 3168 ] gst_incoherent=[ 0 ] 
+
+method=[ _Z10pass_pairsiiiii ] gputime=[ 2738.304 ] cputime=[ 2757.000 ] occupancy=[ 0.167 ] gld_incoherent=[ 24558 ] gld_coherent=[ 3842 ] gst_incoherent=[ 24558 ] warp_serialize=[ 93036 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 726.304 ] cputime=[ 741.000 ] occupancy=[ 0.167 ] gld_incoherent=[ 8118 ] gld_coherent=[ 888 ] gst_incoherent=[ 8118 ] warp_serialize=[ 8911 ] 
+method=[ _Z10pass_pairsiiiii ] gputime=[ 136.704 ] cputime=[ 149.000 ] occupancy=[ 0.167 ] gld_incoherent=[ 558 ] gld_coherent=[ 153 ] gst_incoherent=[ 558 ] warp_serialize=[ 130 ] 
+method=[ _Z13pass_platformi ] gputime=[ 384.000 ] cputime=[ 396.000 ] occupancy=[ 0.250 ] gld_incoherent=[ 4224 ] gld_coherent=[ 3168 ] gst_incoherent=[ 0 ] warp_serialize=[ 0 ] 
+
 
 Back to orion:
 
@@ -776,3 +944,10 @@ Add tiles to CUDA, including staircase and wheel.
 Tuned CUDA code:
  Avoid doubles, use insn for sin, cos.
  Minimize read and write of shared memory.
+
+::  4 May 2010, 13:35:44 CDT
+
+pass 2
+idx9: 21, idx 41
+idx1: ? idx 40
+

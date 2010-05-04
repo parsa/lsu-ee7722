@@ -112,6 +112,8 @@ __device__ pCoor mc(float4 c){ return make_float3(c.x,c.y,c.z); }
 __device__ void set_f3(float3& a, float4 b){a.x = b.x; a.y = b.y; a.z = b.z;}
 __device__ void set_f4(float4& a, float3 b)
 {a.x = b.x; a.y = b.y; a.z = b.z; a.w = 1;}
+__device__ void set_f4(float4& a, float3 b, float c)
+{a.x = b.x; a.y = b.y; a.z = b.z; a.w = c;}
 
 // Make a Vector
 __device__ pVect
@@ -801,7 +803,7 @@ pass_platform_ball(CUDA_Phys_W& phys, int idx)
   set_f4(balls_x.velocity[idx], ball.velocity);
   set_f4(balls_x.prev_velocity[idx], ball.velocity);
   set_f4(balls_x.omega[idx], ball.omega);
-  set_f4(balls_x.position[idx], ball.position);
+  set_f4(balls_x.position[idx], ball.position, ball.radius);
 }
 
 
@@ -926,3 +928,155 @@ platform_collision(CUDA_Phys_W& phys)
   if ( penetration_balls_resolve(phys.ball,pball,false) )
     phys.contact_count++;
 }
+
+ /// Compute Phys Proximity Pairs
+
+// Mapping from z-sort index to ball array index.
+__constant__ int *z_sort_indices;
+
+// Pre-computed z_max values.
+__constant__ float *z_sort_z_max;
+
+// Computed proximity values, sent to CPU.
+__constant__ int64_t *cuda_prox;
+
+// An array that can be used to pass values back to the CPU for
+// use in debugging.
+__constant__ float3 *pass_sched_debug;
+
+texture<float4> balls_pos_tex;
+texture<float4> balls_vel_tex;
+
+__global__ void pass_sched(int ball_count, float lifetime_delta_t);
+__device__ float ball_min_z_get
+(float3 position, float3 velocity, float radius, float lifetime_delta_t);
+
+__host__ void
+pass_sched_launch
+(dim3 dg, dim3 db, int ball_count, float lifetime_delta_t,
+ void *pos_array_dev, void *vel_array_dev)
+{
+  size_t offset;
+  const size_t size = ball_count * sizeof(float4);
+  const cudaChannelFormatDesc fd =
+    cudaCreateChannelDesc(32,32,32,32,cudaChannelFormatKindFloat);
+  cudaBindTexture(&offset, balls_pos_tex, pos_array_dev, fd, size);
+  cudaBindTexture(&offset, balls_vel_tex, vel_array_dev, fd, size);
+
+  pass_sched<<<dg,db>>>(ball_count,lifetime_delta_t);
+}
+
+__global__ void
+pass_sched(int ball_count, float lifetime_delta_t)
+{
+  // Determine which balls that are in proximity to a ball. This
+  // routine only works for balls, if a tile is found an I-give-up
+  // value is returned, and the CPU will have to determine proximity.
+
+  const int idx_base = blockIdx.x * blockDim.x;
+
+  // idx9 is an index into z-sorted arrays.
+  const int idx9 = idx_base + threadIdx.x;
+
+  if ( idx9 >= ball_count ) return;
+
+  // bidx9 is an index into the balls arrays.
+  const int bidx9 = z_sort_indices[idx9];
+
+  // If bidx9 is negative then Phys at index bidx9 is not a ball,
+  // so just return a give-up code 't' (tile).
+  if ( bidx9 < 0 )
+    {
+      cuda_prox[idx9] = ( 't' << 8 ) | 0xff;
+      return;
+    }
+
+  // Fetch position, radius (packed in position vector), and velocity.
+  //
+  const float4 pos_rad9 = tex1Dfetch(balls_pos_tex,bidx9);
+  const float3 pos9 = xyz(pos_rad9);
+  const float radius9 = pos_rad9.w;
+  const float4 vel9_pad = tex1Dfetch(balls_vel_tex,bidx9);
+  const float3 vel9 = xyz(vel9_pad);
+
+  const float z_min = ball_min_z_get(pos9,vel9,radius9,lifetime_delta_t);
+
+  // Number of nearby balls.
+  int proximity_cnt = 0;
+
+  // Reason for giving up, 0 means we didn't give up (yet).
+  char incomplete = 0;
+
+  // The list of balls in proximity, packed into a single integer.
+  Prox_Offsets offsets = 0;
+
+  for ( int idx1 = idx9-1; !incomplete && idx1 >= 0; idx1-- )
+    {
+      const float z_max = z_sort_z_max[idx1];
+
+      // Break if this and subsequent z-ordered balls could not
+      // possibly be in proximity.
+      if ( z_max < z_min ) break;
+
+      const int bidx1 = z_sort_indices[idx1];
+
+      // If there's a tile here give up.
+      // (t is for tile)
+      if ( bidx1 < 0 ) { incomplete = 't'; continue; }
+
+      const float4 pos_rad = tex1Dfetch(balls_pos_tex,bidx1);
+      const float3 pos1 = xyz(pos_rad);
+      const float4 vel_pad1 = tex1Dfetch(balls_vel_tex,bidx1);
+      const float3 vel1 = xyz(vel_pad1);
+      const float radius1 = pos_rad.w;
+
+      // Use the pNorm constructor to compute the distance between two balls.
+      pNorm dist = mn(pos1,pos9);
+
+      // Balls are considered in proximity if they can be
+      // this close over schedule lifetime.
+      const float region_length_small = 1.1f * ( radius9 + radius1 );
+      
+      // Check if balls will be close enough over lifetime.
+      pVect delta_v = vel9 - vel1;
+      const float delta_d = lifetime_delta_t * length(delta_v);
+      const float dist2 = dist.magnitude - delta_d;
+
+      if ( dist2 > region_length_small ) continue; 
+
+      // At this point the balls are considered in proximity, now
+      // squeeze the value of bidx1 into eight bits by taking
+      // the difference of z-sort indices, which should be close
+      // together.
+      const int offset = idx9 - idx1;
+
+      // Ooops, exceeded the limit on the number of proximities.
+      // (f is for full)
+      if ( proximity_cnt >= cuda_prox_per_ball ) incomplete = 'f';
+
+      // Ooops, the offset won't fit into 8 bits.
+      // (o is for overflow)
+      else if ( offset >= 255 )                  incomplete = 'o';
+
+      // Everything is fine, slide the offset on to the list.
+      else offsets = ( offsets << 8 ) | offset;
+
+      proximity_cnt++;
+    }
+
+  // If code could not compute all proximities replace offsets with
+  // the error code.
+  if ( incomplete ) offsets = ( incomplete << 8 ) | 0xff;
+
+  cuda_prox[idx9] = offsets;
+}
+
+__device__ float
+ball_min_z_get
+(float3 position, float3 velocity, float radius, float lifetime_delta_t)
+{
+  const float m = fabs(velocity.x) + fabs(velocity.y) + fabs(velocity.z);
+  const float z_min = position.z - m * lifetime_delta_t - radius;
+  return z_min;
+}
+
