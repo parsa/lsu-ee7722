@@ -983,6 +983,8 @@ __constant__ bool opt_debug, opt_debug2;
 // use in debugging.
 __constant__ float3 *pass_sched_debug;
 
+texture<float4> balls_pos_tex;
+texture<float4> balls_vel_tex;
 
 __global__ void pass_sched(int ball_count, float lifetime_delta_t);
 __device__ float ball_min_z_get
@@ -990,8 +992,16 @@ __device__ float ball_min_z_get
 
 __host__ void
 pass_sched_launch
-(dim3 dg, dim3 db, int ball_count, float lifetime_delta_t)
+(dim3 dg, dim3 db, int ball_count, float lifetime_delta_t,
+ void *pos_array_dev, void *vel_array_dev)
 {
+  size_t offset;
+  const size_t size = ball_count * sizeof(float4);
+  const cudaChannelFormatDesc fd =
+    cudaCreateChannelDesc(32,32,32,32,cudaChannelFormatKindFloat);
+  cudaBindTexture(&offset, balls_pos_tex, pos_array_dev, fd, size);
+  cudaBindTexture(&offset, balls_vel_tex, vel_array_dev, fd, size);
+
   pass_sched<<<dg,db>>>(ball_count,lifetime_delta_t);
 }
 
@@ -1023,10 +1033,11 @@ pass_sched(int ball_count, float lifetime_delta_t)
 
   // Fetch position, radius (packed in position vector), and velocity.
   //
-  const float4 pos_rad9 = balls_x.position[bidx9];
+  const float4 pos_rad9 = tex1Dfetch(balls_pos_tex,bidx9);
   const float3 pos9 = xyz(pos_rad9);
   const float radius9 = pos_rad9.w;
-  const float3 vel9 = xyz(balls_x.velocity[bidx9]);
+  const float4 vel9_pad = tex1Dfetch(balls_vel_tex,bidx9);
+  const float3 vel9 = xyz(vel9_pad);
 
   const float z_min = ball_min_z_get(pos9,vel9,radius9, lifetime_delta_t);
 
@@ -1053,10 +1064,11 @@ pass_sched(int ball_count, float lifetime_delta_t)
       // (t is for tile)
       if ( bidx1 < 0 ) { incomplete = 't'; continue; }
 
-      const float4 pos_rad = balls_x.position[bidx1];
+      const float4 pos_rad = tex1Dfetch(balls_pos_tex,bidx1);
       const float3 pos1 = xyz(pos_rad);
+      const float4 vel_pad1 = tex1Dfetch(balls_vel_tex,bidx1);
+      const float3 vel1 = xyz(vel_pad1);
       const float radius1 = pos_rad.w;
-      const float3 vel1 = xyz(balls_x.velocity[bidx1]);
 
       // Use the pNorm constructor to compute the distance between two balls.
       pNorm dist = mn(pos1,pos9);

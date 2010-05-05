@@ -92,7 +92,8 @@ pass_pairs_launch
 
 __host__ void
 pass_sched_launch
-(dim3 dg, dim3 db, int ball_count, float lifetime_delta_t);
+(dim3 dg, dim3 db, int ball_count, float lifetime_delta_t,
+ void *pos_array_dev, void *vel_array_dev);
 
 
 // Type used to store proximities.

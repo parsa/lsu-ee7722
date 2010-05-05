@@ -2610,7 +2610,9 @@ World::cuda_contact_pairs_find()
   // determine which balls are in proximity.  Just balls, it skips
   // tiles.
   //
-  pass_sched_launch(dim_grid,dim_block, ball_cnt, lifetime_delta_t);
+  pass_sched_launch
+    (dim_grid, dim_block, ball_cnt, lifetime_delta_t,
+     position_array_dev, velocity_array_dev);
 
   // Move data back from CUDA.  This cannot be done in contact_pairs_find
   // because that code runs in another thread. (All CUDA calls must
