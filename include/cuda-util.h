@@ -207,6 +207,15 @@ public:
     ptrs_to_cuda_side(dev_name_1,1);
   }
 
+  void ptrs_to_cuda_array(const char *dev_name)
+  {
+    if ( dev_ptr_name[0] == dev_name ) return;
+    dev_ptr_name[0] = dev_name;
+    get_dev_addr(0); get_dev_addr(1); // Force allocation.
+    CE(cudaMemcpyToSymbol
+       (dev_name, &dev_addr[0], sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
+  }
+
   void to_cuda()
   {
     alloc_gpu_buffer();
