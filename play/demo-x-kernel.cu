@@ -951,7 +951,7 @@ __global__ void pass_sched(int ball_count, float lifetime_delta_t);
 __device__ float ball_min_z_get
 (float3 position, float3 velocity, float radius, float lifetime_delta_t);
 
-__host__ void
+__host__ bool
 pass_sched_launch
 (dim3 dg, dim3 db, int ball_count, float lifetime_delta_t,
  void *pos_array_dev, void *vel_array_dev)
@@ -961,9 +961,13 @@ pass_sched_launch
   const cudaChannelFormatDesc fd =
     cudaCreateChannelDesc(32,32,32,32,cudaChannelFormatKindFloat);
   cudaBindTexture(&offset, balls_pos_tex, pos_array_dev, fd, size);
+  if ( offset ) return false;
   cudaBindTexture(&offset, balls_vel_tex, vel_array_dev, fd, size);
+  if ( offset ) return false;
 
   pass_sched<<<dg,db>>>(ball_count,lifetime_delta_t);
+
+  return true;
 }
 
 __global__ void

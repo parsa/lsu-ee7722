@@ -63,76 +63,6 @@ pNorm mn(vec4 a, vec4 b) {return mn(b.xyz-a.xyz);}
 pNorm mn(float x, float y, float z){ return mn(vec3(x,y,z)); }
 
 
-
-///
-/// Shader for Shadows
-///
-
-//  To cast a shadow vertex shader code computes a shadow location
-//  based on the vertex and light locations, and the platform
-//  geometry (a half cylinder).  The shadow location is used only
-//  to write the stencil buffer.
-
-uniform vec4 axis_e;
-uniform vec3 axis_ne;
-uniform float platform_xrad_sq;
-uniform int light_num;
-uniform int opt_color_events;
-
-void
-vs_main_shadow()
-{
-  /// Compute coordinate of shadow cast by vertex.
-  //
-  //  The shadow will be used to write the stencil buffer,
-  //  so there is no need to compute the lighted color.
-
-  // Find eye-space axis vector (of the platform) and the vertex coordinate.
-  //
-  vec3 axis_exy = deaxis( axis_e, axis_ne );
-  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
-
-  // Extract (project) only x and y coordinates of vertex.
-  //
-  vec3 vertex_exy = deaxis( vertex_e, axis_ne );
-
-  vec4 light_pos = gl_LightSource[light_num].position;
-  vec3 v_axis_to_vtx_exy = vertex_exy - axis_exy;
-  vec3 v_light_to_vtx = vertex_e.xyz - light_pos.xyz;
-  vec3 v_light_to_vtx_xy = deaxis( v_light_to_vtx, axis_ne );
-
-  // Set up quadratic equation coefficients, to solve for shadow location.
-  //
-  float a = dot(v_light_to_vtx_xy,v_light_to_vtx_xy);
-  float b = 2.0 * dot( v_axis_to_vtx_exy, v_light_to_vtx_xy );
-  float c = dot( v_axis_to_vtx_exy, v_axis_to_vtx_exy ) - platform_xrad_sq;
-  float radical = b * b - 4.0 * a * c;
-
-  // Use this position if shadow not visible.
-  //
-  gl_Position = vec4(0,0,-1000,1);
-  if ( radical < 0.0 ) return;
-
-  //
-  // Compute shadow location, transform to clip space, and we're done.
-  //
-
-  float t = ( -b + sqrt( radical ) ) / ( 2.0 * a );
-
-  // Return if vertex close to platform or platform is between
-  // light and vertex.
-  //
-  if ( t < 0.001 ) return;
-
-  vec4 shadow_e;
-
-  shadow_e.xyz = vertex_e.xyz + t * v_light_to_vtx;
-  shadow_e.w = 1.0;
-
-  gl_Position = gl_ProjectionMatrix * shadow_e;
-}
-
-
 ///
 /// Shader For Reflections
 ///
@@ -163,6 +93,7 @@ vs_main_shadow()
 // debugging and tuning.
 //
 uniform int opt_mirror_method;
+uniform int opt_color_events;
 
 uniform float platform_xmid;
 uniform float platform_xrad;
@@ -383,6 +314,11 @@ alhazan(vec2 eye, vec2 vertex)
 }
 
 void
+generic_lighting_i
+(vec4 vertex_e, vec4 color, vec3 normal_e,
+ inout vec4 new_color, inout vec4 spec_color, int i);
+
+void
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 {
   // Compute Lighting for Ball
@@ -391,35 +327,45 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   vec4 new_color = vec4( color.rgb * gl_LightModel.ambient.rgb, color.a);
   vec4 spec_color = vec4(0,0,0,1);
 
-  for ( int i=0; i<2; i++ )
-    {
-      vec4 light_pos = gl_LightSource[i].position;
-      vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
-      float phase_light = dot_pos(normal_e, normalize(v_vtx_light).xyz);
-      pNorm v_to_light = mn(vertex_e,light_pos);
-      pNorm v_to_eye = mn(vertex_e,vec4(0,0,0,1));
-      pNorm h = mn( v_to_light.v + v_to_eye.v );
-      bool f = dot(normal_e,v_to_light.v) > 0.0;
-      vec3 ambient_light = gl_LightSource[i].ambient.rgb;
-      vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
-      float dist = length(v_vtx_light);
-      float distsq = dist * dist;
-      float atten_inv =
-        gl_LightSource[i].constantAttenuation +
-        gl_LightSource[i].linearAttenuation * dist +
-        gl_LightSource[i].quadraticAttenuation * distsq;
-      new_color.rgb +=
-        color.rgb *
-        ( ambient_light + phase_light * diffuse_light ) / atten_inv;
-      if ( !f ) continue;
-      spec_color.rgb +=
-        pow(dot_pos(normal_e,h.v),gl_FrontMaterial.shininess)
-        * gl_FrontMaterial.specular.rgb
-        * gl_LightSource[i].specular.rgb / atten_inv;
-    }
+  // Bug Workaround: Compile error when code from generic_lighting_i
+  // placed in a loop body (with loop iterating over i). So instead,
+  // hand-unroll loop.  Bug encountered on driver 4.0.0 NVIDIA 256.40
+  generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,0);
+  generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,1);
 
-    gl_FrontColor = new_color;
-    gl_FrontSecondaryColor =  spec_color;
+  gl_BackColor = gl_FrontColor = new_color;
+  gl_BackSecondaryColor = gl_FrontSecondaryColor =  spec_color;
+}
+
+void
+generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
+                   inout vec4 new_color, inout vec4 spec_color, int i)
+{
+  // Compute Lighting for Ball
+  // Uses OpenGL lighting model, nothing fancy here.
+
+  vec3 light_pos = gl_LightSource[i].position.xyz;
+  vec3 v_vtx_light = light_pos - vertex_e.xyz;
+  vec3 v_to_light = normalize(v_vtx_light);
+  float phase_light = abs(dot(normal_e, v_to_light));
+  vec3 v_to_eye = normalize(-vertex_e.xyz);
+  vec3 h = normalize( v_to_light + v_to_eye );
+  vec3 ambient_light = gl_LightSource[i].ambient.rgb;
+  vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
+  float dist = length(v_vtx_light);
+  float distsq = dist * dist;
+  float atten_inv =
+    gl_LightSource[i].constantAttenuation +
+    gl_LightSource[i].linearAttenuation * dist +
+    gl_LightSource[i].quadraticAttenuation * distsq;
+  new_color.rgb +=
+    color.rgb * ( ambient_light + phase_light * diffuse_light )
+    / atten_inv;
+  if ( dot(normal_e,v_to_light) > 0.0 )
+    spec_color.rgb +=
+      pow(dot_pos(normal_e,h),gl_FrontMaterial.shininess)
+      * gl_FrontMaterial.specular.rgb
+      * gl_LightSource[i].specular.rgb / atten_inv;
 }
 
 

@@ -1191,21 +1191,36 @@ World::cuda_init()
   int device_count;
   cudaGetDeviceCount(&device_count); // Get number of GPUs.
   ASSERTS( device_count );
+  for ( int dev = 0; dev < device_count; dev ++ )
+    {
+      CE(cudaGetDeviceProperties(&cuda_prop,dev));
+      CE(cudaGLSetGLDevice(dev));
+      printf
+        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
+         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
+         int(cuda_prop.totalGlobalMem >> 20));
+
+      printf
+        ("GPU %d: CAP: %d.%d  MP: %2d  TH/WP: %3d  TH/BL: %4d\n",
+         dev, cuda_prop.major, cuda_prop.minor,
+         cuda_prop.multiProcessorCount, 
+         cuda_prop.warpSize,
+         cuda_prop.maxThreadsPerBlock
+         );
+
+      printf
+        ("GPU %d: SHARED: %5d  CONST: %5d  # REGS: %5d\n",
+         dev, 
+         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
+         cuda_prop.regsPerBlock
+         );
+
+    }
+
   const int dev = 0;
-  CE(cudaGetDeviceProperties(&cuda_prop,dev));
-  CE(cudaGLSetGLDevice(dev));
-  printf
-    ("GPU: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-     cuda_prop.name, cuda_prop.clockRate/1e6,
-     int(cuda_prop.totalGlobalMem >> 20));
-  printf
-    ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %d  CONST: %d  "
-     "# REGS: %d\n",
-     cuda_prop.major, cuda_prop.minor,
-     cuda_prop.multiProcessorCount, cuda_prop.maxThreadsPerBlock,
-     int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-     cuda_prop.regsPerBlock
-     );
+
+  printf("Using GPU %d\n",dev);
+  CE(cudaSetDevice(dev));
 
   // Prepare events used for timing.
   //
@@ -2612,9 +2627,10 @@ World::cuda_contact_pairs_find()
   // determine which balls are in proximity.  Just balls, it skips
   // tiles.
   //
-  pass_sched_launch
+  const bool rv = pass_sched_launch
     (dim_grid,dim_block, ball_cnt, lifetime_delta_t,
      position_array_dev, velocity_array_dev);
+  ASSERTS( rv );
 
   // Move data back from CUDA.  This cannot be done in contact_pairs_find
   // because that code runs in another thread. (All CUDA calls must

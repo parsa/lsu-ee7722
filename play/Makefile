@@ -14,7 +14,7 @@ LNVDIS = /home/faculty/koppel/lbuild/nv50dis/nvdis
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  -use_fast_math -keep -O3
+ --ptxas-options=-v  -use_fast_math -O3
 
 
 CC = gcc

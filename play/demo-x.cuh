@@ -87,7 +87,7 @@ pass_pairs_launch
 (dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt,
  int max_balls_per_thread, int balls_per_block_max);
 
-__host__ void
+__host__ bool
 pass_sched_launch
 (dim3 dg, dim3 db, int ball_count, float lifetime_delta_t,
  void *pos_array_dev, void *vel_array_dev);
