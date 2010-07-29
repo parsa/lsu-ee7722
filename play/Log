@@ -951,3 +951,26 @@ pass 2
 idx9: 21, idx 41
 idx1: ? idx 40
 
+:: 29 July 2010, 12:07:23 CDT
+
+Checkins:
+
+GTX 480 Changes
+Move wheel from drop to shower, make 10x heavier.
+Change gravity to 20, because it looks better.
+Change specular lighting to viewer-local, provide separate spec intensity.
+Checked in code produces reflections that are too bright.
+
+GTX 480: Always use some kind of vertex shader when rendering physs,
+even if shader reproduces fixed functionality. This yielded better
+performance on a GTX 480, perhaps because of poorly tuned fixed
+functionality code.
+
+generic_lighting:
+ Change model to more closely match fixed func.
+ Use new options variable, but ignore separate specular option.
+ Placeholder for separate specular option.
+vs_main_xform_only, vs_main_plain: new.
+
+
+

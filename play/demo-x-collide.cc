@@ -618,13 +618,16 @@ public:
 
   int tri_count; // For tuning, demo.
 
-  pShader *vs_fixed;
-  pShader *vs_reflect;
+  pShader *vs_fixed;       // Use fixed functionality.
+  pShader *vs_reflect;     // Render reflections of primitives.
+  pShader *vs_plain;       // Reproduce fixed func., can get better performance.
+  pShader *vs_xfrom_only;  // No lighting, color not assigned.
 
   GLint sun_axis_e, sun_axis_ne, sun_platform_xrad_sq, sun_light_num;
   GLint sun_platform_xmid, sun_platform_xrad; 
   GLint sun_eye_location, sun_eye_to_world, sun_world_to_clip;
   GLint sun_opt_mirror_method, sun_opt_color_events;
+  GLint sun_vs_options;
 
   GLuint texid_plat;
   GLuint texid_ball;
@@ -798,7 +801,7 @@ World::init()
 
   frame_timer.work_unit_set("Steps / s");
   world_time = 0;
-  opt_gravity_accel = 9.8;
+  opt_gravity_accel = 20;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
@@ -832,6 +835,14 @@ World::init()
       sun_opt_mirror_method = vs_reflect->uniform_location("opt_mirror_method");
       sun_opt_color_events = vs_reflect->uniform_location("opt_color_events");
     }
+
+  vs_plain = new pShader("demo-x-shdr.cc","vs_main_plain();");
+  if ( vs_plain->okay() )
+    {
+      sun_vs_options = vs_plain->uniform_location("vs_options");
+    }
+
+  vs_xfrom_only = new pShader("demo-x-shdr.cc","vs_main_xform_only();");
 
   // Instantiate a non-shader shader object, which will be used to
   // tell OpenGL to used fixed functionality for all programmable
@@ -873,7 +884,7 @@ World::init()
   dball = NULL;
   opt_verify = true;
   opt_time_step_factor = 6;
-  opt_wheel_tile_density = 0.01;
+  opt_wheel_tile_density = 0.1;
 
   variable_control.insert(schedule_lifetime_steps,"Sched Life",1,1);
 
@@ -932,7 +943,7 @@ World::init()
   modelview_update();
 
   if ( wheel )
-    wheel->init(pCoor(0.6 * platform_xrad,-10,65), pVect(0,0,-10),3,8);
+    wheel->init(pCoor(platform_xrad*0.2,-10,0), pVect(0,0,-10),3,8);
 
   {
     //  Use tiles to construct a staircase.
@@ -4008,15 +4019,18 @@ World::render()
   glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0);
 
   pColor ambient_color(0x555555);
+  const float spec_intensity = opt_light_intensity * 0.4;
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
   glLightfv(GL_LIGHT0, GL_AMBIENT, dark);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, white * opt_light_intensity);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, white * spec_intensity);
 
   glLightfv(GL_LIGHT1, GL_DIFFUSE, white * opt_light_intensity);
   glLightfv(GL_LIGHT1, GL_AMBIENT, dark);
-  glLightfv(GL_LIGHT1, GL_SPECULAR, white * opt_light_intensity);
+  glLightfv(GL_LIGHT1, GL_SPECULAR, white * spec_intensity);
+
+  glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,true);
 
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHT1);
@@ -4224,6 +4238,10 @@ World::render()
   glBlendEquation(GL_FUNC_ADD);
   glBlendFunc(GL_ONE,GL_ONE);
 
+  const bool opt_vshader = !opt_debug;
+
+  if ( opt_vshader ) vs_plain->use();
+
   if ( !opt_shadows )
     {
       //
@@ -4232,6 +4250,8 @@ World::render()
 
       glEnable(GL_LIGHT1);
       glEnable(GL_LIGHT0);
+
+      if ( opt_vshader ) glUniform1i(sun_vs_options,7);
 
       render_objects(true);
     }
@@ -4246,6 +4266,7 @@ World::render()
       //
       glDisable(GL_LIGHT1);
       glDisable(GL_LIGHT0);
+      if ( opt_vshader ) glUniform1i(sun_vs_options,0);
 
       // Send balls, tiles, and platform to opengl.
       // Do occlusion test too.
@@ -4266,6 +4287,7 @@ World::render()
       // have a positive stencil value.
       //
       glClear(GL_STENCIL_BUFFER_BIT);
+      if ( opt_vshader ) vs_xfrom_only->use();
       render_shadow_volumes(light_location);
 
       // Use stencil test to prevent writes to shaded areas.
@@ -4279,6 +4301,7 @@ World::render()
 
       // Render, but don't do occlusion test again.
       //
+      if ( opt_vshader ){ vs_plain->use(); glUniform1i(sun_vs_options,5); }
       render_objects(false);
 
       //
@@ -4289,13 +4312,17 @@ World::render()
       glEnable(GL_LIGHT1);
 
       glClear(GL_STENCIL_BUFFER_BIT);
+      if ( opt_vshader ) vs_xfrom_only->use();
       render_shadow_volumes(light1_location);
 
       glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
       glStencilFunc(GL_EQUAL,0,-1); // ref, mask
 
+      if ( opt_vshader ){  vs_plain->use(); glUniform1i(sun_vs_options,6); }
       render_objects(false);
     }
+
+  vs_fixed->use();
 
   // Maybe render platform normals.
   //

@@ -105,8 +105,12 @@ uniform float platform_xrad;
 uniform vec4 eye_location;
 uniform mat4 eye_to_world, world_to_clip;
 
+#define VSO_LIGHT0 1
+#define VSO_LIGHT1 2
+#define VSO_SEPARATE_SPECULAR_COLOR 4
 
 #ifdef _VERTEX_SHADER_
+uniform int vs_options;
 flat out vec3 world_pos0;  // World-space coordinate of a mirror point.
 flat out vec3 world_pos1;
 flat out vec3 world_pos2;
@@ -319,7 +323,7 @@ generic_lighting_i
  inout vec4 new_color, inout vec4 spec_color, int i);
 
 void
-generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
+generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, int options)
 {
   // Compute Lighting for Ball
   // Uses OpenGL lighting model, nothing fancy here.
@@ -330,11 +334,21 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   // Bug Workaround: Compile error when code from generic_lighting_i
   // placed in a loop body (with loop iterating over i). So instead,
   // hand-unroll loop.  Bug encountered on driver 4.0.0 NVIDIA 256.40
-  generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,0);
-  generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,1);
+  if ( bool( options & VSO_LIGHT0 ) )
+    generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,0);
+  if ( bool( options & VSO_LIGHT1 ) )
+    generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,1);
 
-  gl_BackColor = gl_FrontColor = new_color;
-  gl_BackSecondaryColor = gl_FrontSecondaryColor =  spec_color;
+  if ( true )
+    {
+      gl_BackColor.rgb = gl_FrontColor.rgb = new_color.rgb + spec_color.rgb;
+      gl_BackColor.a = gl_FrontColor.a = new_color.a;
+    }
+  else
+    {
+      gl_BackColor = gl_FrontColor = new_color;
+      gl_BackSecondaryColor = gl_FrontSecondaryColor = spec_color;
+    }
 }
 
 void
@@ -347,8 +361,11 @@ generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
   vec3 light_pos = gl_LightSource[i].position.xyz;
   vec3 v_vtx_light = light_pos - vertex_e.xyz;
   vec3 v_to_light = normalize(v_vtx_light);
-  float phase_light = abs(dot(normal_e, v_to_light));
   vec3 v_to_eye = normalize(-vertex_e.xyz);
+  bool front_visible = dot(normal_e,v_to_eye) > 0.0;
+  float phase_light_raw = dot(normal_e, v_to_light);
+  float phase_light =
+    max(0.0f, front_visible ? phase_light_raw : -phase_light_raw );
   vec3 h = normalize( v_to_light + v_to_eye );
   vec3 ambient_light = gl_LightSource[i].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
@@ -361,7 +378,7 @@ generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
   new_color.rgb +=
     color.rgb * ( ambient_light + phase_light * diffuse_light )
     / atten_inv;
-  if ( dot(normal_e,v_to_light) > 0.0 )
+  if ( gl_FrontMaterial.shininess > 0.0 && phase_light > 0.0 )
     spec_color.rgb +=
       pow(dot_pos(normal_e,h),gl_FrontMaterial.shininess)
       * gl_FrontMaterial.specular.rgb
@@ -370,6 +387,26 @@ generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
 
 
 #ifdef _VERTEX_SHADER_
+
+void
+vs_main_xform_only()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+}
+
+void
+vs_main_plain()
+{
+  gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+
+  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
+  vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
+
+  // Compute lighting using ordinary lighting calculations.
+  //
+  generic_lighting(vertex_e,gl_Color,normal_e,vs_options);
+}
 
 void
 vs_main_reflect()
@@ -386,7 +423,7 @@ vs_main_reflect()
 
   // Compute lighting using ordinary lighting calculations.
   //
-  generic_lighting(vertex_e,gl_Color,normal_e);
+  generic_lighting(vertex_e,gl_Color,normal_e,-1);
 
   // Find world-space coordinate of vertex and vertex normal,
   // then find two-dimensional location of eye and vertex with
