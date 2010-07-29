@@ -27,7 +27,7 @@ public:
   GLint uniform_location(const char *name)
   {
     const GLint rv = ptr_glGetUniformLocation(pobject,name);
-    if ( rv == -1 ) pError_Msg("Could not get uniform.");
+    if ( rv == -1 ) pError_Msg("Could not get uniform \"%s\".",name);
     return rv;
   }
   // Note: Location is "generic attribute index"
