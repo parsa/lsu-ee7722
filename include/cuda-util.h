@@ -269,7 +269,7 @@ class pCUDA_Memory_X : public pCUDA_Memory<Taos>
 public:
   typedef pCUDA_Memory<Taos> pCM;
   pCUDA_Memory_X()
-    : pCM(),alloc_unit_lg(8),alloc_unit_mask((1<<alloc_unit_lg)-1)
+    : pCM(),alloc_unit_lg(9),alloc_unit_mask((1<<alloc_unit_lg)-1)
   {
     use_aos = false;  disable_aos = true;
     data_aos_stale = false;  data_soa_stale = false;
