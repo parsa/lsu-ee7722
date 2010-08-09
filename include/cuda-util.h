@@ -36,6 +36,8 @@
      }                                                                        \
  }
 
+inline void pError_Check_CUDA() {CE(cudaGetLastError());}
+
 ///
  /// Routines for Copying Variables to Device Memory
 ///
@@ -171,6 +173,7 @@ private:
         free_memory_cuda();
       }
     CE(cudaMalloc(&dev_addr[side],chars));
+    dev_ptr_name[side] = "";
     chars_allocated_cuda = chars;
   }
 
