@@ -62,10 +62,11 @@ public:
   PStack() {init();}
   void operator = (PStack<Data>& s) { cpy(s); }
   void reset() {
-    first_free = 0;  iterator = 0;
     if ( taken ) { storage = NULL;  size = 0;  taken = false; }
+    else         { destruct_all(); }
+    first_free = 0;  iterator = 0;
   };
-  ~PStack(){ if ( storage && !taken ) free(storage); }
+  ~PStack(){ if ( storage && !taken ) { destruct_all(); free(storage); } }
 
   // Return true if the stack is not empty.
   operator bool () const { return first_free; }
@@ -187,6 +188,13 @@ private:
         size = new_size ? new_size : 32;
         storage = (Data*) malloc(size * sizeof(storage[0]));
       }
+  }
+
+  void destruct_all()
+  {
+    // Keep it simple, so compiler optimizes out entire loop if no destructor.
+    for ( int i=0; i<first_free; i++ ) storage[i].~Data();
+    first_free = 0;
   }
 
   Data *storage;
