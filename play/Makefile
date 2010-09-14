@@ -14,7 +14,7 @@ LNVDIS = /home/faculty/koppel/lbuild/nv50dis/nvdis
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  -use_fast_math -O3
+ --ptxas-options=-v  -use_fast_math 
 
 
 CC = gcc
@@ -22,7 +22,7 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 .SUFFIXES: .cu .cuh
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g -O3  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)

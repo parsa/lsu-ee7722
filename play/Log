@@ -955,7 +955,7 @@ idx1: ? idx 40
 
 Checkins:
 
-GTX 480 Changes
+GTX 480 Changes (see below)
 Move wheel from drop to shower, make 10x heavier.
 Change gravity to 20, because it looks better.
 Change specular lighting to viewer-local, provide separate spec intensity.
@@ -972,5 +972,56 @@ generic_lighting:
  Placeholder for separate specular option.
 vs_main_xform_only, vs_main_plain: new.
 
+svn commit --file /home/faculty/koppel/teach/gpcom/gpup/play/msg
+Sending        play/Log
+Sending        play/demo-x-collide.cc
+Sending        play/demo-x-shdr.cc
+Transmitting file data ...
+Committed revision 251.
 
+:: 14 September 2010, 11:53:53 CDT
+
+Bug Fixes:
+ Fall hitting outside of platform would get sucked in.
+ Shading of reflected items wrong (dark where should be bright).
+ Balls and wheel strink (due to trig errors).
+Performance:
+ Base AABB on z+x instead of just z.
+ Tweak time factor and schedule lifetime.
+ Various
+Functionality:
+ Make drip ball sizes r^2, not r.
+ Make ball elasticity r^2, not r.
+
+demo-x-collide:
+ Fix: ball hitting platform from outside should be sucked in.
+ Various places: use drand48 instead of expression of random.
+ Make time step factor 18 (was 6), and schedule_lifetime_steps 18 (was 12)
+ Increase Ball_max_z by 2r (previously r).
+ Base AABB position on z + x, not just z.
+ Drip: Use rand^2 for size of ball.
+       Increase consecutive balls of same color to 1 << 7 (from 1<<3).
+ Added debug code for proximity check errors.
+ cuda_data_to_cpu: Remove duplicated code for updating contact_count, etc.
+ cuda_schedule:  Use define Static for adding/remove static storage qual.
+ For vertex shader, set 0x8 bit in sun_vs_options, for ambient light.
+demo-x-shdr:
+ generic_lighting:
+  Honor new ambient lighting option (previously always add ambient light).
+  Previously: set front color to visible side color.
+  Now: Not from geo shader: just compute visible side color.
+       From geo shader: compute both sides, normal points to front.
+       Controlled using option VSO_SIDE_BOTH.
+ vs_main_reflect: Choose front or back color based on reflected point loc.
+demo-x-kernel.cu:  
+ Fix problem of shrinking balls and wheel due to un-normalized
+  quaternians and trig errors.
+ Make ball elasticity r^2 instead of r.
+ Fix problem when ball collides with outside of platform (see above).
+ Make AABB position z+x, not just z.
+tiles.h
+ Tile: Make AABB position z+x, not just z.
+.gdbinit: Turn off MALLOC_CHECK due to possible false positives on MT code.
+Makefile:
+ Move -O3 to CFLAGS.
 

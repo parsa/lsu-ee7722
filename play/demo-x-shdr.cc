@@ -108,19 +108,22 @@ uniform mat4 eye_to_world, world_to_clip;
 #define VSO_LIGHT0 1
 #define VSO_LIGHT1 2
 #define VSO_SEPARATE_SPECULAR_COLOR 4
+#define VSO_MODEL_AMBIENT 8
+
+#define VSO_SIDE_BOTH 0x10
 
 #ifdef _VERTEX_SHADER_
 uniform int vs_options;
-flat out vec3 world_pos0;  // World-space coordinate of a mirror point.
-flat out vec3 world_pos1;
-flat out vec3 world_pos2;
+flat out vec4 world_pos0;  // World-space coordinate of a mirror point.
+flat out vec4 world_pos1;
+flat out vec4 world_pos2;
 flat out int count;        // Number of mirror points found.
 #endif
 
 #ifdef _GEOMETRY_SHADER_
-flat in vec3 world_pos0[3];
-flat in vec3 world_pos1[3];
-flat in vec3 world_pos2[3];
+flat in vec4 world_pos0[3];
+flat in vec4 world_pos1[3];
+flat in vec4 world_pos2[3];
 flat in int count[3];
 #endif
 
@@ -320,7 +323,8 @@ alhazan(vec2 eye, vec2 vertex)
 void
 generic_lighting_i
 (vec4 vertex_e, vec4 color, vec3 normal_e,
- inout vec4 new_color, inout vec4 spec_color, int i);
+ inout vec4 new_color_f, inout vec4 new_color_b, inout vec4 spec_color, 
+ int i, bool both_sides);
 
 void
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, int options)
@@ -328,32 +332,48 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, int options)
   // Compute Lighting for Ball
   // Uses OpenGL lighting model, nothing fancy here.
 
-  vec4 new_color = vec4( color.rgb * gl_LightModel.ambient.rgb, color.a);
+  vec4 new_color_f =
+    bool( options & VSO_MODEL_AMBIENT )
+    ? vec4( color.rgb * gl_LightModel.ambient.rgb, color.a)
+    : vec4( 0, 0, 0, 1 );
+  vec4 new_color_b = new_color_f;
   vec4 spec_color = vec4(0,0,0,1);
+  bool both_sides = bool( VSO_SIDE_BOTH & options );
 
   // Bug Workaround: Compile error when code from generic_lighting_i
   // placed in a loop body (with loop iterating over i). So instead,
   // hand-unroll loop.  Bug encountered on driver 4.0.0 NVIDIA 256.40
   if ( bool( options & VSO_LIGHT0 ) )
-    generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,0);
+    generic_lighting_i
+      (vertex_e, color, normal_e, new_color_f, new_color_b, spec_color,
+       0, both_sides);
   if ( bool( options & VSO_LIGHT1 ) )
-    generic_lighting_i(vertex_e, color, normal_e, new_color, spec_color,1);
+    generic_lighting_i
+      (vertex_e, color, normal_e, new_color_f, new_color_b, spec_color,
+       1, both_sides);
 
   if ( true )
     {
-      gl_BackColor.rgb = gl_FrontColor.rgb = new_color.rgb + spec_color.rgb;
-      gl_BackColor.a = gl_FrontColor.a = new_color.a;
+      gl_FrontColor.rgb = new_color_f.rgb + spec_color.rgb;
+      gl_FrontColor.a = new_color_f.a;
+      if ( both_sides )
+        {
+          gl_BackColor.rgb = new_color_b.rgb; // + spec_color.rgb;
+          gl_BackColor.a = new_color_f.a;
+        }
     }
   else
     {
-      gl_BackColor = gl_FrontColor = new_color;
+      gl_BackColor = gl_FrontColor = new_color_f;
       gl_BackSecondaryColor = gl_FrontSecondaryColor = spec_color;
     }
 }
 
 void
-generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
-                   inout vec4 new_color, inout vec4 spec_color, int i)
+generic_lighting_i
+(vec4 vertex_e, vec4 color, vec3 normal_e,
+ inout vec4 new_color_f, inout vec4 new_color_b, inout vec4 spec_color,
+ int i, bool both_sides)
 {
   // Compute Lighting for Ball
   // Uses OpenGL lighting model, nothing fancy here.
@@ -365,7 +385,7 @@ generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
   bool front_visible = dot(normal_e,v_to_eye) > 0.0;
   float phase_light_raw = dot(normal_e, v_to_light);
   float phase_light =
-    max(0.0f, front_visible ? phase_light_raw : -phase_light_raw );
+    both_sides || front_visible ? phase_light_raw : -phase_light_raw;
   vec3 h = normalize( v_to_light + v_to_eye );
   vec3 ambient_light = gl_LightSource[i].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
@@ -375,14 +395,22 @@ generic_lighting_i(vec4 vertex_e, vec4 color, vec3 normal_e,
     gl_LightSource[i].constantAttenuation +
     gl_LightSource[i].linearAttenuation * dist +
     gl_LightSource[i].quadraticAttenuation * distsq;
-  new_color.rgb +=
-    color.rgb * ( ambient_light + phase_light * diffuse_light )
-    / atten_inv;
+  vec3 color_atten = color.rgb / atten_inv;
+
   if ( gl_FrontMaterial.shininess > 0.0 && phase_light > 0.0 )
     spec_color.rgb +=
       pow(dot_pos(normal_e,h),gl_FrontMaterial.shininess)
       * gl_FrontMaterial.specular.rgb
       * gl_LightSource[i].specular.rgb / atten_inv;
+
+  new_color_f.rgb +=
+    color_atten * ( ambient_light + max(0f,phase_light) * diffuse_light );
+
+  if ( !both_sides ) return;
+
+  new_color_b.rgb +=
+    color_atten * ( ambient_light + max(0f,-phase_light) * diffuse_light );
+
 }
 
 
@@ -423,7 +451,7 @@ vs_main_reflect()
 
   // Compute lighting using ordinary lighting calculations.
   //
-  generic_lighting(vertex_e,gl_Color,normal_e,-1);
+  generic_lighting(vertex_e,gl_Color,normal_e,0x1f);
 
   // Find world-space coordinate of vertex and vertex normal,
   // then find two-dimensional location of eye and vertex with
@@ -459,8 +487,9 @@ vs_main_reflect()
       pNorm mirror_ball = mn(mirror_w,vertex_w.xyz);
 
       pNorm eye_mirror = mn(eye_location.xyz,mirror_w);
-
-      vec3 reflection = mirror_w + mirror_ball.magnitude * eye_mirror.v;
+      float front_facing = -dot(normal_w,mirror_ball.v);
+      vec4 reflection =
+        vec4( mirror_w + mirror_ball.magnitude * eye_mirror.v, front_facing );
 
       switch(i){
       case 0 : world_pos0 = reflection; break;
@@ -483,7 +512,7 @@ vs_main_reflect()
 #ifdef _GEOMETRY_SHADER_
 
 void
-gs_reflect(vec3 world_pos[3],float dlimit_sq, vec3 color)
+gs_reflect(vec4 world_pos[3],float dlimit_sq, vec3 color)
 {
   /// Emit a triangle for a set of reflected vertices.
 
@@ -498,22 +527,22 @@ gs_reflect(vec3 world_pos[3],float dlimit_sq, vec3 color)
   if ( dist_sq(v0,v1) > dlimit_sq ) return;
   if ( dist_sq(v1,v2) > dlimit_sq ) return;
 
+  float facing_sum = world_pos[0].w + world_pos[1].w + world_pos[2].w;
+  bool front_side = facing_sum >= 0;
+
   for ( int i=0; i<3; i++ )
     {
-      gl_FrontColor = gl_FrontColorIn[i];
-      gl_BackColor = gl_BackColorIn[i];
+      gl_FrontColor = front_side ? gl_FrontColorIn[i] : gl_BackColorIn[i];
       gl_FrontSecondaryColor = gl_FrontSecondaryColorIn[i];
-      gl_BackSecondaryColor = gl_BackSecondaryColorIn[i];
 
       // Overwrite colors if this tuning option is turned on.
       // The color assigned here is based on the number of
       // solutions found.
       //
       if ( opt_color_events != 0 )
-        gl_FrontColor = gl_BackColor
-          = gl_FrontSecondaryColor = gl_BackSecondaryColor = vec4(color,1);
+        gl_FrontColor = gl_FrontSecondaryColor = vec4(color,1);
 
-      gl_Position = world_to_clip * vec4(world_pos[i],1);
+      gl_Position = world_to_clip * vec4(world_pos[i].xyz,1);
       gl_TexCoord[0] = gl_TexCoordIn[i][0];
       EmitVertex();
     }
@@ -529,7 +558,7 @@ reflect_if_nearby(vec2 ref)
 
   float xregion = ref.x;
   float rx = platform_xrad * 0.1;
-  vec3 wp[3];
+  vec4 wp[3];
   for ( int i=0; i<3; i++ )
     {
       float d0 = dist_sq(world_pos0[i].xy,ref);

@@ -12,7 +12,8 @@ set print thread-events off
 # If using GNU LIBC, have heap routines (malloc,free,...) check for
 # common errors such as free something twice.
 #
-set environment MALLOC_CHECK_ 2
+set environment MALLOC_CHECK_ 3
+unset environment MALLOC_CHECK_
 
 #set environment CUDA_PROFILE 1
 set environment CUDA_PROFILE_CONFIG .cuda-profile-config

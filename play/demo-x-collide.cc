@@ -274,7 +274,7 @@ public:
   float mass_inv;
   float fdt_to_do;
 
-  float short_xrad_sq;
+  float short_xrad_sq, long_xrad_sq;
 
   pCoor position;
   pVect velocity;
@@ -772,6 +772,10 @@ void* pt_sched_main(void *arg){((World*)arg)->pt_sched_main();return NULL;}
 void
 World::init()
 {
+  const int64_t seed = time(NULL);
+  //  const int64_t seed = 1281563624;
+  printf("Seeding srand48 with %ld\n",seed);
+  srand48(seed);
   opt_cuda_prox = true;
 
   /// Initialize scheduler thread, used for computing CUDA schedule.
@@ -879,11 +883,12 @@ World::init()
   opt_elasticity = 1.0 / 16;
   opt_drip = false;
   drip_cnt = spray_cnt = 0;
-  drip_run = 3;
+  drip_run = 7;
   spray_run = 8;
   dball = NULL;
   opt_verify = true;
-  opt_time_step_factor = 6;
+  opt_verify = false;
+  opt_time_step_factor = 18;
   opt_wheel_tile_density = 0.1;
 
   variable_control.insert(schedule_lifetime_steps,"Sched Life",1,1);
@@ -1193,7 +1198,7 @@ World::cuda_init()
   cuda_constants_stale = true;
 
   cuda_ball_cnt = 5;  // Set initial size of CUDA ball_x array.
-  schedule_lifetime_steps = 12; // Number of steps schedule good for.
+  schedule_lifetime_steps = 18; // Number of steps schedule good for.
   passes_curr = &passes_0;
   passes_next = &passes_1;
 
@@ -1611,10 +1616,6 @@ World::cuda_data_to_cpu(uint which_data)
       if ( mask & DL_CV_CPU )
         {
           vec_sets4(ball->velocity,cuda_balls.soa.velocity[idx]);
-          const int4 tact_counts = cuda_balls.soa.tact_counts[idx];
-          ball->contact_count = tact_counts.y;
-          ball->collision |= ball->contact_count;
-          ball->debug_pair_calls = tact_counts.z;
         }
       if ( mask & DL_OT_CPU )
         {
@@ -1852,7 +1853,7 @@ Ball::Ball(World* wp, float r):Phys(PT_Ball),w(*wp)
   color_event = pColor(0.5,0.5,0.5);
   color_natural = pColor(0.5,0.5,0.5);
   position = pCoor(30,22,-15.4);
-  velocity = pVect(random()/(0.0+RAND_MAX),0,random()/(0.0+RAND_MAX));
+  velocity = pVect(drand48(),0,drand48());
 
   orientation.set(pVect(0,1,0),0);
   omega = pVect(0,0,0);
@@ -1866,6 +1867,7 @@ Ball::constants_update()
   radius_inv = 1 / radius;
   mass_inv = 1 / mass;
   short_xrad_sq = ( w.platform_xrad - radius ) * ( w.platform_xrad - radius );
+  long_xrad_sq = ( w.platform_xrad + radius ) * ( w.platform_xrad + radius );
   // FYI, notice simplifications:
   //   const float mo_inertia = 0.4 * mass * radius_sq;
   //   fdt_to_do = radius / mo_inertia;
@@ -1877,7 +1879,8 @@ float
 Ball::max_z_get(double lifetime_delta_t)
 {
   const float m = fabs(velocity.x) + fabs(velocity.y) + fabs(velocity.z);
-  const float max_z = position.z + m * lifetime_delta_t + radius;
+  const float max_z = position.z + position.x + m * lifetime_delta_t
+    + 2 * radius;
   return max_z;
 }
 
@@ -1885,12 +1888,13 @@ float
 Ball::min_z_get(double lifetime_delta_t)
 {
   const float m = fabs(velocity.x) + fabs(velocity.y) + fabs(velocity.z);
-  const float z_min = position.z - m * lifetime_delta_t - radius;
+  const float z_min = position.z + position.x - m * lifetime_delta_t
+    - 2 * radius ;
   return z_min;
 }
 
 Ball::~Ball()
-{ 
+{
   if ( original ) return;
   ASSERTS( ! ( w.data_location & DL_ALL_CUDA ) );
   ASSERTS( w.pt_sched_is_idle() );
@@ -2186,31 +2190,36 @@ Ball::apply_tan_force_dt(pNorm tact_dir, pVect force_dt)
 void
 World::balls_add(float contact_y_max)
 {
+  ball_countdown -= delta_t;
+
   /// If dripping is on, release a new ball if last one hit something.
   //
   if ( opt_drip && ( !dball || dball->collision ) )
     {
+      const double rad_min = 0.4;
       if ( !sphere_empty(drip_location,opt_ball_radius) ) return;
+      const float rad = max(rad_min,opt_ball_radius * pow(drand48(),2));
       dball = new Ball(this);
-      dball->position = drip_location + pVect(0,dball->radius,0);
+      dball->set_radius(rad);
+      dball->position = drip_location + pVect(0,rad,0);
       dball->velocity = pVect(0,0,0);
       dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
       drip_cnt++;
       physs += dball;
+      ball_countdown = 0.5;
     }
 
   /// If spray is on, release a new ball if it's time.
   //
-  ball_countdown -= delta_t;
   if ( opt_spray_on && ball_countdown <= 0 || physs.occ() == 0 )
     {
       const double min_radius = 0.8;
       const double max_rad = 2 * opt_ball_radius;
       const double dr = max_rad - min_radius;
-      const double radius = min_radius + dr * random()/(0.0+RAND_MAX);
+      const double radius = min_radius + dr * pow(drand48(),3);
       const double r = 10;
       const double delta_theta = 0.001 + asin(radius/r);
-      static double th = 0;  
+      static double th = 0;
       th += delta_theta;
       pCoor position
         ( platform_xmax - r - 2 * opt_ball_radius + (r+max_rad) * cos(th),
@@ -2363,8 +2372,14 @@ World::time_step_cpu()
           // Possible contact with surface of platform.
           //
           pNorm tact_dir(axis,pos);
-          if ( tact_dir.mag_sq <= ball->short_xrad_sq ) continue;
-          pball->position = axis + (pball->radius+platform_xrad) * tact_dir;
+          if ( tact_dir.mag_sq <= ball->short_xrad_sq
+               || tact_dir.mag_sq >= ball->long_xrad_sq ) continue;
+
+          pball->position = axis +
+            ( platform_xrad
+              + ( tact_dir.magnitude < platform_xrad
+                  ? pball->radius : -pball->radius ) )
+            * tact_dir;
         }
 
       // Finish initializing platform ball, and call routine to
@@ -2511,6 +2526,19 @@ World::contact_pairs_proximity_check
       if ( verify )
         {
           const float z_margin = fabs( z_min - phys_zsort.get_key(0) );
+          if ( !( z_margin < 0.001 || phys1->prox_check == idx9 ) )
+            {
+              printf("z_margin %.6f  idx9 %d  prox_check %d\n",
+                     z_margin, idx9, phys1->prox_check);
+              if ( ball1 && ball9 )
+                {
+                  pNorm dist(ball1->position,ball9->position);
+                  printf("r1 %.4f r9 %.4f dist %.4f\n",
+                         ball1->radius, ball9->radius,
+                         dist.magnitude);
+                }
+
+            }
           ASSERTS( z_margin < 0.001 || phys1->prox_check == idx9 );
           prox_count9++;
           continue;
@@ -2782,10 +2810,15 @@ World::contact_pairs_find()
       // in differences in proximity count. Therefore forgive small
       // differences.
       //
-      const int error_tolerance = ( prox_count_check_total >> 8 ) + 10;
-      ASSERTS( !opt_verify
-               || ( abs( prox_count_check_total - prox_count_cuda_total )
-                    < error_tolerance ) );
+      const int error_tolerance = ( prox_count_check_total >> 4 ) + 10;
+      const bool okay =
+        abs( prox_count_check_total - prox_count_cuda_total )
+        < error_tolerance;
+      if ( opt_verify && !okay )
+        printf("Excessive proximity check errors: check %d cuda %d tol %d\n",
+               prox_count_check_total, prox_count_cuda_total,
+               error_tolerance );
+      ASSERTS( !opt_verify || okay );
       cuda_prox_full_prev = cuda_prox_full;
     }
 
@@ -2823,6 +2856,8 @@ World::cuda_schedule()
   //  At the end of a pass data from shared memory is copied back
   //  to device memory.
 
+#define Static static
+
   frame_timer.user_timer_start(timer_id_sched);
 
   const int block_size = opt_block_size;
@@ -2839,8 +2874,8 @@ World::cuda_schedule()
   // physs_todo_now:   Phys to schedule in the current pass, after neighbors.
   // physs_todo_later: Phys to schedule in the next pass.
   //
-  static PQueue<Phys*> physs_todo_a, physs_todo_b;
-  static PQueue<Phys*> neighborhood;
+  Static PQueue<Phys*> physs_todo_a, physs_todo_b;
+  Static PQueue<Phys*> neighborhood;
   physs_todo_a.reset(); physs_todo_b.reset(); neighborhood.reset();
   PQueue<Phys*> *physs_todo_now = &physs_todo_a;
   PQueue<Phys*> *physs_todo_later = &physs_todo_b;
@@ -2883,8 +2918,11 @@ World::cuda_schedule()
   // round. To avoid branch divergence, contact pairs with different
   // code paths are placed in different warps.
   //
-# define next_thd_get(code_path,round)                                        \
+
+#define next_thd_get(code_path,round)                                         \
   ({ int& cthd = next_thd[min(code_path,cp_limit)][round];                    \
+    ASSERTS(code_path >= 0 && code_path < cp_limit+1);                        \
+    ASSERTS(round >= 0 && round < max_rounds);                                \
      if ( ( cthd & WARP_MASK ) == 0 ) {                                       \
        cthd = next_thd[0][round]; next_thd[0][round] += WARP_SIZE; }          \
      cthd >= block_size ? -1 : cthd++; })
@@ -2893,6 +2931,7 @@ World::cuda_schedule()
 
   passes_next->reset();
   PSList<Phys*,uint> pref_balls;
+  pref_balls.reset();
   int soft_ball_limit = 0;
   int new_seed_ball_limit = 0;
 
@@ -3159,7 +3198,7 @@ World::cuda_schedule()
   // Prepare the pair_check sorted list, which is used for scheduling,
   // sanity checks, and collecting tuning information.
   //
-  static PSList<Contact*,int64_t> pair_check;
+  Static PSList<Contact*,int64_t> pair_check;
   pair_check.reset();
   while ( Contact* const c = contact_pairs.iterate() )
     pair_check.insert
@@ -3302,6 +3341,7 @@ World::cuda_schedule()
               ASSERTS( ball_sidx_next < ball_limit );
               ASSERTS( pb_block == block );
               ASSERTS( block_balls_needed[idx] == -1 );
+              ASSERTS( idx >= 0 && idx < pa_size );
               b->sm_idx = ball_sidx_next++;
               block_balls_needed[ idx ] = b->idx;
               if ( c->pass == opt_block_color_pass ) b->color_block = block;
@@ -3365,10 +3405,10 @@ World::time_step_cuda(int iter, int iters_per_frame)
         for ( Ball *b; balls_iterate(b); )
           b->color_event =
             b->color_block >= 0 ? *colors[b->color_block & colors_mask] : dark;
-      block_balls_needed.ptrs_to_cuda("block_balls_needed");
       block_balls_needed.to_cuda();
-      cuda_tacts_schedule.ptrs_to_cuda("tacts_schedule");
+      block_balls_needed.ptrs_to_cuda("block_balls_needed");
       cuda_tacts_schedule.to_cuda();
+      cuda_tacts_schedule.ptrs_to_cuda("tacts_schedule");
       pt_sched_data_pending = false;
       cuda_schedule_stale = -schedule_lifetime_steps;
     }
@@ -3455,7 +3495,10 @@ World::time_step_cuda(int iter, int iters_per_frame)
       }
 
   if ( just_before_render && cuda_schedule_stale + iters_per_frame - 1 > 0 )
-    pt_sched_start();
+    {
+      pt_sched_start();
+      if ( opt_debug2 ) pt_sched_waitfor();
+    }
 }
 
 #include <complex>
@@ -4238,7 +4281,7 @@ World::render()
   glBlendEquation(GL_FUNC_ADD);
   glBlendFunc(GL_ONE,GL_ONE);
 
-  const bool opt_vshader = !opt_debug;
+  const bool opt_vshader = true;
 
   if ( opt_vshader ) vs_plain->use();
 
@@ -4251,7 +4294,7 @@ World::render()
       glEnable(GL_LIGHT1);
       glEnable(GL_LIGHT0);
 
-      if ( opt_vshader ) glUniform1i(sun_vs_options,7);
+      if ( opt_vshader ) glUniform1i(sun_vs_options,15);
 
       render_objects(true);
     }
@@ -4266,7 +4309,7 @@ World::render()
       //
       glDisable(GL_LIGHT1);
       glDisable(GL_LIGHT0);
-      if ( opt_vshader ) glUniform1i(sun_vs_options,0);
+      if ( opt_vshader ) glUniform1i(sun_vs_options,8);
 
       // Send balls, tiles, and platform to opengl.
       // Do occlusion test too.

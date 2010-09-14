@@ -169,6 +169,16 @@ __device__ float4 mq(pNorm axis, float angle)
   return m4( __sinf(angle/2) * axis.v, __cosf(angle/2) );
 }
 
+__device__ float4 quat_normalize(float4 q)
+{
+  float cos_angle = q.w;
+  float len_sq = dot(m3(q),m3(q));
+  float rad = 1.0f - len_sq;
+  float new_cos = rad > 0 ? sqrtf( rad ) : 0;
+  q.w = cos_angle > 0 ? new_cos : -new_cos;
+  return q;
+}
+
 // Make float4
 __device__ float4 m4(pQuat q){ return make_float4(q.v.x,q.v.y,q.v.z,q.w); }
 __device__ float4 m4(pNorm v, float w) { return m4(v.v,w); }
@@ -209,7 +219,7 @@ __device__ void
 pMatrix_set_rotation(pMatrix3x3& m, pVect u, float theta)
 {
   const float cos_theta = __cosf(theta);
-  const float sin_theta = __sinf(theta);
+  const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta );
   m.r0.x = u.x * u.x + cos_theta * ( 1 - u.x * u.x );
   m.r0.y = u.x * u.y * ( 1 - cos_theta ) - u.z * sin_theta;
   m.r0.z = u.z * u.x * ( 1 - cos_theta ) + u.y * sin_theta;
@@ -407,6 +417,7 @@ penetration_balls_resolve
   // energy loss.
   //
   const float appr_force_dt_no_loss =
+    ( radii_sum - dist.magnitude ) * 
     ( radii_sum - dist.magnitude ) * elasticity_inv_dt;
 
   // Change in speed accounting for energy loss. Only applied when
@@ -722,7 +733,7 @@ cuda_get_attr_plat_pairs
   return e2;
 }
 
-__host__ void 
+__host__ void
 pass_platform_launch
 (dim3 dg, dim3 db, int ball_count)
 {
@@ -796,7 +807,9 @@ pass_platform_ball(CUDA_Phys_W& phys, int idx)
   ball.position += delta_t * ball.velocity;
   pNorm axis = mn(ball.omega);
   balls_x.orientation[idx] =
-    quat_mult( mq( axis, delta_t * axis.magnitude ), balls_x.orientation[idx] );
+    quat_normalize
+    ( quat_mult
+      ( mq( axis, delta_t * axis.magnitude ), balls_x.orientation[idx] ));
 
   /// Copy other updated data to memory.
   //
@@ -877,6 +890,8 @@ platform_collision(CUDA_Phys_W& phys)
   pCoor axis = mc(platform_xmid,0,pos.z);
   const float short_xrad = platform_xrad - r;
   const float short_xrad_sq = short_xrad * short_xrad;
+  const float long_xrad = platform_xrad + r;
+  const float long_xrad_sq = long_xrad * long_xrad;
 
   // Test for different ways ball can touch platform. If contact
   // is found find position of an artificial platform ball (pball)
@@ -913,8 +928,12 @@ platform_collision(CUDA_Phys_W& phys)
       // Possible contact with surface of platform.
       //
       pNorm tact_dir = mn(axis,pos);
-      if ( tact_dir.mag_sq <= short_xrad_sq ) return;
-      pball.position = axis + (r+platform_xrad) * tact_dir;
+      if ( tact_dir.mag_sq <= short_xrad_sq
+           || tact_dir.mag_sq >= long_xrad_sq ) return;
+      
+      pball.position = axis +
+        ( platform_xrad + ( tact_dir.magnitude < platform_xrad ? r : -r ) )
+        * tact_dir;
     }
 
   // Finish initializing platform ball, and call routine to
@@ -1039,7 +1058,7 @@ pass_sched(int ball_count, float lifetime_delta_t)
 
       // Balls are considered in proximity if they can be
       // this close over schedule lifetime.
-      const float region_length_small = 1.1f * ( radius9 + radius1 );
+      const float region_length_small = 1.11f * ( radius9 + radius1 );
       
       // Check if balls will be close enough over lifetime.
       pVect delta_v = vel9 - vel1;
@@ -1080,7 +1099,8 @@ ball_min_z_get
 (float3 position, float3 velocity, float radius, float lifetime_delta_t)
 {
   const float m = fabs(velocity.x) + fabs(velocity.y) + fabs(velocity.z);
-  const float z_min = position.z - m * lifetime_delta_t - radius;
+  const float z_min = position.z + position.x - m * lifetime_delta_t
+    - 2 * radius;
   return z_min;
 }
 

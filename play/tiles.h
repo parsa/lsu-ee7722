@@ -55,8 +55,8 @@ public:
     bb.ur = pt_ll + vec_pos(vec_up) + vec_pos(vec_rt);
   }
 
-  float max_z_get(double delta_t){ return bb.ur.z; }
-  float min_z_get(double delta_t){ return bb.ll.z; }
+  float max_z_get(double delta_t){ return bb.ur.z + bb.ur.x; }
+  float min_z_get(double delta_t){ return bb.ll.z + bb.ll.x; }
 
   Bounding_Box bounding_box_get(){return bb;}
 
