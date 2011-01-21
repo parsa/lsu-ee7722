@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2010), GPU Microarchitecture
+/// LSU EE 7700-2 (Sp 2011), GPU Microarchitecture
 //
  /// CPU-Only Demo 2: Many Triangles
 
@@ -116,7 +116,6 @@ public:
   {
     pInterpolate& vmin = v0.x < v1.x ? v0 : v1;
     pInterpolate& vmax = v0.x < v1.x ? v1 : v0;
-    const float x_range = vmax.x - vmin.x;
     xi_last = xmax < int(vmax.x) ? xmax : int(vmax.x);
     const float pre_x = float(xmin) - vmin.x;
     const bool scissor = pre_x > 0.0;

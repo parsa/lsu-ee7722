@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2010), GPU Microarchitecture
+/// LSU EE 7700-2 (Sp 2011), GPU Microarchitecture
 //
  /// CPU-Only Demo 4: Lighting
 
