@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2009), Graphics Processors
+/// LSU EE 7700-2 (Sp 2011), Graphics Processors
 //
  /// Balloon Simulation
 
@@ -2127,10 +2127,10 @@ Balloon::init_cuda()
   CE(cudaGetDeviceProperties(&prop,dev));
   CE(cudaGLSetGLDevice(dev));
   printf
-    ("GPU: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
+    ("GPU: %s @ %.2f GHz WITH %zd MiB GLOBAL MEM\n",
      prop.name, prop.clockRate/1e6, prop.totalGlobalMem >> 20);
   printf
-    ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %d  CONST: %d  "
+    ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %zd  CONST: %zd  "
      "# REGS: %d\n",
      prop.major, prop.minor,
      prop.multiProcessorCount, prop.maxThreadsPerBlock,
@@ -2542,9 +2542,16 @@ World::render()
     }
   else
     {
+      const double time_start = time_wall_fp();
+
+      // If we are recording a video base world time on video frame
+      // rate rather than wall clock time.
+      //
+      if ( ogl_helper.animation_record )
+        world_time = time_start - ogl_helper.frame_period;
+
       // Advance simulated time.
       //
-      const double time_start = time_wall_fp();
       const double sim_time_needed = time_start - world_time;
       delta_t = 1.0 / ( 30 * ( opt_physics_method ? 40 : 20 ) ) ;
       const int time_steps_needed = int( sim_time_needed / delta_t );
@@ -2965,6 +2972,9 @@ World::render()
   glColor3f(0,1,0); // This sets the text color. Don't know why.
 
   frame_timer.frame_end();
+
+  glColor3f(0.5,1,0.5);
+  ogl_helper.user_text_reprint();
 
   glutSwapBuffers();
 }
