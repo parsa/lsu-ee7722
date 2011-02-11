@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Spring 2010), GPU
+/// LSU EE X70X-X (Spring 2011), GPU
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -2921,7 +2921,7 @@ World::cuda_schedule()
 
 #define next_thd_get(code_path,round)                                         \
   ({ int& cthd = next_thd[min(code_path,cp_limit)][round];                    \
-    ASSERTS(code_path >= 0 && code_path < cp_limit+1);                        \
+    ASSERTS(code_path >= 0 );                                                 \
     ASSERTS(round >= 0 && round < max_rounds);                                \
      if ( ( cthd & WARP_MASK ) == 0 ) {                                       \
        cthd = next_thd[0][round]; next_thd[0][round] += WARP_SIZE; }          \
@@ -3256,6 +3256,8 @@ World::cuda_schedule()
           warp_broken_cnt++;
           warp_path = 0;
         }
+
+      ASSERTS( idx >= 0 && idx < warp_limit );
 
       const int a = round_cnt - warp_rounds_each[idx];
       if ( a <= 0 ) continue;
