@@ -9,7 +9,58 @@
 #include <malloc.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
+
 #include "pstring.h"
+
+double
+time_wall_fp()
+{
+  struct timespec now;
+  clock_gettime(CLOCK_REALTIME,&now);
+  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
+}
+
+double
+time_process_fp()
+{
+  struct timespec now;
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&now);
+  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
+}
+
+inline void
+pError_Exit()
+{
+  exit(1);
+}
+
+inline void
+pError_Msg_NP(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
+
+inline void
+pError_Msg_NP(const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  pError_Exit();
+}
+
+inline void
+pError_Msg(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
+
+inline void
+pError_Msg(const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  fprintf(stderr,"User Error: ");
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  pError_Exit();
+}
 
 
 template<typename T> T min(T a, T b){ return a < b ? a : b; }

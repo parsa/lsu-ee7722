@@ -14,15 +14,18 @@
 #ifndef GL_CUDA_UTIL_H
 #define GL_CUDA_UTIL_H
 
+#ifdef ALSO_GL
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GL/glx.h>
 #include <GL/glxext.h>
+#endif
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
+#include <memory>
 
-#include "util.h"
 #include "misc.h"
+#include "coord.h"
 
  /// CUDA API Error-Checking Wrapper
 ///
@@ -102,6 +105,7 @@ public:
   }
   void free_memory_cuda()
   {
+#ifdef ALSO_GL
     if ( bid )
       {
         CE(cudaGLUnmapBufferObject(bid));
@@ -109,6 +113,7 @@ public:
         glDeleteBuffers(1,&bid);
         bid = 0;
       }
+#endif
     if ( void* const a = dev_addr[0] ) CE(cudaFree(a));
     if ( void* const a = dev_addr[1] ) CE(cudaFree(a));
     dev_addr[0] = dev_addr[1] = NULL;
@@ -177,6 +182,7 @@ private:
     chars_allocated_cuda = chars;
   }
 
+#ifdef ALSO_GL
   void alloc_gl_buffer()
   {
     if ( bid ) return;
@@ -186,6 +192,7 @@ private:
     glBindBuffer(GL_ARRAY_BUFFER,0);
     CE(cudaGLRegisterBufferObject(bid));
   }
+#endif
 
 public:
   T* get_dev_addr() { return get_dev_addr(current); }
@@ -230,6 +237,7 @@ public:
     CE(cudaMemcpy(data, dev_addr[current], chars, cudaMemcpyDeviceToHost));
   }
 
+#ifdef ALSO_GL
   void cuda_to_gl()
   {
     alloc_gl_buffer();
@@ -238,6 +246,7 @@ public:
     CE(cudaMemcpy(bo_ptr, dev_addr[current], chars, cudaMemcpyDeviceToDevice));
     CE(cudaGLUnmapBufferObject(bid));
   }
+#endif
 
   void swap() { current = 1 - current; }
   void set_primary() { current = 0; }

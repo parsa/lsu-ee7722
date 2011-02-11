@@ -3,7 +3,6 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
@@ -12,22 +11,6 @@
 #include "glextfuncs.h"
 #include "pstring.h"
 #include "misc.h"
-
-double
-time_wall_fp()
-{
-  struct timespec now;
-  clock_gettime(CLOCK_REALTIME,&now);
-  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
-}
-
-double
-time_process_fp()
-{
-  struct timespec now;
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&now);
-  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
-}
 
 // Rename keys so a single namespace can be used for regular (ASCII)
 // keys and "special" ones.
@@ -55,38 +38,6 @@ time_process_fp()
 #define FB_KEY_INSERT     ( GLUT_KEY_INSERT      + 0x100 )
 #define FB_KEY_DELETE     127
 
-inline void
-pError_Exit()
-{
-  exit(1);
-}
-
-inline void
-pError_Msg_NP(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
-
-inline void
-pError_Msg_NP(const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  pError_Exit();
-}
-
-inline void
-pError_Msg(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
-
-inline void
-pError_Msg(const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  fprintf(stderr,"User Error: ");
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  pError_Exit();
-}
 
 inline bool
 pError_Check(int error = -1)
@@ -145,7 +96,7 @@ public:
   pFrame_Timer():inited(false),work_description(NULL)
   {
     query_timer_id = 0;
-    frame_group_size = 30;
+    frame_group_size = 5;
     frame_rate = 0;
     cpu_frac = 0;
     cuda_in_use = false;
@@ -570,6 +521,8 @@ public:
     va_end(ap);
     if ( !frame_print_calls ) glWindowPos2i(10,height-20);
     frame_print_calls++;
+
+    return;
 
     glutBitmapString((void*)glut_fonts[glut_font_idx],(unsigned char*)str.s);
   }
