@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2009), Graphics Processors  -*- c++ -*-
+/// LSU EE 7700-2 (Sp 2011), GPU Microarch  -*- c++ -*-
 //
  ///  CPU-Only Demos' Include File
 
@@ -22,6 +22,8 @@
 #ifdef MAGICK
 #include <Magick++.h>
 #endif
+
+#include <gp/misc.h>
 
 // Rename keys so a single namespace can be used for regular (ASCII)
 // keys and "special" ones.
@@ -60,16 +62,6 @@ pFrame_Buffer* frame_buffer_self_ = NULL;
 { const char* const str = (char*) glGetString(token); \
   printf("S %s - ",#token); \
   if ( str ) printf("\"%s\"\n",str); else printf("not available.\n"); \
-}
-
-// Return number of seconds since 1970 UTC.
-//
-double
-time_wall_fp()
-{
-  struct timespec now;
-  clock_gettime(CLOCK_REALTIME,&now);
-  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
 }
 
 // Basic Frame Buffer Simulation
