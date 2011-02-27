@@ -5,7 +5,7 @@
 #  See stream-2.cc for instructions.
 
 
-INCLUDE =  -I../../include
+INCLUDE =  -I../include  -I../../include
 CUDAPATH = /usr/local/cuda
 
 
