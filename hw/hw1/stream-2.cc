@@ -400,6 +400,9 @@ public:
         return;
       }
 
+    for ( int i=0; i<array_size; i++ ) b[i] = 7700.2;
+    b.to_cuda();
+
     for ( int cpu_round=0; cpu_round<cpu_rounds; cpu_round++ )
       {
         const double wall_all_start = time_wall_fp();
