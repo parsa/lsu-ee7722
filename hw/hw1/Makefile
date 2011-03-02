@@ -22,7 +22,7 @@ CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)
 LIBRARIES = -lrt
 
-default: stream-2
+default: stream-2 solution
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -36,4 +36,11 @@ stream-2.o: stream-2.cc stream-2-kernel.cu stream-2.cuh Makefile
 stream-2-kernel.o: Makefile stream-2.cuh stream-2-kernel.cu
 
 stream-2: stream-2.o stream-2-kernel.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $^ $(LIBRARIES)
+
+
+solution.o: solution.cc solution-kernel.cu solution.cuh Makefile
+solution-kernel.o: Makefile solution.cuh solution-kernel.cu
+
+solution: solution.o solution-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $^ $(LIBRARIES)
