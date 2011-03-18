@@ -294,13 +294,17 @@ stencil_shared_2()
   /// NOTE: This solution is inefficient.
   //
   //  The code here will run more slowly than stencil_shared, at least
-  //  on CC 1.x devices.
+  //  on CC 1.x devices, due to inefficient global and shared memory
+  //  access patterns.
   //
   //  This code does not include unrolling.  That will be added
   //  later to another routine.
 
-  // Adjust code here accounting for the fact that each thread
-  // will operate on R pixels.
+  //
+  // For the solution to Problem 3a the code here is adjusted so that
+  // each thread can operate on R pixels. Look for the "Times R"
+  // comments.
+  //
 
   int array_row_stride = 1 << dim_size_lg;
   int array_row_mask = array_row_stride - 1;
@@ -347,7 +351,9 @@ stencil_shared_2()
       int idx = row_0s | col;
       int idx_stop = row_9s | col;
 
+      //
       // Replace the "load_only" variable with loop limits.
+      //
 
       bool highest_thread = threadIdx.x == blockDim.x - 1;
       int col_overrun_load = max(0,col + homework_R - array_row_stride);
