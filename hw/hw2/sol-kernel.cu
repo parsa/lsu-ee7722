@@ -299,9 +299,6 @@ stencil_shared_2()
   //  This code does not include unrolling.  That will be added
   //  later to another routine.
 
-
-  /// Step 1:  Adjust for R Pixels / Thread
-  //
   // Adjust code here accounting for the fact that each thread
   // will operate on R pixels.
 
