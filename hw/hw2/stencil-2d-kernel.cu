@@ -120,64 +120,139 @@ stencil_iter()
 __global__ void
 stencil_shared()
 {
-  // Compute a unique index (number) for this thread.
-  // This will be used as an array index.
+  // This code operates on a square array of pixels.
+
+  // Compute the array_row_stride, which for this code is also equal
+  // to the number of rows and the number of columns.
   //
   int array_row_stride = 1 << dim_size_lg;
+
   int array_row_mask = array_row_stride - 1;
 
+  // Determine how many pixels each block will compute. The number is
+  // based on the fact that the first and last thread of each block
+  // never compute a pixel, the other threads compute at most one
+  // pixel each.
+  //
   int block_compute_width = blockDim.x - 2;
+
+  // Determine how many blocks are needed to compute all of the
+  // pixels in one row.  The computation is based on the fact that
+  // the first and last pixels in a row should be left untouched.
+  //
   int blocks_per_row =
     ceilf( float(array_row_stride-2) / block_compute_width );
 
+  // Determine how many rows each block computes.
+  //
   int rows_per_block =
     ceilf( float(blocks_per_row) * array_row_stride / gridDim.x );
 
-  //  int cols_per_block = ceilf( float(array_row_stride) / blocks_per_row );
-  int cols_per_block = blockDim.x - 2;
+  int cols_per_block = block_compute_width;
+
+  // If this thread is past the last column that a block is supposed
+  // to compute or load, then return.
+  //
   if ( threadIdx.x >= cols_per_block + 2 ) return;
 
-  int row_0_large = rows_per_block * blockIdx.x;
-  int row_9_large = row_0_large + rows_per_block + 2;
-  int col_group_0 = row_0_large >> dim_size_lg;
-  int col_group_9 = row_9_large >> dim_size_lg;
+  // Compute a "large" row number for this block. These large
+  // row numbers can exceed the number of rows in the array.
+  // The actual row number to use is row_0_large mod blockDim.x,
+  // the column number is 
+  //  ( row_0_large / blockDim.x ) * cols_per_block + threadIdx.x.
+  //
+  int row_0_large = rows_per_block * blockIdx.x;       // Starting row.
+  int row_9_large = row_0_large + rows_per_block + 2;  // Ending row.
 
+  // A column group is a set of columns handled by one block. If
+  // blocks_per_row < gridDim.x (the number of blocks) then a block
+  // will have to cover more than one sets of columns (put another
+  // way, a thread will have to cover more than one column).
+  //
+  int col_group_0 = row_0_large >> dim_size_lg;        // Starting column.
+  int col_group_9 = row_9_large >> dim_size_lg;        // Ending column.
+
+  // Compute indices into shared memory. At any one time shared memory
+  // will hold three rows of pixels.  Index siu holds the upper row,
+  // sidx holds the middle row (corresponding to the pixel to be written),
+  // and sid is the lower (down) row.  A single shared memory array
+  // is used to hold all three rows.
+  //
   int siu = threadIdx.x;
   int sidx = siu + blockDim.x;
   int sid = sidx + blockDim.x;
 
   for ( int col_group = col_group_0; col_group <= col_group_9; col_group++ )
     {
+      // The starting row will be zero if this isn't the first column
+      // group (because computation reached the bottom of one column
+      // and is now wrapping around to the top [row 0] of another column).
+      //
       int row_0 =
         col_group == col_group_0 ? row_0_large & array_row_mask : 0;
+
       int row_9 = col_group == col_group_9
         ? ( row_9_large & array_row_mask ) : array_row_mask;
 
+      // Compute the first column number for the block.
+      //
       int col_0 = col_group * cols_per_block;
-      int col_9 = min( col_0 + cols_per_block + 2, array_row_stride );
 
+      // Compute the column number for this thread.
+      //
       int col = col_0 + threadIdx.x;
       if ( col >= array_row_stride ) return;
+
+      // Shift the row numbers over so that they can easily be used
+      // to compute the array idx.
+      //
       int row_0s = row_0 << dim_size_lg;
       int row_9s = row_9 << dim_size_lg;
 
+      // Check whether we should just load a value to shared memory.
+      // If load_only is false then we both load the value and compute
+      // a pixel.
+      //
       bool load_only =
         threadIdx.x == 0 || threadIdx.x == cols_per_block + 1
         || col == array_row_stride - 1;
 
-      int rows = row_0s;
-      int idx = rows | col;
-      int idx_stop = row_9s | col;
+      // Compute the array index for the "up" row. This will be loaded
+      // to shared memory but nothing will be computed for it.
+      //
+      int idx = row_0s | col;
       s[siu] = a[idx];
+
+      // Increment by the row stride to obtain the address of the middle
+      // row. We will compute a value for this in the first iteration
+      // of the while loop below.
+      //
       idx += array_row_stride;
       s[sidx] = a[idx];
+
+      // Compute the array index at which we should stop.
+      //
+      int idx_stop = row_9s | col;
+
+      // Compute pixels for column col, starting from row_0s +
+      // array_row_stride and ending at row_9s.
+      //
       while ( idx < idx_stop )
         {
+          // Compute the address of the pixel in the row below us,
+          // idx_next, and load it into shared memory.
+          //
           int idx_next = idx + array_row_stride;
           s[sid] = a[idx_next];
+
+          // Wait for other threads in this block to finish writing
+          // shared memory.
+          //
           __syncthreads();
+
           if ( !load_only )
             {
+              // Compute the pixel value and write it to b.
 #if DEBUG_STENCIL
               b[idx] = v0 * s[sidx];
 #else
@@ -186,75 +261,165 @@ stencil_shared()
                 + v2 * ( s[siu-1] + s[siu+1] + s[sid-1] + s[sid+1] );
 #endif
             }
+
+
+          // Wait for other threads in this block to finish reading
+          // shared memory.
+          //
           __syncthreads();
+
+          // Rotate indices so that what is currently the middle row,
+          // sidx, becomes the up row, and what is currently the down
+          // row, sid, becomes the current row, and siu will be the sid.
+          //
           int sid_new = siu; siu = sidx; sidx = sid; sid = sid_new;
+
+          // Move the idx down one row.
+          //
           idx = idx_next;
         }
 
     }
 }
 
-
 __global__ void
 stencil_shared_2()
 {
   /// Modify this code.
 
+  // This code operates on a square array of pixels.
+
+  // Compute the array_row_stride, which for this code is also equal
+  // to the number of rows and the number of columns.
+  //
   int array_row_stride = 1 << dim_size_lg;
+
   int array_row_mask = array_row_stride - 1;
 
+  // Determine how many pixels each block will compute. The number is
+  // based on the fact that the first and last thread of each block
+  // never compute a pixel, the other threads compute at most one
+  // pixel each.
+  //
   int block_compute_width = blockDim.x - 2;
+
+  // Determine how many blocks are needed to compute all of the
+  // pixels in one row.  The computation is based on the fact that
+  // the first and last pixels in a row should be left untouched.
+  //
   int blocks_per_row =
     ceilf( float(array_row_stride-2) / block_compute_width );
 
+  // Determine how many rows each block computes.
+  //
   int rows_per_block =
     ceilf( float(blocks_per_row) * array_row_stride / gridDim.x );
 
-  //  int cols_per_block = ceilf( float(array_row_stride) / blocks_per_row );
-  int cols_per_block = blockDim.x - 2;
+  int cols_per_block = block_compute_width;
+
+  // If this thread is past the last column that a block is supposed
+  // to compute or load, then return.
+  //
   if ( threadIdx.x >= cols_per_block + 2 ) return;
 
-  int row_0_large = rows_per_block * blockIdx.x;
-  int row_9_large = row_0_large + rows_per_block + 2;
-  int col_group_0 = row_0_large >> dim_size_lg;
-  int col_group_9 = row_9_large >> dim_size_lg;
+  // Compute a "large" row number for this block. These large
+  // row numbers can exceed the number of rows in the array.
+  // The actual row number to use is row_0_large mod blockDim.x,
+  // the column number is 
+  //  ( row_0_large / blockDim.x ) * cols_per_block + threadIdx.x.
+  //
+  int row_0_large = rows_per_block * blockIdx.x;       // Starting row.
+  int row_9_large = row_0_large + rows_per_block + 2;  // Ending row.
 
+  // A column group is a set of columns handled by one block. If
+  // blocks_per_row < gridDim.x (the number of blocks) then a block
+  // will have to cover more than one sets of columns (put another
+  // way, a thread will have to cover more than one column).
+  //
+  int col_group_0 = row_0_large >> dim_size_lg;        // Starting column.
+  int col_group_9 = row_9_large >> dim_size_lg;        // Ending column.
+
+  // Compute indices into shared memory. At any one time shared memory
+  // will hold three rows of pixels.  Index siu holds the upper row,
+  // sidx holds the middle row (corresponding to the pixel to be written),
+  // and sid is the lower (down) row.  A single shared memory array
+  // is used to hold all three rows.
+  //
   int siu = threadIdx.x;
   int sidx = siu + blockDim.x;
   int sid = sidx + blockDim.x;
 
   for ( int col_group = col_group_0; col_group <= col_group_9; col_group++ )
     {
+      // The starting row will be zero if this isn't the first column
+      // group (because computation reached the bottom of one column
+      // and is now wrapping around to the top [row 0] of another column).
+      //
       int row_0 =
         col_group == col_group_0 ? row_0_large & array_row_mask : 0;
+
       int row_9 = col_group == col_group_9
         ? ( row_9_large & array_row_mask ) : array_row_mask;
 
+      // Compute the first column number for the block.
+      //
       int col_0 = col_group * cols_per_block;
-      int col_9 = min( col_0 + cols_per_block + 2, array_row_stride );
 
+      // Compute the column number for this thread.
+      //
       int col = col_0 + threadIdx.x;
       if ( col >= array_row_stride ) return;
+
+      // Shift the row numbers over so that they can easily be used
+      // to compute the array idx.
+      //
       int row_0s = row_0 << dim_size_lg;
       int row_9s = row_9 << dim_size_lg;
 
+      // Check whether we should just load a value to shared memory.
+      // If load_only is false then we both load the value and compute
+      // a pixel.
+      //
       bool load_only =
         threadIdx.x == 0 || threadIdx.x == cols_per_block + 1
         || col == array_row_stride - 1;
 
-      int rows = row_0s;
-      int idx = rows | col;
-      int idx_stop = row_9s | col;
+      // Compute the array index for the "up" row. This will be loaded
+      // to shared memory but nothing will be computed for it.
+      //
+      int idx = row_0s | col;
       s[siu] = a[idx];
+
+      // Increment by the row stride to obtain the address of the middle
+      // row. We will compute a value for this in the first iteration
+      // of the while loop below.
+      //
       idx += array_row_stride;
       s[sidx] = a[idx];
+
+      // Compute the array index at which we should stop.
+      //
+      int idx_stop = row_9s | col;
+
+      // Compute pixels for column col, starting from row_0s +
+      // array_row_stride and ending at row_9s.
+      //
       while ( idx < idx_stop )
         {
+          // Compute the address of the pixel in the row below us,
+          // idx_next, and load it into shared memory.
+          //
           int idx_next = idx + array_row_stride;
           s[sid] = a[idx_next];
+
+          // Wait for other threads in this block to finish writing
+          // shared memory.
+          //
           __syncthreads();
+
           if ( !load_only )
             {
+              // Compute the pixel value and write it to b.
 #if DEBUG_STENCIL
               b[idx] = v0 * s[sidx];
 #else
@@ -263,8 +428,21 @@ stencil_shared_2()
                 + v2 * ( s[siu-1] + s[siu+1] + s[sid-1] + s[sid+1] );
 #endif
             }
+
+
+          // Wait for other threads in this block to finish reading
+          // shared memory.
+          //
           __syncthreads();
+
+          // Rotate indices so that what is currently the middle row,
+          // sidx, becomes the up row, and what is currently the down
+          // row, sid, becomes the current row, and siu will be the sid.
+          //
           int sid_new = siu; siu = sidx; sidx = sid; sid = sid_new;
+
+          // Move the idx down one row.
+          //
           idx = idx_next;
         }
 
