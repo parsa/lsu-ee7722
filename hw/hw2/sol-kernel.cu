@@ -1,10 +1,11 @@
 /// LSU EE 7700-2 (Sp 2011), GPU Microarchitecture
 //
 /// Homework 2 -- PARTIAL SOLUTION
+/// Homework 3 -- Assignment (Edit this file.)
 
- // This file has a solution to Problem 3(a).
+ // This file has a solution to Homework 2 Problem 3(a).
+ // Edit this file to solve Homework 3.
 
- /// See stencil-2d.cc for instructions.
 
 #include "sol.cuh"
 
@@ -25,6 +26,7 @@ __global__ void stencil();
 __global__ void stencil_iter();
 __global__ void stencil_shared();
 __global__ void stencil_shared_2();
+__global__ void stencil_shared_3();
 
 static __host__ int
 kernels_get_attr_(pCUDA_Func_Attributes *attr)
@@ -44,6 +46,7 @@ kernels_get_attr_(pCUDA_Func_Attributes *attr)
   GETATTR(stencil_iter,'i');
   GETATTR(stencil_shared,'s');
   GETATTR(stencil_shared_2,'2');
+  GETATTR(stencil_shared_3,'3');
   return count;
 #undef GETATTR
 }
@@ -68,6 +71,7 @@ stencil_launch(dim3 dg, dim3 db, int shared_bytes, char version)
   case 'i': stencil_iter<<<dg,db>>>(); break;
   case 's': stencil_shared<<<dg,db,shared_bytes>>>(); break;
   case '2': stencil_shared_2<<<dg,db,shared_bytes>>>(); break;
+  case '3': stencil_shared_3<<<dg,db,shared_bytes>>>(); break;
   }
 }
 
@@ -256,7 +260,7 @@ stencil_shared()
           if ( !load_only )
             {
               // Compute the pixel value and write it to b.
-#if DEBUG_STENCIL
+#ifdef DEBUG_STENCIL
               b[idx] = v0 * s[sidx];
 #else
               b[idx] = v0 * s[sidx]
@@ -289,7 +293,9 @@ stencil_shared()
 __global__ void
 stencil_shared_2()
 {
-  /// SOLUTION
+  /// SOLUTION - Homework 2
+
+  /// DO NOT edit this routine for Homework 3, instead modify stencil_shared_3.
 
   /// NOTE: This solution is inefficient.
   //
@@ -337,7 +343,7 @@ stencil_shared_2()
         ? ( row_9_large & array_row_mask ) : array_row_mask;
 
       int col_0 = col_group * cols_per_block;
-      int col_9 = min( col_0 + cols_per_block + 2, array_row_stride );
+      int col_9 = min( col_0 + cols_per_block, array_row_stride - 2 );
 
       // Since each thread handles R pixels need to multiply by R to
       // find the starting column number for a thread.
@@ -345,61 +351,180 @@ stencil_shared_2()
       int col = col_0 + threadIdx.x * homework_R;            // Times R
       if ( col >= array_row_stride ) return;
 
-      int row_0s = row_0 << dim_size_lg;
+      int row_s = row_0 << dim_size_lg;
       int row_9s = row_9 << dim_size_lg;
-
-      int idx = row_0s | col;
-      int idx_stop = row_9s | col;
-
-      //
-      // Replace the "load_only" variable with loop limits.
-      //
-
-      bool highest_thread = threadIdx.x == blockDim.x - 1;
-      int col_overrun_load = max(0,col + homework_R - array_row_stride);
-      int col_overrun_comp = max(0,col + homework_R - array_row_stride + 1);
-
-      // Loop limit for loop that loads elements to shared memory.
-      //
-      int i_load_stop = homework_R - col_overrun_load;
-
-      // Loop limits for loop that performs computation.
-      //
-      int i_comp_start = threadIdx.x == 0 ? 1 : 0;
-      int i_comp_stop = homework_R
-        - ( col_overrun_comp ? col_overrun_comp : highest_thread );
 
       // Use loops to load data.
       //
-      for ( int i=0; i<i_load_stop; i++ ) s[siu+i] = a[idx+i];
-      idx += array_row_stride;
-      for ( int i=0; i<i_load_stop; i++ ) s[sidx+i] = a[idx+i];
-
-      while ( idx < idx_stop )
+      for ( int i=0; i<homework_R; i++ )
         {
-          int idx_next = idx + array_row_stride;
-          for ( int i=0; i<i_load_stop; i++ ) s[sid + i] = a[idx_next + i];
+          // Compute column number for this element.
+          //
+          int coli = col + i;
+
+          // If column out of range skip this element.
+          //
+          if ( coli >= array_row_stride ) continue;
+
+          // Compute array index, and cache elements.
+          //
+          int idx = row_s + coli;
+          s[siu+i] = a[ idx ];
+          s[sidx+i] = a[ idx + array_row_stride ];
+        }
+
+      row_s += array_row_stride;
+
+      while ( row_s < row_9s )
+        {
+          int row_next = row_s + array_row_stride;
+          
+          for ( int i=0; i<homework_R; i++ )
+            {
+              // Cache the next row of elements.
+              //
+              int coli = col + i;
+              if ( coli < array_row_stride ) s[sid + i] = a[ row_next + coli ];
+            }
 
           __syncthreads();
 
           // Use a loop for computation.
           //
-          // Note: This loop is not designed to be unrolled, that
-          // will be added in another routine at a later time.
-          //
-          for ( int i=i_comp_start; i<i_comp_stop; i++ )
+          for ( int i=0; i<homework_R; i++ )
             {
-#if DEBUG_STENCIL
-              b[idx+i] = v0 * s[sidx+i];
+              // Compute column and if out of range, skip this element.
+              //
+              int coli = col + i;
+              if ( coli == col_0 || coli > col_9 ) continue;
+              int idx = row_s + coli;
+#ifdef DEBUG_STENCIL
+              b[idx] = v0 * s[sidx+i];
 #else
-              b[idx+i] = v0 * s[sidx+i]
+              b[idx] = v0 * s[sidx+i]
                 + v1 * ( s[sidx+i-1] + s[sidx+i+1] + s[siu+i] + s[sid+i] )
                 + v2 * ( s[siu+i-1] + s[siu+i+1] + s[sid+i-1] + s[sid+i+1] );
 #endif
             }
           __syncthreads();
           int sid_new = siu; siu = sidx; sidx = sid; sid = sid_new;
-          idx = idx_next;
+          row_s = row_next;
+        }
+
+    }
+}
+
+__global__ void
+stencil_shared_3()
+{
+  /// SOLVE HOMEWORK 3 HERE
+
+  /// NOTE: This code is inefficient.
+  //
+  //  The code here will run more slowly than stencil_shared, at least
+  //  on CC 1.x devices, due to inefficient global and shared memory
+  //  access patterns.
+  //
+  //  Fix it.
+
+  int array_row_stride = 1 << dim_size_lg;
+  int array_row_mask = array_row_stride - 1;
+
+  // Adjust the number of columns that each block computes.
+  //
+  int cols_per_block = blockDim.x * homework_R - 2;          //  Times R
+  int blocks_per_row =
+    ceilf( float(array_row_stride-2) / cols_per_block );
+
+  int rows_per_block =
+    ceilf( float(blocks_per_row) * array_row_stride / gridDim.x );
+
+  int row_0_large = rows_per_block * blockIdx.x;
+  int row_9_large = row_0_large + rows_per_block + 2;
+  int col_group_0 = row_0_large >> dim_size_lg;
+  int col_group_9 = row_9_large >> dim_size_lg;
+
+  // Adjust the indices into shared memory.
+  //
+  int siu = threadIdx.x * homework_R;                        // Times R
+  int sidx = siu + blockDim.x * homework_R;                  // Times R
+  int sid = sidx + blockDim.x * homework_R;                  // Times R
+
+  for ( int col_group = col_group_0; col_group <= col_group_9; col_group++ )
+    {
+      int row_0 =
+        col_group == col_group_0 ? row_0_large & array_row_mask : 0;
+      int row_9 = col_group == col_group_9
+        ? ( row_9_large & array_row_mask ) : array_row_mask;
+
+      int col_0 = col_group * cols_per_block;
+      int col_9 = min( col_0 + cols_per_block, array_row_stride - 2 );
+
+      // Since each thread handles R pixels need to multiply by R to
+      // find the starting column number for a thread.
+      //
+      int col = col_0 + threadIdx.x * homework_R;            // Times R
+      if ( col >= array_row_stride ) return;
+
+      int row_s = row_0 << dim_size_lg;
+      int row_9s = row_9 << dim_size_lg;
+
+      // Use loops to load data.
+      //
+      for ( int i=0; i<homework_R; i++ )
+        {
+          // Compute column number for this element.
+          //
+          int coli = col + i;
+
+          // If column out of range skip this element.
+          //
+          if ( coli >= array_row_stride ) continue;
+
+          // Compute array index, and cache elements.
+          //
+          int idx = row_s + coli;
+          s[siu+i] = a[ idx ];
+          s[sidx+i] = a[ idx + array_row_stride ];
+        }
+
+      row_s += array_row_stride;
+
+      while ( row_s < row_9s )
+        {
+          int row_next = row_s + array_row_stride;
+          
+          for ( int i=0; i<homework_R; i++ )
+            {
+              // Cache the next row of elements.
+              //
+              int coli = col + i;
+              if ( coli < array_row_stride ) s[sid + i] = a[ row_next + coli ];
+            }
+
+          __syncthreads();
+
+          // Use a loop for computation.
+          //
+          for ( int i=0; i<homework_R; i++ )
+            {
+              // Compute column and if out of range, skip this element.
+              //
+              int coli = col + i;
+              if ( coli == col_0 || coli > col_9 ) continue;
+
+              int idx = row_s + coli;
+#ifdef DEBUG_STENCIL
+              b[idx] = v0 * s[sidx+i];
+#else
+              b[idx] = v0 * s[sidx+i]
+                + v1 * ( s[sidx+i-1] + s[sidx+i+1] + s[siu+i] + s[sid+i] )
+                + v2 * ( s[siu+i-1] + s[siu+i+1] + s[sid+i-1] + s[sid+i+1] );
+#endif
+            }
+          __syncthreads();
+          int sid_new = siu; siu = sidx; sidx = sid; sid = sid_new;
+          row_s = row_next;
         }
 
     }

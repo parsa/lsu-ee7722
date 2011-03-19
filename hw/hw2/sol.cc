@@ -1,6 +1,10 @@
 /// LSU EE 7700-2 (Sp 2011), GPU Microarchitecture
 //
 /// Homework 2 -- PARTIAL SOLUTION
+/// Homework 3 -- Solution Driver
+
+// This file contains the solution to Homework 2 Spring 2011 and
+// code for the Homework 3 assignment.
 
  ///
  /// Instructions
@@ -230,48 +234,37 @@ public:
 
   void check()
   {
+    int err_count = 2;
     for ( int i=0; i<array_size; i++ )
       {
         const float diff = fabs( b[i] - b_check[i] );
         const double err_frac = b_check[i] > 0 ? diff / b_check[i] : diff;
         if ( err_frac > 0.00001 )
           {
-            printf("*** Incorrect result at %d  %.3f != %.3f (correct)\n",
-                   i, b[i], b_check[i]);
-            return;
+            printf("*** Incorrect result at %d (0x%x)  "
+                   "%.3f != %.3f (correct)\n",
+                   i, i, b[i], b_check[i]);
+            if ( err_count-- < 0 ) return;
           }
       }
   }
 
   void start()
   {
-    int block_lg[] = {7,8,9,10};
-    const int cnt = sizeof(block_lg) / sizeof(block_lg[0]);
-
-    run(8,1,'s',1);
+    //  run(8,1,'3',2); return;
+    run(6,8,'s',1);
+    run(7,4,'s',1);
+    run(8,2,'s',1);
     run(8,1,'2',1);
     run(8,1,'2',2);
+    run(8,1,'2',3);
+    run(7,1,'2',0);
     run(8,1,'2',0);
-    run(6,1,'2',1);
-    run(6,1,'2',2);
-    run(6,1,'2',0);
-    return;
-
-    // Reorganize this code as needed.
-
-    for ( int i=0; i<cnt; i++ )
-      {
-        run(block_lg[i],1,'i');
-        run(block_lg[i],2,'i');
-        run(block_lg[i],4,'i');
-      }
-    for ( int i=0; i<cnt; i++ )
-      {
-        run(block_lg[i],1,'s');
-        run(block_lg[i],2,'s');
-        run(block_lg[i],4,'s');
-      }
-
+    run(8,1,'3',1);
+    run(8,1,'3',2);
+    run(8,1,'3',3);
+    run(7,1,'3',0);
+    run(8,1,'3',0);
   }
 
   void run(int block_lg, int bl_per_mp = 1, char version = 'i',
@@ -310,13 +303,23 @@ public:
     // amount of shared memory on the device. This is only valid
     // for stencil_shared_2.
     //
-    const int max_r =
+    const int max_r_mem =
       ( cuda_prop.sharedMemPerBlock - func_attr->attr.sharedSizeBytes )
       / version_s_shared_bytes;
 
+    const int max_r_width = int(ceil( float(row_stride) / db.x ));
+
     // If the requested R is 0 that means use the largest possible value.
     //
-    const int homework_R = R_requested ? R_requested : max_r;
+    const int homework_R =
+      R_requested ? R_requested : min(max_r_mem,max_r_width);
+
+    if ( homework_R > max_r_width )
+      {
+        printf("Value of R is too large, max for this array and block is %d.\n",
+               max_r_width);
+        return;
+      }
 
     // Send value of R to device.
     //
@@ -326,7 +329,8 @@ public:
     switch ( version ){
     case 'i': shared_bytes = 0; break;
     case 's': shared_bytes = version_s_shared_bytes; break;
-    case '2': shared_bytes = version_s_shared_bytes * homework_R; break;
+    case '2': case '3':
+      shared_bytes = version_s_shared_bytes * homework_R; break;
     default:
       shared_bytes = 1000000;
     }
