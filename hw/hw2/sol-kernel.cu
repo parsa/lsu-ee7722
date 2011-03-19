@@ -4,7 +4,7 @@
 /// Homework 3 -- Assignment (Edit this file.)
 
  // This file has a solution to Homework 2 Problem 3(a).
- // Edit this file to solve Homework 3.
+ // For Homework 3, edit routine stencil_shared_3.
 
 
 #include "sol.cuh"
