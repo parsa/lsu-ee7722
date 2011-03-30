@@ -92,6 +92,7 @@ public:
     bo_ptr = NULL;  locked = false;  elements = 0;
     chars_allocated_cuda = chars_allocated = 0;
     dev_ptr_name[0] = "";  dev_ptr_name[1] = "";
+    dev_addr_seen[0] = dev_addr_seen[1] = false;
   }
   ~pCUDA_Memory(){ free_memory(); }
 
@@ -179,6 +180,7 @@ private:
       }
     CE(cudaMalloc(&dev_addr[side],chars));
     dev_ptr_name[side] = "";
+    dev_addr_seen[side] = false;
     chars_allocated_cuda = chars;
   }
 
@@ -197,7 +199,10 @@ private:
 public:
   T* get_dev_addr() { return get_dev_addr(current); }
   T* get_dev_addr(int side)
-  { alloc_maybe(side); return (T*)dev_addr[side]; }
+  {
+    alloc_maybe(side);
+    return (T*)dev_addr[side];
+  }
   T* get_dev_addr_read() { return get_dev_addr(current); }
   T* get_dev_addr_write() { return get_dev_addr(1-current); }
 
@@ -206,6 +211,7 @@ public:
     void* const dev_addr = get_dev_addr(side);
     if ( dev_ptr_name[side] == dev_name ) return;
     dev_ptr_name[side] = dev_name;
+    dev_addr_seen[side] = true;
     CE(cudaMemcpyToSymbol
        (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
   }
@@ -222,6 +228,7 @@ public:
     if ( dev_ptr_name[0] == dev_name ) return;
     dev_ptr_name[0] = dev_name;
     get_dev_addr(0); get_dev_addr(1); // Force allocation.
+    dev_addr_seen[0] =  dev_addr_seen[1] = true;
     CE(cudaMemcpyToSymbol
        (dev_name, &dev_addr[0], sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
   }
@@ -229,6 +236,8 @@ public:
   void to_cuda()
   {
     alloc_gpu_buffer();
+    if ( !dev_addr_seen[current] )
+      pError_Msg("Data sent to CUDA before sending address of data.");
     CE(cudaMemcpy(dev_addr[current], data, chars, cudaMemcpyHostToDevice));
   }
 
@@ -254,6 +263,7 @@ public:
   // Stuff below should be private to avoid abuse.
   void *dev_addr[2], *bo_ptr;
   pString dev_ptr_name[2];
+  bool dev_addr_seen[2];
   GLuint bid;
   int current;
   T *data;
