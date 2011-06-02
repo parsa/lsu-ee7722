@@ -206,6 +206,8 @@ public:
   T* get_dev_addr_read() { return get_dev_addr(current); }
   T* get_dev_addr_write() { return get_dev_addr(1-current); }
 
+  void set_dev_addr_seen(int side) { dev_addr_seen[side] = true; }
+
   void ptrs_to_cuda_side(const char *dev_name, int side)
   {
     void* const dev_addr = get_dev_addr(side);
@@ -412,6 +414,7 @@ public:
       soa[si->soa_elt_idx] = dev_base + si->soa_cpu_base;
     CE(cudaMemcpyToSymbol
        (dev_name, soa, sizeof(Tsoa), 0, cudaMemcpyHostToDevice));
+    cuda_mem_all.set_dev_addr_seen(side);
   }
   void ptrs_to_cuda(char *dev_name_0, char *dev_name_1 = NULL)
   {
