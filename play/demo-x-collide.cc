@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Spring 2011), GPU
+/// LSU EE 7700-2 (Spring 2011), GPU Microarchitecture
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -570,7 +570,7 @@ public:
 
   // Pre-computed values.
   //
-  double delta_t;
+  double delta_t, delta_th;
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   pVect gravity_accel_dt;
   double elasticity_inv_dt;
@@ -862,7 +862,8 @@ World::init()
 
   // Platform and Ball Textures
   //
-  texid_plat = pBuild_Texture_File("gp.png", false, 255);
+  texid_plat = pBuild_Texture_File
+    ("/home/faculty/koppel/teach/gpm11/gp.ps", false, 255);
   texid_ball = pBuild_Texture_File("mult.png", false, -1);
 
   // Limits of texture coordinates for platform tiles.
@@ -941,7 +942,8 @@ World::init()
   opt_fixed_lod = -1;
   variable_control.insert(opt_fixed_lod,"Fixed LOD",1,-1,sphere_count-1);
 
-  wheel = new Wheel(this);
+  //  wheel = new Wheel(this);
+  wheel = NULL;
 
   variables_update();
   platform_update();
@@ -950,7 +952,7 @@ World::init()
   if ( wheel )
     wheel->init(pCoor(platform_xrad*0.2,-10,0), pVect(0,0,-10),3,8);
 
-  {
+  if(0){
     //  Use tiles to construct a staircase.
     //
     const int step_count = 10;
@@ -1053,6 +1055,7 @@ World::variables_update()
   //
   // This routine is called after user changes something.
   delta_t = 1.0 / ( 60 * opt_time_step_factor );
+  delta_th = 0.5 * delta_t;
   cuda_constants_stale = true;  // Force cuda variables to be updated too.
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
   gravity_accel_dt = delta_t * gravity_accel;
@@ -1157,35 +1160,94 @@ World::benchmark_setup(int tiers)
   for ( Ball *ball; balls_iterate(ball); )
     { physs.iterate_yank(); delete ball; }
 
-  // Note that number of balls determined by ball size.
-  opt_ball_radius = 1.08;
+  const bool opt_multisize = true;
 
-  const float delta_z = opt_ball_radius * 3;
+  // Note that number of balls determined by ball size.
+  opt_ball_radius = opt_multisize ? 2.5 : 1.08;
+
   const float delta_x = opt_ball_radius * 2.1;
+  const float delta_z = opt_ball_radius * 3 * 4;
   const float hdeltaz = delta_z / 2;
   const float hdeltax = delta_x / 2;
   const float delta_y = 2.1 * opt_ball_radius;
   const float ymax = delta_y * tiers - 0.001;
+
+  const int balls_per_sheet = 30.0 * tiers * 2 * platform_xrad / delta_x;;
+
+
+  const float platform_zwid = platform_zmax - platform_zmin;
+  int ball_amt = 30000;
   opt_drip = false;
   opt_spray_on = false;
   opt_verify = false;
   opt_mirror = false;
   opt_shadows = false;
+  while ( ball_amt > 0 )
+    {
+      const float z = platform_xmin + platform_zwid * drand48();
+      const float x = platform_xmin + 2.0 * drand48() * platform_xrad;
+      const float y = 2 * opt_ball_radius + drand48() * ymax;
+      const pCoor pos(x,y,z);
+      const double rad_min = 0.6;
+      const float rad = max(rad_min,opt_ball_radius * pow(drand48(),1));
+      if ( !sphere_empty(pos,rad) ) continue;
+      ball_amt--;
+      Ball* const b = new Ball(this);
+      b->set_radius(rad);
+      b->velocity = pVect(0,0,0);
+      b->position = pos;
+      physs += b;
+    }
+          return;
+
+  //  const int balls_per_sheet = 30.0 * tiers * 2 * platform_xrad / delta_x;;
+
+
+  opt_drip = false;
+  opt_spray_on = false;
+  opt_verify = false;
+  opt_mirror = false;
+  //  opt_shadows = false;
   //  opt_friction_coeff = 2.0;
   //  opt_friction_coeff = 0.01;
   opt_ball_density = 0.07;
-  for ( float z = platform_zmin + hdeltaz; z < platform_zmax; z+= delta_z )
-    for ( float x = platform_xmin + hdeltax; x < platform_xmax; x += delta_x )
-      for ( float y = 0; y < ymax; y+= delta_y )
+
+  if ( opt_multisize )
+    {
+      for ( float z = platform_zmin + hdeltaz; z < platform_zmax; z+= delta_z )
         {
-          Ball* const b = new Ball(this);
-          b->velocity.z = 0;
-          b->position = pCoor(x,y,z);
-          physs += b;
+          for ( int i=0; i<balls_per_sheet; i++ )
+            {
+              const float x = platform_xmin + 2.0 * drand48() * platform_xrad;
+              const float y = 2 * opt_ball_radius + drand48() * ymax;
+              const pCoor pos(x,y,z);
+              const double rad_min = 0.6;
+              const float rad = max(rad_min,opt_ball_radius * pow(drand48(),1));
+              if ( !sphere_empty(pos,rad) ) continue;
+              Ball* const b = new Ball(this);
+              b->set_radius(rad);
+              b->velocity = pVect(0,0,0);
+              b->position = pos;
+              physs += b;
+            }
         }
+    }
+  else
+    {
+      for ( float z = platform_zmin + hdeltaz; z < platform_zmax; z+= delta_z )
+        for ( float x = platform_xmin + hdeltax;
+              x < platform_xmax; x += delta_x )
+          for ( float y = 0; y < ymax; y+= delta_y )
+            {
+              Ball* const b = new Ball(this);
+              b->velocity.z = 0;
+              b->position = pCoor(x,y,z);
+              physs += b;
+            }
+    }
   variables_update();
   opt_elasticity = 0.1 / 16;
-  opt_ball_density = 0.1;
+  opt_ball_density = 0.9;
   opt_ball_radius = 3.0;
 }
 
@@ -1959,10 +2021,14 @@ void World::balls_remove()
 
 void World::balls_stop()
 {
+  cuda_data_to_cpu(DL_ALL);
+  data_location = DL_ALL_CPU;
   for ( Ball *ball; balls_iterate(ball); ) ball->stop();
 }
 void World::balls_rot_stop()
 {
+  cuda_data_to_cpu(DL_ALL);
+  data_location = DL_ALL_CPU;
   for ( Ball *ball; balls_iterate(ball); )
     ball->omega = pVect(0,0,0);
 }
@@ -2392,8 +2458,8 @@ World::time_step_cpu()
 
   /// Based on updated velocity, update ball positions.
   //
-  for ( Ball *ball; balls_iterate(ball); ) 
-    ball->position += delta_t * ball->velocity;
+  for ( Ball *ball; balls_iterate(ball); )
+    ball->position += delta_th * ( ball->prev_velocity + ball->velocity );
 
   float contact_y_max = -platform_xrad;
 
@@ -2753,7 +2819,7 @@ World::contact_pairs_find()
               // CUDA code could not compute proximity for this phys.
               //
               contact_pairs_proximity_check(i,lifetime_delta_t,false);
-              if ( cuda_prox[pi+1] == 'f' ) cuda_prox_full++;
+              if ( cuda_prox[pi+1] == 't' ) cuda_prox_full++;
               continue;
             }
 
@@ -3407,10 +3473,10 @@ World::time_step_cuda(int iter, int iters_per_frame)
         for ( Ball *b; balls_iterate(b); )
           b->color_event =
             b->color_block >= 0 ? *colors[b->color_block & colors_mask] : dark;
-      block_balls_needed.to_cuda();
       block_balls_needed.ptrs_to_cuda("block_balls_needed");
-      cuda_tacts_schedule.to_cuda();
+      block_balls_needed.to_cuda();
       cuda_tacts_schedule.ptrs_to_cuda("tacts_schedule");
+      cuda_tacts_schedule.to_cuda();
       pt_sched_data_pending = false;
       cuda_schedule_stale = -schedule_lifetime_steps;
     }
@@ -4449,7 +4515,7 @@ World::cb_keyboard()
   case 's': balls_stop(); break;
   case 'S': balls_rot_stop(); break;
   case 'T': benchmark_setup(1); break;
-  case 't': benchmark_setup(5); break;
+  case 't': benchmark_setup(15); break;
   case 'v': opt_verify = !opt_verify; break;
   case 'w': opt_shadows = !opt_shadows; break;
   case 'W': opt_shadow_volumes = !opt_shadow_volumes; break;
@@ -4498,6 +4564,13 @@ World::cb_keyboard()
       pMatrix_Rotation rotall(pVect(0,1,0),-angle);
       if ( opt_move_item == MI_Eye )
         adjustment *= rotall;
+
+      switch ( opt_move_item ){
+      case MI_Ball: case MI_Ball_V:
+        cuda_data_to_cpu(DL_ALL);  data_location = DL_ALL_CPU;
+        break;  
+      default: break;
+      }
 
       switch ( opt_move_item ){
       case MI_Ball: ball_last()->translate(adjustment); break;
