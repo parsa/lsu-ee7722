@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Sp 2010), GPU Microarchitecture
+/// LSU EE X70X-X (Sp 2011), GPU Microarchitecture
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -804,7 +804,9 @@ pass_platform_ball(CUDA_Phys_W& phys, int idx)
 
   /// Update Position and Orientation
   //
-  ball.position += delta_t * ball.velocity;
+  ball.position +=
+    0.5 * delta_t * ( ball.prev_velocity + ball.velocity );
+
   pNorm axis = mn(ball.omega);
   balls_x.orientation[idx] =
     quat_normalize
