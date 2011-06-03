@@ -8,6 +8,8 @@
 #include <math.h>
 #include <Magick++.h>
 
+#define ALSO_GL
+
 #include "glextfuncs.h"
 #include "pstring.h"
 #include "misc.h"
