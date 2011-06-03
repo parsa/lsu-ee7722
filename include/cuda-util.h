@@ -218,7 +218,7 @@ public:
        (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
   }
 
-  void ptrs_to_cuda(char *dev_name_0, char *dev_name_1 = NULL)
+  void ptrs_to_cuda(const char *dev_name_0, const char *dev_name_1 = NULL)
   {
     ptrs_to_cuda_side(dev_name_0,0);
     if ( !dev_name_1 ) return;
@@ -278,6 +278,11 @@ public:
         mx.setup(sizeof(*mx.sample_soa.memb),                                 \
                  ((char*)&mx.sample_aos.memb)- ((char*)&mx.sample_aos),       \
                  (void**)&mx.sample_soa.memb)
+
+#define CMX_SETUP3(mx,memb_soa,memb_aos)                                      \
+        mx.setup(sizeof(*mx.sample_soa.memb_soa),                             \
+                 ((char*)&mx.sample_aos.memb_aos)- ((char*)&mx.sample_aos),   \
+                 (void**)&mx.sample_soa.memb_soa)
 
 struct pCM_Struc_Info
 {
@@ -416,11 +421,11 @@ public:
        (dev_name, soa, sizeof(Tsoa), 0, cudaMemcpyHostToDevice));
     cuda_mem_all.set_dev_addr_seen(side);
   }
-  void ptrs_to_cuda(char *dev_name_0, char *dev_name_1 = NULL)
+  void ptrs_to_cuda(const char *dev_name_0, const char *dev_name_1 = NULL)
   {
     ptrs_to_cuda_soa(dev_name_0,dev_name_1);
   }
-  void ptrs_to_cuda_soa(char *dev_name_0, char *dev_name_1 = NULL)
+  void ptrs_to_cuda_soa(const char *dev_name_0, const char *dev_name_1 = NULL)
   {
     ptrs_to_cuda_soa_side(dev_name_0,0);
     if ( !dev_name_1 ) return;
@@ -431,7 +436,7 @@ public:
   {
     pCM::ptrs_to_cuda_side(dev_name,side);
   }
-  void ptrs_to_cuda_aos(char *dev_name_0, char *dev_name_1 = NULL)
+  void ptrs_to_cuda_aos(const char *dev_name_0, const char *dev_name_1 = NULL)
   {
     ptrs_to_cuda_aos_side(dev_name_0,0);
     if ( !dev_name_1 ) return;
