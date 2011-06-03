@@ -15,7 +15,7 @@ CCFLAGS =  $(shell Magick++-config --cxxflags) -Wall \
 
 # Flags that should be passed to both nvcc and the c++ compiler.
 #
-NVCCCCFLAGS =  -g
+NVCCCCFLAGS = -O3 -g
 
 # Flags recognized only by nvcc.
 #
