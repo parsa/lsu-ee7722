@@ -1,25 +1,31 @@
 
 CUDAPATH = /usr/local/cuda
-DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
-INCLUDE =
-
-LIBDIR  =
+GPINCLUDE = -I../include
 
 # -Xnvopencc -LIST:source=on
 
 # --use_fast_math  bug:
 #   Execution problem occurs with --use_fast_math and certain data placement.
 
-COMPILERFLAGS = -deviceemu -Xcompiler -Wall --keep  --ptxas-options=-v
-COMPILERFLAGS =  -O3 -Xcompiler -Wall --keep --ptxas-options=-v
-#COMPILERFLAGS =   -Xcompiler -Wall --keep --ptxas-options=-v
+# Flags for c++ compiler only.
+#
+CCFLAGS =  $(shell Magick++-config --cxxflags) -Wall \
+	-Wno-strict-aliasing -Wno-parentheses \
+	-I $(CUDAPATH)/include $(GPINCLUDE)
 
-CXX = $(CUDAPATH)/bin/nvcc
+# Flags that should be passed to both nvcc and the c++ compiler.
+#
+NVCCCCFLAGS =  -g
+
+# Flags recognized only by nvcc.
+#
+NVCCFLAGS =  --keep --ptxas-options=-v
+
+NVCC = $(CUDAPATH)/bin/nvcc
+CXX = g++
 
 .SUFFIXES: .cu .cuh
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 
@@ -27,11 +33,10 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 default:balloon
 
 .cc.o:
-	$(CXX) $(CFLAGS) -c $*.cc
+	$(CXX) $(CCFLAGS) $(NVCCCCFLAGS) -c $*.cc
 
 .cu.o:
-	$(CXX) $(CFLAGS) -c $*.cu
-#	$(DECUDA) -p -o $*.cubin.ptx $*.sm_10.cubin 
+	$(NVCC) $(NVCCFLAGS) $(NVCCCCFLAGS) -c $*.cu
 
 balloon.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
 balloon.o: balloon.cuh balloon.cc
@@ -39,5 +44,5 @@ balloon.o: balloon.cuh balloon.cc
 balloon-kernel.o: Makefile balloon.cuh balloon-kernel.cu
 
 balloon: balloon-kernel.o balloon.o
-	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+	$(NVCC) $(NVCCFLAGS) $(NVCCCCFLAGS) -o $@ $^ $(LIBRARIES) 
 

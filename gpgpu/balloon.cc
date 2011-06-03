@@ -117,426 +117,16 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
-#include "../include/util.h"
-#include "../include/glextfuncs.h"
-#include "../include/coord.h"
-#include "../include/shader.h"
-#include "../include/pstring.h"
-#include "../include/misc.h"
+#include <gp/util.h>
+#include <gp/glextfuncs.h>
+#include <gp/coord.h>
+#include <gp/shader.h>
+#include <gp/pstring.h>
+#include <gp/misc.h>
+#include <gp/cuda-util.h>
+#include <gp/gl-buffer.h>
 
 #include "balloon.cuh"
-
-
-///
-/// CUDA and OpenGL Support
-///
-
-
- /// CUDA API Error-Checking Wrapper
-///
-#define CE(call)                                                              \
- {                                                                            \
-   const cudaError_t rv = call;                                               \
-   if ( rv != cudaSuccess )                                                   \
-     {                                                                        \
-       pStringF msg("CUDA error %d, %s\n",rv,cudaGetErrorString(rv));         \
-       pError_Msg(msg.s);                                                     \
-     }                                                                        \
- }
-
-void vec_set(float3& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z;}
-void vec_sets(pCoor& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w=1;}
-void vec_sets(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w = b.w;}
-void vec_sets(pVect& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
-void vec_sets4(pVect& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
-
-
- ///
- /// Class for managing an OpenGL ARRAY_BUFFER
- ///
-
-template <typename T>
-class pBuffer_Object {
-public:
-  pBuffer_Object(){ data = NULL; init(); }
-  ~pBuffer_Object()
-  {
-    if ( data ) free(data);
-    glDeleteBuffers(created,bids);
-  }
-
-private:
-  void init()
-  {
-    btarget = GL_ARRAY_BUFFER;
-    glGenBuffers(2, bids);
-    current = 0;
-    bid = bids[current];
-    created = 0;
-    pError_Check();
-    usage_hint = GL_DYNAMIC_COPY;
-  }
-
-public:
-  T* alloc(int elements_p, GLenum hint = GL_DYNAMIC_COPY)
-  {
-    usage_hint = hint;
-    if ( data ) pError_Msg("Double allocation of pBuffer_Object.");
-    elements = elements_p;
-    chars = elements * sizeof(T);
-    data = new T[elements];
-    created = 1;
-    alloc_gpu_buffer();
-    glBindBuffer(btarget,0);
-    return data;
-  }
-
-  void take(PStack<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
-            GLenum default_target = GL_ARRAY_BUFFER)
-  {
-    usage_hint = hint;
-    btarget = default_target;
-    if ( data ) pError_Msg("Double allocation of pBuffer_Object.");
-    elements = stack.occ();
-    chars = elements * sizeof(T);
-    data = stack.take_storage();
-    created = 1;
-    alloc_gpu_buffer();
-    glBindBuffer(btarget,0);
-  }
-
-  void prepare_two_buffers()
-  {
-    ASSERTS( created == 1 );
-    created = 2; bid_swap(); alloc_gpu_buffer(); bid_swap();
-  }
-
-private:
-  void alloc_gpu_buffer()
-  {
-    bind();
-    glBufferData(btarget,chars,NULL,usage_hint);
-    pError_Check();
-  }
-
-public:
-  void to_gpu()
-  {
-    bind();
-    glBufferData(btarget, chars, data, usage_hint);
-    pError_Check();
-  }
-
-  void from_gpu()
-  {
-    bind();
-    T* const from_data = (T*)glMapBuffer(GL_ARRAY_BUFFER,GL_READ_ONLY);
-    pError_Check();
-    memcpy(data,from_data,chars);
-    glUnmapBuffer(btarget);
-    glBindBuffer(btarget,0);
-  }
-
-  void bind(GLenum target){ glBindBuffer(target,bid); }
-  void bind(){ glBindBuffer(btarget,bid); }
-
-  GLuint bid_read() const { return bids[current]; }
-  GLuint bid_write()
-  {
-    bid_swap(); alloc_gpu_buffer(); bid_swap();
-    return bids[1-current];
-  }
-  GLuint bid_fresh()
-  {
-    alloc_gpu_buffer();
-    return bid;
-  }
-
-  void bid_swap()
-  {
-    current = 1 - current;
-    bid = bids[current];
-  }
-
-  T& operator [] (int idx) { return data[idx]; }
-
-  GLuint bids[2];
-  GLuint bid;
-  GLenum usage_hint;
-  GLenum btarget;
-  int created, current;
-  T *data;
-  int elements, chars;
-};
-
-
- ///
- /// Class for managing CUDA device memory.
- ///
-
-template <typename T>
-class pCUDA_Memory {
-public:
-  pCUDA_Memory()
-  {
-    data = NULL;  dev_addr[0] = dev_addr[1] = NULL;  current = 0;  bid = 0;
-    bo_ptr = NULL;
-  }
-  ~pCUDA_Memory()
-  {
-    if ( data ) if ( locked ) {CE(cudaFreeHost(data));} else { free(data); }
-    if ( bid )
-      {
-        CE(cudaGLUnmapBufferObject(bid));
-        CE(cudaGLUnregisterBufferObject(bid));
-        glDeleteBuffers(1,&bid);
-      }
-  }
-
-  T* alloc_locked_maybe(int elements_p, bool locked_p)
-  {
-    if ( data ) pError_Msg("Double allocation of pCUDA_Memory.");
-    elements = elements_p;
-    locked = locked_p;
-    chars = elements * sizeof(T);
-    if ( locked )
-      { CE(cudaMallocHost((void**)&data,chars)); }
-    else
-      { data = (T*) malloc(chars); }
-    new (data) T[elements];
-    return data;
-  }
-
-  T* alloc(int nelem) { return alloc_locked_maybe(nelem,false); }
-  T* alloc_locked(int nelem) { return alloc_locked_maybe(nelem,true); }
-
-  void take(PStack<T>& stack)
-  {
-    if ( data ) pError_Msg("Double allocation of pCUDA_Memory.");
-    elements = stack.occ();
-    chars = elements * sizeof(T);
-    data = stack.take_storage();
-  }
-
-  T& operator [] (int idx) const { return data[idx]; }
-
-private:
-  void alloc_maybe() { alloc_maybe(current); }
-  void alloc_maybe(int side)
-  {
-    if ( !dev_addr[side] ) alloc_gpu_buffer(side);
-  }
-
-  void alloc_gpu_buffer(){ alloc_gpu_buffer(current); }
-  void alloc_gpu_buffer(int side)
-  {
-    ASSERTS( !dev_addr[side] );
-    CE(cudaMalloc(&dev_addr[side],chars));
-  }
-
-  void alloc_gl_buffer()
-  {
-    if ( bid ) return;
-    glGenBuffers(1,&bid);
-    glBindBuffer(GL_ARRAY_BUFFER,bid);
-    glBufferData(GL_ARRAY_BUFFER,chars,NULL,GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-    CE(cudaGLRegisterBufferObject(bid));
-  }
-
-public:
-  T* get_dev_addr() { return get_dev_addr(current); }
-  T* get_dev_addr(int side)
-  { alloc_maybe(side); return (T*)dev_addr[side]; }
-  T* get_dev_addr_read() { return get_dev_addr(current); }
-  T* get_dev_addr_write() { return get_dev_addr(1-current); }
-
-  void to_cuda()
-  {
-    if ( !dev_addr[current] ) alloc_gpu_buffer();
-    CE(cudaMemcpy(dev_addr[current], data, chars, cudaMemcpyHostToDevice));
-  }
-
-  void from_cuda()
-  {
-    CE(cudaMemcpy(data, dev_addr[current], chars, cudaMemcpyDeviceToHost));
-  }
-
-  void cuda_to_gl()
-  {
-    alloc_gl_buffer();
-    // Due to a bug in CUDA 2.1 this is slower than copying through host.
-    CE(cudaGLMapBufferObject(&bo_ptr,bid));
-    CE(cudaMemcpy(bo_ptr, dev_addr[current], chars, cudaMemcpyDeviceToDevice));
-    CE(cudaGLUnmapBufferObject(bid));
-  }
-
-  void swap() { current = 1 - current; }
-  void set_primary() { current = 0; }
-
-  // Stuff below should be private to avoid abuse.
-  void *dev_addr[2], *bo_ptr;
-  GLuint bid;
-  int current;
-  T *data;
-  bool locked;
-  int elements, chars;
-};
-
-
-struct pCM_Struc_Info
-{
-  int elt_size;
-  int offset_aos;
-  int soa_elt_idx;
-  size_t soa_cpu_base;
-};
-
-template<typename Taos, typename Tsoa>
-class pCUDA_Memory_X : public pCUDA_Memory<Taos>
-{
-public:
-  typedef pCUDA_Memory<Taos> pCM;
-  pCUDA_Memory_X()
-    : pCM(),alloc_unit_lg(8),alloc_unit_mask((1<<alloc_unit_lg)-1)
-  {
-    use_aos = false; data_aos_stale = false; soa_allocated = false;
-  }
-  void setup(uint elt_size, int offset_aos, void **soa_elt_ptr)
-  {
-    pCM_Struc_Info* const si = struc_info.pushi();
-    si->elt_size = elt_size;
-    si->offset_aos = offset_aos;
-    si->soa_cpu_base = -1;
-    si->soa_elt_idx = ((void**)soa_elt_ptr) - ((void**)&sample_soa);
-  }
-  void alloc(size_t nelements){ pCM::alloc(nelements); }
-  void alloc_soa()
-  {
-    if ( soa_allocated ) return;
-    soa_allocated = true;
-    size_t soa_cpu_base_next = 0;
-    while ( pCM_Struc_Info* const si = struc_info.iterate() )
-      {
-        si->soa_cpu_base = soa_cpu_base_next;
-        const size_t size = pCM::elements * si->elt_size;
-        const bool extra = size & alloc_unit_mask;
-        const size_t size_round =
-          ( size >> alloc_unit_lg ) + extra << alloc_unit_lg;
-        soa_cpu_base_next += size_round;
-      }
-    cuda_mem_all.alloc(soa_cpu_base_next);
-    void** soa_ptr = (void**)&soa;
-    char* const cpu_base = (char*) &cuda_mem_all.data[0];
-    while ( pCM_Struc_Info* const si = struc_info.iterate() )
-      soa_ptr[si->soa_elt_idx] = cpu_base + si->soa_cpu_base;
-  }
-
-  Taos& operator [] (int idx)
-  {
-    if ( data_aos_stale ) soa_to_aos();
-    return pCM::data[idx];
-  }
-
-  void aos_to_soa()
-  {
-    alloc_soa();
-    while ( pCM_Struc_Info* const si = struc_info.iterate() )
-      {
-        char* const soa_cpu_base = &cuda_mem_all[si->soa_cpu_base];
-        Taos* const aos_cpu_base =
-          (Taos*)(((char*)&pCM::data[0])+si->offset_aos);
-        for ( int i=0; i<pCM::elements; i++ )
-          memcpy( soa_cpu_base + i*si->elt_size,
-                  aos_cpu_base + i,  si->elt_size);
-      }
-  }
-  void soa_to_aos()
-  {
-    while ( pCM_Struc_Info* const si = struc_info.iterate() )
-      {
-        char* const soa_cpu_base = &cuda_mem_all[si->soa_cpu_base];
-        Taos* const aos_cpu_base =
-          (Taos*)(((char*)&pCM::data[0])+si->offset_aos);
-        for ( int i=0; i<pCM::elements; i++ )
-          memcpy( aos_cpu_base + i,
-                  soa_cpu_base + i*si->elt_size, si->elt_size);
-      }
-    data_aos_stale = false;
-  }
-
-  void to_cuda()
-  {
-    if ( use_aos ) { pCM::to_cuda();  return; }
-    aos_to_soa();
-    cuda_mem_all.to_cuda();
-  }
-  void from_cuda()
-  {
-    if ( use_aos ) { pCM::from_cuda();  return; }
-    cuda_mem_all.from_cuda();
-    data_aos_stale = true;
-  }
-
-  void swap()
-  {
-    pCM::swap();
-    cuda_mem_all.swap();
-  }
-
-  void ptrs_to_cuda_soa_side(const char *dev_name, int side)
-  {
-    alloc_soa();
-    void** soa = (void**)&shadow_soa[side];
-    char* const dev_base = (char*) cuda_mem_all.get_dev_addr(side);
-    while ( pCM_Struc_Info* const si = struc_info.iterate() )
-      soa[si->soa_elt_idx] = dev_base + si->soa_cpu_base;
-    CE(cudaMemcpyToSymbol
-       (dev_name, soa, sizeof(Tsoa), 0, cudaMemcpyHostToDevice));
-  }
-  void ptrs_to_cuda(char *dev_name_0, char *dev_name_1 = NULL)
-  {
-    ptrs_to_cuda_soa(dev_name_0,dev_name_1);
-  }
-  void ptrs_to_cuda_soa(char *dev_name_0, char *dev_name_1 = NULL)
-  {
-    ptrs_to_cuda_soa_side(dev_name_0,0);
-    if ( !dev_name_1 ) return;
-    ptrs_to_cuda_soa_side(dev_name_1,1);
-  }
-
-  void ptrs_to_cuda_aos_side(const char *dev_name, int side)
-  {
-    void* const dev_addr = pCM::get_dev_addr(side);
-    CE(cudaMemcpyToSymbol
-       (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
-  }
-  void ptrs_to_cuda_aos(char *dev_name_0, char *dev_name_1 = NULL)
-  {
-    ptrs_to_cuda_aos_side(dev_name_0,0);
-    if ( !dev_name_1 ) return;
-    ptrs_to_cuda_aos_side(dev_name_1,1);
-  }
-
-  const int alloc_unit_lg, alloc_unit_mask;
-  PStack<pCM_Struc_Info> struc_info;
-  pCUDA_Memory<char> cuda_mem_all;
-  bool use_aos;
-  bool data_aos_stale;
-  bool soa_allocated;
-
-  Tsoa shadow_soa[2];
-  Tsoa soa;
-
-  Tsoa sample_soa;
-  Taos sample_aos;
-};
-
-#define CMX_SETUP(mx,memb_soa,memb_aos)                                       \
-        mx.setup(sizeof(*mx.sample_soa.memb_soa),                             \
-                 ((char*)&mx.sample_aos.memb_aos)- ((char*)&mx.sample_aos),   \
-                 (void**)&mx.sample_soa.memb_soa)
-
 
  ///
  /// Ad-Hoc Class for Reading Images
@@ -1331,7 +921,9 @@ Balloon::init(pCoor center, double r)
   glp_tri_strc.alloc(tri_count,GL_STATIC_DRAW);
 
   cuda_tri_strc.alloc(tri_count);
+  cuda_tri_strc.disable_aos = false;
   cuda_vtx_strc.alloc(point_count);
+  cuda_vtx_strc.disable_aos = false;
 
   for ( int idx = 0;  idx < point_count; idx++ )
     {
@@ -2025,12 +1617,13 @@ Balloon::cuda_data_partition()
   const int work_count = work_per_block * block_count;
   const int work_per_vtx_mask = tri_work_per_vtx - 1;
 
-  CMX_SETUP(cuda_tri_work_strc,a,pi);
-  CMX_SETUP(cuda_tri_work_strc,b,vi_opp0);
-  CMX_SETUP(cuda_tri_work_strc,length_relaxed,length_relaxed);
-  CMX_SETUP(cuda_tri_work_strc,c,pull_tid_0);
+  CMX_SETUP3(cuda_tri_work_strc,a,pi);
+  CMX_SETUP3(cuda_tri_work_strc,b,vi_opp0);
+  CMX_SETUP3(cuda_tri_work_strc,length_relaxed,length_relaxed);
+  CMX_SETUP3(cuda_tri_work_strc,c,pull_tid_0);
 
   cuda_tri_work_strc.alloc( work_count );
+  cuda_tri_work_strc.disable_aos = false;
   int wi = 0;
   CUDA_Tri_Work_Strc tw_pad; memset(&tw_pad,-1,sizeof(tw_pad));
   int waste = 0;
@@ -2094,26 +1687,6 @@ Balloon::cuda_data_partition()
     }
 }
 
-template <typename T>
-void to_dev_ds(const char* const dst_name, int idx, T src)
-{
-  T cpy = src;
-  const int offset = sizeof(void*) * idx;
-  CE(cudaMemcpyToSymbol(dst_name,&cpy,sizeof(T),offset,cudaMemcpyHostToDevice));
-}
-
-void to_dev_ds(const char* const dst_name, int idx, double& src)
-{
-  ASSERTS( false );
-}
-
-#define TO_DEV_DS(dst,src) to_dev_ds(#dst,0,src);
-#define TO_DEV_DSS(dst,src1,src2) \
-        to_dev_ds(#dst,0,src1); to_dev_ds(#dst,1,src2);
-#define TO_DEV(var) to_dev_ds<typeof var>(#var,0,var)
-#define TO_DEV_OM(obj,memb) to_dev_ds(#memb,0,obj.memb)
-#define TO_DEV_OM_F(obj,memb) to_dev_ds(#memb,0,float(obj.memb))
-
 void
 Balloon::init_cuda()
 {
@@ -2141,28 +1714,28 @@ Balloon::init_cuda()
   CE(cudaEventCreate(&world.frame_start_ce));
   CE(cudaEventCreate(&world.frame_stop_ce));
 
-  CMX_SETUP(cuda_vtx_strc,a,n0);
-  CMX_SETUP(cuda_vtx_strc,b,n4);
-  CMX_SETUP(cuda_vtx_strc,tri_idx_base,tri_idx_base);
+  CMX_SETUP3(cuda_vtx_strc,a,n0);
+  CMX_SETUP3(cuda_vtx_strc,b,n4);
+  CMX_SETUP3(cuda_vtx_strc,tri_idx_base,tri_idx_base);
   cuda_vtx_strc.use_aos = false;
   cuda_vtx_strc.ptrs_to_cuda_soa("vtx_strc_x");
   cuda_vtx_strc.to_cuda();
 
-  CMX_SETUP(cuda_tri_strc,a,pi);
-  CMX_SETUP(cuda_tri_strc,b,qi_opp);
-  CMX_SETUP(cuda_tri_strc,length_relaxed,length_relaxed);
+  CMX_SETUP3(cuda_tri_strc,a,pi);
+  CMX_SETUP3(cuda_tri_strc,b,qi_opp);
+  CMX_SETUP3(cuda_tri_strc,length_relaxed,length_relaxed);
   cuda_tri_strc.use_aos = false;
   cuda_tri_strc.ptrs_to_cuda_soa("tri_strc_x");
   cuda_tri_strc.to_cuda();
 
   cuda_tri_data.alloc(tri_count);
-  TO_DEV_DS(tri_data,cuda_tri_data.get_dev_addr());
+  cuda_tri_data.ptrs_to_cuda("tri_data");
 
-
-  CMX_SETUP(cuda_vtx_data,pos,pos);
-  CMX_SETUP(cuda_vtx_data,surface_normal,surface_normal);
-  CMX_SETUP(cuda_vtx_data,vel,vel);
+  CMX_SETUP3(cuda_vtx_data,pos,pos);
+  CMX_SETUP3(cuda_vtx_data,surface_normal,surface_normal);
+  CMX_SETUP3(cuda_vtx_data,vel,vel);
   cuda_vtx_data.use_aos = false;
+  cuda_vtx_data.disable_aos = false;
   cuda_vtx_data.alloc_locked(point_count);
   cuda_vtx_data.ptrs_to_cuda_soa("vtx_data_x0","vtx_data_x1");
 
@@ -2172,18 +1745,17 @@ Balloon::init_cuda()
   const int tower_size = CUDA_VTX_BLOCK_SIZE * iter;
 
   cuda_tower_volumes.alloc(tower_size);
-  TO_DEV_DSS(tower_volumes,cuda_tower_volumes.get_dev_addr(0),
-             cuda_tower_volumes.get_dev_addr(1));
+  cuda_tower_volumes.ptrs_to_cuda_array("tower_volumes");
 
   cuda_centroid_parts.alloc(tower_size);
-  TO_DEV_DS(centroid_parts,cuda_centroid_parts.get_dev_addr());
+  cuda_centroid_parts.ptrs_to_cuda("centroid_parts");
 
   cuda_data_partition();
+  cuda_tri_work_strc.ptrs_to_cuda("tri_work_strc_x");
+  cuda_tri_work_strc.ptrs_to_cuda_aos("tri_work_strc");
   cuda_tri_work_strc.to_cuda();
-  TO_DEV_DS(tri_work_strc,cuda_tri_work_strc.get_dev_addr());
   TO_DEV(tri_work_per_vtx);
   TO_DEV(tri_work_per_vtx_lg);
-  cuda_tri_work_strc.ptrs_to_cuda("tri_work_strc_x");
 
   Dg_tri.x = int(ceil(double(tri_count)/CUDA_TRI_BLOCK_SIZE));
   Dg_tri.y = Dg_tri.z = 1;
