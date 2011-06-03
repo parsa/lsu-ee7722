@@ -16,3 +16,8 @@ set environment MALLOC_CHECK_ 2
 
 #set environment CUDA_PROFILE 1
 set environment CUDA_PROFILE_CONFIG .cuda-profile-config
+
+# Control messages about search for separate debug files for libraries, etc.
+# If 0, silent;  if 1, complain about missing files; if 2, more kvetching.
+#
+set build-id-verbose 0
