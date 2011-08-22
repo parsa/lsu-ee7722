@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
 
@@ -346,12 +346,9 @@ World::time_step_cpu_v0(double delta_t)
 
   /// Possible Collision with Platform
 
-  // This code is an approximation. In this simple case, unnecessary.
-  //
-  // Position and velocity computation simplified: they do not
-  // account for the exact time of collision, which in this
-  // code is easy enough to find.
-  //
+  // Position and velocity computation simplified: they do not account
+  // for the exact time of collision. (In this particular case the
+  // exact time of collision could have been easily found.)
 
   // Return quickly if collision impossible.
   //

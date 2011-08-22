@@ -6,6 +6,8 @@
 
  /// See demo-9-shader.cc for details.
 
+#version 150 compatibility
+
 
 void
 vs_ff_vertex(vec4 vtx)
@@ -22,12 +24,12 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   //
 
   vec4 light_pos = gl_LightSource[0].position;
-  vec3 v_vtx_light = light_pos - vertex_e;
-  float phase_light = max(0,dot(normal_e, normalize(v_vtx_light).xyz));
-  const vec3 ambient_light = gl_LightSource[0].ambient.rgb;
-  const vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
-  const float dist = length(v_vtx_light);
-  const float distsq = dist * dist;
+  vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
+  float phase_light = max(0.0f,dot(normal_e, normalize(v_vtx_light).xyz));
+  vec3 ambient_light = gl_LightSource[0].ambient.rgb;
+  vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
+  float dist = length(v_vtx_light);
+  float distsq = dist * dist;
   float atten_inv =
     gl_LightSource[0].constantAttenuation +
     gl_LightSource[0].linearAttenuation * dist +
@@ -54,6 +56,7 @@ vs_main_lighting()
 varying vec3 var_normal_e;
 varying vec4 var_vertex_e;
 
+#ifdef _VERTEX_SHADER_
 void
 vs_main_phong()
 {
@@ -64,7 +67,9 @@ vs_main_phong()
   var_normal_e = normalize(gl_NormalMatrix * gl_Normal);
   gl_BackColor = gl_FrontColor = gl_Color;
 }
+#endif
 
+#ifdef _FRAGMENT_SHADER_
 void
 fs_main_phong()
 {
@@ -75,3 +80,4 @@ fs_main_phong()
     generic_lighting(var_vertex_e,gl_Color,normalize(var_normal_e));
   gl_FragDepth = gl_FragCoord.z;
 }
+#endif
