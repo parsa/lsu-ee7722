@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Sp 2011), Graphics Processors
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Balloon Simulation
 
@@ -180,7 +180,7 @@ private:
 
 GLuint
 pBuild_Texture_File
-(const char *name, bool invert = false, int transp = 256 )
+(const char *name, bool invert = false, int transp = 256, GLuint tid = 0)
 {
   // Read image from file.
   //
@@ -191,8 +191,9 @@ pBuild_Texture_File
   //
   if ( invert ) image.color_invert();
 
-  GLuint tid;
-  glGenTextures(1,&tid);
+  if ( tid == 0 )
+    glGenTextures(1,&tid);
+  ASSERTS( tid != 0 );
   glBindTexture(GL_TEXTURE_2D,tid);
   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 
@@ -900,15 +901,14 @@ Balloon::init(pCoor center, double r)
 
   rep_pair_count = rep_pairs.occ();
 
-  texid_pse = pBuild_Texture_File("mult.png",false,255);
-  //  texid_pse = pBuild_Texture_File("shot-emacs.png",false,255);
+  texid_pse = pBuild_Texture_File("shot-emacs.png",false,255);
   tex_coords.take(gpu_tex_coords,GL_STATIC_DRAW);
   tex_coords.to_gpu();
   if ( 1 )
-    texid_syl = pBuild_Texture_File("gp.png",false,255);
+    texid_syl = pBuild_Texture_File("gpup.png",false,255);
   else
     texid_syl = pBuild_Texture_File
-      ("/home/faculty/koppel/teach/gpup09/gpup.png",false,255);
+      ("/home/faculty/koppel/teach/gpup11/gpup.dvi",false,255);
 
   point_indices.take(p_indices,GL_STATIC_DRAW,GL_ELEMENT_ARRAY_BUFFER);
   point_indices.to_gpu();
@@ -2566,6 +2566,15 @@ World::cb_keyboard()
   balloon.cuda_constants_stale = true;
 
   switch ( ogl_helper.keyboard_key ) {
+  case FB_KEY_F8:
+    break;
+    ogl_helper.write_img("syl_img.eps");
+    system("cd /home/faculty/koppel/teach/gpup11; tex gpup.tex; dvips gpup.dvi; pstopng -w2000 gpup.ps");
+    pBuild_Texture_File
+      ("/home/faculty/koppel/teach/gpup11/gpup.png",
+       false,255, balloon.texid_syl);
+    break;
+
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
   case FB_KEY_RIGHT: adjustment.x = move_amt; break;
   case FB_KEY_PAGE_UP: adjustment.y = move_amt; break;

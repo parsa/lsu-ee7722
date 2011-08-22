@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Sp 2009), Graphics Processors
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Balloon Simulation
 

@@ -19,7 +19,7 @@ NVCCCCFLAGS = -O3 -g
 
 # Flags recognized only by nvcc.
 #
-NVCCFLAGS =  --keep --ptxas-options=-v
+NVCCFLAGS =  --ptxas-options=-v
 
 NVCC = $(CUDAPATH)/bin/nvcc
 CXX = g++
@@ -46,3 +46,5 @@ balloon-kernel.o: Makefile balloon.cuh balloon-kernel.cu
 balloon: balloon-kernel.o balloon.o
 	$(NVCC) $(NVCCFLAGS) $(NVCCCCFLAGS) -o $@ $^ $(LIBRARIES) 
 
+clean:
+	/bin/rm -f *.o *.cubin *.ptx
