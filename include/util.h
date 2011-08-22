@@ -643,15 +643,15 @@ private:
     return image;
   }
 
-  void write_img()
+public:
+  void write_img(const char* file_name = NULL)
   {
-    pStringF file_name("%s.png",exe_file_name);
+    pStringF file_name_default("%s.png",exe_file_name);
     Image* const image = image_new(GL_RGBA);
-    image->write(file_name.s);
+    image->write(file_name ? file_name : file_name_default.s);
     delete image;
   }
 
-public:
   bool animation_record;
   int animation_qscale;
   int animation_frame_rate;
