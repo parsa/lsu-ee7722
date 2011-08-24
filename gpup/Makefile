@@ -42,7 +42,7 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 	 shapes.h Makefile
 
 
-demo-1-simple.o:  $(INCLUDES)
+demo-1-simple.o:  $(INCLUDES) demo-1-simple-graphics.cc
 demo-1-simple: demo-1-simple.o 
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
