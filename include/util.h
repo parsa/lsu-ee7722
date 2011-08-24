@@ -423,6 +423,7 @@ public:
     animation_video_count = 0; // Number of videos generated.
     animation_frame_rate = 60;
     animation_record = false;
+    user_text_reprint_called = false;
     glut_font_idx = 2;
     opengl_helper_self_ = this;
     width = height = 0;
@@ -445,8 +446,8 @@ public:
   {
     glutPostRedisplay();
     if ( frame_period < 0 ) return;
-    if ( next_frame_time == 0 ) next_frame_time = time_wall_fp();
     const double now = time_wall_fp();
+    if ( next_frame_time == 0 ) next_frame_time = now;
     next_frame_time += frame_period;
     const double delta = next_frame_time - now;
     const int delta_ms = delta <= 0 ? 0 : int(delta * 1000);
@@ -521,16 +522,18 @@ public:
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
+
+    if ( user_text_reprint_called ) return;
+
     if ( !frame_print_calls ) glWindowPos2i(10,height-20);
     frame_print_calls++;
-
-    return;
 
     glutBitmapString((void*)glut_fonts[glut_font_idx],(unsigned char*)str.s);
   }
 
   void user_text_reprint()
   {
+    user_text_reprint_called = true;
     glDisable(GL_DEPTH_TEST);
     glWindowPos2i(10,height-20);
     while ( pString* const str = user_frame_text.iterate() )
@@ -585,7 +588,6 @@ private:
     shape_update();
     frame_print_calls = 0;
     user_display_func(user_display_data);
-    user_text_reprint();
 
     if ( animation_record || animation_frame_count ) 
       animation_grab_frame();
@@ -712,6 +714,7 @@ private:
   int width;
   int height;
   int frame_print_calls;
+  bool user_text_reprint_called;
   int glut_font_idx;
   int glut_window_id;
   void (*user_display_func)(void *data);
