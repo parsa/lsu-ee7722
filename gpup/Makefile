@@ -27,8 +27,8 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default:all
-all:demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
+default: all
+all:demo-1c-coord demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
 	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays demo-8-texture \
 	demo-9-shader
 
@@ -44,6 +44,10 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 
 demo-1-simple.o:  $(INCLUDES) demo-1-simple-graphics.cc
 demo-1-simple: demo-1-simple.o 
+	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-1c-coord.o:  $(INCLUDES) demo-1c-coord-graphics.cc
+demo-1c-coord: demo-1c-coord.o 
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 demo-2-springs.o: $(INCLUDES)
