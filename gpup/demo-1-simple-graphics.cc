@@ -97,7 +97,7 @@ World::init_graphics()
 
   opt_platform_texture = true;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
-  texid_emacs = pBuild_Texture_File("../gpgpu/mult.png", false,-1);
+  texid_emacs = pBuild_Texture_File("mult.png", false,-1);
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
