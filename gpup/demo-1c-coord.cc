@@ -98,7 +98,7 @@ World::init()
   // Set initial position to a visibly interesting point.
   //
 
-  ball.position = pCoor( 12.1, 22, 11.4 ); 
+  ball.position = pCoor( 12.1, 22, 11.4 );
   ball.velocity = pVect(0,0,0);
 
   // Time in our simulated world.
@@ -131,12 +131,77 @@ World::init()
   platform_zmin = -40; platform_zmax = 40;
 
 
+  /// Create Card 1 -- Set corners individually.
+  //
+  card1 = new Card();   // Instantiate card.
+  cards += card1;       // Put card in list of cards to render.
+
+  // Set upper left from a constant coordinate (pos1).
   pCoor pos1( 12, 10, 21.4 );
-  card1.upper_left = pos1;
-  card1.upper_right = pos1;
-  card1.upper_right.x += 5;
-  card1.lower_left = card1.upper_left + pVect(0,-1,0);
-  card1.lower_right = card1.upper_right + pVect(0,-1,0);
+  card1->upper_left = pos1;
+  card1->upper_right = pos1;
+  card1->upper_right.x += 5;
+  card1->lower_left = card1->upper_left + pVect(0,-1,0);
+  card1->lower_right = card1->upper_right + pVect(0,-1,0);
+
+  /// Create Card 2 -- Position card 2 just to left of card1.
+  //  Demonstrates vector addition to translate points.
+  //
+  card2 = new Card(card1);
+  cards += card2;
+  card2->upper_right = card1->upper_left; // Cards will touch.
+  // Compute distance between respective corners.
+  pVect card_offset = card2->upper_right - card1->upper_right;
+  // Use distance to set other three corners with vector addition.
+  card2->upper_left = card1->upper_left + card_offset;
+  card2->lower_right = card1->lower_right + card_offset;
+  card2->lower_left = card1->lower_left + card_offset;
+
+
+  /// Create Card 3 -- Position further to left of card 2 and a little up.
+  //
+  pVect card_offset2 = card_offset * 1.1 + pVect(0,0.2,0);
+  Card* const card3 = new Card();
+  cards += card3;
+  // Use vector addition to translate card2 coordinates.
+  card3->upper_left  = card2->upper_left + card_offset2;
+  card3->upper_right = card2->upper_right + card_offset2;
+  card3->lower_right = card2->lower_right + card_offset2;
+  card3->lower_left  = card2->lower_left + card_offset2;
+
+  /// Create Card 4 
+  //  Demonstrates use of matrix multiplication for translation.
+  //
+  Card* const card4 = new Card();
+  cards += card4;
+
+  // Construct a translation matrix based on vector card_offset2.
+  pMatrix_Translate trans_offset3(card_offset2);
+
+  // Use matrix multiplication to translate card3 coordinates.
+  card4->upper_left  = trans_offset3 * card3->upper_left;
+  card4->upper_right = trans_offset3 * card3->upper_right;
+  card4->lower_right = trans_offset3 * card3->lower_right;
+  card4->lower_left  = trans_offset3 * card3->lower_left;
+
+  /// Create Card Live
+  //  Demonstrates scaling and composition of transformations.
+  //  This is just the initialization of card_live, see time step code
+  //  fort he rest.
+  //
+  card_live = new Card();
+  cards += card_live;
+  pVect card_live_offset(6,1.3,0);
+  pMatrix_Translate trans_c1_to_clive(card_live_offset);
+  card_live->upper_left  = trans_c1_to_clive * card1->upper_left;
+  card_live->upper_right = trans_c1_to_clive * card1->upper_right;
+  card_live->lower_right = trans_c1_to_clive * card1->lower_right;
+  card_live->lower_left  = trans_c1_to_clive * card1->lower_left;
+
+  /// User interface for interactive scaling.
+  //  Each key press will change size slightly.
+  //
+  pressed_key_c = pressed_key_C = false;
 
 
   ///
@@ -169,6 +234,81 @@ World::time_step_cpu_v0(double delta_t)
   // New velocity, assuming no collision.
   //
   ball.velocity += gravity_accel * delta_t;
+
+  /// Update Cards
+
+  if ( pressed_key_c || pressed_key_C )
+    {
+      // This code executed when either c or C pressed.
+      // Code should scale card_live.
+
+      // Construct a scale matrix.
+      //
+      const float scale_factor = pressed_key_c ? 0.9 : 1.0 / 0.9; 
+      pMatrix_Scale scale_card(scale_factor);
+
+#if 0
+      /// Incorrect Method
+      //  Apply scale transformation without centering card at origin.
+      //
+      card_live->upper_left  = scale_card * card_live->upper_left;
+      card_live->upper_right = scale_card * card_live->upper_right;
+      card_live->lower_right = scale_card * card_live->lower_right;
+      card_live->lower_left  = scale_card * card_live->lower_left;
+#else
+      /// Correct Method
+      //  Move card to center, scale, then move back.
+
+      // Construct a vector from upper_left to origin (center).
+      // Note: vector constructor can take two coordinates.
+      //
+      pVect card_to_ctr(card_live->upper_left,pCoor(0,0,0));
+
+      // Construct translation matrix to center.
+      pMatrix_Translate trans_card_to_ctr(card_to_ctr);
+
+      // Construct translation matrix from center.
+      // Note use of negation operator on vector.
+      pMatrix_Translate trans_card_to_pos(-card_to_ctr);
+
+
+      /// Correct But Inefficient
+      //  Transformation matrices are applied one at a time.
+      //  Need to do 3 matrix multiplies per coordinate. How wasteful!!
+      //
+      card_live->upper_left  = trans_card_to_ctr * card_live->upper_left;
+      card_live->upper_right = trans_card_to_ctr * card_live->upper_right;
+      card_live->lower_right = trans_card_to_ctr * card_live->lower_right;
+      card_live->lower_left  = trans_card_to_ctr * card_live->lower_left;
+
+      card_live->upper_left  = scale_card * card_live->upper_left;
+      card_live->upper_right = scale_card * card_live->upper_right;
+      card_live->lower_right = scale_card * card_live->lower_right;
+      card_live->lower_left  = scale_card * card_live->lower_left;
+
+      card_live->upper_left  = trans_card_to_pos * card_live->upper_left;
+      card_live->upper_right = trans_card_to_pos * card_live->upper_right;
+      card_live->lower_right = trans_card_to_pos * card_live->lower_right;
+      card_live->lower_left  = trans_card_to_pos * card_live->lower_left;
+
+#if 0
+      /// Correct and Efficient (Relatively).
+
+      // Construct a single transformation matrix.
+      //
+      pMatrix full_scale_card =
+        trans_card_to_pos * scale_card * trans_card_to_ctr;
+
+      card_live->upper_left  = full_scale_card * card_live->upper_left;
+      card_live->upper_right = full_scale_card * card_live->upper_right;
+      card_live->lower_right = full_scale_card * card_live->lower_right;
+      card_live->lower_left  = full_scale_card * card_live->lower_left;
+#endif
+
+#endif
+
+      pressed_key_c = pressed_key_C = false;
+    }
 
 
   /// Possible Collision with Platform

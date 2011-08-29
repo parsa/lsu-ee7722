@@ -35,6 +35,8 @@ public:
     upper_left = pCoor(0,0,0);
     upper_right = upper_left;
   };
+  Card(Card& c){ *this = c; }
+  Card(Card* c){ *this = *c; }
   pCoor upper_left;
   pCoor upper_right;
   pCoor lower_left;
@@ -65,7 +67,10 @@ public:
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
+  World(pOpenGL_Helper &fb):ogl_helper(fb){
+    card_live = NULL;
+    init();
+  }
   void init();
   void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
@@ -85,10 +90,12 @@ public:
   bool opt_gravity;
   bool opt_time_step_alt;
 
-  Card card1, card2;
-  PStack<Card> cards;
+  Card *card1, *card2, *card_live;
+  PStack<Card*> cards;
+  pVect card_live_pos;
+  bool pressed_key_c, pressed_key_C;
 
-  // Tiled platform for bal.
+  // Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_pi_xwidth_inv;
@@ -541,9 +548,7 @@ World::render()
   glBindTexture(GL_TEXTURE_2D,texid_syl);
   glEnable(GL_TEXTURE_2D);
   glBegin(GL_TRIANGLES);
-  card1.render();
-  card2.render();
-  while ( Card* const card = cards.iterate() ) card->render();
+  for ( Card *card = NULL; cards.iterate(card); ) card->render();
   glEnd();
 
   // Render Marker for Light Source
@@ -583,6 +588,8 @@ World::cb_keyboard()
   case FB_KEY_END: user_rot_axis.x = -1; break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
+  case 'c': pressed_key_c = true; break;
+  case 'C': pressed_key_C = true; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'f': case 'F': opt_platform_flat = !opt_platform_flat; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
