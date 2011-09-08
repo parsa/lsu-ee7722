@@ -251,7 +251,7 @@ public:
 
   void start()
   {
-    //  run(8,1,'3',2); return;
+    run(8,1,'3',2); return;
     run(6,8,'s',1);
     run(7,4,'s',1);
     run(8,2,'s',1);

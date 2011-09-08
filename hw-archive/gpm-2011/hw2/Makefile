@@ -8,7 +8,7 @@ INCLUDE =  -I../include  -I../../include
 CUDAPATH = /usr/local/cuda
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  --gpu-architecture=sm_11
+ --ptxas-options=-v  --gpu-architecture=sm_11 -G
 
 CC = gcc
 CXX = $(CUDAPATH)/bin/nvcc
