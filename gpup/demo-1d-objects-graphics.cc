@@ -2,9 +2,8 @@
 //
  /// Simple Demo of Dynamic Simulation, Graphics Code
 
- // This file includes graphics code needed by the main demo file,
- // demo-1-simple.cc.  The code in this file does not need to
- // be understood early in the semester.
+ // This file includes graphics code needed by the main file. The code
+ // in this file does not need to be understood early in the semester.
 
 // $Id:$
 
@@ -28,15 +27,39 @@
 #include <gp/texture-util.h>
 #include "shapes.h"
 
-class Card {
+class Gr_Object {
 public:
-  Card() {
+  pMatrix transform;
+  virtual void render() {};
+};
+
+class Group : public Gr_Object {
+public:
+  Group():Gr_Object(){};
+  PStack<Gr_Object*> contents;
+  void render()
+  {
+    glPushMatrix();
+    glMultTransposeMatrixf(transform);
+    for ( Gr_Object *obj = NULL; contents.iterate(obj); ) obj->render();
+    glPopMatrix();
+  }
+};
+
+class Card2 : public Gr_Object {
+public:
+  Card2(float width = 1, float height = 1) {
     color = pColor(0.5,0.8,0.1);
-    upper_left = pCoor(0,0,0);
-    upper_right = upper_left;
+    pVect lower_left_to_lower_right( width, 0, 0);
+    pVect lower_left_to_upper_left( 0, height, 0);
+    lower_left = pVect(0,0,0);
+    lower_right = lower_left + lower_left_to_lower_right;
+    upper_left = lower_left + lower_left_to_upper_left;
+    upper_right = upper_left + lower_left_to_lower_right;
+    normal = pVect(0,0,1);
+    texid = -1;
   };
-  Card(Card& c){ *this = c; }
-  Card(Card* c){ *this = *c; }
+
   pCoor upper_left;
   pCoor upper_right;
   pCoor lower_left;
@@ -44,12 +67,23 @@ public:
 
   pColor color;
   pVect normal;
+  int texid;
 
-  void render()
-  {
-    if ( upper_left == upper_right ) return;
+  void render() {
+    if ( texid >= 0 )
+      {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D,texid);
+      }
+    else
+      glDisable(GL_TEXTURE_2D);
+
+    glPushMatrix();
+    glMultTransposeMatrixf(transform);
+
+    glBegin(GL_TRIANGLES);
     glColor3fv(color);
-    //  glNormal3fv(tile->normal);
+    glNormal3fv(normal);
     glTexCoord2f(0,0);
     glVertex3fv(upper_left);
     glTexCoord2f(0,1);
@@ -61,21 +95,45 @@ public:
     glVertex3fv(upper_right);
     glTexCoord2f(0,0);
     glVertex3fv(upper_left);
-  }
-};
+    glEnd();
 
-class Card_Circle {
-public:
-  Card_Circle(int num_sides);
-  pMatrix to_world;
-  PStack<Card*> cards;  
+    glPopMatrix();
+  }
+
+  void render_shadow_volume(pCoor light_pos)
+  {
+    const float height = 1000;
+
+    pNorm l_to_ul(light_pos,upper_left);
+    pCoor ul_2 = light_pos + height * l_to_ul;
+    pCoor ll_2 = light_pos + height * pNorm(light_pos,lower_left);
+    pCoor lr_2 = light_pos + height * pNorm(light_pos,lower_right);
+    pCoor ur_2 = light_pos + height * pNorm(light_pos,upper_right);
+    const bool facing_light = dot(normal,l_to_ul) < 0;
+
+    if ( facing_light ) glFrontFace(GL_CW);
+    else                glFrontFace(GL_CCW);
+
+    glBegin(GL_QUAD_STRIP);
+    glVertex3fv(lower_left);
+    glVertex3fv(ll_2);
+    glVertex3fv(lower_right);
+    glVertex3fv(lr_2);
+    glVertex3fv(upper_right);
+    glVertex3fv(ur_2);
+    glVertex3fv(upper_left);
+    glVertex3fv(ul_2);
+    glVertex3fv(lower_left);
+    glVertex3fv(ll_2);
+    glEnd();
+    glFrontFace(GL_CCW);
+  }
 };
 
 
 class World {
 public:
   World(pOpenGL_Helper &fb):ogl_helper(fb){
-    card_live = NULL;
     init();
   }
   void init();
@@ -83,14 +141,11 @@ public:
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
   void frame_callback();
   void render();
+  void render_objects(bool simple);
   void cb_keyboard();
   void modelview_update();
   void shadow_update();
   void shadow_transform_create(pMatrix& m, pCoor light);
-
-  Card* new_card_normal();
-  void new_card_circle
-  (pCoor position, double size, int num_sides, double angle_start);
 
   pOpenGL_Helper& ogl_helper;
   pVariable_Control variable_control;
@@ -101,9 +156,9 @@ public:
   bool opt_gravity;
   bool opt_time_step_alt;
 
-  Card *card1, *card2, *card_live;
-  PStack<Card*> cards;
-  pVect card_live_pos;
+  float opt_air_viscosity;
+
+  PStack<Group*> groups;
   bool pressed_key_c, pressed_key_C;
 
   // Tiled platform for ball.
@@ -115,8 +170,8 @@ public:
   pBuffer_Object<float> platform_tex_coords;
   GLuint texid_syl;
   GLuint texid_emacs;
+  GLuint texid_a, texid_b, texid_c;
   bool opt_platform_texture;
-  bool opt_platform_flat;
   void platform_update();
   bool platform_collision_possible(pCoor pos);
 
@@ -151,7 +206,7 @@ World::init_graphics()
 
   opt_platform_texture = true;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
-  texid_emacs = pBuild_Texture_File("../gpgpu/mult.png", false,-1);
+  texid_emacs = pBuild_Texture_File("mult.png", false,-1);
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
@@ -287,6 +342,31 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
 }
 
 void
+World::render_objects(bool simple)
+{
+  const float shininess_ball = 5;
+
+  if ( !simple )
+    {
+      glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
+      glMaterialf(GL_BACK,GL_SHININESS,shininess_ball);
+      glEnable(GL_TEXTURE_2D);
+      glBindTexture(GL_TEXTURE_2D,texid_emacs);
+    }
+
+  sphere.render();
+
+  if ( !simple )
+    {
+      glBindTexture(GL_TEXTURE_2D,texid_syl);
+    }
+
+  // Render Groups
+  //
+  for ( Group *group = NULL; groups.iterate(group); ) group->render();
+}
+
+void
 World::render()
 {
   // Get any waiting keyboard commands.
@@ -366,7 +446,6 @@ World::render()
 
   pColor color_ball(0x666666);
   pColor scolor_ball(0x111111);
-  const float shininess_ball = 5;
 
   // Common to all textures.
   //
@@ -403,74 +482,68 @@ World::render()
 
   const int half_elements = platform_tile_coords.elements >> 3 << 2;
 
-  if ( opt_platform_flat )
-    {
-      //
-      // Render ball reflection.  (Will be blended with dark tiles.)
-      //
+  //
+  // Render ball reflection.  (Will be blended with dark tiles.)
+  //
 
-      // Write stencil at location of dark (mirrored) tiles.
-      //
-      glDisable(GL_LIGHTING);
-      glEnable(GL_STENCIL_TEST);
-      glStencilFunc(GL_NEVER,2,2);
-      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
-      platform_tile_coords.bind();
-      glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
-      glEnableClientState(GL_VERTEX_ARRAY);
-      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
-      glEnable(GL_LIGHTING);
-      glDisableClientState(GL_VERTEX_ARRAY);
-      glBindBuffer(GL_ARRAY_BUFFER,0);
+  // Write stencil at location of dark (mirrored) tiles.
+  //
+  glDisable(GL_LIGHTING);
+  glEnable(GL_STENCIL_TEST);
+  glStencilFunc(GL_NEVER,2,2);
+  glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+  platform_tile_coords.bind();
+  glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+  glEnable(GL_LIGHTING);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
 
-      // Prepare to write only stenciled locations.
-      //
-      glStencilFunc(GL_EQUAL,2,2);
-      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+  // Prepare to write only stenciled locations.
+  //
+  glStencilFunc(GL_EQUAL,2,2);
+  glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
 
-      // Use a transform that reflects objects to other side of platform.
-      //
-      glMatrixMode(GL_PROJECTION);
-      glPushMatrix();
-      glMultTransposeMatrixf(transform_mirror);
+  // Use a transform that reflects objects to other side of platform.
+  //
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glMultTransposeMatrixf(transform_mirror);
 
-      // Reflected front face should still be treated as the front face.
-      //
-      glFrontFace(GL_CW);
+  // Reflected front face should still be treated as the front face.
+  //
+  glFrontFace(GL_CW);
 
-      sphere.render();
+  render_objects(false);
 
-      glFrontFace(GL_CCW);
-      glMatrixMode(GL_PROJECTION);
-      glPopMatrix();
-      glDisable(GL_STENCIL_TEST);
-    }
+  glFrontFace(GL_CCW);
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glDisable(GL_STENCIL_TEST);
 
-  if ( opt_platform_flat )
-    {
-      //
-      // Write framebuffer stencil with shadow.
-      //
+  //
+  // Write framebuffer stencil with shadow.
+  //
 
-      // Use transform that maps vertices to platform surface.
-      //
-      glMatrixMode(GL_MODELVIEW);
-      glPushMatrix();
-      glLoadTransposeMatrixf(modelview_shadow);
+  // Use transform that maps vertices to platform surface.
+  //
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadTransposeMatrixf(modelview_shadow);
 
-      glDisable(GL_LIGHTING);
-      glDisable(GL_TEXTURE_2D);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
 
-      glEnable(GL_STENCIL_TEST);
-      glStencilFunc(GL_NEVER,1,-1); // ref, mask
-      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
+  glEnable(GL_STENCIL_TEST);
+  glStencilFunc(GL_NEVER,1,-1); // ref, mask
+  glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
 
-      sphere.render();
+  render_objects(true);
 
-      glEnable(GL_LIGHTING);
-      glDisable(GL_STENCIL_TEST);
-      glPopMatrix();
-    }
+  glEnable(GL_LIGHTING);
+  glDisable(GL_STENCIL_TEST);
+  glPopMatrix();
 
   // Setup texture for platform.
   //
@@ -547,20 +620,7 @@ World::render()
 
   // Render Ball
   //
-  glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
-  glMaterialf(GL_BACK,GL_SHININESS,shininess_ball);
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D,texid_emacs);
-  sphere.render();
-  glDisable(GL_TEXTURE_2D);
-
-  // Render Card
-  //
-  glBindTexture(GL_TEXTURE_2D,texid_syl);
-  glEnable(GL_TEXTURE_2D);
-  glBegin(GL_TRIANGLES);
-  for ( Card *card = NULL; cards.iterate(card); ) card->render();
-  glEnd();
+  render_objects(false);
 
   // Render Marker for Light Source
   //
@@ -602,7 +662,6 @@ World::cb_keyboard()
   case 'c': pressed_key_c = true; break;
   case 'C': pressed_key_C = true; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
-  case 'f': case 'F': opt_platform_flat = !opt_platform_flat; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;

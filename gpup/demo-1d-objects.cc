@@ -1,12 +1,14 @@
 /// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
- /// Simple Demo of Dynamic Simulation
+
+ /// Demonstration of transforms.
+ //
 
 // $Id:$
 
 /// Purpose
 //
-//   Demonstrate use of coordinate and vector classes, and basic transforms.
+//   Demonstrate use of basic transforms.
 
 
 /// What Code Does
@@ -15,6 +17,7 @@
 // tiles, some are purple-tinted mirrors (showing a reflection of the
 // ball), the others show the course syllabus. The ball can be
 // manipulated by the user.
+// Scene also shows syllabi arranged to from a box and a tower of prisms.
 
 
 ///  Keyboard Commands
@@ -56,6 +59,7 @@
  //
  //  VAR Light Intensity - The light intensity.
  //  VAR Gravity - Gravitational acceleration. (Turn on/off using 'g'.)
+ //  VAR Viscosity - Viscosity of air. Modifies opt_air_viscosity.
 
 
 // Include handy classes for coordinates (pCoor), vectors (pVect), etc.
@@ -87,6 +91,13 @@ public:
 //
 #include "demo-1d-objects-graphics.cc"
 
+
+
+// Return a new prism.
+Group* new_prism(int num_sides, int texid);
+
+// Return a new tower.
+Group* new_tower(int num_sides, int num_layers, int texid);
 
 void
 World::init()
@@ -125,41 +136,15 @@ World::init()
   //
   opt_gravity = true;       // If false, gravity doesn't act on ball.
 
+  // For Homework 1: Air Viscosity
+  //
+  opt_air_viscosity = 0.1;  // Note: 0 means no air resistance.
+  variable_control.insert(opt_air_viscosity,"Air Viscosity");
+
   // Position of platform that the ball bounces on.
   //
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
-
-
-  // Create a circle of cards.
-
-  new_card_circle
-    ( pCoor(12.1,0,11.4),  // Bottom center location.
-      15,                  // Scale factor (size)
-      4,                   // Number of sides
-      M_PI/5 );            // Rotation (start angle).
-
-
-  // Create tower of circles of cards.
-
-  Card* const sample = new_card_normal();
-  const double scale_factor = 15;
-  const int num_sides = 3;
-  double card_height = sample->upper_left.y * scale_factor;
-  for ( int i=0; i<20; i++ )
-    {
-      pCoor position(6.8, card_height * i, 21.8);
-      new_card_circle( position,
-                       scale_factor,
-                       num_sides,
-                       i * M_PI / 10);
-    }
-      
-
-  /// User interface for interactive scaling.
-  //  Each key press will change size slightly.
-  //
-  pressed_key_c = pressed_key_C = false;
 
 
   ///
@@ -167,78 +152,88 @@ World::init()
   ///
 
   init_graphics();  // Our own code for initializing graphics model.
-}
 
-Card*
-World::new_card_normal()
-{
-  // Create card using local coordinate system:
-  //  Lower left at origin, bottom along positive x axis.
-  //  Shown at actual size (if global space in meters).
 
-  Card* const c = new Card();
-  pVect lower_left_to_lower_right( 8 * .0254, 0, 0);
-  pVect lower_left_to_upper_left( 0, 11 * .0254, 0);
-  c->lower_left = pVect(0,0,0);
-  c->lower_right = c->lower_left + lower_left_to_lower_right;
-  c->upper_left = c->lower_left + lower_left_to_upper_left;
-  c->upper_right = c->upper_left + lower_left_to_lower_right;
-
-  return c;
-}
-
-void
-World::new_card_circle
-(pCoor center, double size, int num_sides, double angle_start)
-{
-  // Arrange cards to form a square.
-
-  pVect circle_center(center);
-  pMatrix_Translate circle_to_pos(circle_center);
-  pMatrix_Scale circle_size(size);
-  pMatrix position_circle = circle_to_pos * circle_size;
-
-  double theta = 2 * M_PI / num_sides;
-  double theta_2 = theta / 2;
-
-  Card* const c_sample = new_card_normal();
-
-  // Assuming that lower left on origin and card on positive x axis.
+  /// Instantiate A Prism of Cards
   //
-  const double width = c_sample->lower_right.x;
-  const double radius = width / ( 2 * sin( theta_2 ) );
+  Group* const prism = new_prism(4,texid_syl);
+  groups += prism;              // Add to list of objects to displayed.
+  // Below: Use transforms to position prism.
+  pMatrix_Translate prism_move(pVect(12.1,0,11.4));
+  pMatrix_Rotation prism_rot(pVect(0,1,0),M_PI/5);
+  pMatrix_Scale prism_scale(15);
+  prism->transform = prism_move * prism_rot * prism_scale;
+
+  /// Instantiate and Position A Tower of Prisms of Cards
+  //
+  Group* const tower = new_tower(5,15,texid_syl);
+  groups += tower;              // Add to list of objects to display.
+  // Specify transform. The code below is in a more compact form
+  // than the code setting prism->transform, above.
+  tower->transform = pMatrix_Translate(pVect(6.8,0,21.8)) * pMatrix_Scale(10);
+
+  texid_a = pBuild_Texture_File("mult.png", false,-1);
+  texid_b = pBuild_Texture_File("mult.png", false,-1);
+  texid_c = pBuild_Texture_File("mult.png", false,-1);
+
+
+}
+
+
+Group*
+new_prism(int num_sides, int texid)
+{
+  // Arrange cards to form a prism.
+
+  Group* const prism = new Group();
+
+  const double card_width = 8.5 * 0.0254;  // Convert 8.5 inches to meters.
+  const double card_height = 11 * 0.0254;  // Convert 11 inches to meters.
+
+  const double theta = 2 * M_PI / num_sides;
+  const double theta_2 = theta / 2;
+
+  const double radius = card_width / ( 2 * sin( theta_2 ) );
   const float a = radius * cos( theta_2 );
 
-  delete c_sample;
-
-  // Center Card 0
-
-  pMatrix_Translate center_card(pVect(-width/2,0,0));
+  // Note that the lower left of the card is at the origin and lower
+  // edge on positive x-axis.
+  //
+  pMatrix_Translate center_card(pVect(-card_width/2,0,0));
   pMatrix_Translate card_to_circle(pVect(0,0,a));
-
-  pMatrix_Rotation rotate_init(pVect(0,1,0),angle_start);
   pMatrix_Rotation rotate(pVect(0,1,0),theta);
 
-  pMatrix position_side_i = rotate_init * card_to_circle * center_card;
+  pMatrix position_side_i = card_to_circle * center_card;
 
   for ( int side = 0; side < num_sides; side++ )
     {
-      pMatrix position_this_card = position_circle * position_side_i;
-
-      Card* const c = new_card_normal();
-      cards += c;
-
+      Card2* const c = new Card2(card_width,card_height);
+      prism->contents += c;  // Add card to prism's contents.
+      c->texid = texid;      // Specify texture used to decorate card.
       c->color = pColor(0.9,0.9,0.9);
-
-      c->lower_left = position_this_card * c->lower_left;
-      c->lower_right = position_this_card * c->lower_right;
-      c->upper_right = position_this_card * c->upper_right;
-      c->upper_left = position_this_card * c->upper_left;
-
+      c->transform = position_side_i;
       position_side_i = rotate * position_side_i;
-
     }
-  
+  return prism;
+}
+
+Group*
+new_tower
+(int num_sides, int layers, int texid)
+{
+  // Arrange prisms for form a tower.
+
+  Group* const tower = new Group();
+  const double card_height = 11 * 0.0254;
+  for ( int i=0; i<layers; i++ )
+    {
+      Group* const p = new_prism(num_sides, texid);
+      tower->contents += p;
+      p->transform =
+        pMatrix_Translate(0,card_height*i,0)
+        * pMatrix_Rotation(pVect(0,1,0),i*M_PI/10);
+    }
+  return tower;
 }
 
 
@@ -265,82 +260,6 @@ World::time_step_cpu_v0(double delta_t)
   //
   ball.velocity += gravity_accel * delta_t;
 
-  /// Update Cards
-
-  if ( pressed_key_c || pressed_key_C )
-    {
-      // This code executed when either c or C pressed.
-      // Code should scale card_live.
-
-      // Construct a scale matrix.
-      //
-      const float scale_factor = pressed_key_c ? 0.9 : 1.0 / 0.9; 
-      pMatrix_Scale scale_card(scale_factor);
-
-#if 0
-      /// Incorrect Method
-      //  Apply scale transformation without centering card at origin.
-      //
-      card_live->upper_left  = scale_card * card_live->upper_left;
-      card_live->upper_right = scale_card * card_live->upper_right;
-      card_live->lower_right = scale_card * card_live->lower_right;
-      card_live->lower_left  = scale_card * card_live->lower_left;
-#else
-      /// Correct Method
-      //  Move card to center, scale, then move back.
-
-      // Construct a vector from upper_left to origin (center).
-      // Note: vector constructor can take two coordinates.
-      //
-      pVect card_to_ctr(card_live->upper_left,pCoor(0,0,0));
-
-      // Construct translation matrix to center.
-      pMatrix_Translate trans_card_to_ctr(card_to_ctr);
-
-      // Construct translation matrix from center.
-      // Note use of negation operator on vector.
-      pMatrix_Translate trans_card_to_pos(-card_to_ctr);
-
-
-      /// Correct But Inefficient
-      //  Transformation matrices are applied one at a time.
-      //  Need to do 3 matrix multiplies per coordinate. How wasteful!!
-      //
-      card_live->upper_left  = trans_card_to_ctr * card_live->upper_left;
-      card_live->upper_right = trans_card_to_ctr * card_live->upper_right;
-      card_live->lower_right = trans_card_to_ctr * card_live->lower_right;
-      card_live->lower_left  = trans_card_to_ctr * card_live->lower_left;
-
-      card_live->upper_left  = scale_card * card_live->upper_left;
-      card_live->upper_right = scale_card * card_live->upper_right;
-      card_live->lower_right = scale_card * card_live->lower_right;
-      card_live->lower_left  = scale_card * card_live->lower_left;
-
-      card_live->upper_left  = trans_card_to_pos * card_live->upper_left;
-      card_live->upper_right = trans_card_to_pos * card_live->upper_right;
-      card_live->lower_right = trans_card_to_pos * card_live->lower_right;
-      card_live->lower_left  = trans_card_to_pos * card_live->lower_left;
-
-#if 0
-      /// Correct and Efficient (Relatively).
-
-      // Construct a single transformation matrix.
-      //
-      pMatrix full_scale_card =
-        trans_card_to_pos * scale_card * trans_card_to_ctr;
-
-      card_live->upper_left  = full_scale_card * card_live->upper_left;
-      card_live->upper_right = full_scale_card * card_live->upper_right;
-      card_live->lower_right = full_scale_card * card_live->lower_right;
-      card_live->lower_left  = full_scale_card * card_live->lower_left;
-#endif
-
-#endif
-
-      pressed_key_c = pressed_key_C = false;
-    }
-
-
   /// Possible Collision with Platform
 
   // Position and velocity computation simplified: they do not account
@@ -359,8 +278,7 @@ World::time_step_cpu_v0(double delta_t)
       //
       ball.position.y = 0;
 
-      if ( opt_time_step_alt )
-        ball.velocity.y += sqrt( -2.0 * yval * opt_gravity_accel );
+      ball.velocity.y += sqrt( -2.0 * yval * opt_gravity_accel );
 
       // Reflect y (vertical) component of velocity, with a reduction
       // due to energy lost in the collision.
@@ -454,3 +372,4 @@ main(int argv, char **argc)
   // This point will only be reached when the program exits normally.
 
 }
+
