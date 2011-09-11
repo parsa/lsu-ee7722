@@ -27,10 +27,37 @@
 #include <gp/texture-util.h>
 #include "shapes.h"
 
+enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
+
+class Render_FCtx {
+public:
+  Render_FCtx(pCoor light, pCoor eye)
+    :light_location(light),eye_location(eye),viewer_sv_count(0){}
+  pCoor light_location;
+  pCoor eye_location;
+  int viewer_sv_count;
+};
+
+class Render_Ctx {
+public:
+  Render_Ctx(Render_FCtx& fc):fc(&fc){};
+  Render_Ctx(Render_Ctx *rc, pMatrix transform_local)
+    :fc(rc->fc), transform(rc->transform * transform_local){};
+  Render_FCtx* const fc;
+  const pMatrix transform;
+};
+
+// Don't do this at home.
+static int gr_object_debug_id = 1000; // Reserve lower values for user.
+
 class Gr_Object {
 public:
+  Gr_Object() { debug_id = gr_object_debug_id++; }
   pMatrix transform;
+  int debug_id;
+
   virtual void render() {};
+  virtual void render_shadow_volume(Render_Ctx *re) {};
 };
 
 class Group : public Gr_Object {
@@ -43,6 +70,11 @@ public:
     glMultTransposeMatrixf(transform);
     for ( Gr_Object *obj = NULL; contents.iterate(obj); ) obj->render();
     glPopMatrix();
+  }
+  void render_shadow_volume(Render_Ctx *rc)
+  {
+    Render_Ctx rd(rc,transform);
+    for ( Gr_Object *obj = NULL; contents.iterate(obj); ) obj->render_shadow_volume(&rd);
   }
 };
 
@@ -68,8 +100,10 @@ public:
   pColor color;
   pVect normal;
   int texid;
+  bool eye_in;
 
-  void render() {
+  void render()
+  {
     if ( texid >= 0 )
       {
         glEnable(GL_TEXTURE_2D);
@@ -83,6 +117,8 @@ public:
 
     glBegin(GL_TRIANGLES);
     glColor3fv(color);
+    // Use red as card color if card blocks light to eye (in shadow vol).
+    //  if ( eye_in ) glColor3f(1,0,0);
     glNormal3fv(normal);
     glTexCoord2f(0,0);
     glVertex3fv(upper_left);
@@ -100,36 +136,107 @@ public:
     glPopMatrix();
   }
 
-  void render_shadow_volume(pCoor light_pos)
+  void render_shadow_volume(Render_Ctx *rc)
   {
-    const float height = 1000;
+    // Note: This code is quick and dirty and inefficient.
+    // There are many ways to streamline calculations and provide caching.
+    //
+    Render_Ctx rd(rc,transform);
 
-    pNorm l_to_ul(light_pos,upper_left);
+    const float height = 1000;
+    const pCoor light_pos = rc->fc->light_location;
+
+    pCoor ll = rd.transform * lower_left;
+    pCoor lr = rd.transform * lower_right;
+    pCoor ul = rd.transform * upper_left;
+    pCoor ur = rd.transform * upper_right;
+    pCoor lower_left_pn = lower_left + normal;
+    pCoor llpn = rd.transform * lower_left_pn;
+    pVect n(ll,llpn);
+
+    pNorm l_to_ll(light_pos,ll);
+    pNorm l_to_lr(light_pos,lr);
+    pNorm l_to_ul(light_pos,ul);
+    pNorm l_to_ur(light_pos,ur);
     pCoor ul_2 = light_pos + height * l_to_ul;
-    pCoor ll_2 = light_pos + height * pNorm(light_pos,lower_left);
-    pCoor lr_2 = light_pos + height * pNorm(light_pos,lower_right);
-    pCoor ur_2 = light_pos + height * pNorm(light_pos,upper_right);
-    const bool facing_light = dot(normal,l_to_ul) < 0;
+    pCoor ll_2 = light_pos + height * l_to_ll;
+    pCoor lr_2 = light_pos + height * l_to_lr;
+    pCoor ur_2 = light_pos + height * l_to_ur;
+    const bool facing_light = dot(n,l_to_ul) < 0;
 
     if ( facing_light ) glFrontFace(GL_CW);
     else                glFrontFace(GL_CCW);
 
     glBegin(GL_QUAD_STRIP);
-    glVertex3fv(lower_left);
+    glVertex3fv(ll);
     glVertex3fv(ll_2);
-    glVertex3fv(lower_right);
+    glVertex3fv(lr);
     glVertex3fv(lr_2);
-    glVertex3fv(upper_right);
+    glVertex3fv(ur);
     glVertex3fv(ur_2);
-    glVertex3fv(upper_left);
+    glVertex3fv(ul);
     glVertex3fv(ul_2);
-    glVertex3fv(lower_left);
+    glVertex3fv(ll);
     glVertex3fv(ll_2);
     glEnd();
+
     glFrontFace(GL_CCW);
+  
+    //
+    // Determine whether eye is within shadow volume.
+    //
+
+    eye_in = false;
+
+    pVect l_to_e(light_pos,rc->fc->eye_location);
+    const float l_to_e_dot_n = dot(l_to_e,n);
+    if ( fabs(l_to_e_dot_n) < 1e-8 ) return;
+    const float dist = l_to_ll.magnitude * dot(l_to_ll,n) / l_to_e_dot_n;
+    if ( dist <= 0 || dist >= 1.0 ) return;
+    pCoor le_intercept = light_pos + dist * l_to_e;
+    const float l_to_ll_dot_n = dot(l_to_ll,n);
+    const float l_to_ul_dot_n = dot(l_to_ul,n);
+    const float l_to_lr_dot_n = dot(l_to_lr,n);
+    if ( l_to_ll_dot_n && l_to_ul_dot_n && l_to_lr_dot_n )
+      {
+        const float dist_ll = l_to_e_dot_n / dot(l_to_ll,n);
+        pCoor ll_3 = light_pos + dist_ll * l_to_ll;
+        const float dist_ul = l_to_e_dot_n / dot(l_to_ul,n);
+        pCoor ul_3 = light_pos + dist_ul * l_to_ul;
+        const float dist_lr = l_to_e_dot_n / dot(l_to_lr,n);
+        pCoor lr_3 = light_pos + dist_lr * l_to_lr;
+        pVect ll_3_to_e(ll_3,rc->fc->eye_location);
+        pNorm ll_3_to_lr_3(ll_3,lr_3);
+        const float x_dist = dot(ll_3_to_e,ll_3_to_lr_3);
+        if ( x_dist < 0 || x_dist > ll_3_to_lr_3.magnitude ) return;
+        pNorm ll_3_to_ul_3(ll_3,ul_3);
+        const float y_dist = dot(ll_3_to_e,ll_3_to_ul_3);
+        if ( y_dist < 0 || y_dist > ll_3_to_ul_3.magnitude ) return;
+      }
+
+    rc->fc->viewer_sv_count++;
+    eye_in = true;
+    return;
+    // Show marker where light-to-eye vector intercepts card.
+    glColor3f(0,0,1);
+    glEnable(GL_LIGHTING);
+    glDisable(GL_STENCIL_TEST);
+    glColorMask(true,true,true,true);
+    Cone cone;
+    cone.render(le_intercept,0.2,l_to_e);
+    glDisable(GL_LIGHTING);
+    glColorMask(false,false,false,false);
+    glEnable(GL_STENCIL_TEST);
   }
 };
 
+const pColor white(0xffffff);
+const pColor gray(0x303030);
+const pColor lsu_business_purple(0x7f5ca2);
+const pColor lsu_spirit_purple(0x580da6);
+const pColor lsu_spirit_gold(0xf9b237);
+const pColor lsu_official_purple(0x2f0462);
+const pColor dark(0);
 
 class World {
 public:
@@ -141,11 +248,9 @@ public:
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
   void frame_callback();
   void render();
-  void render_objects(bool simple);
+  void render_objects(Render_Option render_option);
   void cb_keyboard();
   void modelview_update();
-  void shadow_update();
-  void shadow_transform_create(pMatrix& m, pCoor light);
 
   pOpenGL_Helper& ogl_helper;
   pVariable_Control variable_control;
@@ -158,16 +263,15 @@ public:
 
   float opt_air_viscosity;
 
-  PStack<Group*> groups;
+  PStack<Gr_Object*> groups;
   bool pressed_key_c, pressed_key_C;
 
   // Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
-  float platform_pi_xwidth_inv;
-  pBuffer_Object<pVect> platform_tile_norms;
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
+  pVect platform_normal;
   GLuint texid_syl;
   GLuint texid_emacs;
   GLuint texid_a, texid_b, texid_c;
@@ -183,8 +287,8 @@ public:
   pCoor eye_location;
   pVect eye_direction;
   pMatrix modelview;
-  pMatrix modelview_shadow;
   pMatrix transform_mirror;
+  int viewer_shadow_volume; // Number of shadow volumes enclosing viewer.
 
   void time_step_cpu_v0(double);
 
@@ -229,7 +333,7 @@ World::platform_update()
 {
   const float tile_count = 19;
   const float ep = 1.00001;
-  const float platform_delta_x = platform_xmax - platform_xmin;
+  const float delta_x = ( platform_xmax - platform_xmin ) / tile_count * ep; 
   const float zdelta = ( platform_zmax - platform_zmin ) / tile_count * ep;
 
   const float trmin = 0.05;
@@ -237,52 +341,35 @@ World::platform_update()
   const float tsmin = 0;
   const float tsmax = 0.4;
 
+  platform_normal = pVect(0,1,0);
+
   PStack<pVect> p_tile_coords;
   PStack<pVect> p1_tile_coords;
-  PStack<pVect> p_tile_norms;
-  PStack<pVect> p1_tile_norms;
   PStack<float> p_tex_coords;
   bool even = true;
-  platform_pi_xwidth_inv = M_PI / platform_delta_x;
-
-  const double delta_theta = M_PI / tile_count;
-  const float platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
-  const float platform_xhlf = 0.5 * platform_delta_x;
-  const double platform_depth = 0;
 
   for ( int i = 0; i < tile_count; i++ )
     {
-      const double theta0 = i * delta_theta;
-      const double theta1 = theta0 + delta_theta;
-      const float x0 = platform_xmid - platform_xhlf * cos(theta0);
-      const float x1 = platform_xmid - platform_xhlf * cos(theta1);
-      const float y0 = -0.01 - platform_depth * sin(theta0);
-      const float y1 = -0.01 - platform_depth * sin(theta1);
-      pNorm norm0( platform_depth * cos(theta0), platform_xhlf*sin(theta0), 0);
-      pNorm norm1( platform_depth * cos(theta1), platform_xhlf*sin(theta1), 0);
+      const float x0 = platform_xmin + i * delta_x;
+      const float x1 = x0 + delta_x;
+      const float y = 0;
       for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
         {
           PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
-          PStack<pVect>& t_norms = even ? p_tile_norms : p1_tile_norms;
           p_tex_coords += trmax; p_tex_coords += tsmax;
-          t_coords += pVect(x0,y0,z);
-          t_norms += norm0;  t_norms += norm0;
+          t_coords += pVect(x0,y,z);
           p_tex_coords += trmax; p_tex_coords += tsmin;
-          t_coords += pVect(x0,y0,z+zdelta);
+          t_coords += pVect(x0,y,z+zdelta);
           p_tex_coords += trmin; p_tex_coords += tsmin;
-          t_coords += pVect(x1,y1,z+zdelta);
-          t_norms += norm1;  t_norms += norm1;
+          t_coords += pVect(x1,y,z+zdelta);
           p_tex_coords += trmin; p_tex_coords += tsmax;
-          t_coords += pVect(x1,y1,z);
+          t_coords += pVect(x1,y,z);
           even = !even;
         }
     }
 
   while ( pVect* const v = p1_tile_coords.iterate() ) p_tile_coords += *v;
-  while ( pVect* const v = p1_tile_norms.iterate() ) p_tile_norms += *v;
 
-  platform_tile_norms.re_take(p_tile_norms);
-  platform_tile_norms.to_gpu();
   platform_tile_coords.re_take(p_tile_coords);
   platform_tile_coords.to_gpu();
   platform_tex_coords.re_take(p_tex_coords);
@@ -295,75 +382,88 @@ World::modelview_update()
   pMatrix_Translate center_eye(-eye_location);
   pMatrix_Rotation rotate_eye(eye_direction,pVect(0,0,-1));
   modelview = rotate_eye * center_eye;
-  shadow_update();
-}
-
-void
-World::shadow_update()
-{
-  // These routines need to be made more general.
-  pCoor platform_point(platform_xmin,0,platform_zmin);
-  pVect platform_normal(0,1,0);
-  shadow_transform_create(modelview_shadow,light_location);
-  pCoor eye_loc_mirror(eye_location.x, -eye_location.y, eye_location.z);
   pMatrix reflect; reflect.set_identity(); reflect.rc(1,1) = -1;
   transform_mirror = modelview * reflect * invert(modelview);
 }
 
 void
-World::shadow_transform_create(pMatrix& m, pCoor light_location)
-{
-  pVect platform_normal(0,1,0);
-  pVect eye_normal(0,0,-1);
-  pMatrix_Translate center_light(-light_location);
-  pNorm axis(-platform_normal,eye_normal);
-  const double angle = asin(axis.magnitude);
-  pMatrix_Rotation rotate_platform(axis,angle);
-  pMatrix frustum; frustum.set_zero();
-  frustum.rc(0,0) = frustum.rc(1,1) = light_location.y;
-  frustum.rc(3,2) = -1;
-  pMatrix_Translate restore_z(0,0,-light_location.y);
-  pMatrix step1 = rotate_platform * center_light;
-  pMatrix to_platform = restore_z * frustum * rotate_platform * center_light;
-  pMatrix_Rotation un_rotate_platform(axis,-angle);
-  pMatrix_Translate un_center_light(light_location);
-  pMatrix from_platform = un_center_light * un_rotate_platform;
-  pMatrix project = from_platform * to_platform;
-  modelview_shadow = modelview * from_platform * to_platform;
-
-  // Compute coordinates to help with debugging.
-  //
-  pCoor test_pt(1.1,0,2.2);
-  pCoor test_pt2(1.1,1,2.2);
-  pCoor test_pt_a = step1 * test_pt;
-  pCoor test_pt_b = to_platform * test_pt;  test_pt_b.homogenize();
-  pCoor test_pt_pr = project * test_pt;  test_pt_pr.homogenize();
-  pCoor test_pt2_pr = project * test_pt2;  test_pt2_pr.homogenize();
-}
-
-void
-World::render_objects(bool simple)
+World::render_objects(Render_Option option)
 {
   const float shininess_ball = 5;
+  pColor spec_color(0.2,0.2,0.2);
+  Render_FCtx fc(light_location,eye_location);
+  Render_Ctx rc(fc);
 
-  if ( !simple )
+  if ( option == RO_Shadow_Volumes )
+    viewer_shadow_volume = 0;
+
+  if ( option == RO_Normally )
     {
       glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
-      glMaterialf(GL_BACK,GL_SHININESS,shininess_ball);
       glEnable(GL_TEXTURE_2D);
       glBindTexture(GL_TEXTURE_2D,texid_emacs);
+      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
+      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
+      glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
+      glEnable(GL_COLOR_SUM);
     }
 
-  sphere.render();
-
-  if ( !simple )
+  if ( option == RO_Shadow_Volumes )
     {
-      glBindTexture(GL_TEXTURE_2D,texid_syl);
+      sphere.light_pos = light_location;
+      sphere.render_shadow_volume(sphere.radius,sphere.center);
     }
+  else
+    sphere.render();
+
+  glDisable(GL_COLOR_SUM);
+  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, dark);
 
   // Render Groups
   //
-  for ( Group *group = NULL; groups.iterate(group); ) group->render();
+  for ( Gr_Object *group = NULL; groups.iterate(group); )
+    if ( option == RO_Shadow_Volumes )
+      group->render_shadow_volume(&rc);
+    else
+      group->render();
+
+  if ( option == RO_Shadow_Volumes )
+    {
+      viewer_shadow_volume += fc.viewer_sv_count;
+      return; 
+    }
+
+
+  //
+  // Render Platform
+  //
+  const int half_elements = platform_tile_coords.elements >> 3 << 2;
+
+  glEnable(GL_TEXTURE_2D);
+
+  // Set up attribute (vertex, normal, etc.) arrays.
+  //
+  glBindTexture(GL_TEXTURE_2D,texid_syl);
+  platform_tile_coords.bind();
+  glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glNormal3fv(platform_normal);
+  platform_tex_coords.bind();
+  glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+  // Write lighter-colored, textured tiles.
+  //
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
+  glColor3f(0.35,0.35,0.35);
+  glColor3f(0.55,0.55,0.55);
+  glDrawArrays(GL_QUADS,0,half_elements+4);
+
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
 void
@@ -391,13 +491,6 @@ World::render()
   // That said, much of the complexity of the code is to show
   // the ball shadow and reflection.
 
-  const pColor white(0xffffff);
-  const pColor gray(0x303030);
-  const pColor lsu_business_purple(0x7f5ca2);
-  const pColor lsu_spirit_purple(0x580da6);
-  const pColor lsu_spirit_gold(0xf9b237);
-  const pColor lsu_official_purple(0x2f0462);
-  const pColor dark(0);
 
   const int win_width = ogl_helper.get_width();
   const int win_height = ogl_helper.get_height();
@@ -416,6 +509,7 @@ World::render()
 
   glClearColor(0,0,0,0.5);
   glClearDepth(1.0);
+  glClearStencil(0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 
   glEnable(GL_DEPTH_TEST);
@@ -425,11 +519,11 @@ World::render()
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
-  glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.3);
+  glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.5);
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
   glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
 
-  pColor ambient_color(0x999999);
+  pColor ambient_color(0x555555);
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
@@ -443,9 +537,6 @@ World::render()
   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
 
   glShadeModel(GL_SMOOTH);
-
-  pColor color_ball(0x666666);
-  pColor scolor_ball(0x111111);
 
   // Common to all textures.
   //
@@ -478,7 +569,8 @@ World::render()
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->var[0]);
 
-  ogl_helper.fbprintf("Time Step Routine: time_step_v%d\n", opt_time_step_alt);
+  ogl_helper.fbprintf("Time Step Routine: time_step_v%d  SV Count %d\n",
+                      opt_time_step_alt, viewer_shadow_volume);
 
   const int half_elements = platform_tile_coords.elements >> 3 << 2;
 
@@ -515,35 +607,13 @@ World::render()
   //
   glFrontFace(GL_CW);
 
-  render_objects(false);
+  render_objects(RO_Normally);
 
   glFrontFace(GL_CCW);
   glMatrixMode(GL_PROJECTION);
   glPopMatrix();
   glDisable(GL_STENCIL_TEST);
 
-  //
-  // Write framebuffer stencil with shadow.
-  //
-
-  // Use transform that maps vertices to platform surface.
-  //
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glLoadTransposeMatrixf(modelview_shadow);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_TEXTURE_2D);
-
-  glEnable(GL_STENCIL_TEST);
-  glStencilFunc(GL_NEVER,1,-1); // ref, mask
-  glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);  // sfail, dfail, dpass
-
-  render_objects(true);
-
-  glEnable(GL_LIGHTING);
-  glDisable(GL_STENCIL_TEST);
-  glPopMatrix();
 
   // Setup texture for platform.
   //
@@ -570,61 +640,111 @@ World::render()
   glVertexPointer
     (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
   glEnableClientState(GL_VERTEX_ARRAY);
-  platform_tile_norms.bind();
-  glNormalPointer
-    (GL_FLOAT,sizeof(platform_tile_norms.data[0]), 0);
-  glEnableClientState(GL_NORMAL_ARRAY);
+  glNormal3fv(platform_normal);
 
-  for ( int pass = 0;  pass < 2;  pass++ )
-    {
-      if ( pass == 0 )
-        {
-          // Prepare to write unshadowed parts of frame buffer.
-          //
-          glStencilFunc(GL_NOTEQUAL,1,1);
-        }
-      else
-        {
-          // Prepare to write shadowed parts of frame buffer.
-          //
-          glStencilFunc(GL_EQUAL,1,1);
-          glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 6.0);
-        }
+  if ( opt_platform_texture ) glEnable(GL_TEXTURE_2D);
 
-      if ( opt_platform_texture ) glEnable(GL_TEXTURE_2D);
+  // Write lighter-colored, textured tiles.
+  //
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
+  glColor3f(0.35,0.35,0.35);
+  glDrawArrays(GL_QUADS,0,half_elements+4);
 
-      // Write lighter-colored, textured tiles.
-      //
-      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
-      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
-      glColor3f(0.35,0.35,0.35);
-      glDrawArrays(GL_QUADS,0,half_elements+4);
-
-      // Write darker-colored, untextured, mirror tiles.
-      //
-      glEnable(GL_BLEND);
-      glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
-      glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
-      glDisable(GL_TEXTURE_2D);
-      glColor3fv(lsu_spirit_purple);
-      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
-      glDisable(GL_BLEND);
-    }
+  // Write darker-colored, untextured, mirror tiles.
+  //
+  glEnable(GL_BLEND);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
+  glDisable(GL_TEXTURE_2D);
+  glColor3fv(lsu_spirit_purple);
+  glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+  glDisable(GL_BLEND);
 
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_NORMAL_ARRAY);
   glBindBuffer(GL_ARRAY_BUFFER,0);
   glDisable(GL_STENCIL_TEST);
   glDepthFunc(GL_LESS);
 
-  // Render Ball
+  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
+
   //
-  render_objects(false);
+  // First pass, render using only ambient light.
+  //
+  glDisable(GL_LIGHT0);
+
+  // Send balls, tiles, and platform to opengl.
+  // Do occlusion test too.
+  //
+  render_objects(RO_Normally);
+
+  //
+  // Second pass, add on light0.
+  //
+
+  // Turn off ambient light, turn on light 0.
+  //
+  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
+  glEnable(GL_LIGHT0);
+
+
+  glClear(GL_STENCIL_BUFFER_BIT);
+
+  // Make sure that only stencil buffer written.
+  //
+  glColorMask(false,false,false,false);
+  glDepthMask(false);
+
+  // Don't waste time computing lighting.
+  //
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
+
+  // Set up stencil test to count shadow volume surfaces: plus 1 for
+  // entering the shadow volume, minus 1 for leaving the shadow
+  // volume.
+  //
+  glEnable(GL_STENCIL_TEST);
+  // sfail, dfail, dpass
+  glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
+  glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
+  glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
+ 
+  // Write stencil with shadow locations based on shadow volumes
+  // cast by light0 (light_location).  Shadowed locations will
+  // have a positive stencil value.  Routine will set viewer_shadow_volume
+  // to the number of view volumes containing the eye.
+  //
+  render_objects(RO_Shadow_Volumes);
+
+  glEnable(GL_LIGHTING);
+  glColorMask(true,true,true,true);
+  glDepthMask(true);
+
+  // Use stencil test to prevent writes to shadowed areas.
+  //
+  glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+  glStencilFunc(GL_EQUAL,viewer_shadow_volume,-1); // ref, mask
+
+  // Allow pixels to be re-written.
+  //
+  glDepthFunc(GL_LEQUAL);
+  glEnable(GL_BLEND);
+  glBlendEquation(GL_FUNC_ADD);
+  glBlendFunc(GL_ONE,GL_ONE);
+
+  // Render.
+  //
+  render_objects(RO_Normally);
+
+  glDisable(GL_BLEND);
+  glDisable(GL_STENCIL_TEST);
+
 
   // Render Marker for Light Source
   //
-  insert_tetrahedron(light_location,0.05);
+  insert_tetrahedron(light_location,0.5);
 
   pError_Check();
 
