@@ -329,7 +329,6 @@ World::init_graphics()
   opt_move_item = MI_Eye;
   opt_pause = false;
 
-  ball_init();
   sphere.init(40);
 
   platform_update();
@@ -771,6 +770,7 @@ World::cb_keyboard()
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
+  case 'h': case 'H': opt_head_lock = !opt_head_lock; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;

@@ -54,7 +54,7 @@ demo-1d-objects.o:  $(INCLUDES) demo-1d-objects-graphics.cc
 demo-1d-objects: demo-1d-objects.o 
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
-demo-2-springs.o: $(INCLUDES)
+demo-2-springs.o: $(INCLUDES) demo-2-springs-graphics.cc
 demo-2-springs: demo-2-springs.o
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 

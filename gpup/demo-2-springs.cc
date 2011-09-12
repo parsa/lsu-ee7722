@@ -115,18 +115,20 @@ void
 World::init()
 {
   chain_length = 20;
-  distance_natural = 1;
   balls = new Ball[chain_length];
 
-  world_time = 0;
+  distance_natural = 1;
+  opt_spring_constant = 20;
+  variable_control.insert(opt_spring_constant,"Spring Constant");
+
   opt_gravity_accel = 9.8;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
-
-  opt_spring_constant = 20;
   variable_control.insert(opt_gravity_accel,"Gravity");
-  variable_control.insert(opt_spring_constant,"Spring Constant");
 
+  ball_init();
+
+  world_time = 0;
   frame_timer.work_unit_set("Steps / s");
 
   init_graphics();
@@ -199,6 +201,15 @@ World::time_step_cpu(double delta_t)
       pVect ar_force  = -pow(1.0 - air_resistance,delta_t) * ball->velocity;
       force += ar_force;
 
+      // Update Velocity
+      //
+      // This code assumes that force on ball is constant over time
+      // step. This is clearly wrong when balls are moving with
+      // respect to each other because the springs are changing
+      // length. This inaccuracy will make the simulation unstable
+      // which tight springs (large opt_spring_constant) and long time
+      // steps (large delta_t).
+      //
       ball->velocity += ( force / ball->mass ) * delta_t;
     }
 
@@ -215,6 +226,8 @@ World::time_step_cpu(double delta_t)
       Ball* const ball = &balls[i];
 
       // Update Position
+      //
+      // Assume that velocity is constant.
       //
       ball->position += ball->velocity * delta_t;
 
