@@ -240,9 +240,7 @@ const pColor dark(0);
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){
-    init();
-  }
+  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
   void init();
   void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
@@ -259,22 +257,18 @@ public:
   float opt_gravity_accel;      // Value chosen by user.
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
+  bool opt_head_lock;
   bool opt_time_step_alt;
-
-  float opt_air_viscosity;
-
-  PStack<Gr_Object*> groups;
-  bool pressed_key_c, pressed_key_C;
 
   // Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
+  float platform_pi_xwidth_inv;
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
   pVect platform_normal;
   GLuint texid_syl;
   GLuint texid_emacs;
-  GLuint texid_a, texid_b, texid_c;
   bool opt_platform_texture;
   void platform_update();
   bool platform_collision_possible(pCoor pos);
@@ -283,18 +277,29 @@ public:
   float opt_light_intensity;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
   bool opt_pause;
+  int viewer_shadow_volume;
 
   pCoor eye_location;
   pVect eye_direction;
   pMatrix modelview;
   pMatrix transform_mirror;
-  int viewer_shadow_volume; // Number of shadow volumes enclosing viewer.
 
-  void time_step_cpu_v0(double);
+  void ball_init();
+  void time_step_cpu(double);
+  void balls_stop();
+  void balls_freeze();
+  void balls_translate(pVect amt, int idx);
+  void balls_translate(pVect amt);
+  void balls_push(pVect amt, int idx);
+  void balls_push(pVect amt);
 
-  Ball ball;
+  float opt_spring_constant;
+  float distance_natural;
+  int chain_length;
+  Ball *balls;
   Sphere sphere;
 };
+
 
 void
 World::init_graphics()
@@ -303,25 +308,29 @@ World::init_graphics()
   /// Graphical Model Initialization
   ///
 
-  opt_light_intensity = 100.2;
-  light_location = pCoor(platform_xmax,platform_xmax,platform_zmax);
-  eye_location = pCoor(24.2,11.6,+38.7);
-  eye_direction = pVect(-0.42,-0.09,-0.9);
-
   opt_platform_texture = true;
+  opt_head_lock = false;
+
+  eye_location = pCoor(24.2,11.6,-38.7);
+  eye_direction = pVect(-0.42,-0.09,0.9);
+
+
+  platform_xmin = -40; platform_xmax = 40;
+  platform_zmin = -40; platform_zmax = 40;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
   texid_emacs = pBuild_Texture_File("mult.png", false,-1);
+
+  opt_light_intensity = 100.2;
+  light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
+
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
-  opt_time_step_alt = false;
 
-  frame_timer.work_unit_set("Steps / s");
-
+  ball_init();
   sphere.init(40);
-  sphere.center = ball.position;
 
   platform_update();
   modelview_update();
@@ -411,29 +420,16 @@ World::render_objects(Render_Option option)
   if ( option == RO_Shadow_Volumes )
     {
       sphere.light_pos = light_location;
-      sphere.render_shadow_volume(sphere.radius,sphere.center);
+      for ( int i=0; i<chain_length; i++ )
+        sphere.render_shadow_volume(sphere.radius,balls[i].position);
     }
   else
-    sphere.render();
+    for ( int i=0; i<chain_length; i++ )
+      sphere.render(balls[i].position);
 
   glDisable(GL_COLOR_SUM);
   glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
   glLightfv(GL_LIGHT0, GL_SPECULAR, dark);
-
-  // Render Groups
-  //
-  for ( Gr_Object *group = NULL; groups.iterate(group); )
-    if ( option == RO_Shadow_Volumes )
-      group->render_shadow_volume(&rc);
-    else
-      group->render();
-
-  if ( option == RO_Shadow_Volumes )
-    {
-      viewer_shadow_volume += fc.viewer_sv_count;
-      return; 
-    }
-
 
   //
   // Render Platform
@@ -479,11 +475,6 @@ World::render()
 
   /// Emit a Graphical Representation of Simulation State
   //
-
-  // The "ball" is part of the simulated state, "sphere" is the
-  // graphical object used to show it.
-  //
-  sphere.center = ball.position;
 
   // Understanding of the code below not required for introductory
   // lectures.
@@ -560,6 +551,8 @@ World::render()
      eye_location.x, eye_location.y, eye_location.z,
      eye_direction.x, eye_direction.y, eye_direction.z);
 
+  Ball& ball = balls[0];
+
   ogl_helper.fbprintf
     ("Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      ball.position.x,ball.position.y,ball.position.z,
@@ -568,9 +561,6 @@ World::render()
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->var[0]);
-
-  ogl_helper.fbprintf("Time Step Routine: time_step_v%d  SV Count %d\n",
-                      opt_time_step_alt, viewer_shadow_volume);
 
   const int half_elements = platform_tile_coords.elements >> 3 << 2;
 
@@ -779,14 +769,12 @@ World::cb_keyboard()
   case FB_KEY_END: user_rot_axis.x = -1; break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
-  case 'c': pressed_key_c = true; break;
-  case 'C': pressed_key_C = true; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
-  case 's': case 'S': ball.stop(); break;
+  case 's': case 'S': balls_stop(); break;
   case 'v': case 'V': opt_time_step_alt = !opt_time_step_alt; break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
@@ -818,8 +806,8 @@ World::cb_keyboard()
       adjustment *= rotall;
 
       switch ( opt_move_item ){
-      case MI_Ball: ball.translate(adjustment); break;
-      case MI_Ball_V: ball.push(adjustment); break;
+      case MI_Ball: balls_translate(adjustment,0); break;
+      case MI_Ball_V: balls_push(adjustment,0); break;
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
       default: break;
