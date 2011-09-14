@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -132,10 +132,9 @@ public:
   // Tiled platform for ball.
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
-  float platform_xmid, platform_xrad, platform_xrad_inv;
+  float platform_xmid, platform_rad, platform_rad_inv;
   float delta_theta_inv, tile_size_inv;
   float platform_pi_xwidth_inv;
-  float opt_platform_depth, platform_depth;
   pBuffer_Object<pVect> platform_tile_norms;
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
@@ -184,19 +183,13 @@ World::init()
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
-  opt_platform_depth = 45;
-  platform_depth = opt_platform_depth;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
-  texid_emacs = pBuild_Texture_File
-    ( //"shot-emacs.png",
-     "../gpgpu/mult.png",
-     false,-1);
+  texid_emacs = pBuild_Texture_File("mult.png", false,-1);
 
   opt_light_intensity = 100.2;
   light_location = pCoor(28.2,-2.8,-14.3);
 
   variable_control.insert(opt_gravity_accel,"Gravity");
-  variable_control.insert(opt_platform_depth,"Platform Depth");
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
@@ -236,19 +229,19 @@ World::platform_update()
   delta_theta_inv = 1.0 / delta_theta;
   tile_size_inv = 1 / zdelta;
   platform_xmid = 0.5 * ( platform_xmax + platform_xmin );
-  platform_xrad = 0.5 * platform_delta_x;
-  platform_xrad_inv = 1 / platform_xrad;
+  platform_rad = 0.5 * platform_delta_x;
+  platform_rad_inv = 1 / platform_rad;
 
   for ( int i = 0; i < tile_count; i++ )
     {
       const double theta0 = i * delta_theta;
       const double theta1 = theta0 + delta_theta;
-      const float x0 = platform_xmid - platform_xrad * cos(theta0);
-      const float x1 = platform_xmid - platform_xrad * cos(theta1);
-      const float y0 = -0.01 - platform_depth * sin(theta0);
-      const float y1 = -0.01 - platform_depth * sin(theta1);
-      pNorm norm0( platform_depth * cos(theta0), platform_xrad*sin(theta0), 0);
-      pNorm norm1( platform_depth * cos(theta1), platform_xrad*sin(theta1), 0);
+      const float x0 = platform_xmid - platform_rad * cos(theta0);
+      const float x1 = platform_xmid - platform_rad * cos(theta1);
+      const float y0 = -0.01 - platform_rad * sin(theta0);
+      const float y1 = -0.01 - platform_rad * sin(theta1);
+      pNorm norm0( platform_rad * cos(theta0), platform_rad*sin(theta0), 0);
+      pNorm norm1( platform_rad * cos(theta1), platform_rad*sin(theta1), 0);
       for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
         {
           PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
@@ -394,7 +387,6 @@ World::time_step_cpu(double delta_t)
       balls += new Ball();
       ball_countdown = 1e10;
     }
-
 }
 
 void
@@ -410,44 +402,50 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
   //
   ball->velocity += gravity_accel * delta_t;
 
+  // Set Ball Spin
+  //
+  // Unrealistically, set ball spin axis to direction of travel
+  // and spin rate based on speed.
+  //
   pNorm tangent(ball->velocity);
   ball->axis = tangent.mag_sq ? tangent : pVect(0,-1,0);
   ball->angle +=  0.1;
-
 
   // Return quickly if collision impossible.
   //
   if ( !platform_collision_possible(ball->position) ) return;
 
-  const float cos_th = ( platform_xmid - ball->position.x ) * platform_xrad_inv;
-  const float sin_th =  sqrt(1.0 - cos_th * cos_th );
-  const float platform_y = -platform_depth * sin_th;
+  // Find distance from ball to platform axis.
+  //
+  // Simplified based on fact that axis is (0,0,1).
+  // So just need to find distance ignoring z component.
+  //
+
+  // Point on axis closest to ball.
+  //
+  pCoor axis_closest(platform_xmid,0,ball->position.z);
+
+  // Vector from axis to ball.
+  //
+  pNorm axis_to_ball(axis_closest,ball->position);
+
+  const float dist_to_platform = platform_rad - axis_to_ball.magnitude;
 
   const bool contact_prev = ball->contact;
-  const bool true_contact = ball->position.y <= platform_y + 0.01;
-  ball->contact = ball->position.y <= platform_y + 0.5;
+  const bool true_contact = dist_to_platform <= 0.01;
+  ball->contact = dist_to_platform <= 0.5;
   if ( !ball->contact ) return;
 
-  ball->position.y = max(ball->position.y,platform_y);
-  pNorm platform_norm( platform_depth * cos_th, platform_xrad * sin_th, 0);
-
-  const int row_num_prev = ball->row_num;
-  const int col_num_prev = ball->col_num;
-  const int row_num = int(ball->position.z * tile_size_inv);
-  const int col_num = int(acos(cos_th) * delta_theta_inv);
-  ball->col_num = col_num;
-  ball->row_num = row_num;
-  if ( contact_prev &&
-       ( row_num_prev != row_num || col_num_prev != col_num ) )
-    {
-      // Ball has rolled from one tile to another.
-    }
+  // If necessary, Snap ball back to platform.
+  //
+  if ( dist_to_platform < 0 )
+    ball->position += dist_to_platform * axis_to_ball;
 
   if ( !true_contact ) return;
 
-  const float speed_to_surface = dot(platform_norm,ball->velocity);
+  const float speed_to_surface = -dot(axis_to_ball,ball->velocity);
 
-  ball->velocity -= 1.9 * speed_to_surface * platform_norm;
+  ball->velocity -= 1.9 * speed_to_surface * -axis_to_ball;
 
 }
 
@@ -778,7 +776,6 @@ World::cb_keyboard()
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
   const float move_amt = 0.4;
-  const float platform_depth_prev = platform_depth;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -807,7 +804,6 @@ World::cb_keyboard()
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
 
-  platform_depth = opt_platform_depth;
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
 
   // Update eye_direction based on keyboard command.
@@ -840,8 +836,6 @@ World::cb_keyboard()
       modelview_update();
     }
 
-  if ( platform_depth != platform_depth_prev )
-    platform_update();
 }
 
 
