@@ -3,33 +3,16 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include <Magick++.h>
+
+#define ALSO_GL
 
 #include "glextfuncs.h"
 #include "pstring.h"
 #include "misc.h"
-
-template<typename T> T min(T a, T b){ return a < b ? a : b; }
-template<typename T> T max(T a, T b){ return a > b ? a : b; }
-
-double
-time_wall_fp()
-{
-  struct timespec now;
-  clock_gettime(CLOCK_REALTIME,&now);
-  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
-}
-
-double
-time_process_fp()
-{
-  struct timespec now;
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&now);
-  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
-}
 
 // Rename keys so a single namespace can be used for regular (ASCII)
 // keys and "special" ones.
@@ -57,38 +40,6 @@ time_process_fp()
 #define FB_KEY_INSERT     ( GLUT_KEY_INSERT      + 0x100 )
 #define FB_KEY_DELETE     127
 
-inline void
-pError_Exit()
-{
-  exit(1);
-}
-
-inline void
-pError_Msg_NP(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
-
-inline void
-pError_Msg_NP(const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  pError_Exit();
-}
-
-inline void
-pError_Msg(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
-
-inline void
-pError_Msg(const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  fprintf(stderr,"User Error: ");
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  pError_Exit();
-}
 
 inline bool
 pError_Check(int error = -1)
@@ -130,12 +81,24 @@ lprint_attribute(int token, const char *name)
 class pOpenGL_Helper;
 pOpenGL_Helper* opengl_helper_self_ = NULL;
 
+
+struct pTimer_Info {
+  pString label;
+  bool timing;
+  bool per_frame;
+  int end_count;
+  double start;
+  double duration;
+  double frac;
+  double last;
+};
+
 class pFrame_Timer {
 public:
   pFrame_Timer():inited(false),work_description(NULL)
   {
     query_timer_id = 0;
-    frame_group_size = 30;
+    frame_group_size = 5;
     frame_rate = 0;
     cpu_frac = 0;
     cuda_in_use = false;
@@ -147,6 +110,11 @@ public:
     work_description = strdup(description);
   }
   void work_amt_set(int amt){ work_accum += amt; }
+  int user_timer_per_start_define(const char *label)
+  { return user_timer_define(label,false); }
+  int user_timer_define(const char *label, bool per_frame = true);
+  void user_timer_start(int timer_id);
+  void user_timer_end(int timer_id);
   void init();
   void frame_start();
   void frame_end();
@@ -179,6 +147,8 @@ private:
   GLuint query_timer_id;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
+
+  PStack<pTimer_Info> timer_info;
 };
 
 void
@@ -196,6 +166,40 @@ pFrame_Timer::init()
 #endif
 }
 
+int 
+pFrame_Timer::user_timer_define(const char *label, bool per_frame)
+{
+  const int timer_id = timer_info.occ();
+  pTimer_Info* const ti = timer_info.pushi();
+  ti->label = label;
+  ti->timing = false;
+  ti->duration = 0;
+  ti->end_count = 0;
+  ti->per_frame = per_frame;
+  return timer_id;
+}
+
+void
+pFrame_Timer::user_timer_start(int timer_id)
+{
+  pTimer_Info* const ti = &timer_info[timer_id];
+  ASSERTS( !ti->timing );
+  ti->timing = true;
+  ti->start = time_wall_fp();
+}
+
+void
+pFrame_Timer::user_timer_end(int timer_id)
+{
+  pTimer_Info* const ti = &timer_info[timer_id];
+  if ( !ti->timing ) return;
+  ASSERTS( ti->timing );
+  ti->timing = false;
+  ti->end_count++;
+  ti->duration += time_wall_fp() - ti->start;
+}
+
+
 void
 pFrame_Timer::frame_rate_group_start()
 {
@@ -204,6 +208,16 @@ pFrame_Timer::frame_rate_group_start()
   const double last_frame_count_inv = 1.0 / last_frame_count;
   frame_group_start_time = time_wall_fp();
   const double group_duration = frame_group_start_time - last_wall_time;
+  const double group_duration_inv = 1.0 / group_duration;
+
+  while ( pTimer_Info* const ti = timer_info.iterate() )
+    {
+      ti->frac = ti->duration * group_duration_inv;
+      ti->last = ti->per_frame
+        ? ti->duration * last_frame_count_inv
+        : ti->duration / max(1,ti->end_count);
+      ti->duration = 0;  ti->end_count = 0;
+    }
 
   gpu_tlast = 1e-9 * gpu_tsum_ns * last_frame_count_inv;
   cpu_tlast = cpu_tsum * last_frame_count_inv;
@@ -226,14 +240,14 @@ pFrame_Timer::frame_start()
   pError_Check();
   if ( query_timer_id ) glBeginQuery(GL_TIME_ELAPSED_EXT,query_timer_id);
   pError_Check();
-  time_render_start = time_process_fp();
+  time_render_start = time_wall_fp();
   if ( frame_group_count++ >= frame_group_size ) frame_rate_group_start();
 }
 
 void
 pFrame_Timer::frame_end()
 {
-  const double time_render_elapsed = time_process_fp() - time_render_start;
+  const double time_render_elapsed = time_wall_fp() - time_render_start;
   if ( query_timer_id )
     {
       glEndQuery(GL_TIME_ELAPSED_EXT);
@@ -271,6 +285,10 @@ pFrame_Timer::frame_end()
 
   if ( work_description )
     frame_rate_text.sprintf("  %s %.3f", work_description, work_rate);
+
+  while ( pTimer_Info* const ti = timer_info.iterate() )
+    frame_rate_text.sprintf
+      ("  %s %.2f ms (%.1f%%)", ti->label.s, 1000 * ti->last, 100 * ti->frac);
 }
 
 struct pVariable_Control_Elt
@@ -279,7 +297,9 @@ struct pVariable_Control_Elt
   float *var;
   float inc_factor, dec_factor;
   int *ivar;
-  int inc;
+  int inc, min, max;
+  bool power_of_2;
+  double get_val() const { return var ? *var : double(*ivar); }
 };
 
 class pVariable_Control {
@@ -289,11 +309,14 @@ public:
     size = 0;  storage = (pVariable_Control_Elt*)malloc(0); current = NULL;
     inc_factor_def = pow(10,1.0/45);
   }
-  void insert(int &var, const char *name, int inc = 1)
+  void insert(int &var, const char *name, int inc = 1,
+              int min = 0, int max = 0x7fffffff )
   {
     pVariable_Control_Elt* const elt = insert_common(name);
     elt->ivar = &var;
     elt->inc = 1;
+    elt->min = min;
+    elt->max = max;
   }
 
   void insert(float &var, const char *name, float inc_factor = 0)
@@ -302,6 +325,15 @@ public:
     elt->var = &var;
     elt->inc_factor = inc_factor ? inc_factor : inc_factor_def;
     elt->dec_factor = 1.0 / elt->inc_factor;
+  }
+
+  void insert_power_of_2(int &var, const char *name)
+  {
+    pVariable_Control_Elt* const elt = insert_common(name);
+    elt->ivar = &var;
+    elt->inc_factor = 1;
+    elt->dec_factor = 1;
+    elt->power_of_2 = true;
   }
 
 private:
@@ -315,19 +347,31 @@ private:
     elt->name = strdup(name);
     elt->ivar = NULL;
     elt->var = NULL;
+    elt->power_of_2 = false;
     return elt;
   }
 public:
 
   void adjust_higher() {
     if ( !current ) return;
-    if ( current->var ) current->var[0] *= current->inc_factor;
-    else                current->ivar[0] += current->inc;
+    if ( current->power_of_2 ) current->ivar[0] <<= 1;
+    else if ( current->var )   current->var[0] *= current->inc_factor;
+    else                
+      {
+        current->ivar[0] += current->inc;
+        set_min(current->ivar[0],current->max);
+      }
   }
   void adjust_lower() {
     if ( !current ) return;
-    if ( current->var ) current->var[0] *= current->dec_factor;
-    else                current->ivar[0] -= current->inc;
+    if ( current->power_of_2 ) 
+      { if ( current->ivar[0] ) current->ivar[0] >>= 1; }
+    else if ( current->var )   current->var[0] *= current->dec_factor;
+    else
+      {
+        current->ivar[0] -= current->inc;
+        set_max(current->ivar[0],current->min);
+      }
   }
   void switch_var_right()
   {
@@ -368,10 +412,18 @@ const void* const glut_fonts[] =
     GLUT_BITMAP_TIMES_ROMAN_24
  };
 
+using namespace Magick;
+
 class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
   {
+    animation_frame_count = 0;
+    animation_qscale = 5;  // Quality, 1-31; 1 is best.
+    animation_video_count = 0; // Number of videos generated.
+    animation_frame_rate = 60;
+    animation_record = false;
+    user_text_reprint_called = false;
     glut_font_idx = 2;
     opengl_helper_self_ = this;
     width = height = 0;
@@ -385,6 +437,7 @@ public:
   void rate_set(double frames_per_second)
   {
     frame_period = 1.0 / frames_per_second;
+    animation_frame_rate = int(0.5 + frames_per_second);
   }
 
   double next_frame_time, frame_period;
@@ -393,8 +446,8 @@ public:
   {
     glutPostRedisplay();
     if ( frame_period < 0 ) return;
-    if ( next_frame_time == 0 ) next_frame_time = time_wall_fp();
     const double now = time_wall_fp();
+    if ( next_frame_time == 0 ) next_frame_time = now;
     next_frame_time += frame_period;
     const double delta = next_frame_time - now;
     const int delta_ms = delta <= 0 ? 0 : int(delta * 1000);
@@ -469,6 +522,9 @@ public:
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
+
+    if ( user_text_reprint_called ) return;
+
     if ( !frame_print_calls ) glWindowPos2i(10,height-20);
     frame_print_calls++;
 
@@ -477,12 +533,22 @@ public:
 
   void user_text_reprint()
   {
+    user_text_reprint_called = true;
     glDisable(GL_DEPTH_TEST);
     glWindowPos2i(10,height-20);
     while ( pString* const str = user_frame_text.iterate() )
       glutBitmapString
         ((void*)glut_fonts[glut_font_idx],(unsigned char*)str->s);  
     user_frame_text.reset();
+
+    const int64_t now = int64_t( time_wall_fp() * 2 );
+    if ( now & 1 && animation_record )
+      {
+        glWindowPos2i(10,10);
+        glutBitmapString
+          ((void*)glut_fonts[glut_font_idx], (unsigned char*)"REC");
+      }
+
     glEnable(GL_DEPTH_TEST);
   }
 
@@ -522,7 +588,10 @@ private:
     shape_update();
     frame_print_calls = 0;
     user_display_func(user_display_data);
-    user_text_reprint();
+
+    if ( animation_record || animation_frame_count ) 
+      animation_grab_frame();
+
     cb_keyboard();
   }
 
@@ -546,34 +615,97 @@ private:
     if ( !key ) return;
     if ( keyboard_key == FB_KEY_F12 ) { write_img(); return; }
     if ( keyboard_key == FB_KEY_F11 ) { cycle_font(); return; }
+    if ( keyboard_key == FB_KEY_F10 )
+      { 
+        animation_record = !animation_record; 
+        printf("Animation recording %s\n",
+               animation_record ? "starting, press F10 to stop." : "ending");
+        return;
+      }
     glutPostRedisplay();
   }
 
-  void write_img()
+  Image* image_new(int format)
   {
-    pStringF pipe_name("pnmtopng > %s.png",exe_file_name);
-    FILE* const fp = popen(pipe_name, "w");
-    if ( !fp )
-      {
-        fprintf(stderr, "Could not open pipe for screenshot.\n");
-        return;
-      }
-    fprintf(fp,"P6\n%d %d 255\n",width,height);
     glReadBuffer(GL_FRONT_LEFT);
     const int size = width * height;
-    char* const pbuffer = (char*) malloc(size * 3);
-    glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pbuffer);
-    for ( int y=height-1; y>=0; y-- )
+    int bsize;
+    const char* im_format;
+    switch ( format ){
+    case GL_RGBA: bsize = size * 4; im_format = "RGBA"; break;
+    case GL_RGB: bsize = size * 3; im_format = "RGB"; break;
+    default: bsize = 0; im_format = ""; ASSERTS( false );
+    }
+    char* const pb = (char*) malloc(bsize);
+    glPixelStorei(GL_PACK_ALIGNMENT,1);
+    glReadPixels(0,0,width,height,format,GL_UNSIGNED_BYTE,pb);
+    Image* const image = new Image( width, height, im_format, CharPixel, pb);
+    image->flip();
+    free(pb);
+    return image;
+  }
+
+public:
+  void write_img(const char* file_name = NULL)
+  {
+    pStringF file_name_default("%s.png",exe_file_name);
+    Image* const image = image_new(GL_RGBA);
+    image->write(file_name ? file_name : file_name_default.s);
+    delete image;
+  }
+
+  bool animation_record;
+  int animation_qscale;
+  int animation_frame_rate;
+private:
+  int animation_frame_count;
+  int animation_video_count;
+
+  void animation_grab_frame()
+  {
+    if ( animation_frame_count > 6000 ) animation_record = false;
+    const char* const ifmt = "tiff";
+    if ( !animation_record )
       {
-        char* row = &pbuffer[ y * width * 3 ];
-        for ( int x=0; x<width; x++ )
-          {
-            putc(row[0],fp); putc(row[1],fp); putc(row[2],fp);
-            row += 3;
-          }
+        if ( !animation_frame_count ) return;
+        pStringF video_file_name
+          ("%s-%d.mp4", exe_file_name, animation_video_count);
+        animation_video_count++;
+        // http://www.ffmpeg.org/ffmpeg-doc.html
+        // -b BITRATE
+        // -vframes NUM
+        // -r FPS
+        // -pass [1|2]
+        // -qscale NUM   Quality, 1-31; 1 is best.
+        PSplit dir_pieces(__FILE__,'/');
+        if ( dir_pieces.occ() > 1 ) dir_pieces.pop();
+        pString this_dir(dir_pieces.joined_copy());
+        pStringF ffmpeg_path("%s/bin/ffmpeg",this_dir.s);
+        pStringF ffplay_path("%s/bin/ffplay",this_dir.s);
+        pStringF ffmpeg_cmd
+          ("%s -r %d -qscale %d -i /tmp/frame%%04d.%s "
+           "-vframes %d  -y %s",
+           ffmpeg_path.s,
+           animation_frame_rate,
+           animation_qscale,
+           ifmt, animation_frame_count, video_file_name.s);
+        system(ffmpeg_cmd.s);
+        printf("Generated video from %d frames, filename %s, using:\n%s\n",
+               animation_frame_count,
+               video_file_name.s, ffmpeg_cmd.s);
+        printf("Copy, edit, paste command above to regenerate video, \n");
+        printf("visit http://www.ffmpeg.org/ffmpeg-doc.html for more info.\n");
+        printf("Use the following command to view:\n%s %s\n",
+               ffplay_path.s, video_file_name.s);
+        animation_frame_count = 0;
+        return;
       }
-    pclose(fp);
-    free(pbuffer);
+    Image* const image = image_new(GL_RGB);
+    pStringF image_path("/tmp/frame%04d.%s",animation_frame_count,ifmt);
+    animation_frame_count++;
+    image->depth(8);
+    image->write(image_path.s);
+    delete image;
   }
 
 private:
@@ -582,6 +714,7 @@ private:
   int width;
   int height;
   int frame_print_calls;
+  bool user_text_reprint_called;
   int glut_font_idx;
   int glut_window_id;
   void (*user_display_func)(void *data);

@@ -722,9 +722,7 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
   /// SOLUTION
 
   pNorm axis_normal(ball->position.x - platform_xmid, ball->position.y, 0);
-  const float axis_dist = axis_normal.magnitude;
-  const float platform_dist = platform_xrad - opt_ball_radius - axis_dist;
-
+  float axis_dist = axis_normal.magnitude;
 
   // Find row and column of tiles.
   //
@@ -739,6 +737,8 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
   // Find array index for closest circumferential seam.
   //
   const int circ_idx = ( row_num + 1 ) * row_cnt + col_num;
+
+  bool ball_moved = false;
 
   for ( int dir=0; dir<2; dir++ )
     {
@@ -783,12 +783,13 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
 
       if ( dist > opt_ball_radius ) continue;
       const float v_to_tact = -dot(ball->velocity,tact_to_b);
-      if ( v_to_tact <= 0 ) continue;
       const float pen_dist = opt_ball_radius - dist;
+      if ( v_to_tact <= 0 && pen_dist <= 0 ) continue;
       pCoor ball_contact_pos = ball->position + pen_dist * tact_to_b;
       pVect bounce_delta_v = bounce_factor * v_to_tact * tact_to_b;
       ball->velocity += bounce_delta_v;
       ball->position = ball_contact_pos;
+      ball_moved = true;
 
       // Insert a marker describing collision.
       //
@@ -799,7 +800,16 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
       marker->t = world_time;
     }
 
-  ball->contact = platform_dist < 0.5;
+  if ( ball_moved )
+    {
+      axis_normal =
+        pNorm(ball->position.x - platform_xmid, ball->position.y, 0);
+      axis_dist = axis_normal.magnitude;
+    }
+
+  const float platform_dist = platform_xrad - opt_ball_radius - axis_dist;
+
+  ball->contact = platform_dist < 0.0;
 
   // Return if ball is not in contact with platform.
   //

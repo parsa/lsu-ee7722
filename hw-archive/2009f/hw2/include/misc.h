@@ -9,7 +9,65 @@
 #include <malloc.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
+
 #include "pstring.h"
+
+double
+time_wall_fp()
+{
+  struct timespec now;
+  clock_gettime(CLOCK_REALTIME,&now);
+  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
+}
+
+double
+time_process_fp()
+{
+  struct timespec now;
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&now);
+  return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
+}
+
+inline void
+pError_Exit()
+{
+  exit(1);
+}
+
+inline void
+pError_Msg_NP(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
+
+inline void
+pError_Msg_NP(const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  pError_Exit();
+}
+
+inline void
+pError_Msg(const char *fmt, ...) __attribute__ ((format(printf,1,2)));
+
+inline void
+pError_Msg(const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  fprintf(stderr,"User Error: ");
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  pError_Exit();
+}
+
+
+template<typename T> T min(T a, T b){ return a < b ? a : b; }
+template<typename T> T max(T a, T b){ return a > b ? a : b; }
+template<typename T> T set_max(T& a, T b){ if ( b > a ) a = b;  return a; }
+template<typename T> T set_min(T& a, T b){ if ( b < a ) a = b;  return a; }
+
 
 #define ASSERTS(expr) { if ( !(expr) ) abort();}
 #define GCC_GE(maj,min) __GNUC__ \
@@ -51,12 +109,15 @@ template <typename Data> class PStackIteratori;
 template <typename Data> class PStack {
 public:
   PStack(Data first) {init(); push(first);}
+  PStack(PStack<Data>& s) { cpy(s); }
   PStack() {init();}
+  void operator = (PStack<Data>& s) { cpy(s); }
   void reset() {
-    first_free = 0;  iterator = 0;
     if ( taken ) { storage = NULL;  size = 0;  taken = false; }
+    else         { destruct_all(); }
+    first_free = 0;  iterator = 0;
   };
-  ~PStack(){ if ( storage && !taken ) free(storage); }
+  ~PStack(){ if ( storage && !taken ) { destruct_all(); free(storage); } }
 
   // Return true if the stack is not empty.
   operator bool () const { return first_free; }
@@ -125,7 +186,7 @@ public:
 
 
   // Return top of stack but don't pop.
-  Data peek(){ return storage[first_free-1]; } // UNTESTED.
+  Data& peek(){ return storage[first_free-1]; } // UNTESTED.
   Data peek_down(int distance){ return storage[first_free-distance-1]; }
   bool peek(Data &i) // UNTESTED
   {
@@ -152,23 +213,39 @@ public:
     return true;
   }
 
+  void cpy(PStack<Data> &s)
+  {
+    init();
+    alloc(s.occ());
+    first_free = s.occ();
+    const int cpy_amt = min(s.occ(),size);
+    memcpy(storage,s.get_storage(),cpy_amt*sizeof(Data));
+  }
+
 private:
   void init() {
     first_free = 0;  size = 0;  storage = NULL;
     iterator = 0;  taken = false;
   }
-  void alloc()
+  void alloc(int new_size = 0)
   {
     if( size )
       {
-        size <<= 2;
+        size = new_size ? max(new_size,size) : size << 1;
         storage = (Data*) realloc(storage, size * sizeof(storage[0]));
       }
     else
       {
-        size = 32;
+        size = new_size ? new_size : 32;
         storage = (Data*) malloc(size * sizeof(storage[0]));
       }
+  }
+
+  void destruct_all()
+  {
+    // Keep it simple, so compiler optimizes out entire loop if no destructor.
+    for ( int i=0; i<first_free; i++ ) storage[i].~Data();
+    first_free = 0;
   }
 
   Data *storage;
@@ -190,6 +267,7 @@ public:
   Data operator ++ (int) { fwd(); return pstack.storage[index-1]; }
   Data* ptr() { return &pstack.storage[index]; }
   Data operator -> () { return pstack.storage[index]; }
+  int get_idx() const { return index; }
 private:
   PStack<Data>& pstack;
   int index;
@@ -283,6 +361,18 @@ public:
     return true;
   }
 
+  Data* enqueue_at_headi()
+  {
+    if ( occupancy == size ) alloc();
+    if ( !head_idx ) head_idx = size;
+    Data* const rv = &storage[--head_idx];
+    new (rv) Data();
+    occupancy++;
+    return rv;
+  }
+
+  void enqueue_at_head(Data i){ *enqueue_at_headi() = i; }
+
   bool iterate(Data &d)
   {
     if( iterator < 0 ) iterator = head_idx;
@@ -306,6 +396,7 @@ private:
   void init()
   {
     occupancy = size = 0;  iterator = -1;
+    head_idx = tail_idx = 0; // Pacify compiler.
     storage = NULL;
   }
 
@@ -345,9 +436,9 @@ private:
 
 class PSplit {
 public:
-  PSplit(const char *string, char delimiter,
+  PSplit(const char *string, char delimiterp,
          int piece_limit = 0, int options = 0):
-    queue(),free_at_destruct(!(options & DontFree)), delimiter(delimiter)
+    queue(),free_at_destruct(!(options & DontFree)), delimiter(delimiterp)
   {
     const char *start = string;
     if( start )
@@ -461,9 +552,10 @@ public:
   }
 
   Data operator [] (int idx) {return stack.get_storage()[idx].data;}
+  Key get_key(int idx) {return stack.get_storage()[idx].key; }
 
   int key_order(int k1, int k2){ return k1-k2; }
-  int key_order(uint32_t k1, uint32_t k2)
+  int key_order(uint k1, uint k2)
   { return k1 > k2 ? 1 : k1 == k2 ? 0 : -1; }
   int key_order(const char *k1, const char *k2){ return strcmp(k1,k2); }
 
@@ -581,7 +673,7 @@ public:
 
   typedef int (*Comp_Function)(const void*,const void*);
   Comp_Function get_comp(double *dummy){ return comp_num; }
-  Comp_Function get_comp(uint32_t *dummy){ return comp_num; }
+  Comp_Function get_comp(uint *dummy){ return comp_num; }
   Comp_Function get_comp(int32_t *dummy){ return comp_num; }
   Comp_Function get_comp(int64_t *dummy){ return comp_num; }
   Comp_Function get_comp(char** ){ return comp_str; }
