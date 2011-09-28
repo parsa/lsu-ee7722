@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Lighting
 
@@ -6,7 +6,7 @@
 
 /// Purpose
 //
-//   Demonstrate Lighting
+//   Demonstrate Lighting and use of Triangle Strips
 
 
 
@@ -184,7 +184,7 @@ World::render()
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
-                      cvar->name,cvar->var[0]);
+                      cvar->name,cvar->get_val());
 
   ogl_helper.fbprintf
     ("Light location: [%5.1f, %5.1f, %5.1f]  Light %c%c%c%c%c "
@@ -293,6 +293,15 @@ World::render()
   //
   glBegin(GL_TRIANGLES);
 
+  /// Specify normal for triangle.
+  //
+  // Use cross product function (in coord.h) to find normal.
+  //
+  pNorm tri_norm = cross(pCoor(1.5,0,-3.2),pCoor(0,5,-5),pCoor(9,6,-9));
+  glNormal3fv(tri_norm);  // Set current normal.
+  // Note: pNorm, pVect, pCoor, and pColor objects can be used as
+  // arguments to OpenGL functions with names ending in 3fv.
+
   // Specify vertices for a triangle.
   //
   glVertex3f( 1.5, 0, -3.2 );
@@ -324,6 +333,9 @@ World::render()
   const int slices = 40;
   const double delta_eta = M_PI / slices;
 
+  // Outer (eta) Loop: Iterate over longitude (north-to-south).
+  // Inner (theta) Loop: Iterate over latitude (east-to-west)
+
   for ( double eta = 0; eta < M_PI - 0.0001 - delta_eta; eta += delta_eta )
     {
       const double eta1 = eta + delta_eta;
@@ -345,11 +357,16 @@ World::render()
       glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE, lsu_spirit_gold);
       glMaterialfv(GL_FRONT,GL_SPECULAR, lsu_spirit_gold);
 
+
       glBegin(GL_TRIANGLE_STRIP);
 
+      /// Start Triangle Strip with Two Vertices
+
+      // Vertex 1
       glNormal3f( slice_r1, y1, 0);
       glVertex3f( slice_r1, y1, 0);
 
+      // Vertex 2
       glNormal3f( slice_r0 , y0, 0);
       glVertex3f( slice_r0 , y0, 0);
 
@@ -357,9 +374,14 @@ World::render()
         {
           const double theta1 = theta + delta_theta;
 
+          // Vertex 3
+          // Completes triangle started before loop or in previous iteration.
           glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
           glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
 
+          // Vertex 4
+          // Completes triangle started above and before loop or in
+          // previous iteration.
           glNormal3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
           glVertex3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
         }
@@ -376,16 +398,28 @@ World::render()
 
       const float rad = 0.1 * 2 * M_PI / slices;
 
+      /// Draw Cones on Sphere Surface
+      //
       for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
         {
+          // Unlike the sphere, the cones here are drawn in the sphere's
+          // coordinate space.
+
+          // Construct a normal to sphere surface at this
+          // point. (Equivalent to point coordinate because center of
+          // sphere is at origin.)
           pVect norm( slice_r1 * cos(theta), y1, slice_r1 * sin(theta) );
 
           glBegin(GL_TRIANGLE_FAN);
           
+          // The center of the base of the cone.
           pCoor surf = norm;
+
+          // The top of the cone.  Note the vector/scalar multiplicatoin.
           pCoor apex = 1.2 * norm;
           double delta_a = 2 * M_PI / 10;
 
+          // Compute axes for cone base.
           pVect va(-sin(theta),0,cos(theta));
           pNorm vb(cos(theta)*cos(eta),-sin(eta),sin(theta)*cos(eta));
 
@@ -393,6 +427,7 @@ World::render()
 
           for ( float a = 0; a < 2 * M_PI; a += delta_a )
             {
+              // Compute points around base of cone.
               pNorm sn = cos(a) * va + sin(a) * vb;
               pCoor pt = surf + rad * sn;
 
