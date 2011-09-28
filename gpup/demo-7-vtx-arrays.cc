@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -195,7 +195,7 @@ World::render()
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
-                      cvar->name,cvar->var[0]);
+                      cvar->name,cvar->get_val());
 
 
   ogl_helper.fbprintf
@@ -261,7 +261,16 @@ World::render()
   //
   glBegin(GL_TRIANGLES);
 
-  // Specify vertices for a triangle.
+  /// Specify normal for triangle.
+  //
+  // Use cross product function (in coord.h) to find normal.
+  //
+  pNorm tri_norm = cross(pCoor(1.5,0,-3.2),pCoor(0,5,-5),pCoor(9,6,-9));
+  glNormal3fv(tri_norm);  // Set current normal.
+  // Note: pNorm, pVect, pCoor, and pColor objects can be used as
+  // arguments to OpenGL functions with names ending in 3fv.
+
+  /// Specify vertices for a triangle.
   //
   glVertex3f( 1.5, 0, -3.2 );
   glVertex3f( 0,   5, -5 );
@@ -287,7 +296,11 @@ World::render()
 
   if ( coords == NULL )
     {
-      // Declare a self-resizing stack for storing coordinates.
+      /// Initialize array coords with sphere's coordinates.
+      // 
+
+      // Declare a self-resizing stack for collecting coordinates.
+      // See code in include/misc.h.
       //
       PStack<float> sphere_coords;
 
@@ -301,9 +314,24 @@ World::render()
           const double slice_r0 = sin(eta),  slice_r1 = sin(eta1);
           const double delta_theta = delta_eta * slice_r1;
 
-          //  glBegin(GL_TRIANGLE_STRIP);
-          //  glColor3fv(lsu_spirit_gold);
+#if 0
+          /// Note: This code is not compiled.
+          //  This was the code used to send vertices to GL in earlier demos,
+          //  it's not needed now.
 
+          glBegin(GL_TRIANGLE_STRIP);
+          glColor3fv(lsu_spirit_gold);
+
+          glNormal3f( slice_r1, y1, 0);
+          glVertex3f( slice_r1, y1, 0);
+
+          glNormal3f( slice_r0 , y0, 0);
+          glVertex3f( slice_r0 , y0, 0);
+#endif
+
+          // Add vertex coordinates to array.
+          /// Note "+=" means append to array.
+          //
           sphere_coords += slice_r1;
           sphere_coords += y1;
           sphere_coords += 0;
@@ -311,16 +339,6 @@ World::render()
           sphere_coords += slice_r0;
           sphere_coords += y0;
           sphere_coords += 0;
-
-#if 0
-          // This was the code used to send vertices to GL in earlier demos.
-          //
-          glNormal3f( slice_r1, y1, 0);
-          glVertex3f( slice_r1, y1, 0);
-
-          glNormal3f( slice_r0 , y0, 0);
-          glVertex3f( slice_r0 , y0, 0);
-#endif
 
           for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
             {
@@ -347,13 +365,13 @@ World::render()
 
             }
 
-          //  glEnd();
-
         }
 
-      coords_size = sphere_coords.occ();
-      coords = sphere_coords.take_storage();
-    }
+        // Retrieve array size and pointer to array data.
+        //
+        coords_size = sphere_coords.occ();
+        coords = sphere_coords.take_storage();
+     }
 
   ///
   /// Send Vertices to OpenGL in One of Several Ways
