@@ -97,6 +97,7 @@ public:
   float opt_light_intensity;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
+  int slices; // Level of detail for sphere.
   pCoor sphere_location;
   float sphere_size;
 
@@ -119,6 +120,9 @@ World::init()
 
   sphere_location = pCoor(0,0,0);
   sphere_size = 1;
+
+  slices = 20;
+  variable_control.insert(slices,"Slices in Sphere");
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(sphere_size,"Sphere Size");
@@ -150,12 +154,17 @@ World::render()
   //
   frame_timer.frame_start();
 
-  glClearColor(0,0,0,0);
-  glClearDepth(1.0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+  // Reset Frame Buffer
+  //
+  glClearColor(0,0,0,0);  // Set clear color to black.
+  glClearDepth(1.0);      // Set clear distance to all-the-way-back.
+  // Use current clear settings to rest frame buffer.
+  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+  // Turn on z-test.
+  //
   glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LESS);
+  glDepthFunc(GL_LESS);     // FB written if z value to write < current z.
 
   glShadeModel(GL_SMOOTH);
   glEnable(GL_LIGHT0);
@@ -163,7 +172,6 @@ World::render()
 
   glEnable(GL_COLOR_MATERIAL);
   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
-  glNormal3f(0,0,1);
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
@@ -182,7 +190,7 @@ World::render()
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
-                      cvar->name,cvar->var[0]);
+                      cvar->name,cvar->get_val());
 
 
   const int win_width = ogl_helper.get_width();
@@ -211,6 +219,15 @@ World::render()
   //
   glBegin(GL_TRIANGLES);
 
+  /// Specify normal for triangle.
+  //
+  // Use cross product function (in coord.h) to find normal.
+  //
+  pNorm tri_norm = cross(pVect(0,5,-5),pVect(9,6,-0));
+  glNormal3fv(tri_norm);  // Set current normal.
+  // Note: pNorm, pVect, pCoor, and pColor objects can be used as
+  // arguments to OpenGL functions with names ending in 3fv.
+
   // Specify vertices for a triangle.
   //
   glVertex3f( 0, 0, 0 );
@@ -224,102 +241,116 @@ World::render()
   /// Paint a Sphere
   ///
 
+
+  // In sphere's coordinate space the sphere center is at the origin
+  // and its radius is one. Therefore we need to adjust the modelview
+  // matrix so that sphere is at the value of coordinate
+  // sphere_location and its radius is sphere_size.
+  //
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glTranslatef(sphere_location.x,sphere_location.y,sphere_location.z);
   glScalef(sphere_size,sphere_size,sphere_size);
 
-  glColor3ub( 0xf9, 0xb2, 0x37); // Red, Green, Blue
-
+  // Construct color objects using hex RGB codes. See coord.h.
+  //
   const pColor lsu_spirit_purple(0x580da6);
   const pColor lsu_spirit_gold(0xf9b237);
 
-  glDisable(GL_COLOR_MATERIAL);
-  glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,lsu_spirit_gold);
-  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,lsu_spirit_purple);
+  /// Start Sending Triangles
+  //
+  //  OpenGL state is now set up, start sending triangles!
 
-  //  glBegin(GL_TRIANGLES);
+  glBegin(GL_TRIANGLES);
 
-  const int slices = 20;
+  // Set current color.  This is carried with vertex.
+  //
+  glColor3fv(lsu_spirit_gold);
+
   const double delta_eta = M_PI / slices;
 
-  for ( double eta = 0; eta < M_PI - 0.0001 - delta_eta; eta += delta_eta )
+  // Outer (eta) Loop: Iterate over longitude (north-to-south).
+  // Inner (theta) Loop: Iterate over latitude (east-to-west)
+
+  for ( double eta0 = 0; eta0 < M_PI - 0.0001 - delta_eta; eta0 += delta_eta )
     {
-      const double eta1 = eta + delta_eta;
-      const float  y0 = cos(eta),        y1 = cos(eta1);
-      const double slice_r0 = sin(eta),  slice_r1 = sin(eta1);
+      const double eta1 = eta0 + delta_eta;
+      const float  y0 = cos(eta0),        y1 = cos(eta1);
+      const double slice_r0 = sin(eta0),  slice_r1 = sin(eta1);
       const double delta_theta = delta_eta * slice_r1;
-
-      glBegin(GL_TRIANGLE_STRIP);
-
-      glNormal3f( slice_r1, y1, 0);
-      glVertex3f( slice_r1, y1, 0);
-
-      glNormal3f( slice_r0 , y0, 0);
-      glVertex3f( slice_r0 , y0, 0);
 
       for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
         {
           const double theta1 = theta + delta_theta;
 
-#if 0
+          /// Triangle 1
+
+          // Vertex 1
           glNormal3f( slice_r1 * cos(theta), y1, slice_r1 * sin(theta) );
           glVertex3f( slice_r1 * cos(theta), y1, slice_r1 * sin(theta) );
 
+          // Vertex 2
           glNormal3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
+          glVertex3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
 
-          glVertex3f( slice_r0 * cos(theta),
-                      y0, slice_r0 * sin(theta) );
-#endif
-      
+          // Vertex 3      
           glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
           glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
 
+          /// Triangle 2
 
+          // Vertex 3      
+          glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
+          glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
+
+          // Vertex 2
+          glNormal3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
+          glVertex3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
+
+          // Vertex 4
           glNormal3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
           glVertex3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
 
-
         }
-
-      glEnd();
-
-      glEnable(GL_COLOR_MATERIAL);
-      glColor3ub(255,0,0);
-
-      const float rad = 0.1 * 2 * M_PI / slices;
-
-      for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
-        {
-          pVect norm( slice_r1 * cos(theta), y1, slice_r1 * sin(theta) );
-
-          glBegin(GL_TRIANGLE_FAN);
-          
-          pCoor surf = norm;
-          pCoor apex = 1.2 * norm;
-          double delta_a = 2 * M_PI / 10;
-
-          pVect va(-sin(theta),0,cos(theta));
-          pNorm vb(cos(theta)*cos(eta),-sin(eta),sin(theta)*cos(eta));
-
-          glVertex3fv(apex);
-
-          for ( float a = 0; a < 2 * M_PI; a += delta_a )
-            {
-              pNorm sn = cos(a) * va + sin(a) * vb;
-              pCoor pt = surf + rad * sn;
-
-              glNormal3fv(sn);
-              glVertex3fv(pt);
-            }
-
-          glEnd();
-        }
-
-      glDisable(GL_COLOR_MATERIAL);
     }
 
-  //  glEnd();
+  glEnd();
+
+  /// Efficiency of Code Tesselation (Above)
+  //
+  //  The code is inefficient for the following reasons:
+  //
+  //  * Trigonometric functions are re-computed.  The compiler may
+  //    realize that two nearby calls of sin(theta) will return the
+  //    same value, but don't bet on it.  Even so, they at least need
+  //    to be re-computed each frame. Instead the trig values (or better
+  //    the coordinates) should be saved in an array and re-used, only
+  //    to be recomputed if necessary, for example, if slices changes.
+  //
+  //  * There are vertices of six triangles at a single point (three
+  //    along one slice). It would be more efficient to compute and
+  //    emit a vertex once and share it. In demo-6 this is done using
+  //    the triangle strip feature.
+  //
+  //  * Even if vertex and normal coordinates were pre-computed, there
+  //    would still be substantial overhead in the individual function
+  //    calls (glVertex3f, glNormal3f).  To avoid this the OpenGL
+  //    vertex array feature is used.  This is done in demo-7.
+  //
+  //  * Even if vertices and normals are provided in arrays, they still
+  //    need to be sent from CPU to GPU each frame, even if there
+  //    is no change. To avoid this they can be stored on the GPU,
+  //    this is done using the OpenGL buffer objects feature. The
+  //    code in demo-7 uses buffer objects.
+  //
+  //  * Setting slices too low results in a sphere that looks like
+  //    a polyhedron, but setting it too high wastes CPU time.  The
+  //    appropriate value depends on the distance from the user.
+  //    With a geometry shader the CPU code can generate a sphere
+  //    with only a few slices, while the geometry shader code, which
+  //    runs on the GPU, can replace big triangles with multiple smaller
+  //    ones if the triangles are large in window space.  None of
+  //    the demos do that yet.
 
   glPopMatrix();
 
