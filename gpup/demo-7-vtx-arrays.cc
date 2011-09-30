@@ -449,7 +449,7 @@ World::render()
       // The intent is to keep chunks of storage on GPU where they
       // can be re-used.
 
-      // On first visit, set up a buffer object to hold coordinates.
+      // Set up or update a buffer object to hold coordinates.
       //
       if ( gpu_buffer_stale )
         {
