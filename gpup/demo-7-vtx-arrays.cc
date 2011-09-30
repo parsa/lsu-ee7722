@@ -98,11 +98,13 @@ public:
   pCoor light_location;
   float opt_light_intensity;
   GLuint gpu_buffer;
+  bool gpu_buffer_stale;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
   float *coords;
   int coords_size;
 
+  int opt_slices;
   pCoor sphere_location;
   float sphere_size;
 
@@ -124,6 +126,7 @@ World::init()
   frame_timer.work_unit_set("Steps / s");
   coords = NULL;
   gpu_buffer = 0;
+  gpu_buffer_stale = true;
 
   opt_method = 0;
   opt_recompute = true;
@@ -136,6 +139,8 @@ World::init()
 
   sphere_location = pCoor(0,0,-5);
   sphere_size = 5;
+  opt_slices = 20;
+  variable_control.insert(opt_slices,"Sphere Slices (level of detail)");
 
   opt_scene = false;
   opt_ambient = false;
@@ -304,8 +309,7 @@ World::render()
       //
       PStack<float> sphere_coords;
 
-      const int slices = 40;
-      const double delta_eta = M_PI / slices;
+      const double delta_eta = M_PI / opt_slices;
 
       for ( double eta = 0; eta < M_PI - 0.0001 - delta_eta; eta += delta_eta )
         {
@@ -314,28 +318,20 @@ World::render()
           const double slice_r0 = sin(eta),  slice_r1 = sin(eta1);
           const double delta_theta = delta_eta * slice_r1;
 
-#if 0
-          /// Note: This code is not compiled.
-          //  This was the code used to send vertices to GL in earlier demos,
-          //  it's not needed now.
-
-          glBegin(GL_TRIANGLE_STRIP);
-          glColor3fv(lsu_spirit_gold);
-
-          glNormal3f( slice_r1, y1, 0);
-          glVertex3f( slice_r1, y1, 0);
-
-          glNormal3f( slice_r0 , y0, 0);
-          glVertex3f( slice_r0 , y0, 0);
-#endif
-
-          // Add vertex coordinates to array.
           /// Note "+=" means append to array.
+
+          // Add first two vertices of triangle strip.
+          // Note that a vertex is added to list one coordinate at a time.
+          //
+
+          // Vertex 1
           //
           sphere_coords += slice_r1;
           sphere_coords += y1;
           sphere_coords += 0;
 
+          // Vertex 2
+          //
           sphere_coords += slice_r0;
           sphere_coords += y0;
           sphere_coords += 0;
@@ -344,38 +340,34 @@ World::render()
             {
               const double theta1 = theta + delta_theta;
 
+              // Vertex 3  (Used for three triangles.)
+              //
               sphere_coords += slice_r1 * cos(theta1);
               sphere_coords += y1;
               sphere_coords += slice_r1 * sin(theta1);
 
+              // Vertex 4  (Used for three triangles.)
+              //
               sphere_coords += slice_r0 * cos(theta1);
               sphere_coords += y0;
               sphere_coords += slice_r0 * sin(theta1);
-
-#if 0
-          // This was the code used to send vertices to GL in earlier demos.
-          //
-
-              glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
-              glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
-
-              glNormal3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
-              glVertex3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
-#endif
-
             }
 
         }
 
-        // Retrieve array size and pointer to array data.
-        //
-        coords_size = sphere_coords.occ();
-        coords = sphere_coords.take_storage();
-     }
+      // Move coordinates from sphere_coords object to array coords.
+      //
+      coords_size = sphere_coords.occ();
+      coords = sphere_coords.take_storage();  // Return storage. See misc.h
+    }
 
   ///
   /// Send Vertices to OpenGL in One of Several Ways
   ///
+
+  // Note: The data in coords is for multiple triangle strips (one
+  // for each eta). The code below assumes just one triangle strip,
+  // and so rendering will not be 100% correct.
 
   switch ( opt_method ) {
 
@@ -402,34 +394,48 @@ World::render()
     {
       /// Use Vertex Arrays
 
-      // Data managed as arrays, but arrays are sent to GPU every
-      // frame even though data doesn't change.
+      // Provide OpenGL with one array of vertices and one array of
+      // normals.  This avoids function-call and other overheads, and
+      // allows for efficient means of transferring large amounts
+      // of information.
 
-      // Specify pointer into array to use for normals.
-      //
-      glNormalPointer(GL_FLOAT,0,coords);
+      // With vertex arrays glBegin/glEnd is replaced by glDrawArrays...
+      //  glVertex is replaced by glVertexPointer and glEnableClientState.
 
-      // Specify that normals should come from an array.
-      //
-      glEnableClientState(GL_NORMAL_ARRAY);
 
-      // Ditto.
+      // Specify that vertices will come from an array.
       //
-      glVertexPointer(3,GL_FLOAT,3*sizeof(float),coords);
       glEnableClientState(GL_VERTEX_ARRAY);
 
-      // Specify color. Since it's not an array the same color
-      // will be used for all vertices, which is what we want.
-      // If we wanted to vary vertex colors we could have created
-      // and used a color array.
+      // Specify pointer to the array of vertices.
+      //
+      glVertexPointer(3,GL_FLOAT,3*sizeof(float),coords);
+      //
+      // Args: Number of dimensions, type, stride of vertex, array pointer.
+
+      // Ditto for normals.
+      //
+      glEnableClientState(GL_NORMAL_ARRAY);
+      glNormalPointer(GL_FLOAT,0,coords);
+      // Fewer arguments than glNormalPointer because normals always have
+      // three dimensions.
+
+      // Specify color without using an array.
+      //
+      // An array could have been used for colors too but that
+      // is not needed here because all vertices are the same color.
       //
       glColor3fv(lsu_spirit_gold);
 
       // Draw triangle strips using enabled arrays.
-      // Start at element 0, render a total of coords_size/3 vertices.
       //
       glDrawArrays(GL_TRIANGLE_STRIP,0,coords_size/3);
+      // Args:
+      //   Primitive, starting element (0 means first), number of vertices.
+      // Note: We could have rendered a sub-sequence of the arrays.
 
+      // Turn off arrays.
+      //
       glDisableClientState(GL_NORMAL_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);
       break;
@@ -439,15 +445,17 @@ World::render()
     {
       /// Use Buffer Objects
       //
-      // Data managed as an array, and sent to GPU just once.
+      // A buffer object is a chunk of storage managed by OpenGL.
+      // The intent is to keep chunks of storage on GPU where they
+      // can be re-used.
 
       // On first visit, set up a buffer object to hold coordinates.
       //
-      if ( gpu_buffer == 0 )
+      if ( gpu_buffer_stale )
         {
-          // Generate buffer id (name).
+          // Generate buffer id (name), if necessary.
           //
-          glGenBuffers(1,&gpu_buffer);
+          if ( !gpu_buffer ) glGenBuffers(1,&gpu_buffer);
 
           // Tell GL that subsequent array pointers refer to this buffer.
           //
@@ -457,13 +465,18 @@ World::render()
           //
           glBufferData
             (GL_ARRAY_BUFFER,
-             coords_size*sizeof(float),
-             coords,
-             GL_STATIC_DRAW);
+             coords_size*sizeof(float),  // Size
+             coords,                     // Pointer to data.
+             GL_STATIC_DRAW              // A hint about how data to be used.
+             );
 
           // Tell GL that subsequent array pointers refer to host storage.
           //
           glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+          // Indicate that we've updated the buffer.
+          //
+          gpu_buffer_stale = false;
         }
 
       // Tell GL that subsequent array pointers refer to this buffer.
@@ -492,6 +505,8 @@ World::render()
       // Tell GL that subsequent array pointers refer to host storage.
       //
       glBindBuffer(GL_ARRAY_BUFFER,0);
+      // Don't forget to do this, since it affects glVertexPointer and
+      // related calls.
 
       glDisableClientState(GL_NORMAL_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);
@@ -505,7 +520,7 @@ World::render()
 
   if ( opt_recompute )
     {
-      free( coords );  coords = NULL;
+      free( coords );  coords = NULL;  gpu_buffer_stale = true;
     }
 
   glPopMatrix();
@@ -533,6 +548,7 @@ World::cb_keyboard()
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
   const float move_amt = 0.4;
+  const int slices_prev = opt_slices;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -558,6 +574,12 @@ World::cb_keyboard()
   case '+':case '=': variable_control.adjust_higher(); break;
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
+
+  if ( opt_slices != slices_prev )
+    {
+      free(coords); coords = NULL;
+      gpu_buffer_stale = true;
+    }
 
   // Update eye_direction based on keyboard command.
   //
