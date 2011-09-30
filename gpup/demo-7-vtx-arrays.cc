@@ -464,11 +464,10 @@ World::render()
           // Copy data into buffer.
           //
           glBufferData
-            (GL_ARRAY_BUFFER,
-             coords_size*sizeof(float),  // Size
-             coords,                     // Pointer to data.
-             GL_STATIC_DRAW              // A hint about how data to be used.
-             );
+            (GL_ARRAY_BUFFER,           // Kind of buffer object.
+             coords_size*sizeof(float), // Amount of data (bytes) to copy.
+             coords,                    // Pointer to data to copy.
+             GL_STATIC_DRAW);           // Hint about who, when, how accessed.
 
           // Tell GL that subsequent array pointers refer to host storage.
           //
