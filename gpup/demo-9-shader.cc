@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Shaders
 
