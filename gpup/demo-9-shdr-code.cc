@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2009), GPU Programming
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Fragment Shader / Phong Shading Demonstration
 
@@ -8,6 +8,20 @@
 
 #version 150 compatibility
 
+vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
+void vs_ff_vertex(vec4 vtx);
+
+
+void
+vs_main_lighting()
+{
+  // Use custom lighting model.
+  //
+  vs_ff_vertex(gl_Vertex);
+  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
+  vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
+  gl_FrontColor = generic_lighting(vertex_e,gl_Color,normal_e);
+}
 
 void
 vs_ff_vertex(vec4 vtx)
@@ -42,19 +56,13 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   return new_color;
 }
 
-void
-vs_main_lighting()
-{
-  // Use custom lighting model.
-  //
-  vs_ff_vertex(gl_Vertex);
-  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
-  gl_FrontColor = generic_lighting(vertex_e,gl_Color,normal_e);
-}
-
-varying vec3 var_normal_e;
-varying vec4 var_vertex_e;
+#ifdef _VERTEX_SHADER_
+out vec3 var_normal_e;
+out vec4 var_vertex_e;
+#else
+in vec3 var_normal_e;
+in vec4 var_vertex_e;
+#endif
 
 #ifdef _VERTEX_SHADER_
 void
