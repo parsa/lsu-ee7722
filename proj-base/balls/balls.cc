@@ -1,10 +1,8 @@
-/// LSU EE 7700-1 (Spring 2010),  GPU Course
+/// LSU EE 4702-1 (Fall 2011),  GPU Programming
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
 // $Id:$
-
-/// This file set up for Spring 2010 Homework 4
 
 /// Purpose
 //
@@ -276,24 +274,34 @@ public:
   void constants_update();
 
   World& w;
-  float radius, radius_sq, radius_inv;
+
+  /// Static State
+  //
+  // Set when ball initialized.
+  //
+  float radius;
+  float radius_sq, radius_inv;  // Pre-computed based on radius.
   float density;
   float mass;
   float mass_inv;
   float fdt_to_do;
+  pColor color_natural;         // The ball's "real" color.
 
   float short_xrad_sq;
 
+  /// Dynamic State
+  //
   pCoor position;
   pVect velocity;
   pQuat orientation;
-  pVect omega;
-
-  pVect prev_velocity;
-  pVect prev_omega;
+  pVect omega;                  // Spin rate and axis.
 
   pColor color_event;           // Color based on a recent event.
-  pColor color_natural;         // The ball's "real" color.
+
+  /// Used For Calculation
+  //
+  pVect prev_velocity;
+  pVect prev_omega;
 
   pVect point_rot_vel(pNorm tact_dir);
   void apply_tan_force_dt(pNorm tact_dir, pNorm force_dir, double force_dt);
@@ -496,8 +504,6 @@ public:
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
 
-
-  /// Added for Spring 2010 Homework 4
   bool opt_cuda_prox;           // If true use cuda to compute proximity.
   int contact_pairs_proximity_check
   (int zidx, double lifetime_delta_t, bool verify);
@@ -1669,6 +1675,7 @@ Wheel::to_cuda()
       wheel.idx_stop = tl->idx + 1;
       if ( cuda_omega.elements == 0 ) cuda_omega.alloc(1);
       wheel.omega = cuda_omega.get_dev_addr();
+      cuda_omega.set_dev_addr_seen(0);
       TO_DEV(wheel);
     }
 
@@ -2504,8 +2511,6 @@ World::contact_pairs_proximity_check
 void
 World::cuda_contact_pairs_find()
 {
-  /// Added for Spring 2010 Homework 4
-
   /// Find pairs of phys that are in proximity: in contact now or may be so soon.
 
   // The pair list should include phys that may touch within
