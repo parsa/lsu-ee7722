@@ -242,7 +242,6 @@ public:
   int color_block; // Block number to use for coloring ball.
   int sm_idx;      // Index into CUDA shared memory array.
 
-  // Spring 2010 HW 4:
   int prox_check;               // Used for correctness verification.
   int z_idx;                    // This balls z-sort index.
 };
@@ -1002,7 +1001,15 @@ World::init()
         }
     }
 
-  if (false){
+
+  //
+  /// Debug Code
+  //
+  // The following code initializes ball positions for debugging
+  // a particular problem. That problem has been fixed, but the
+  // code remains in case its needed for debugging something else.
+  //
+  if ( false ){
     {
       Ball* const b = new Ball(this);
       b->position = pCoor(0,-r_short,40);
@@ -1474,7 +1481,7 @@ World::cpu_data_to_cuda()
   if ( ( data_location & DL_ALL_CUDA ) == DL_ALL_CUDA ) return false;
   data_location |= DL_ALL_CUDA;
 
-  // Copy CPU's phys information to arrays, in preparation for
+  // Copy CPU's physs information to arrays, in preparation for
   // transfer to CUDA.
   //
   for ( int idx=0; idx<cnt; idx++ )
@@ -3148,7 +3155,7 @@ World::cuda_schedule()
   // Sanity Check: Make sure phys scheduled in at most one
   // block per pass.
   //
-  for ( Phys_Iterator ball(physs); ball; ball++ ) ball->pass = -1;
+  for ( Phys_Iterator phys(physs); phys; phys++ ) phys->pass = -1;
   while ( Contact* const c = pair_check.iterate() )  
     {
       const int pass = c->pass;

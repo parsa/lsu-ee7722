@@ -1,4 +1,4 @@
-/// LSU EE 7700-1 (Spring 2010), GPU Microarchitecture
+/// LSU EE 4702-1 (Fall 2011), GPU Programming
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
