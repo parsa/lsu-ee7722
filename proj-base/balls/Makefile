@@ -8,19 +8,23 @@ CUDAPATH = /usr/local/cuda
 
 COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
 COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v \
-   -Xcompiler -Wno-unused-function -use_fast_math -keep
+   -Xcompiler -Wno-unused-function -use_fast_math
 OPTFLAGS = -O3
 
 CC = gcc
-#CXX = $(CUDAPATH)/bin/nvcc -L/usr/local/cuda/lib64 
 CXX = $(CUDAPATH)/bin/nvcc 
 
 .SUFFIXES: .cu .cuh
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing \
-  -Xcompiler -Wno-parentheses
+  -Xcompiler -Wno-parentheses 
 
-CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
+MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
+# Remove openmp, which doesn't play well with nvcc.
+MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
+
+CXXFLAGS = $(CFLAGS)  $(MAGICKCXX)
+
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
@@ -28,7 +32,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 default: balls
 
 .cc.o:
-	$(CXX) $(CFLAGS) -c $*.cc
+	$(CXX) $(CXXFLAGS) -c $*.cc
 
 .cu.o:
 	$(CXX) $(CFLAGS) -c $*.cu
@@ -38,6 +42,6 @@ balls-kernel.o: Makefile balls.cuh balls-kernel.cu
 
 
 balls: balls.cc shapes.h tiles.h Makefile balls.cuh balls-kernel.o
-	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc balls-kernel.o -o $@ $(LIBRARIES)
-	$(CXX) $(CFLAGS) $@.cc -o $@-debug balls-kernel.o $(LIBRARIES)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $@.cc balls-kernel.o -o $@ $(LIBRARIES)
+	$(CXX) $(CXXFLAGS) $@.cc -o $@-debug balls-kernel.o $(LIBRARIES)
 
