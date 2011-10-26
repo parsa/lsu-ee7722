@@ -2306,6 +2306,9 @@ World::time_step_cpu()
   //
   for ( Ball *ball; balls_iterate(ball); )
     {
+      // This code takes advantage of the fact that the platform axis
+      // is in the z direction and that its upper edge is at y=0.
+
       const pCoor pos(ball->position);
       if ( !platform_collision_possible(ball) ) continue;
       pCoor axis(platform_xmid,0,pos.z);
@@ -2346,7 +2349,11 @@ World::time_step_cpu()
           //
           pNorm tact_dir(axis,pos);
           if ( tact_dir.mag_sq <= ball->short_xrad_sq ) continue;
-          pball->position = axis + (pball->radius+platform_xrad) * tact_dir;
+          pball->position = axis +
+            ( platform_xrad
+              + ( tact_dir.magnitude < platform_xrad
+                  ? pball->radius : -pball->radius ) )
+            * tact_dir;
         }
 
       // Finish initializing platform ball, and call routine to
