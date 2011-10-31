@@ -63,74 +63,7 @@ pNorm mn(vec4 a, vec4 b) {return mn(b.xyz-a.xyz);}
 pNorm mn(float x, float y, float z){ return mn(vec3(x,y,z)); }
 
 
-
-///
-/// Shader for Shadows
-///
-
-//  To cast a shadow vertex shader code computes a shadow location
-//  based on the vertex and light locations, and the platform
-//  geometry (a half cylinder).  The shadow location is used only
-//  to write the stencil buffer.
-
-uniform vec4 axis_e;
-uniform vec3 axis_ne;
-uniform float platform_xrad_sq;
-uniform int light_num;
 uniform int opt_color_events;
-
-void
-vs_main_shadow()
-{
-  /// Compute coordinate of shadow cast by vertex.
-  //
-  //  The shadow will be used to write the stencil buffer,
-  //  so there is no need to compute the lighted color.
-
-  // Find eye-space axis vector (of the platform) and the vertex coordinate.
-  //
-  vec3 axis_exy = deaxis( axis_e, axis_ne );
-  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
-
-  // Extract (project) only x and y coordinates of vertex.
-  //
-  vec3 vertex_exy = deaxis( vertex_e, axis_ne );
-
-  vec4 light_pos = gl_LightSource[light_num].position;
-  vec3 v_axis_to_vtx_exy = vertex_exy - axis_exy;
-  vec3 v_light_to_vtx = vertex_e.xyz - light_pos.xyz;
-  vec3 v_light_to_vtx_xy = deaxis( v_light_to_vtx, axis_ne );
-
-  // Set up quadratic equation coefficients, to solve for shadow location.
-  //
-  float a = dot(v_light_to_vtx_xy,v_light_to_vtx_xy);
-  float b = 2.0 * dot( v_axis_to_vtx_exy, v_light_to_vtx_xy );
-  float c = dot( v_axis_to_vtx_exy, v_axis_to_vtx_exy ) - platform_xrad_sq;
-  float radical = b * b - 4.0 * a * c;
-  if ( radical < 0.0 ) return;
-
-  //
-  // Compute shadow location, transform to clip space, and we're done.
-  //
-
-  float t = ( -b + sqrt( radical ) ) / ( 2.0 * a );
-
-  // Use this position if shadow not visible.
-  //
-  gl_Position = vec4(0,0,-1000,1);
-
-  // Return if ball is very close to, or on other side of, the platform.
-  //
-  if ( t < 0.001 ) return;
-
-  vec4 shadow_e;
-
-  shadow_e.xyz = vertex_e.xyz + t * v_light_to_vtx;
-  shadow_e.w = 1.0;
-
-  gl_Position = gl_ProjectionMatrix * shadow_e;
-}
-
 
 ///
 /// Shader For Reflections
