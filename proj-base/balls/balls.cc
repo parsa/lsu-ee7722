@@ -233,7 +233,7 @@ public:
   // pass does not indicate that it's the only pass it can be in.
   //
   PStack<int> proximity;     // Nearby phys objects.
-  int proximity_cnt;         // S10 HW3: Number of nearby physs.
+  int proximity_cnt;
   int pass;
   int pass_todo;
   int rounds;
@@ -3571,7 +3571,7 @@ World::render_shadow_volumes(pCoor light_pos)
   glColorMask(false,false,false,false);
   glDepthMask(false);
 
-  // Don't waste time computing lighting.
+  // Don't waste time computing lighting and textures.
   //
   glDisable(GL_LIGHTING);
   glDisable(GL_TEXTURE_2D);
@@ -3580,11 +3580,29 @@ World::render_shadow_volumes(pCoor light_pos)
   // entering the shadow volume, minus 1 for leaving the shadow
   // volume.
   //
+
   glEnable(GL_STENCIL_TEST);
-  // sfail, dfail, dpass
-  glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
-  glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
+
+  // Have stencil test always pass. (Because in this step we are writing
+  // the stencil buffer, not using a stencil value.)
+  //
   glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
+
+  // Increment stencil buffer for front, decrement for back.
+  //
+  // The stencil buffer is written only if the depth test passes. (If
+  // the depth test fails that means the face of the shadow volume is
+  // behind the object.)
+  //
+  // Note that if the front face of the primitive is facing the user
+  // that means we are entering the shadow volume, and that if the
+  // back space is written that means we are leaving the shadow
+  // volume. (Front and back are determined by the ordering of the
+  // vertices making up the primitive.)
+  //
+  //                  face      s fail,  d fail,  d pass
+  glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP);
+  glStencilOpSeparate(GL_BACK,  GL_KEEP, GL_KEEP, GL_DECR_WRAP);
 
   if ( opt_shadow_volumes )
     {
@@ -4041,12 +4059,14 @@ World::render()
 
       // Use stencil test to prevent writes to shaded areas.
       //
-      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+      //  Test passes if  STENCIL_VAL & -1  =  0 & -1
+      //    or simply     STENCIL_VAL = 0.
       glStencilFunc(GL_EQUAL,0,-1); // ref, mask
+      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP); // Don't change stencil buffer.
 
       // Allow pixels to be re-written.
       //
-      glDepthFunc(GL_LEQUAL);
+      glDepthFunc(GL_LEQUAL);  // Depth by default is GL_LESS.
 
       // Render, but don't do occlusion test again.
       //
