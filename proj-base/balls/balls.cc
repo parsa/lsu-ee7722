@@ -758,8 +758,6 @@ public:
   int round_count_prev;        // Total number of rounds in all pairs passes.
   bool cuda_constants_stale;   // When true, need to update constants.
 
-  /// HW4 CODE
-
   pCUDA_Memory<int> z_sort_indices;
   pCUDA_Memory<float> z_sort_z_max;
   pCUDA_Memory<uint8_t> cuda_prox;
@@ -1380,7 +1378,6 @@ World::pt_sched_start()
   //
   cuda_data_to_cpu( DL_PO | DL_CV );
 
-  // Spring 2010 HW 3
   if ( opt_cuda_prox )
     {
       cpu_data_to_cuda();  // In case new balls were added.
@@ -2573,7 +2570,6 @@ World::cuda_contact_pairs_find()
 
   // Block size chosen to maximize multiprocessor utilization
   // or is set to 32, whichever is larger.
-  // HW 4 note: The block size chosen here may not be the best.
   //
   dim3 dim_grid, dim_block;
   const int plat_block_size_1pmp =
@@ -3920,7 +3916,7 @@ World::render()
                       cvar->name,cvar->get_val());
 
 
-  ogl_helper.fbprintf("F2010 HW4: CUDA Prox %s ('F4' to change) "
+  ogl_helper.fbprintf("CUDA Prox %s ('F4' to change) "
                       "CPU test/ball: %.3f total %d,  Full %d\n",
                       opt_cuda_prox ? "On" : BLINK("Off","   "),
                       double(prox_test_per_ball_prev) / physs.occ(),
