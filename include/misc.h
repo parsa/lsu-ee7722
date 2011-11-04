@@ -558,6 +558,8 @@ public:
   int key_order(uint k1, uint k2)
   { return k1 > k2 ? 1 : k1 == k2 ? 0 : -1; }
   int key_order(const char *k1, const char *k2){ return strcmp(k1,k2); }
+  int key_order(float k1, float k2){ return k1>k2 ? 1 : k1==k2 ? 0 : -1;}
+  int key_order(double k1, double k2){ return k1>k2 ? 1 : k1==k2 ? 0 : -1;}
 
   Data get_eq(Key k)
   {
@@ -673,6 +675,7 @@ public:
 
   typedef int (*Comp_Function)(const void*,const void*);
   Comp_Function get_comp(double *dummy){ return comp_num; }
+  Comp_Function get_comp(float *dummy){ return comp_num; }
   Comp_Function get_comp(uint *dummy){ return comp_num; }
   Comp_Function get_comp(int32_t *dummy){ return comp_num; }
   Comp_Function get_comp(int64_t *dummy){ return comp_num; }
