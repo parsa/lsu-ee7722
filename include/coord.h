@@ -17,6 +17,8 @@
 #include <math.h>
 #include "misc.h"
 
+#define SQ(x) ((x)*(x))
+
 class pMatrix;
 class pCoor;
 class pColor;
@@ -25,7 +27,9 @@ inline pCoor mult_MC(pMatrix& m, pCoor c);
 inline void pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2);
 pVect cross(pCoor a, pCoor b, pCoor c);
 pVect cross(pVect a, pVect b);
-double dot(pVect a, pVect b);
+float dot(pVect a, pVect b);
+float dot(pVect a);
+double dotd(pVect a, pVect b);
 
 class pCoor {
 public:
@@ -103,6 +107,12 @@ public:
     rc(3,2) = -1;
   }
 
+  void set_transpose3x3(pMatrix m)
+  {
+    for ( int r=0; r<3; r++ )
+      for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
+  }
+
 #if 0
   void apply_translation(pVect displ);
 
@@ -126,6 +136,9 @@ public:
     float* const row = row_get(row_num);
     return pCoor(row[0],row[1],row[2],row[3]);
   }
+
+  // Return first three elements of column as a vector.
+  pVect cv(int col);
 
   void row_swap(int r1, int r2)
   {
@@ -188,6 +201,7 @@ public:
   pVect(){};
   pVect(pCoor c):x(c.x),y(c.y),z(c.z){};
   pVect(float x, float y, float z):x(x),y(y),z(z){};
+  pVect(float *a):x(a[0]),y(a[1]),z(a[2]){};
   pVect(pCoor from, pCoor to)
   {
     x = to.x - from.x;
@@ -202,7 +216,20 @@ public:
   /*  float *v() {return &x;}  */
   //  operator float*() const { return v(); }
   operator const float*() const { return &x; }
+  float elt(int idx) const { return (&x)[idx]; }
 
+  pVect mask(int8_t components) const
+  {
+    return pVect( components & 4 ? x : 0.0f,
+                  components & 2 ? y : 0.0f,
+                  components & 1 ? z : 0.0f );
+  }
+  pVect sign_mask(int8_t components) const
+  {
+    return pVect( components & 4 ? x : -x,
+                  components & 2 ? y : -y,
+                  components & 1 ? z : -z );
+  }
 
   float normalize()
   {
@@ -240,10 +267,11 @@ public:
   inline pVect operator - (void){ return pVect(-x,-y,-z); }
   inline pVect operator - (pVect v){ return pVect(x-v.x,y-v.y,z-v.z); }
 #endif
-  float mag() const { return sqrt( dot(*this,*this) ); }
-  float mag_xy() const { return sqrt( x*x + y*y ); }
-  float mag_xz() const { return sqrt( x*x + z*z ); }
-  float mag_yz() const { return sqrt( y*y + z*z ); }
+  float mag() const { return sqrtf( mag_sq() ); }
+  float mag_sq() const { return dot(*this,*this); }
+  float mag_xy() const { return sqrtf( x*x + y*y ); }
+  float mag_xz() const { return sqrtf( x*x + z*z ); }
+  float mag_yz() const { return sqrtf( y*y + z*z ); }
 
   float x, y, z;
 };
@@ -272,10 +300,15 @@ inline pColor operator * (pColor c, pColor d)
   return pColor(c.r*d.r, c.g*d.g, c.b*d.b, c.a);
 }
 
-inline double dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
+inline float dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
+inline double dotd(pVect a, pVect b)
+{return double(a.x) * b.x + double(a.y) * b.y + double(a.z) * b.z;}
 
-double dot(pCoor a, pCoor b)
+float dot(pCoor a, pCoor b)
 {return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;}
+double dotd(pCoor a, pCoor b)
+{return double(a.x) * b.x + double(a.y) * b.y + double(a.z) * b.z
+    + double(a.w) * b.w;}
 
 pVect cross(pVect a, pVect b)
 {
@@ -302,11 +335,16 @@ pangle(pCoor a, pCoor b, pCoor c)
   return pangle(pVect(b,a),pVect(b,c));
 }
 
+pVect pMatrix::cv(int col)
+{ return pVect(rc_get(0,col),rc_get(1,col),rc_get(2,col)); }
 
 pCoor mult_MC(pMatrix& m, pCoor c)
 {
   return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
 }
+
+pVect mult_transpose_MV(pMatrix m, pVect v)
+{ return pVect( dot(m.cv(0),v), dot(m.cv(1),v), dot(m.cv(2),v));}
 
 inline void
 pCoor::add_vector(pVect v)
@@ -333,11 +371,21 @@ inline pVect operator * (pVect v, float s){return pVect(s,v); }
 inline pVect operator * (float s,pVect v){return pVect(s,v); }
 inline pVect operator * (pVect v,pVect q)
 {return pVect(v.x*q.x,v.y*q.y,v.z*q.z);}
+inline pVect operator / (pVect v,pVect q)
+{return pVect(v.x/q.x,v.y/q.y,v.z/q.z);}
+inline pVect operator / (float f,pVect q)
+{return pVect(f/q.x,f/q.y,f/q.z);}
 inline pVect operator / (pVect v, float f)
 {
   const float finv = 1.0 / f;
   return pVect(v.x*finv,v.y*finv,v.z*finv);
 }
+
+inline pVect fabs(pVect v){ return pVect(fabs(v.x),fabs(v.y),fabs(v.z)); }
+inline float min(pVect v){ return min(min(v.x,v.y),v.z); }
+inline float max(pVect v){ return max(max(v.x,v.y),v.z); }
+inline float sum(pVect v){ return v.x+v.y+v.z; }
+
 inline pMatrix operator * (pMatrix m1, pMatrix m2){ return pMatrix(m1,m2); }
 
 class pNorm : public pVect {
@@ -350,24 +398,24 @@ public:
   void set(pVect v)
   {
     mag_sq = dot(v,v);
-    magnitude = sqrt(mag_sq);
+    magnitude = sqrtf(mag_sq);
     pVect v2 = magnitude == 0 ? pVect(0,0,0) : v / magnitude;
     pVect::set(v2);
   }
   void operator = (pVect v) { set(v); }
-  double magnitude;
-  double mag_sq;
+  float magnitude;
+  float mag_sq;
 };
 
 
 class pQuat {
 public:
   pQuat(){}
-  pQuat(pNorm axis, double angle){ set(axis,angle); }
-  void set(pNorm axis, double angle)
+  pQuat(pNorm axis, float angle){ set(axis,angle); }
+  void set(pNorm axis, float angle)
   {
-    w = cos(angle/2);
-    v = sin(angle/2) * axis;
+    w = cosf(angle/2);
+    v = sinf(angle/2) * axis;
   }
   pVect v;
   float w;
@@ -423,22 +471,6 @@ pMatrix::set_translation(float x, float y, float z)
   rc(3,3) = 1;
 }
 
-#if 0
-void
-pMatrix::apply_translation(pVect pos)
-{
-  pMatrix mt; mt.set_translation(pos);
-  apply(mt);
-}
-
-
-void
-pMatrix::apply_rotation(pVect u, float theta)
-{
-    pMatrix mt; mt.set_rotation(u,theta);
-    apply(mt);
-}
-#endif
 void
 pMatrix::local_rotation(pVect u, float theta)
 {
