@@ -543,7 +543,7 @@ public:
 
   // Time in simulated world.
   //
-  double world_time;
+  double world_time, last_frame_time;
 
   // Physical objects (Balls, Tiles, etc.) being Simulated
   //
@@ -578,6 +578,7 @@ public:
 
   void ball_init();
   void benchmark_setup(int tiers=1);
+  void setup_debug();
   void setup_staircase();
   void setup_brick_wall(float max_y = -5);
   void setup_tower(float base, int layers, bool balls);
@@ -850,7 +851,7 @@ World::init()
   opt_block_size = 128;
 
   frame_timer.work_unit_set("Steps / s");
-  world_time = 0;
+  last_frame_time = world_time = 0;
   opt_gravity_accel = 20;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
@@ -999,28 +1000,6 @@ World::init()
   if ( wheel )
     wheel->init(pCoor(platform_xrad*0.2,-10,0), pVect(0,0,-10),3,8);
 
-  if(0){
-    //  Use tiles to construct a staircase.
-    //
-    const int step_count = 10;
-    const float x2 = platform_xmax - 0.1 * platform_xrad;
-    const float x1 = platform_xmid + 0.1 * platform_xrad;
-    const float step_size = ( x2 - x1 ) / step_count;
-    const pVect step_hor(step_size,0,0);
-    const pVect step_ver(0,step_size,0);
-    const pVect step_wid(0,0,5);
-    const pCoor step_start(x1,-platform_xrad*0.9,-50);
-    pColor step_color(0.5,0.5,0.5);
-    for ( int i=0; i<step_count; i++ )
-      {
-        const pCoor step_ll = step_start + i * ( step_hor + step_ver );
-        tile_manager.new_tile(step_ll,step_hor,step_wid,step_color);
-        tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
-      }
-
-    variables_update();
-  }
-
   if (false)
     {
       // Place barriers at either end of platform.
@@ -1083,20 +1062,6 @@ World::init()
 
   if ( false )
     {
-      Ball *b = new Ball(this);
-      b->position = pCoor(0,-r_short,48);
-      b->velocity = pVect(0,0,0);
-      b->omega = pVect(0,6,0);
-      physs += b;
-      b = new Ball(this);
-      b->position = pCoor(0,-r_short+3*opt_ball_radius,48);
-      b->velocity = pVect(0,0,0);
-      b->omega = pVect(0,1,0);
-      physs += b;
-    }
-
-  if ( false )
-    {
       // Ramp.
       pCoor ramp_pos(-10,-55,platform_zmax-30);
       Box* const ramp = 
@@ -1134,6 +1099,15 @@ World::setup_staircase()
   b->velocity = pVect(0,0,0);
   physs += b;
   variables_update();
+}
+
+void
+World::setup_debug()
+{
+  // Setup scene needed to debug something.
+  all_remove();
+  pCoor corner(-1,-0.9*platform_xrad,platform_zmax-4);
+  Box* const b = box_manager.new_box(corner,pVect(2,4,8),color_green_yellow);
 }
 
 void
@@ -2906,7 +2880,9 @@ World::time_step_cpu()
       int inside = 0;
       PStack<int> ou;
       float pen_dists[8];
-      PStack<SectTT> sects;
+      PStack<SectTT> psects;
+      float min_pd = 0;  // For vertices between ends.
+      float max_pd = 0;
 
       // Find vertices that are under the platform.
       //
@@ -2914,24 +2890,29 @@ World::time_step_cpu()
         {
           const int v_bit = 1 << v;
           pCoor pos = box->vertices[v];
-          if ( pos.y > 0 ) continue;
+          if ( pos.y > 0 ) { pen_dists[v] = 0; continue; }
           pCoor axis(platform_xmid,0,pos.z);
           pNorm tact_dir(axis,pos);
           const float pen_dist = tact_dir.magnitude - platform_xrad;
           pen_dists[v] = pen_dist;
-          if ( pos.z <= platform_zmin || pos.z >= platform_zmax )
+          if ( pos.z < platform_zmin || pos.z > platform_zmax )
             {
               if ( pen_dist > 0 ) ou += v; 
               continue;
             }
+          set_min(min_pd,pen_dist);
+          set_max(max_pd,pen_dist);
           if ( pen_dist > 1 ) continue;
           inside |= v_bit;
           if ( pen_dist <= 0 ) continue;
-          SectTT* const sect = sects.pushi();
+          SectTT* const sect = psects.pushi();
           sect->start = pos;
           sect->dir = tact_dir;
           sect->t_start = pen_dist;
         }
+
+      const bool object_inside = max_pd < -min_pd;
+      if ( !object_inside ) continue;
 
       // Examine vertices that are off the edge of the platform (in the
       // z direction), to see if an adjoining edge intersects the platform
@@ -2963,19 +2944,21 @@ World::time_step_cpu()
               // Compute the contact point at penetration distance.
               //
               const float z_len = fabs(v_z - pos_in.z);
+              if ( z_len < 0.0001 ) continue;
               const float scale = outside_z_len / z_len;
               pVect to_inside(pos,pos_in);
               pCoor tact = pos + scale * to_inside;
               const float pen_tact = pen_dist_out + scale * pen_len;
               if ( pen_tact <= 0 ) continue;
-              SectTT* const sect = sects.pushi();
-              pNorm dir = cross(pVect(-tact.y,tact.x,0),to_inside);
+              SectTT* const sect = psects.pushi();
               sect->start = tact;
               sect->t_start = pen_tact;
+              pNorm dir = cross(to_inside,pVect(-tact.y,tact.x,0));
+              sect->dir = pen_len >= 0 ? pNorm(tact.x,tact.y,0) : dir;
             }
         }
 
-      while ( SectTT* const sect = sects.iterate() )
+      while ( SectTT* const sect = psects.iterate() )
         {
           pCoor pos = sect->start;
           pVect tact_dir = sect->dir;
@@ -2991,7 +2974,7 @@ World::time_step_cpu()
           box->apply_force_dt(pos, - appr_force_dt * tact_dir );
         }
 
-      while ( SectTT* const sect = sects.iterate() )
+      while ( SectTT* const sect = psects.iterate() )
         {
           pCoor pos = sect->start;
           pVect tact_dir = sect->dir;
@@ -4701,11 +4684,11 @@ World::render()
 
   const double time_now = time_wall_fp();
 
-  if ( opt_pause || world_time == 0 )
+  if ( opt_pause || last_frame_time == 0 )
     {
       /// Don't change simulation state.
       //
-      world_time = time_now;
+      last_frame_time = time_now;
     }
   else
     {
@@ -4717,9 +4700,9 @@ World::render()
 
       // Advance simulation state by wall clock time.
       //
-      const double elapsed_time = time_now - world_time;
+      const double elapsed_time = time_now - last_frame_time;
       const int iter_limit =
-        min( opt_time_step_factor * 3, int ( 0.5 + elapsed_time / delta_t));
+        int( min( opt_time_step_factor * 3.0, 0.5 + elapsed_time / delta_t));
       for ( int iter=0; iter < iter_limit; iter++ )
         {
           if ( opt_physics_method == GP_cpu )
@@ -4729,6 +4712,7 @@ World::render()
 
           world_time += delta_t;
         }
+      last_frame_time = time_now;
       frame_timer.work_amt_set(iter_limit);
     }
 
@@ -5140,6 +5124,7 @@ World::cb_keyboard()
       opt_friction_coeff = 0.0001;
       break;
     }
+  case '0': setup_debug(); break;
   case '1': setup_brick_wall(-5); break;
   case '!': setup_brick_wall(20); break;
   case '2': setup_tower(8,40,false); break;
