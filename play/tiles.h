@@ -87,6 +87,7 @@ public:
   void render_shadow_volume(pCoor light_pos);
   Tile* new_tile(pCoor ll, pVect up, pVect rt, pColor color);
   Tile* new_tile(pCoor ll, pVect up, pVect rt);
+  void rebuild();
   Tile* iterate();
   int occ() { return tiles.occ(); }
 
@@ -119,6 +120,14 @@ Tile_Manager::iterate()
 {
   Tile** const tp = tiles.iterate();
   return tp ? *tp : NULL;
+}
+
+void
+Tile_Manager::rebuild()
+{
+  tiles.reset();
+  for ( Phys_Iterator phys(*phys_list); phys; phys++ )
+    if ( Tile* const t = TILE(phys) ) tiles += t;
 }
 
 void
