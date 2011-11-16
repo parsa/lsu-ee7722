@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Spring 2010), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Spring 2011), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -265,13 +265,13 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 class Cone {
 public:
   Cone(){};
-  void render(pCoor base, float radius, pVect to_apex)
+  void render(pCoor base, float radius, pVect to_apex, float apex_radius_frac=0.1)
   {
     const int sides = 10;
     const double delta_theta = 2 * M_PI / sides;
     const double base_radius = 1;
-    const double apex_radius = 0.1;
     const double apex_height = 1;
+    const double apex_radius = apex_radius_frac;
     const double alpha = atan2(apex_height,base_radius-apex_radius);
     const double vec_z = sin(alpha);
     const float to_height = to_apex.mag();
