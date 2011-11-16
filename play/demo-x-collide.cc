@@ -1157,7 +1157,7 @@ World::setup_brick_wall(float max_y)
   const float pitch_factor = 1.5;
   const float pitch = block_diag.z * pitch_factor;
   pVect block_diag_long
-    (block_width,block_width, block_width*((pitch_factor*0.5)));
+    (block_diag.x,block_width, block_width*((pitch_factor*0.5)));
 
   for ( int layer = 0; block_base.y < max_y;
         layer++, block_base.y += block_diag.y )
@@ -2250,6 +2250,7 @@ void World::all_remove()
       Phys* const phys = physs.pop();
       delete phys;
     }
+  tile_manager.rebuild();
 }
 
 // Remove all but one ball.
@@ -2968,9 +2969,8 @@ World::time_step_cpu()
               const float pen_tact = pen_dist_out + scale * pen_len;
               if ( pen_tact <= 0 ) continue;
               SectTT* const sect = sects.pushi();
-              pNorm dir = cross(pVect(tact.y,tact.x,0),to_inside);
+              pNorm dir = cross(pVect(-tact.y,tact.x,0),to_inside);
               sect->start = tact;
-              sect->dir = dir.y < 0 ? dir : -dir;
               sect->t_start = pen_tact;
             }
         }
@@ -4836,11 +4836,11 @@ World::render()
 
   Phys* const phys = phys_last();
   ogl_helper.fbprintf
-    ("Balls %4d (%4d/%4d)  Tiles %3d  Last Ball Pos  "
+    ("Objects %4d (%4d/%4d)  Boxes %3d  Last Object Pos  "
      "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
      physs.occ(), 
      physs.occ() - physs_occluded, physs_occluded,
-     tile_manager.occ(),
+     box_manager.occ(),
      phys->position.x,phys->position.y,phys->position.z,
      phys->velocity.x,phys->velocity.y,phys->velocity.z,
      tri_count);
