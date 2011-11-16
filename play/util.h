@@ -35,7 +35,7 @@ pError_Exit()
 }
 
 inline void
-pError_Msg(char *msg)
+pError_Msg(const char *msg)
 {
   fprintf(stderr,"User Error: %s\n",msg);
   pError_Exit();
