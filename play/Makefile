@@ -2,7 +2,6 @@ INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I../include
 LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
-CUDAPATH2 = /usr/local/cuda23
 CUDAPATH2 = /usr/local/cuda-2.3
 DECUDA = /home/faculty/koppel/lbuild/decuda-0.4.2/decuda
 LNVDIS = /home/faculty/koppel/lbuild/nv50dis/nvdis
@@ -22,8 +21,14 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 .SUFFIXES: .cu .cuh
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g -O3  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g -O3  -Xcompiler -Wno-strict-aliasing \
+  -Xcompiler -Wno-parentheses 
+
+MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
+# Remove openmp, which doesn't play well with nvcc.
+MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
+CXXFLAGS = $(CFLAGS)  $(MAGICKCXX)
+
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
@@ -31,15 +36,12 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 default: demo-x-collide cube4
 
 .cc.o:
-	$(CXX) $(CFLAGS) -c $*.cc
+	$(CXX) $(CXXFLAGS) -c $*.cc
 
 .cu.o:
 	$(CXX) $(CFLAGS) -c $*.cu
 	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
-	$(LNVDIS) $*.cubin > $*.cubin.ptx
-	$(CUDAPATH2)/bin/nvcc $(CFLAGS) -cubin $*.cu -o foo.cubin
-	$(DECUDA) -p -o $*.cubin.ptx foo.cubin
-
+	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx
 
 cube6.o: Makefile ../include/coord.h ../include/util.h shader.h 
 cube5.o: Makefile coord.h util.h shader.h 
@@ -59,8 +61,6 @@ cube5: cube5.o cube5_shader.s
 cube4.o: Makefile coord.h util.h shader.h
 
 cube4: cube4.o cube4_vshader.cc
-	# cgc -profile vp40 -oglsl -entry vs_main_circle -o cube4_vshader.s \
-	 # cube4_vshader.cc
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 xcube4.o: Makefile coord.h util.h shader.h
@@ -81,7 +81,7 @@ cube: cube.o
 
 demo-x-collide.o: Makefile ../include/coord.h ../include/util.h ../include/shader.h 
 demo-x-collide.o: demo-x-collide.cc shapes.h demo-x-kernel.cu demo-x.cuh
-demo-x-collide.o: tiles.h
+demo-x-collide.o: tiles.h boxes.h
 
 demo-x-kernel.o: Makefile demo-x.cuh demo-x-kernel.cu demo-x-collide.cc
 
