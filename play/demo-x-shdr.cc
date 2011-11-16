@@ -352,7 +352,7 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, int options)
       (vertex_e, color, normal_e, new_color_f, new_color_b, spec_color,
        1, both_sides);
 
-  if ( true )
+  if ( false )
     {
       gl_FrontColor.rgb = new_color_f.rgb + spec_color.rgb;
       gl_FrontColor.a = new_color_f.a;
