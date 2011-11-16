@@ -13,7 +13,7 @@
 #ifndef DEMO_X_CUH
 #define DEMO_X_CUH
 
-enum Phys_Type { PT_Unset =0, PT_Ball=1, PT_Tile=2, PT_ENUM_SIZE=3 };
+enum Phys_Type { PT_Unset =0, PT_Ball=1, PT_Tile=2, PT_Box=3, PT_ENUM_SIZE=4 };
 
 
 typedef ushort2 SM_Idx2;

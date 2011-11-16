@@ -1,4 +1,4 @@
-/// LSU EE 7700-2 (Spring 2011), GPU Microarchitecture
+/// LSU EE 4702-1 (Spring 2011), GPU Programming
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -11,21 +11,21 @@
 
 /// What Code Does
 
-//  Simulates balls bouncing on a half-cylinder platform with
-//    a water wheel and some steps.
+//  Simulates balls and boxes bouncing on a half-cylinder platform.
+//    Scenes with a brick wall, tower, and staircase can be set up.
 
 //  Features
 
-//    Ball friction and angular momentum modeled.
+//    Ball and box friction and angular momentum modeled.
 
-//    Physics computed by CPU or by GPU/CUDA (user selectable).
+//    Physics computed by CPU or by GPU/CUDA (user selectable). BROKEN
 //      Demonstrates use of CUDA for GPU physics, also use of
 //      CPU multi-threading (currently only in conjunction with CUDA).
 
-//    Balls cast shadows on platform:
+//    Objects cast shadows on platform:
 //      Demonstrates use of stencils and shadow volumes.
 
-//    Ball reflections visible on mirrored tiles.
+//    Object reflections visible on mirrored tiles.
 //      Demonstrates stencils, blending, vertex, and geometry shaders.
 //      Vertex shader computes reflection locations (> 1 per vertex).
 //      Geometry shader emits triangles for all reflection points.
@@ -45,9 +45,9 @@
  //   Will move object or push ball, depending on mode:
  //   'e': Move eye.
  //   'l': Move light.
- //   'b': Move ball. (Change position but not velocity.)
- //   'D': Move ball drip location.
- //   'B': Push ball. (Add velocity.)
+ //   'b': Move object. (Change position but not velocity.)
+ //   'D': Move object drip location.
+ //   'B': Push object. (Add velocity.)
  //
  /// Eye Direction
  //   Home, End, Delete, Insert
@@ -62,11 +62,17 @@
  //  'p'    Pause simulation. (Press again to resume.)
  //  'a'    Switch physics method (CPU to GPU/CUDA).
 
- //  'd'    Toggle dripping of balls.
+ //  'd'    Toggle dripping of objects.
+ //  'j'    Toggle between dripping boxes and balls.
  //  'x'    Toggle shower of balls.
  //  'X'    Release one pair of balls.
+
  //  't'    Run 5-tier-of-balls benchmark.
  //  'T'    Run 1-tier-of-balls benchmark.
+ //  '1'    Set up brick wall scene. (Also '1')
+ //  '2'    Set up tower scene.
+ //  '3'    Set up stacked plates scene.
+ //  '4'    Set up staircase scene.
  //  'R'    Remove all but one ball.
 
  //  'm'    Toggle reflections on mirror tiles.
@@ -74,8 +80,11 @@
  //  'W'    Toggle visibility of shadow volumes.
  //  'n'    Toggle visibility of platform normals.
 
- //  's'    Stop balls linear motion.
- //  'S'    Stop balls rotational motion.
+ //  'o'    Toggle visibility of box/box intersections. (Compile with -D TUNE).
+ //  'q'    Toggle visibility of boxes.
+
+ //  's'    Stop objects linear motion.
+ //  'S'    Stop objects rotational motion.
 
  //  'c'    Use colors to show number of reflected points, and other info.
  //  'M'    Switch between different shortcuts in computing reflections.
@@ -193,6 +202,8 @@ public:
   ({Phys* const _p = p; _p->phys_type == PT_Ball ? (Ball*) _p : NULL;})
 #define TILE(p) \
   ({Phys* const _p = p; _p->phys_type == PT_Tile ? (Tile*) _p : NULL;})
+#define BOX(p) \
+  ({Phys* const _p = p; _p->phys_type == PT_Box ? (Box*) _p : NULL;})
 
 
 // Class describing a physical object.
@@ -207,12 +218,36 @@ public:
   int idx;                      // Index into an array.
   int serial;                   // For debugging.
   bool read_only;               // If true, no need to update position, etc.
-  
+
+  // Re-compute constants such as radius_sq. Used after constants change.
   virtual void constants_update(){};
+  // Re-compute vertex and normal positions. Used after orientation changes.
+  virtual void geometry_update(){};
 
   // Routines below for axis sorting.
   virtual float max_z_get(double delta_t) { return 0; }
   virtual float min_z_get(double delta_t) { return 0; }
+
+  virtual float get_moment_of_inertia_inv(pNorm axis){ return 0; }
+
+  float density, mass, mass_inv;
+
+  pCoor position; // Of centroid.
+  pVect velocity;
+  pQuat orientation;
+  pVect omega;
+
+  pVect prev_velocity;
+  pVect prev_omega;
+
+  void push(pVect amt);
+  void translate(pVect amt);
+  void stop();
+  void freeze();
+  void rotate(pVect axis, float angle);
+
+  pColor color_event;           // Color based on a recent event.
+  pColor color;                 // The ball's "real" color.
 
   GLuint query_occlusion_id;
   bool occlusion_query_active;
@@ -269,31 +304,15 @@ public:
 
   World& w;
   float radius, radius_sq, radius_inv;
-  float density;
-  float mass;
-  float mass_inv;
   float fdt_to_do;
+  float mi_inv; // Inverse of moment of inertia.
 
   float short_xrad_sq, long_xrad_sq;
 
-  pCoor position;
-  pVect velocity;
-  pQuat orientation;
-  pVect omega;
-
-  pVect prev_velocity;
-  pVect prev_omega;
-
-  pColor color_event;           // Color based on a recent event.
-  pColor color_natural;         // The ball's "real" color.
-
+  float get_moment_of_inertia_inv(pNorm axis);
   pVect point_rot_vel(pNorm tact_dir);
   void apply_tan_force_dt(pNorm tact_dir, pNorm force_dir, double force_dt);
   void apply_tan_force_dt(pNorm tact_dir, pVect force_dt);
-  void push(pVect amt);
-  void translate(pVect amt);
-  void stop();
-  void freeze();
 };
 
 
@@ -473,6 +492,15 @@ typedef PStackIterator<Phys*> Phys_Iterator;
 // is disorganized.
 //
 #include "tiles.h"
+#include "boxes.h"
+
+class Tact_Box_Box {
+public:
+  Tact_Box_Box() {};
+  SectTT sect;
+  Box *box1;
+  Box *box2;
+};
 
 ///
 /// Main Class: World
@@ -521,9 +549,11 @@ public:
   //
   Phys_List physs;
   PSList<Phys*,double> eye_dist; // Balls sorted by eye distance.
+  bool phys_live_iterate(Phys*& phy);
   bool balls_iterate(Ball*& ball);
+  bool boxes_iterate(Box*& box);
   Ball* ball_first();           // Oldest surviving ball.
-  Ball* ball_last();            // Youngest surviving ball.
+  Phys* phys_last();            // Youngest surviving phys.
 
   // Options controlling ball shower.
   //
@@ -533,10 +563,10 @@ public:
 
   // Options controlling ball drip.
   //
-  bool opt_drip;
+  bool opt_drip, opt_drop_boxes;
   int drip_cnt, drip_run;
   pCoor drip_location;
-  Ball *dball;
+  Phys *dball;
   Ball* pball;
 
   int physs_occluded;
@@ -548,21 +578,30 @@ public:
 
   void ball_init();
   void benchmark_setup(int tiers=1);
+  void setup_staircase();
+  void setup_brick_wall(float max_y = -5);
+  void setup_tower(float base, int layers, bool balls);
 
   void contact_pairs_find();
   bool penetration_balls_resolve
   (Ball *ball1, Ball *ball2, bool b2_real = true);
+  bool penetration_boxes_resolve_force(Tact_Box_Box *cpair);
+  bool penetration_boxes_resolve_fric(Tact_Box_Box *cpair);
+  bool penetration_box_ball_resolve(Box *box, Ball *ball);
+
   void balls_render(bool attempt_ot);
   void balls_render_simple();
+  void all_remove();
   void balls_remove();
-  void balls_stop();
-  void balls_rot_stop();
+  void phys_stop();
+  void phys_rot_stop();
 
   bool opt_gravity;
   float opt_gravity_accel;      // Value chosen by user.
   float opt_ball_density;
   float opt_ball_radius;
   float opt_bounce_loss;
+  float opt_bounce_loss_box;
   float opt_elasticity;
   float opt_friction_coeff;
   float opt_friction_roll;
@@ -576,6 +615,10 @@ public:
   double elasticity_inv_dt;
 
   Tile_Manager tile_manager;
+  Box_Manager box_manager;
+
+  // For debugging box code.
+  PStack<SectTT> sects;
 
   Wheel* wheel;
   float opt_wheel_tile_density; // Per area, for computing moment of inertia.
@@ -614,6 +657,7 @@ public:
   bool opt_mirror;
   int opt_mirror_method;
   bool opt_normals_visible;
+  bool opt_outline_intersection;
   bool opt_color_events;
 
   int tri_count; // For tuning, demo.
@@ -796,11 +840,13 @@ World::init()
   pt_sched_waitfor();
 
   tile_manager.init(&physs);
+  box_manager.init(&physs);
 
   data_location = DL_ALL_CPU;
   cuda_initialized = false;
   cuda_schedule_stale = 1;
   opt_physics_method = GP_cuda;
+  opt_physics_method = GP_cpu;
   opt_block_size = 128;
 
   frame_timer.work_unit_set("Steps / s");
@@ -809,6 +855,7 @@ World::init()
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
+  opt_outline_intersection = false;
   opt_shadows = true;
   opt_shadow_volumes = false;
   opt_mirror = true;
@@ -854,7 +901,7 @@ World::init()
   //
   vs_fixed = new pShader();
 
-  eye_location = pCoor(17.9,-2,117.2);
+  eye_location = pCoor(17.9,-14,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
 
   platform_xmin = -40; platform_xmax = 40;
@@ -862,8 +909,7 @@ World::init()
 
   // Platform and Ball Textures
   //
-  texid_plat = pBuild_Texture_File
-    ("/home/faculty/koppel/teach/gpm11/gp.ps", false, 255);
+  texid_plat = pBuild_Texture_File("gp.png", false, 255);
   texid_ball = pBuild_Texture_File("mult.png", false, -1);
 
   // Limits of texture coordinates for platform tiles.
@@ -874,15 +920,16 @@ World::init()
   tsmin = 0.4;
 
   opt_light_intensity = 100.2;
-  light_location = pCoor(0,25.8,-14.3);
+  light_location = pCoor(25.6,25.8,-14.3);
 
   opt_ball_radius = 2;
   opt_ball_density = 0.0074603942589580438;
   opt_friction_coeff = 0.1;
   opt_friction_roll = 0.1;
-  opt_bounce_loss = 0.55;
-  opt_elasticity = 1.0 / 16;
-  opt_drip = false;
+  opt_bounce_loss = 0.75;
+  opt_bounce_loss_box = 0.75;
+  opt_elasticity = 1.0 / 64;
+  opt_drop_boxes = opt_drip = false;
   drip_cnt = spray_cnt = 0;
   drip_run = 7;
   spray_run = 8;
@@ -997,9 +1044,11 @@ World::init()
       return;
     }
 
+  setup_brick_wall(); return;
+
   const float r_short = platform_xrad - opt_ball_radius;
 
-  if ( true )
+  if ( false )
     {
       const double sa = asin( opt_ball_radius / r_short );
       const double ca = 1.5 * M_PI;
@@ -1044,6 +1093,176 @@ World::init()
       b->velocity = pVect(0,0,0);
       b->omega = pVect(0,1,0);
       physs += b;
+    }
+
+  if ( false )
+    {
+      // Ramp.
+      pCoor ramp_pos(-10,-55,platform_zmax-30);
+      Box* const ramp = 
+        box_manager.new_box(ramp_pos,pVect(1,40,20),color_powder_blue);
+      ramp->rotate(pVect(0,0,1),0.45*M_PI);
+      ramp->read_only = true;
+    }
+}
+
+
+void
+World::setup_staircase()
+{
+  //  Use tiles to construct a staircase.
+  //
+  all_remove();
+  const int step_count = 10;
+  const float x2 = platform_xmax - 0.1 * platform_xrad;
+  const float x1 = platform_xmid + 0.1 * platform_xrad;
+  const float step_size = ( x2 - x1 ) / step_count;
+  const pVect step_hor(step_size,0,0);
+  const pVect step_ver(0,step_size,0);
+  const pVect step_wid(0,0,20);
+  const pCoor step_start(x1,-0.9*platform_xrad,platform_zmax-30);
+  pColor step_color(0.5,0.5,0.5);
+  for ( int i=0; i<step_count; i++ )
+    {
+      const pCoor step_ll = step_start + i * ( step_hor + step_ver );
+      tile_manager.new_tile(step_ll,step_hor,step_wid,step_color);
+      tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
+    }
+
+  Ball* const b = new Ball(this);
+  b->position = step_start + 0.5 * step_wid + pVect(0,5,0);
+  b->velocity = pVect(0,0,0);
+  physs += b;
+  variables_update();
+}
+
+void
+World::setup_brick_wall(float max_y)
+{
+  // Remove all existing objects from scene.
+  //
+  all_remove();
+
+  // If true, bottom bricks don't move.
+  const bool glued = false;
+
+  float block_width = 4;
+  pVect block_diag(block_width,block_width,block_width);
+  pCoor block_base
+    (-block_diag.x*0.5,
+     -sqrt(platform_xrad * platform_xrad
+           - 0.25 * block_diag.x * block_diag.x),
+     platform_zmax - 80);
+  const float z_start = block_base.z;
+  const float pitch_factor = 1.5;
+  const float pitch = block_diag.z * pitch_factor;
+  pVect block_diag_long
+    (block_width,block_width, block_width*((pitch_factor*0.5)));
+
+  for ( int layer = 0; block_base.y < max_y;
+        layer++, block_base.y += block_diag.y )
+    {
+      block_base.z = z_start;
+
+      // Place odd shaped green block at wall start.
+      //
+      if ( layer & 1 )
+        {
+          Box* const b = box_manager.new_box
+            (block_base, block_diag_long, color_yellow_green);
+          if ( glued && layer == 0 ) b->read_only = true;
+          block_base.z += block_diag_long.z;
+        }
+
+      // Place regular bricks.
+      //
+      while ( block_base.z < platform_zmax - pitch + 0.1 )
+        {
+          Box* const b = box_manager.new_box
+            (block_base, block_diag, color_maroon);
+          if ( glued && layer == 0 ) b->read_only = true;
+          block_base.z += pitch;
+        }
+
+      // Place odd shaped green block at wall start.
+      //
+      if ( ( layer & 1 ) )
+        {
+          block_base.z -= (pitch_factor-1)*block_diag.z;
+          Box* const b = box_manager.new_box
+            (block_base, block_diag_long, color_yellow_green);
+          if ( glued && layer == 0 ) b->read_only = true;
+          block_base.z += block_diag_long.z;
+        }
+    }
+}
+
+void
+World::setup_tower(float base, int layers, bool balls)
+{
+  // Remove all existing objects from scene.
+  //
+  all_remove();
+
+  const bool glued = false;
+  float block_width = base;
+  pCoor block_base
+    (0,
+     -sqrt(platform_xrad * platform_xrad
+           - 0.25 * block_width * block_width),
+     drip_location.z);
+
+  for ( int i=0; i<layers; i++ )
+    {
+      pVect block_diag
+        (block_width,balls ? block_width * 0.05 : block_width,block_width);
+
+      // Add a new block to scene.
+      //
+      Box* const b = box_manager.new_box
+        (block_base + pVect(-block_diag.x*0.5,0,-block_diag.z*0.5),
+         block_diag,color_khaki);
+
+      // Rotate it.
+      //
+      const float angle = i * 0.1 *M_PI;
+      b->rotate(pVect(0,1,0),angle);
+
+      // Maybe fix it in place if its the bottom block.
+      //
+      if ( glued && i == 0 ) b->read_only = true;
+
+      // Increment the tower y position.
+      //
+      block_base += pVect(0,block_diag.y,0);
+
+      // Maybe put of circle of balls between tower blocks.
+      //
+      const float ball_radius = 1.5;
+      const float maj_rad = 0.4 * block_width - ball_radius;
+      const float delta_theta = 2 * M_PI / 8;
+      pCoor center(b->position.x,block_base.y+ball_radius,b->position.z);
+      if ( balls )
+        {
+          for ( float theta = 0.01; theta < 2 * M_PI; theta += delta_theta )
+            {
+              const float bangle = angle + theta;
+              Ball* const b = new Ball(this);
+              b->position =
+                center + maj_rad * pVect(cosf(bangle),0,sinf(bangle));
+              b->radius = ball_radius;
+              b->velocity = pVect(0,0,0);
+              b->omega = pVect(0,0,0);
+              // Add ball to list of simulated objects. This does not
+              // have to be done for tiles and boxes.
+              physs += b;
+            }
+          block_base.y += 2 * ball_radius;
+        }
+
+      // Taper the blocks if they aren't too small.
+      //
+      if ( !balls && block_width > 1.5 ) block_width *= 0.90;
     }
 }
 
@@ -1157,10 +1376,10 @@ World::benchmark_setup(int tiers)
 
   cuda_at_balls_change();
 
-  for ( Ball *ball; balls_iterate(ball); )
-    { physs.iterate_yank(); delete ball; }
+  for ( Phys *phys; phys_live_iterate(phys); )
+    { physs.iterate_yank(); delete phys; }
 
-  const bool opt_multisize = true;
+  const bool opt_multisize = false;
 
   // Note that number of balls determined by ball size.
   opt_ball_radius = opt_multisize ? 2.5 : 1.08;
@@ -1172,16 +1391,17 @@ World::benchmark_setup(int tiers)
   const float delta_y = 2.1 * opt_ball_radius;
   const float ymax = delta_y * tiers - 0.001;
 
-  const int balls_per_sheet = 30.0 * tiers * 2 * platform_xrad / delta_x;;
+  const int balls_per_sheet = 30.0 * tiers * 2 * platform_xrad / delta_x;
 
 
-  const float platform_zwid = platform_zmax - platform_zmin;
-  int ball_amt = 30000;
-  opt_drip = false;
+  opt_drop_boxes = opt_drip = false;
   opt_spray_on = false;
   opt_verify = false;
   opt_mirror = false;
   opt_shadows = false;
+#if 0
+  const float platform_zwid = platform_zmax - platform_zmin;
+  int ball_amt = 30000;
   while ( ball_amt > 0 )
     {
       const float z = platform_xmin + platform_zwid * drand48();
@@ -1198,12 +1418,12 @@ World::benchmark_setup(int tiers)
       b->position = pos;
       physs += b;
     }
-          return;
+  return;
+#endif
 
   //  const int balls_per_sheet = 30.0 * tiers * 2 * platform_xrad / delta_x;;
 
-
-  opt_drip = false;
+  opt_drop_boxes = opt_drip = false;
   opt_spray_on = false;
   opt_verify = false;
   opt_mirror = false;
@@ -1883,9 +2103,21 @@ Phys::~Phys()
 }
 
 bool
+World::phys_live_iterate(Phys*& phys)
+{
+  while ( physs.iterate(phys) ) if ( !phys->read_only ) return true;
+  return false;
+}
+bool
 World::balls_iterate(Ball*& ball)
 {
   for ( Phys *p; physs.iterate(p); ) if ( ( ball = BALL(p) ) ) return true;
+  return false;
+}
+bool
+World::boxes_iterate(Box*& box)
+{
+  for ( Phys *p; physs.iterate(p); ) if ( ( box = BOX(p) ) ) return true;
   return false;
 }
 
@@ -1897,11 +2129,11 @@ World::ball_first()
   return NULL;
 }
 
-Ball*
-World::ball_last()
+Phys*
+World::phys_last()
 {
   for ( int i = physs.occ() - 1; i>=0; i-- )
-    if ( Ball* const ball = BALL(physs[i]) ) return ball;
+    if ( !physs[i]->read_only ) return physs[i];
   return NULL;
 }
 
@@ -1913,7 +2145,7 @@ Ball::Ball(World* wp, float r):Phys(PT_Ball),w(*wp)
   set_radius( r == 0 ? w.opt_ball_radius : r );
 
   color_event = pColor(0.5,0.5,0.5);
-  color_natural = pColor(0.5,0.5,0.5);
+  color = pColor(0.5,0.5,0.5);
   position = pCoor(30,22,-15.4);
   velocity = pVect(drand48(),0,drand48());
 
@@ -1927,9 +2159,10 @@ Ball::constants_update()
   radius_sq = radius * radius;
   mass = 4.0 / 3 * M_PI * radius_sq * radius * density;
   radius_inv = 1 / radius;
-  mass_inv = 1 / mass;
+  mass_inv = read_only ? 0 : 1 / mass;
   short_xrad_sq = ( w.platform_xrad - radius ) * ( w.platform_xrad - radius );
   long_xrad_sq = ( w.platform_xrad + radius ) * ( w.platform_xrad + radius );
+  mi_inv = 2.5 * mass_inv * radius_inv * radius_inv;
   // FYI, notice simplifications:
   //   const float mo_inertia = 0.4 * mass * radius_sq;
   //   fdt_to_do = radius / mo_inertia;
@@ -1953,6 +2186,13 @@ Ball::min_z_get(double lifetime_delta_t)
   const float z_min = position.z + position.x - m * lifetime_delta_t
     - 2 * radius ;
   return z_min;
+}
+
+float
+Ball::get_moment_of_inertia_inv(pNorm axis)
+{
+  if ( read_only ) return 0;
+  return mi_inv;
 }
 
 Ball::~Ball()
@@ -1982,17 +2222,34 @@ World::platform_collision_possible(Ball *ball, float ts_mov_max)
 
 // Move the ball.
 //
-void Ball::translate(pVect amt) {position += amt;}
+void Phys::translate(pVect amt) {position += amt; geometry_update();}
 
 // Add velocity to the ball.
 //
-void Ball::push(pVect amt) {velocity += amt;}
+void Phys::push(pVect amt) {velocity += amt; geometry_update();}
 
 // Set the velocity to zero.
 //
-void Ball::stop()
+void Phys::stop()
 {
   velocity = pVect(0,0,0);
+}
+
+void Phys::rotate(pVect axis, float angle)
+{
+  pQuat rotq(axis,angle);
+  orientation = rotq * orientation;
+  geometry_update();
+}
+
+void World::all_remove()
+{
+  cuda_at_balls_change();
+  while ( physs.occ() )
+    {
+      Phys* const phys = physs.pop();
+      delete phys;
+    }
 }
 
 // Remove all but one ball.
@@ -2019,18 +2276,18 @@ void World::balls_remove()
   while ( survivors.occ() ) physs += survivors;
 }
 
-void World::balls_stop()
+void World::phys_stop()
 {
   cuda_data_to_cpu(DL_ALL);
   data_location = DL_ALL_CPU;
-  for ( Ball *ball; balls_iterate(ball); ) ball->stop();
+  for ( Phys *phys; phys_live_iterate(phys); ) phys->stop();
 }
-void World::balls_rot_stop()
+void World::phys_rot_stop()
 {
   cuda_data_to_cpu(DL_ALL);
   data_location = DL_ALL_CPU;
-  for ( Ball *ball; balls_iterate(ball); )
-    ball->omega = pVect(0,0,0);
+  for ( Phys *phys; phys_live_iterate(phys); )
+    phys->omega = pVect(0,0,0);
 }
 
 bool
@@ -2189,7 +2446,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
     pNorm tact1_roll_vel_dir = tact1_roll_vel;
     pVect lost_vel(0,0,0);
 
-    const double rfric_loss_dv_1 =
+    const float rfric_loss_dv_1 =
       torque_limit_sort_of * 2.5 * ball1->mass_inv *
       ( tact1_roll_vel_dir.magnitude * opt_friction_roll /
         ( 1 + tact1_roll_vel_dir.magnitude * opt_friction_roll ) );
@@ -2204,7 +2461,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
         pVect tact2_rot_vel = ball2->point_rot_vel(-dist);
         pVect tact2_roll_vel = tact2_rot_vel - tan_b12_vel;
         pNorm tact2_roll_vel_dir = tact2_roll_vel;
-        const double rfric_loss_dv_2 =
+        const float rfric_loss_dv_2 =
           torque_limit_sort_of * 2.5 * ball2->mass_inv *
           ( tact2_roll_vel_dir.magnitude * opt_friction_roll /
             ( 1 + tact2_roll_vel_dir.magnitude * opt_friction_roll ) );
@@ -2225,6 +2482,197 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
         const double magloss = tact1_roll_vel.mag() - ch_tact1_roll_vel.mag();
         ASSERTS( magloss >= -10.0 );
       }
+  }
+
+  return true;
+}
+
+bool
+World::penetration_boxes_resolve_force(Tact_Box_Box *cpair)
+{
+  Box* const box1 = cpair->box1;
+  Box* const box2 = cpair->box2;
+  SectTT sect = cpair->sect;
+
+  pNorm sep_normal(sect.dir);
+  pCoor pos = sect.start;
+
+  const float pen_dist = 0.1 * sep_normal.magnitude;
+
+  box1->contact_count++;
+  box2->contact_count++;
+
+  pVect vel1 = box1->get_vel(pos);
+  pVect vel2 = box2->get_vel(pos);
+  pVect velto1 = vel2 - vel1;
+
+  const float sep_vel = dot(velto1,sep_normal);
+
+  const double loss_factor = 1 - opt_bounce_loss_box;
+  const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+  const bool separating = sep_vel >= 0;
+  const float appr_force_dt = separating
+    ? force_dt_no_loss * loss_factor : force_dt_no_loss;
+
+  if ( opt_outline_intersection )
+    {
+      SectTT& s_cent = sects.peek();
+      s_cent.sect_case = separating ? 1 : 2;
+    }
+
+  pVect sep_force = appr_force_dt * sep_normal;
+
+  box1->apply_force_dt(pos, -sep_force );
+  box2->apply_force_dt(pos, sep_force );
+  return true;
+}
+
+bool
+World::penetration_boxes_resolve_fric(Tact_Box_Box *cpair)
+{
+  Box* const box1 = cpair->box1;
+  Box* const box2 = cpair->box2;
+  SectTT sect = cpair->sect;
+
+  pNorm sep_normal(sect.dir);
+  pCoor pos = sect.start;
+
+  const float pen_dist = 0.1 * sep_normal.magnitude;
+  const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+  const float fric_force_dt_potential =
+    force_dt_no_loss * opt_friction_coeff;
+
+  /// Torque
+  //
+  //
+  // Account for forces of surfaces twisting against each
+  // other. (For example, if one box is spinning on top of
+  // another.)
+  //
+  const float appr_omega =
+    dot(box2->omega,sep_normal) - dot(box1->omega,sep_normal);
+  if ( fabs(appr_omega) > 0.00001 )
+    {
+    const float mi1_inv = box1->get_moment_of_inertia_inv(sep_normal);
+    const float mi2_inv = box2->get_moment_of_inertia_inv(sep_normal);
+    const float fdt_limit = fabs(appr_omega) / ( mi1_inv + mi2_inv );
+    const bool rev = appr_omega < 0;
+    const float fdt_raw = min(fdt_limit,fric_force_dt_potential);
+    const pVect fdt_v = ( rev ? -fdt_raw : fdt_raw ) * sep_normal;
+    if ( !box1->read_only ) box1->omega += mi1_inv * fdt_v;
+    if ( !box2->read_only ) box2->omega -= mi2_inv * fdt_v;
+    const float appr_omega_after =
+      dot(box2->omega,sep_normal) - dot(box1->omega,sep_normal);
+    ASSERTS( fabs(appr_omega_after) <= fabs(appr_omega) );
+  }
+
+
+  pVect vel1b = box1->get_vel(pos);
+  pVect vel2b = box2->get_vel(pos);
+
+  pVect velto1b = vel2b - vel1b;
+
+  const float sep_velb = dot(velto1b,sep_normal);
+  pNorm tan_vel = velto1b - sep_velb * sep_normal;
+
+  const float fdt_limit =
+    0.5 *
+    tan_vel.magnitude /
+    ( box1->mass_inv + box2->mass_inv
+      + box1->get_moment_of_inertia_inv(pos,tan_vel)
+      + box2->get_moment_of_inertia_inv(pos,tan_vel) );
+
+  const float fric_force_dt = min(fdt_limit,fric_force_dt_potential);
+
+  box1->apply_force_fric_dt(pos, tan_vel, fric_force_dt);
+  box2->apply_force_fric_dt(pos, -tan_vel, fric_force_dt);
+
+  return true;
+}
+
+bool
+World::penetration_box_ball_resolve(Box *box, Ball *ball)
+{
+  SectTT sect = box_sphere_interpenetrate(box,ball->position,ball->radius);
+  if ( !sect.exists ) return false;
+
+  box->contact_count++;
+  ball->contact_count++;
+  
+  if ( opt_outline_intersection ) sects += sect;
+
+  pNorm sep_normal(sect.dir);
+  pCoor pos = sect.start;
+
+  const float pen_dist = sep_normal.magnitude;
+
+  pVect vel1 = box->get_vel_prev(pos);
+  pVect vel2 = ball->prev_velocity;
+  pVect velto1 = vel2 - vel1;
+
+  const float sep_vel = dot(velto1,sep_normal);
+
+  const double loss_factor = 1 - opt_bounce_loss_box;
+  const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+  const bool separating = sep_vel >= 0;
+  const float appr_force_dt = separating
+    ? force_dt_no_loss * loss_factor : force_dt_no_loss;
+
+  if ( opt_outline_intersection )
+    {
+      SectTT& s_cent = sects.peek();
+      s_cent.sect_case = separating ? 1 : 2;
+    }
+
+  pVect sep_force = appr_force_dt * sep_normal;
+
+  box->apply_force_dt(pos, -sep_force );
+  ball->velocity += ball->mass_inv * sep_force;
+
+  pVect vel1b = box->get_vel(pos);
+  pVect vel2b = ball->point_rot_vel(-sep_normal) + ball->velocity;
+
+  pVect velto1b = vel2b - vel1b;
+
+  const float sep_velb = dot(velto1b,sep_normal);
+  pNorm tan_vel = velto1b - sep_velb * sep_normal;
+  const float fric_force_dt_potential =
+    force_dt_no_loss * opt_friction_coeff;
+  const float fdt_limit =
+    tan_vel.magnitude /
+    ( 
+     ( box->read_only ? 0
+       : box->mass_inv + box->get_moment_of_inertia_inv(pos,tan_vel) )
+     + ( ball->read_only ? 0 : ball->mass_inv + ball->mi_inv ));
+
+  const float fric_force_dt = min(fdt_limit,fric_force_dt_potential);
+  
+  box->apply_force_fric_dt(pos, tan_vel, fric_force_dt);
+  ball->velocity -= fric_force_dt * ball->mass_inv * tan_vel;
+  ball->apply_tan_force_dt(sep_normal,tan_vel,fric_force_dt);
+
+  /// Torque
+  //
+  //
+  // Account for forces of surfaces twisting against each
+  // other. (For example, if one box is spinning on top of
+  // another.)
+  //
+  const float appr_omega =
+    dot(box->omega,sep_normal) - dot(ball->omega,sep_normal);
+  if ( fabs(appr_omega) > 0.00001 )
+    {
+    const float mi1_inv = box->get_moment_of_inertia_inv(sep_normal);
+    const float mi2_inv = ball->get_moment_of_inertia_inv(sep_normal);
+    const float fdt_limit = fabs(appr_omega) / ( mi1_inv + mi2_inv );
+    const bool rev = appr_omega < 0;
+    const float fdt_raw = min(fdt_limit,fric_force_dt);
+    const pVect fdt_v = ( rev ? fdt_raw : -fdt_raw ) * sep_normal;
+    if ( !box->read_only ) box->omega += mi1_inv * fdt_v;
+    if ( !ball->read_only ) ball->omega -= mi2_inv * fdt_v;
+    const float appr_omega_after =
+      dot(box->omega,sep_normal) - dot(ball->omega,sep_normal);
+    ASSERTS( fabs(appr_omega_after) <= fabs(appr_omega) );
   }
 
   return true;
@@ -2264,14 +2712,29 @@ World::balls_add(float contact_y_max)
     {
       const double rad_min = 0.4;
       if ( !sphere_empty(drip_location,opt_ball_radius) ) return;
-      const float rad = max(rad_min,opt_ball_radius * pow(drand48(),2));
-      dball = new Ball(this);
-      dball->set_radius(rad);
-      dball->position = drip_location + pVect(0,rad,0);
+      const float rad = 4*max(rad_min,opt_ball_radius * pow(drand48(),2));
+
+      if ( opt_drop_boxes )
+        {
+          const float wid = 4*max(rad_min,opt_ball_radius * pow(drand48(),2));
+          const float ht = 4*max(rad_min,opt_ball_radius * pow(drand48(),2));
+          pCoor pos = drip_location + pVect(0,rad,-0.5*ht);
+          pColor color = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
+          pVect size(rad,wid,ht);
+          dball = box_manager.new_box(pos,size,color);
+        }
+      else
+        {
+          Ball* const b = new Ball(this);
+          b->position = drip_location;
+          b->set_radius(rad/2);
+          dball = b;
+          physs += dball;
+        }
+
+      dball->color = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
       dball->velocity = pVect(0,0,0);
-      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
       drip_cnt++;
-      physs += dball;
       ball_countdown = 0.5;
     }
 
@@ -2300,7 +2763,7 @@ World::balls_add(float contact_y_max)
       nball->position = position;
       nball->set_radius(radius);
 
-      nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
+      nball->color = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
       spray_cnt++;
 
       physs += nball;
@@ -2339,14 +2802,20 @@ World::time_step_cpu()
 
   /// Remove balls that have fallen away from the platform.
   //
-  for ( Ball *ball; balls_iterate(ball); )
-    if ( ball->position.y < deep ) { physs.iterate_yank(); delete ball; }
+  for ( Phys *phys; phys_live_iterate(phys); )
+    if ( phys->position.y < deep ) { physs.iterate_yank(); delete phys; }
 
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Phys *phys; phys_live_iterate(phys); )
     {
-      ball->prev_omega = ball->omega;
-      ball->prev_velocity = ball->velocity;
+      phys->contact_count = 0;
+      phys->collision = false;
+      phys->prev_omega = phys->omega;
+      phys->prev_velocity = phys->velocity;
     }
+
+  /// Apply gravitational force.
+  //
+  for ( Phys *p; phys_live_iterate(p); ) p->velocity += gravity_accel_dt;
 
   /// Sort balls in z in preparation for finding balls that touch.
   //
@@ -2355,20 +2824,52 @@ World::time_step_cpu()
     phys_zsort.insert(phys->max_z_get(0),phys);
   phys_zsort.sort();
 
-  /// Apply forces for balls that are touching.
+  sects.reset();
+
+  PStack<Tact_Box_Box> cpairs;
+
+  /// Apply forces for objects that are touching.
   //
   for ( int idx9 = 1; idx9 < phys_zsort.occ(); idx9++ )
     {
       Phys* const prop9 = phys_zsort[idx9];
       const float z_min = prop9->min_z_get(0);
       Ball* const ball9 = BALL(prop9);
+      Box* const box9 = BOX(prop9);
 
       for ( int idx8 = idx9 - 1;
             idx8 >= 0 && phys_zsort.get_key(idx8) >= z_min;
             idx8-- )
         {
           Phys* const prop8 = phys_zsort[idx8];
+
+          if ( prop8->read_only && prop9->read_only ) continue;
+
           Ball* const ball8 = BALL(prop8);
+          Box*  const box8 = BOX(prop8);
+
+          if ( box8 && box9 )
+            {
+              SectTT sect = 
+                box_box_interpenetrate
+                (box8, box9, opt_outline_intersection ? &sects : NULL );
+              if ( !sect.exists ) continue;
+              Tact_Box_Box* const cpair = cpairs.pushi();
+              cpair->box1 = box8; cpair->box2 = box9;
+              cpair->sect = sect;
+              if ( opt_outline_intersection ) sects += cpair->sect;
+              penetration_boxes_resolve_force(cpair);
+              continue;
+            }
+
+          if ( ( box8 || box9 ) && ( ball8 || ball9 ) )
+            {
+              Box* const box = ball8 ? BOX(prop9) : BOX(prop8);
+              Ball* const ball = ball8 ? ball8 : ball9;
+              penetration_box_ball_resolve(box,ball);
+              continue;
+            }
+
           if ( ball8 && ball9 )
             {
               penetration_balls_resolve(ball8,ball9);
@@ -2391,9 +2892,124 @@ World::time_step_cpu()
         }
     }
 
-  /// Apply gravitational force.
+  /// Apply force for platform contact to boxes.
   //
-  for ( Ball *ball; balls_iterate(ball); ) ball->velocity += gravity_accel_dt;
+  for ( Box *box; boxes_iterate(box); )
+    {
+      if ( box->position.y - box->radius >= 0 ) continue;
+      if ( box->position.z + box->radius <= platform_zmin ) continue;
+      if ( box->position.z - box->radius >= platform_zmax ) continue;
+      pCoor axis(platform_xmid,0,box->position.z);
+      pVect btoa(box->position,axis);
+      if ( btoa.mag_sq() < SQ(platform_xrad-box->radius) ) continue;
+      int inside = 0;
+      PStack<int> ou;
+      float pen_dists[8];
+      PStack<SectTT> sects;
+
+      // Find vertices that are under the platform.
+      //
+      for ( int v=0; v<8; v++ )
+        {
+          const int v_bit = 1 << v;
+          pCoor pos = box->vertices[v];
+          if ( pos.y > 0 ) continue;
+          pCoor axis(platform_xmid,0,pos.z);
+          pNorm tact_dir(axis,pos);
+          const float pen_dist = tact_dir.magnitude - platform_xrad;
+          pen_dists[v] = pen_dist;
+          if ( pos.z <= platform_zmin || pos.z >= platform_zmax )
+            {
+              if ( pen_dist > 0 ) ou += v; 
+              continue;
+            }
+          if ( pen_dist > 1 ) continue;
+          inside |= v_bit;
+          if ( pen_dist <= 0 ) continue;
+          SectTT* const sect = sects.pushi();
+          sect->start = pos;
+          sect->dir = tact_dir;
+          sect->t_start = pen_dist;
+        }
+
+      // Examine vertices that are off the edge of the platform (in the
+      // z direction), to see if an adjoining edge intersects the platform
+      // edge.
+      //
+      while ( int* const v_ptr = ou.iterate() )
+        {
+          const int v = *v_ptr;
+          // Outside Vertex (beyond z_max or z_min).
+          //
+          pCoor pos = box->vertices[v];
+          const float pen_dist_out = pen_dists[v];
+          const float v_z = pos.z;
+          const float ref_z =
+            v_z >= platform_zmax ? platform_zmax : platform_zmin;
+          const float outside_z_len = fabs(v_z - ref_z);
+
+          // Look for adjoining vertices that are over the platform.
+          //
+          for ( int axis = 0; axis < 3; axis++ )
+            {
+              const int vn = v ^ ( 1 << axis );
+              const int vn_bit = 1 << vn;
+              if ( ! ( inside & vn_bit ) ) continue;
+              const float pen_len = pen_dists[vn] - pen_dist_out;
+              // Inside Vertex
+              pCoor pos_in = box->vertices[vn];
+
+              // Compute the contact point at penetration distance.
+              //
+              const float z_len = fabs(v_z - pos_in.z);
+              const float scale = outside_z_len / z_len;
+              pVect to_inside(pos,pos_in);
+              pCoor tact = pos + scale * to_inside;
+              const float pen_tact = pen_dist_out + scale * pen_len;
+              if ( pen_tact <= 0 ) continue;
+              SectTT* const sect = sects.pushi();
+              pNorm dir = cross(pVect(tact.y,tact.x,0),to_inside);
+              sect->start = tact;
+              sect->dir = dir.y < 0 ? dir : -dir;
+              sect->t_start = pen_tact;
+            }
+        }
+
+      while ( SectTT* const sect = sects.iterate() )
+        {
+          pCoor pos = sect->start;
+          pVect tact_dir = sect->dir;
+          pNorm ctopos(box->position,pos);
+          pVect vel = box->get_vel(pos);
+          const float pen_dist = sect->t_start;
+          const float rad_vel = dot(vel,tact_dir);
+          const double loss_factor = 1 - opt_bounce_loss;
+          const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+          const float max_fdt_in = rad_vel * box->mass;
+          const float appr_force_dt = rad_vel > 0
+            ? min(max_fdt_in,force_dt_no_loss) : force_dt_no_loss * loss_factor;
+          box->apply_force_dt(pos, - appr_force_dt * tact_dir );
+        }
+
+      while ( SectTT* const sect = sects.iterate() )
+        {
+          pCoor pos = sect->start;
+          pVect tact_dir = sect->dir;
+          const float pen_dist = sect->t_start;
+          const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+          pVect vel2 = box->get_vel(pos);
+          const float rad_vel2 = dot(vel2,tact_dir);
+          pNorm tan_vel = vel2 - rad_vel2 * tact_dir;
+          const float mi_inv = box->get_moment_of_inertia_inv(pos,tan_vel);
+          const float fdt_limit = 
+            tan_vel.magnitude / ( box->mass_inv + mi_inv );
+          const float fric_force_dt_no_loss =
+            force_dt_no_loss * opt_friction_coeff;
+          const float fric_force_dt = min(fdt_limit, fric_force_dt_no_loss);
+          box->apply_force_fric_dt(pos, tan_vel, -fric_force_dt);
+          box->contact_count++;
+        }
+    }
 
   /// Apply force for platform contact.
   //
@@ -2456,35 +3072,44 @@ World::time_step_cpu()
       penetration_balls_resolve(ball,pball,false);
     }
 
-  /// Based on updated velocity, update ball positions.
+  PSList<Tact_Box_Box*> cpairr;
+  while ( Tact_Box_Box* const cpair = cpairs.iterate() )
+    cpairr.insert(cpair->box1->position.y,cpair);
+  while ( Tact_Box_Box* const cpair = cpairr.iterate() )
+    {
+      penetration_boxes_resolve_fric(cpair);
+    }
+
+  /// Based on updated velocity, update physical object positions.
   //
-  for ( Ball *ball; balls_iterate(ball); )
-    ball->position += delta_th * ( ball->prev_velocity + ball->velocity );
+  for ( Phys *phys; phys_live_iterate(phys); )
+    phys->position += delta_t * ( phys->velocity );
+    //  phys->position += delta_th * ( phys->prev_velocity + phys->velocity );
 
   float contact_y_max = -platform_xrad;
 
   /// Update orientation of balls. (Also find highest ball that hit something.)
   //
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Phys *phys; phys_live_iterate(phys); )
     {
-      pNorm axis(ball->omega);
+      if ( phys->read_only ) continue;
+      pNorm axis(phys->omega);
 
-      // If ball isn't spinning fast skip expensive rotation.
+      // Update phys orientation if it is spinning fast enough.
       //
-      if ( axis.mag_sq < 0.000001 ) continue;
+      if ( axis.mag_sq > 0.000001 )
+        phys->orientation =
+          pQuat(axis,delta_t * axis.magnitude) * phys->orientation;
 
-      // Update ball orientation.
+      phys->geometry_update();
+
+      if ( phys->contact_count )
+        phys->collision = true;
+
+      // Find position of highest phys that has hit something.
       //
-      ball->orientation =
-        pQuat(axis,delta_t * axis.magnitude) * ball->orientation;
-
-      if ( ball->contact_count )
-        ball->collision = true;
-
-      // Find position of highest ball that has hit something.
-      //
-      if ( ball->collision && ball->position.y > contact_y_max )
-        contact_y_max = ball->position.y;
+      if ( phys->collision && phys->position.y > contact_y_max )
+        contact_y_max = phys->position.y;
     }
 
   balls_add(contact_y_max);
@@ -3565,7 +4190,6 @@ World::time_step_cuda(int iter, int iters_per_frame)
   if ( just_before_render && cuda_schedule_stale + iters_per_frame - 1 > 0 )
     {
       pt_sched_start();
-      if ( opt_debug2 ) pt_sched_waitfor();
     }
 }
 
@@ -3815,6 +4439,7 @@ World::balls_render_simple()
   // Render balls without textures. Intended for casting shadows.
 
   tile_manager.render_simple();
+  box_manager.render_simple();
 
   for ( Ball *ball; balls_iterate(ball); )
     {
@@ -3843,7 +4468,7 @@ World::balls_render(bool attempt_ot)
       iter++;
       if ( !ball ) continue;
       pColor color =
-        opt_color_events ? ball->color_event : ball->color_natural;
+        opt_color_events ? ball->color_event : ball->color;
 
       // Retrieve the result of an occlusion test on this ball.
       //
@@ -3955,6 +4580,7 @@ World::render_shadow_volumes(pCoor light_pos)
   // Render tiles' shadow volumes.
   //
   tile_manager.render_shadow_volume(light_pos);
+  box_manager.render_shadow_volume(light_pos);
 
   // Restore assumed state.
   //
@@ -3996,6 +4622,29 @@ World::render_objects(bool attempt_ot)
   // Render each tile.
   //
   tile_manager.render();
+  if ( !opt_debug )
+    box_manager.render();
+  while ( SectTT* const sect = sects.iterate() )
+    {
+      switch ( sect->sect_case ){
+      case 0: glColor3f(0.1,0.1,0.1); break;
+      case 1: glColor3fv(color_violet_red); break;
+      case 2: glColor3f(0,0,0.8); break;
+      case 3: glColor3f(0,1,0); break;
+      default: glColor3f(1,0,0); break;
+      }
+
+      switch ( sect->type ) {
+      case ST_Intersect_Line:
+        cone.render(sect->start,0.2,sect->dir,0.8);
+        break;
+      case ST_Centroid:
+        cone.render(sect->start,0.2,50*sect->dir,0.05);
+        break;
+      default:
+        ASSERTS( false );
+      }
+    }
 
   //
   // Render Platform
@@ -4117,6 +4766,7 @@ World::render()
   glDisable(GL_BLEND);
 
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
+  glEnable(GL_VERTEX_PROGRAM_TWO_SIDE);
 
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
   glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.3);
@@ -4184,15 +4834,15 @@ World::render()
      opt_mirror ? "on" : "off", opt_mirror_method,
      light_location.x, light_location.y, light_location.z);
 
-  Ball& ball = *ball_first();
+  Phys* const phys = phys_last();
   ogl_helper.fbprintf
     ("Balls %4d (%4d/%4d)  Tiles %3d  Last Ball Pos  "
      "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
      physs.occ(), 
      physs.occ() - physs_occluded, physs_occluded,
      tile_manager.occ(),
-     ball.position.x,ball.position.y,ball.position.z,
-     ball.velocity.x,ball.velocity.y,ball.velocity.z,
+     phys->position.x,phys->position.y,phys->position.z,
+     phys->velocity.x,phys->velocity.y,phys->velocity.z,
      tri_count);
 
   const bool blink_visible = int64_t(time_now*3) & 1;
@@ -4333,6 +4983,7 @@ World::render()
 
       balls_render(false);
       tile_manager.render();
+      box_manager.render();
 
       // Change back to fixed functionality (no user shader).
       //
@@ -4489,6 +5140,11 @@ World::cb_keyboard()
       opt_friction_coeff = 0.0001;
       break;
     }
+  case '1': setup_brick_wall(-5); break;
+  case '!': setup_brick_wall(20); break;
+  case '2': setup_tower(8,40,false); break;
+  case '3': setup_tower(20,10,true); break;
+  case '4': setup_staircase(); break;
   case 'a':
     if ( opt_physics_method == GP_cuda ) cuda_at_balls_change();
     opt_physics_method++;
@@ -4502,18 +5158,20 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'i': opt_info = true; break;
+  case 'j': opt_drop_boxes = !opt_drop_boxes; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'm': opt_mirror = !opt_mirror; break;
   case 'M': opt_mirror_method++;
     if ( opt_mirror_method == 4 ) opt_mirror_method = 0;
     break;
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
+  case 'o': opt_outline_intersection = !opt_outline_intersection; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 'q': opt_debug = !opt_debug; break;
   case 'Q': opt_debug2 = !opt_debug2; break;
   case 'R': balls_remove(); break;
-  case 's': balls_stop(); break;
-  case 'S': balls_rot_stop(); break;
+  case 's': phys_stop(); break;
+  case 'S': phys_rot_stop(); break;
   case 'T': benchmark_setup(1); break;
   case 't': benchmark_setup(15); break;
   case 'v': opt_verify = !opt_verify; break;
@@ -4525,13 +5183,13 @@ World::cb_keyboard()
       Ball* const b1 = new Ball(this);
       b1->position = pCoor(30,22,20);
       b1->velocity = pVect(0,0,0);
-      b1->color_natural = lsu_spirit_purple;
+      b1->color = lsu_spirit_purple;
       physs += b1;
       Ball* const b2 = new Ball(this);
       b2->position = b1->position;
       b2->position.z += 4 * opt_ball_radius;
       b2->velocity = pVect(0,0,0);
-      b2->color_natural = lsu_spirit_gold;
+      b2->color = lsu_spirit_gold;
       physs += b2;
     }
     break;
@@ -4573,8 +5231,8 @@ World::cb_keyboard()
       }
 
       switch ( opt_move_item ){
-      case MI_Ball: ball_last()->translate(adjustment); break;
-      case MI_Ball_V: ball_last()->push(adjustment); break;
+      case MI_Ball: phys_last()->translate(adjustment); break;
+      case MI_Ball_V: phys_last()->push(adjustment); break;
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
       case MI_Drip: drip_location += adjustment; break;

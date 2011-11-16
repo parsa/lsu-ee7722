@@ -36,20 +36,25 @@ public:
     read_only = true;
     set(ll,up,rt);
   }
-  ~Tile(){ ASSERTS( false ); }
+  ~Tile(){ }
 
   void set(pCoor ll, pVect up, pVect rt)
   {
     pt_ll = ll;
-    pt_ul = ll + up;
-    pt_lr = ll + rt;
     vec_up = up;
     vec_rt = rt;
     normal.set(cross(rt,up));
-    norm_rt.set(rt);
-    width = norm_rt.magnitude;
     norm_up.set(up);
+    norm_rt.set(vec_rt);
     height = norm_up.magnitude;
+    set_common();
+  }
+
+  void set_common()
+  {
+    width = norm_rt.magnitude;
+    pt_ul = pt_ll + vec_up;
+    pt_lr = pt_ll + vec_rt;
     cuda_stale = true;
     bb.ll = pt_ll + vec_neg(vec_up) + vec_neg(vec_rt);
     bb.ur = pt_ll + vec_pos(vec_up) + vec_pos(vec_rt);
@@ -183,17 +188,17 @@ tile_sphere_intersect
   pVect tile_to_ball(tile->pt_ll,position);
 
   // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile->normal); 
+  const float dist = dot(tile_to_ball,tile->normal);
 
   if ( fabs(dist) > radius ) return false;
 
   // The closest point on tile plane to the ball.
-  pCoor pt_closest = position - dist * tile->normal; 
+  pCoor pt_closest = position - dist * tile->normal;
 
   // How far up the tile in the y direction the center of the ball sits
-  const float dist_ht = dot(tile->norm_up,tile_to_ball);  
+  const float dist_ht = dot(tile->norm_up,tile_to_ball);
 
-  if ( dist_ht < -radius ) return false; 
+  if ( dist_ht < -radius ) return false;
   if ( dist_ht > tile->height + radius ) return false;
 
   // How far up the tile in the x direction the center of the ball sits
@@ -214,7 +219,7 @@ tile_sphere_intersect
     }
 
   // Test whether the ball is touching a corner
-  if ( ( dist_ht < 0 || dist_ht > tile->height ) 
+  if ( ( dist_ht < 0 || dist_ht > tile->height )
        && ( dist_wd < 0 || dist_wd > tile->width) )
     {
       pCoor ref_pt;
@@ -223,19 +228,19 @@ tile_sphere_intersect
       // ball position to the corner. First step is to figure out which
       // corner.
 
-      if ( dist_ht < 0 && dist_wd < 0 ) 
+      if ( dist_ht < 0 && dist_wd < 0 )
         {
           ref_pt = tile->pt_ll;
         }
-      else if ( dist_ht < 0 && dist_wd > tile->width ) 
+      else if ( dist_ht < 0 && dist_wd > tile->width )
         {
           ref_pt = tile->pt_lr;
         }
-      else if ( dist_ht > tile->height && dist_wd < 0 ) 
+      else if ( dist_ht > tile->height && dist_wd < 0 )
         {
           ref_pt = tile->pt_ul;
         }
-      else 
+      else
         {
           ref_pt = tile->pt_ll+tile->vec_rt+tile->vec_up;
         }
@@ -277,18 +282,18 @@ xtile_ball_collide
   pVect tile_to_ball(tile->pt_ll,ball->position);
 
   // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile->normal); 
+  const float dist = dot(tile_to_ball,tile->normal);
   const float radius = ball->radius;
 
   if ( fabs(dist) > radius ) return false;
 
   // The closest point on tile plane to the ball.
-  pCoor pt_closest = ball->position - dist * tile->normal; 
+  pCoor pt_closest = ball->position - dist * tile->normal;
 
   // How far up the tile in the y direction the center of the ball sits
-  const float dist_ht = dot(tile->norm_up,tile_to_ball);  
+  const float dist_ht = dot(tile->norm_up,tile_to_ball);
 
-  if ( dist_ht < -radius ) return false; 
+  if ( dist_ht < -radius ) return false;
   if ( dist_ht > tile->height + radius ) return false;
 
   // How far up the tile in the x direction the center of the ball sits
@@ -308,7 +313,7 @@ xtile_ball_collide
     }
 
   // Test whether the ball is touching a corner
-  if ( ( dist_ht < 0 || dist_ht > tile->height ) 
+  if ( ( dist_ht < 0 || dist_ht > tile->height )
        && ( dist_wd < 0 || dist_wd > tile->width) )
     {
       pCoor ref_pt;
@@ -317,19 +322,19 @@ xtile_ball_collide
       // ball position to the corner. First step is to figure out which
       // corner.
 
-      if ( dist_ht < 0 && dist_wd < 0 ) 
+      if ( dist_ht < 0 && dist_wd < 0 )
         {
           ref_pt = tile->pt_ll;
         }
-      else if ( dist_ht < 0 && dist_wd > tile->width ) 
+      else if ( dist_ht < 0 && dist_wd > tile->width )
         {
           ref_pt = tile->pt_lr;
         }
-      else if ( dist_ht > tile->height && dist_wd < 0 ) 
+      else if ( dist_ht > tile->height && dist_wd < 0 )
         {
           ref_pt = tile->pt_ul;
         }
-      else 
+      else
         {
           ref_pt = tile->pt_ll+tile->vec_rt+tile->vec_up;
         }
