@@ -582,6 +582,7 @@ public:
   void setup_staircase();
   void setup_brick_wall(float max_y = -5);
   void setup_tower(float base, int layers, bool balls);
+  void setup_house_of_cards();
 
   void contact_pairs_find();
   bool penetration_balls_resolve
@@ -1238,6 +1239,30 @@ World::setup_tower(float base, int layers, bool balls)
       //
       if ( !balls && block_width > 1.5 ) block_width *= 0.90;
     }
+}
+
+void
+World::setup_house_of_cards()
+{
+  all_remove();
+
+  const float base_depth = 0.67 * platform_xrad;
+  const float base_height = 2;
+  const float surface_y = -base_depth + base_height;
+  const float platform_wh = sqrtf(SQ(platform_xrad)-SQ(base_depth));
+  pCoor base_pos(-platform_wh,-base_depth,0);
+  Box* const base = box_manager.new_box
+    (base_pos,pVect(2*platform_wh,base_height,platform_zmax),
+     pColor(0.5,0.5,0.5));
+  base->read_only = true;
+  pVect card_diag(10,5,0.25);
+  Box* const card1 = box_manager.new_box
+    (pCoor(-10,surface_y,platform_zmax-20),
+     card_diag,color_salmon);
+  Box* const card2 = box_manager.new_box
+    (pCoor(-10,surface_y,platform_zmax-20+card_diag.x*0.5+card_diag.z),
+     card_diag,color_salmon);
+  card2->rotate(pVect(0,1,0),0.5*M_PI);
 }
 
 
@@ -4819,15 +4844,15 @@ World::render()
      light_location.x, light_location.y, light_location.z);
 
   Phys* const phys = phys_last();
+  pVect z(0,0,0);
+  pVect pos = phys ? pVect(phys->position) : z;
+  pVect vel = phys ? phys->velocity : z;
   ogl_helper.fbprintf
     ("Objects %4d (%4d/%4d)  Boxes %3d  Last Object Pos  "
      "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
      physs.occ(), 
      physs.occ() - physs_occluded, physs_occluded,
-     box_manager.occ(),
-     phys->position.x,phys->position.y,phys->position.z,
-     phys->velocity.x,phys->velocity.y,phys->velocity.z,
-     tri_count);
+     box_manager.occ(), pos.x,pos.y,pos.z, vel.x,vel.y,vel.z, tri_count);
 
   const bool blink_visible = int64_t(time_now*3) & 1;
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
@@ -5130,6 +5155,7 @@ World::cb_keyboard()
   case '2': setup_tower(8,40,false); break;
   case '3': setup_tower(20,10,true); break;
   case '4': setup_staircase(); break;
+  case '5': setup_house_of_cards(); break;
   case 'a':
     if ( opt_physics_method == GP_cuda ) cuda_at_balls_change();
     opt_physics_method++;
