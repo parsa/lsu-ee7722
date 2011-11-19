@@ -929,7 +929,7 @@ World::init()
   opt_friction_coeff = 0.1;
   opt_friction_roll = 0.1;
   opt_bounce_loss = 0.75;
-  opt_bounce_loss_box = 0.75;
+  opt_bounce_loss_box = 0.9;
   opt_elasticity = 1.0 / 64;
   opt_drop_boxes = opt_drip = false;
   drip_cnt = spray_cnt = 0;
@@ -1246,7 +1246,7 @@ World::setup_house_of_cards()
 {
   all_remove();
 
-  const float base_depth = 0.67 * platform_xrad;
+  const float base_depth = 0.8 * platform_xrad;
   const float base_height = 2;
   const float surface_y = -base_depth + base_height;
   const float platform_wh = sqrtf(SQ(platform_xrad)-SQ(base_depth));
@@ -1255,14 +1255,43 @@ World::setup_house_of_cards()
     (base_pos,pVect(2*platform_wh,base_height,platform_zmax),
      pColor(0.5,0.5,0.5));
   base->read_only = true;
-  pVect card_diag(10,5,0.25);
-  Box* const card1 = box_manager.new_box
-    (pCoor(-10,surface_y,platform_zmax-20),
-     card_diag,color_salmon);
-  Box* const card2 = box_manager.new_box
-    (pCoor(-10,surface_y,platform_zmax-20+card_diag.x*0.5+card_diag.z),
-     card_diag,color_salmon);
-  card2->rotate(pVect(0,1,0),0.5*M_PI);
+  pVect card_diag(10,5,0.1);
+
+  drip_location.x = 0;
+  pCoor center(0,surface_y,drip_location.z-opt_ball_radius);
+  const double tilt_angle = 1.01 * atan2(card_diag.z,card_diag.y);
+  const double delta_theta = 2 * M_PI / 4;
+  const double tilt_offset = card_diag.z * cos(tilt_angle);
+  const double inner_r = 0.25 * card_diag.x;
+  pVect radvec(inner_r - tilt_offset - 0.5 * card_diag.x,
+               0.5 * card_diag.y + card_diag.z * sin(tilt_angle),
+               -inner_r);
+  const float card_yz = sqrt(SQ(card_diag.y)+SQ(card_diag.z));
+
+  pVect h(0,0,0);
+  for ( int layer=0; layer<5; layer++ )
+    {
+      for ( int i=0; i<4; i++ )
+        {
+          const double theta = i * delta_theta + layer * 0.1;
+          pMatrix_Rotation rot(pVect(0,1,0),theta);
+          pCoor card_ctr = center + rot * radvec;
+          Box* const card = box_manager.new_box_ctr
+            (card_ctr+h,card_diag,i&1?color_yellow_green:color_salmon);
+          card->rotate(pVect(1,0,0),tilt_angle);
+          card->rotate(pVect(0,1,0),theta);
+        }
+
+      pCoor c1_pos(center + pVect(0,card_yz+0.45*card_diag.z,-0.5*card_diag.y));
+      Box* const card_c1 = box_manager.new_box_ctr
+        (c1_pos+h, card_diag, color_salmon);
+      card_c1->rotate(pVect(1,0,0),0.5*M_PI);
+      Box* const card_c2 = box_manager.new_box_ctr
+        (c1_pos+h+pVect(0,0, 1.01 * card_diag.y), 
+         card_diag, color_yellow_green);
+      card_c2->rotate(pVect(1,0,0),0.5*M_PI);
+      center.y += card_yz + card_diag.z;
+    }
 }
 
 
