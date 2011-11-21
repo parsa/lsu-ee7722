@@ -196,6 +196,8 @@ pMMultiply3x3(pMatrix& p, pMatrix m1, pMatrix m2)
 #undef C
 }
 
+#define VEC_REDUCE_AND(v,f) ( f(v.x) && f(v.y) && f(v.z) )
+
 class pVect {
 public:
   pVect(){};
