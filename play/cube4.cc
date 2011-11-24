@@ -94,7 +94,7 @@ int Filtering_On = 1;
 int Use_GPU = 1;
 
 int Curr_TexMode = 1;
-char *TexModesStr[] = {"GL_DECAL","GL_MODULATE","GL_BLEND","GL_REPLACE"};
+const char *TexModesStr[] = {"GL_DECAL","GL_MODULATE","GL_BLEND","GL_REPLACE"};
 GLint TexModes[] = {GL_DECAL,GL_MODULATE,GL_BLEND,GL_REPLACE};
 
 // Object and scene global variables.
@@ -1450,7 +1450,8 @@ void cbSpecialKeyPressed(
 }
 
 int
-pBuild_Texture_File(char *name, bool invert = false, int transp = 256 )
+pBuild_Texture_File
+(const char *name, bool invert = false, int transp = 256 )
 {
   GLenum gluerr;
   P_Image_Read image(name,transp);
