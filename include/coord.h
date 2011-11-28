@@ -414,6 +414,7 @@ class pQuat {
 public:
   pQuat(){}
   pQuat(pNorm axis, float angle){ set(axis,angle); }
+  pQuat(float x, float y, float z, float w):v(x,y,z),w(w){}
   void set(pNorm axis, float angle)
   {
     w = cosf(angle/2);
