@@ -1,0 +1,33 @@
+
+stream-cpu-only.cc
+ Like the name says.
+
+stream-full.cc
+ Fixed size blocks.
+ All CUDA calls visible.
+ Uses stream-kernel.
+
+stream-kernel.cu
+ Just dots (one element per kernel).
+
+stream.cc
+ Uses class objects for data management.
+ Fixed size grid.
+ Uses stream-kernel.
+
+stream-1.cc:  DELETED
+ Uses course macros.
+ Fixed block size.
+ Not referred to in makefile.
+
+stream-2.cc
+ Some comments.
+ HW assignment in comments.
+ CUDA_Device_Manager
+ Stream_Demo
+ Uses class objects for cuda data management.
+ cuda events for timing.
+ Result checking code.
+stream-2-kernel.cc
+ dots
+ dots_stride_large  (multiple elt per kernel)

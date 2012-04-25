@@ -1,0 +1,260 @@
+#  -*- conf -*-
+
+memtransfersize
+
+divergent_branch
+instructions
+#sm_cta_launched
+#gld_request
+#gld_32b
+
+gld_incoherent
+#gst_incoherent
+warp_serialize
+
+#
+# The profiler supports the following options:
+#
+# timestamp : Time stamps for kernel launches and memory transfers. This
+# can be used for timeline analysis. This is in microseconds.
+#
+# gpustarttimestamp : Time stamp when kernel starts execution in
+# GPU. This is in nanoseconds.
+#
+# gpuendtimestamp : Time stamp when kernel ends execution in GPU. This
+# is in nanoseconds.
+#
+# gridsize : Number of blocks in a grid along the X and Y dimensions for
+# a kernel launch
+#
+# threadblocksize : Number of threads in a block along the X, Y and Z
+# dimensions for a kernel launch
+#
+# dynsmemperblock : Size of dynamically allocated shared memory per
+# block in bytes for a kernel launch. (Only CUDA)
+#
+# stasmemperblock : Size of statically allocated shared memory per block
+# in bytes for a kernel launch
+#
+# regperthread : Number of registers used per thread for a kernel
+# launch.
+#
+# memtransferdir : Memory transfer direction, a direction value of 0 is
+# used for host->device memory copies and a value of 1 is used for
+# device->host memory copies.
+#
+# memtransfersize : Memory transfer size in bytes. This option shows the
+# amount of memory transferred between source (host/device) to
+# destination (host/device).
+#
+# memtransferhostmemtype : Host memory type (pageable or
+# page-locked). This option implies whether during a memory transfer,
+# the host memory type is pageable or page-locked.
+#
+# streamid : Stream Id for a kernel launch
+#
+# localblocksize : If workgroupsize has been specified by the user, this
+# option would be 1, otherwise it would be 0. (Only OpenCL)
+#
+# The profiler supports logging of following counters during kernel
+# execution on all architectures:
+#
+# local_load : Number of executed local load instructions per warp in a
+# SM
+#
+# local store : Number of executed local store instructions per warp in
+# a SM
+#
+# gld_request : Number of executed global load instructions per warp in
+# a SM
+#
+# gst_request : Number of executed global store instructions per warp in
+# a SM
+#
+# divergent_branch : Number of unique branches that diverge
+#
+# branch : Number of unique branch instructions in program
+#
+# sm_cta_launched : Number of threads blocks executed on a SM
+#
+#
+# The profiler supports logging of following counters during kernel
+# execution only on GPUs with Compute Capability 1.x:
+#
+# gld_incoherent   : Non-coalesced (incoherent) global memory loads
+#
+# gld_coherent     : Coalesced (coherent) global memory loads
+#
+# gld_32b          : 32-byte global memory load transactions
+#
+# gld_64b          : 64-byte global memory load transactions
+#
+# gld_128b         : 128-byte global memory load transactions
+#
+# gst_incoherent   : Non-coalesced (incoherent) global memory stores
+#
+# gst_coherent     : Coalesced (coherent) global memory stores
+#
+# gst_32b          : 32-byte global memory store transactions
+#
+# gst_64b          : 64-byte global memory store transactions
+#
+# gst_128b         : 128-byte global memory store transactions
+#
+# instructions     : Instructions executed
+#
+# warp_serialize   : Number of thread warps that serialize on address conflicts
+#                    to either shared or constant memory
+#
+# cta_launched     : Number of threads blocks executed
+#
+# prof_trigger_00... prof_trigger_07 : Profiler triggers that can be
+# inserted by user inside the kernel code for instrumenting the
+# kernel. A total of 8 triggers from prof_trigger_00 to prof_trigger_07
+# can be inserted in the code. The way to use prof triggers is to insert
+# '__prof_trigger(int N)' in kernel code (where N is the counter
+# number).
+#
+# tex_cache_hit    : Number of texture cache hits
+#
+# tex_cache_miss   : Number of texture cache miss
+#
+# Only 4 profiler counters can be monitored/profiled in a single run on
+# GPUs with Compute Capability 1.x.
+#
+#
+# The profiler supports logging of following counters during kernel
+# execution only on GPUs with Compute Capability 2.0 or higher:
+#
+# shared_load : Number of executed shared load instructions per warp in
+# a SM
+#
+# shared_store : Number of executed shared store instructions per warp
+# in a SM
+#
+# instructions_issued : Number of instructions issued including replays
+#
+# instructions_issued1_0 : Number of cycles that issue one instruction
+# for instruction group 0
+#
+# instructions_issued2_0 : Number of cycles that issue two instructions
+# for instruction group 0
+#
+# instructions_issued1_1 : Number of cycles that issue one instruction
+# for instruction group 1
+#
+# instructions_issued2_1 : Number of cycles that issue two instructions
+# for instruction group 1
+#
+# instructions_executed : Number of instructions executed, do not
+# include replays
+#
+# warps_launched : Number of warps launched in a SM
+#
+# threads_launched : Number of threads launched in a SM
+#
+# l1_global_load_hit : Number of global load hits in L1 cache
+#
+# l1_global_load_miss : Number of global load misses in L1 cache
+#
+# l1_local_load_hit : Number of local load hits in L1 cache
+#
+# l1_local_load_miss : Number of local load misses in L1 cache
+#
+# l1_local_store_hit : Number of local store hits in L1 cache
+#
+# l1_local_store_miss : Number of local store misses in L1 cache
+#
+# active_cycles : Count of cycles in which at least one warp is active
+# in a multiprocessor
+#
+# active_warps : Accumulated count of no. of warps which are active per
+# cycle in a multiprocessor. Each cycle increments it by the number of
+# warps active in that cycle (in range 0-48)
+#
+# l1_shared_bank_conflict : Count of no. of bank conflicts in shared
+# memory
+#
+# uncached_global_load_transaction: Number of uncached global load
+# transactions. This increments by 1, 2 or 4 for 32, 64 and 128 bit
+# accesses respectively
+#
+# l2_subp0_write_sector_misses : Accumulated write sector misses from L2
+# cache for slice 0 for all the L2 cache units
+#
+# l2_subp1_write_sector_misses : Accumulated write sectors misses from
+# L2 cache for slice 1 for all the L2 cache units
+#
+# l2_subp0_read_sector_misses : Accumulated read sectors misses from L2
+# cache for slice 0 for all the L2 cache units
+#
+# l2_subp1_read_sector_misses : Accumulated read sectors misses from L2
+# cache for slice 1 for all the L2 cache units
+#
+# l2_subp0_write_sector_queries : Accumulated write sector queries from
+# L1 to L2 cache for slice 0 of all the L2 cache units
+#
+# l2_subp1_write_sector_queries : Accumulated write sector queries from
+# L1 to L2 cache for slice 1 of all the L2 cache units
+#
+# l2_subp0_read_sector_queries : Accumulated read sector queries from L1
+# to L2 cache for slice 0 of all the L2 cache units
+#
+# l2_subp1_read_sector_queries : Accumulated read sector queries from L1
+# to L2 cache for slice 1 of all the L2 cache units
+#
+# uncached_global_load_transaction: Number of uncached global load
+# transactions. This increments by 1, 2, or 4 for 32, 64 and 128 bit
+# accesses respectively
+#
+# global_store_transaction : Number of global store transactions. This
+# increments by 1, 2, or 4 for 32, 64 and 128 bit accesses respectively
+#
+# tex0_cache_sector_queries : Number of texture cache sector queries for
+# texture unit 0
+#
+# tex0_cache_sector_misses : Number of texture cache sector misses for
+# texture unit 0
+#
+# tex1_cache_sector_queries : Number of texture cache sector queries for
+# texture unit 1
+#
+# tex1_cache_sector_misses : Number of texture cache sector misses for
+# texture unit 1
+#
+# fb_subp0_read_sectors : Number of read requests sent to sub-partition
+# 0 of all the DRAM units
+#
+# fb_subp1_read_sectors : Number of read requests sent to sub-partition
+# 1 of all the DRAM units
+#
+# fb_subp0_write_sectors : Number of write requests sent to
+# sub-partition 0 of all the DRAM units
+#
+# fb_subp1_write_sectors : Number of read requests sent to sub-partition
+# 1 of all the DRAM units
+#
+# fb0_subp0_read_sectors : Number of read requests sent to sub-partition
+# 0 of DRAM unit 0
+#
+# fb0_subp1_read_sectors : Number of read requests sent to sub-partition
+# 1 of DRAM unit 0
+#
+# fb0_subp0_write_sectors : Number of write requests sent to
+# sub-partition 0 of DRAM unit 0
+#
+# fb0_subp1_write_sectors : Number of write requests sent to
+# sub-partition 1 of DRAM unit 0
+#
+# fb1_subp0_read_sectors : Number of read requests sent to sub-partition
+# 0 of DRAM unit 1
+#
+# fb1_subp1_read_sectors : Number of read requests sent to sub-partition
+# 1 of DRAM unit 1
+#
+# fb1_subp0_write_sectors : Number of write requests sent to
+# sub-partition 0 of DRAM unit 1
+#
+# fb1_subp1_write_sectors : Number of write requests sent to
+# sub-partition 1 of DRAM unit 1
+#
