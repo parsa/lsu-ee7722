@@ -101,7 +101,7 @@ cuda_func_attr_get(int &count)
   return func_attr;
 }
 
-typedef uint32_t Sort_Elt;
+typedef unsigned Sort_Elt;
 
 
 class Sort {
