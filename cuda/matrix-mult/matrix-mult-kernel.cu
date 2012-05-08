@@ -479,8 +479,6 @@ mm_blk_cache_a_local_t()
               float b_val = b[b_idx];
               for ( int ii = 0; ii < dim_block; ii++ )
                 cloc[ii] +=  s[ kk + dim_block * ii ] * b_val;
-              int x = int(b_val) % dim_block;
-              cloc[x] ++;
             }
         }
 
