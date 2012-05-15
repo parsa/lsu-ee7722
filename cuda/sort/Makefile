@@ -11,8 +11,7 @@ CUDUMP = $(CUDAPATH)/bin/cuobjdump
 #   Execution problem occurs with --use_fast_math and certain data placement.
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  -use_fast_math -g --gpu-architecture=sm_11  \
- --maxrregcount 20
+ --ptxas-options=-v  -use_fast_math
 
 # -maxrregcount
 
