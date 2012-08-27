@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
  /// Fragment Shader / Phong Shading Demonstration
 
@@ -6,12 +6,18 @@
 
  /// See demo-9-shader.cc for details.
 
+
+// Specify version of OpenGL Shading Language.
+//
 #version 150 compatibility
+
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 void vs_ff_vertex(vec4 vtx);
 
 
+ /// Entry Point for Vertex Shader Code
+//
 void
 vs_main_lighting()
 {
@@ -56,10 +62,14 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   return new_color;
 }
 
+// Declare variables for communication between vertex shader
+// and fragment shader.
+//
 #ifdef _VERTEX_SHADER_
 out vec3 var_normal_e;
 out vec4 var_vertex_e;
-#else
+#endif
+#ifdef _FRAGMENT_SHADER_
 in vec3 var_normal_e;
 in vec4 var_vertex_e;
 #endif

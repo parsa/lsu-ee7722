@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
  /// Simple Demo of Point Masses and Springs
 
@@ -117,7 +117,7 @@ World::init()
   chain_length = 20;
   balls = new Ball[chain_length];
 
-  distance_natural = 1;
+  distance_relaxed = 1;
   opt_spring_constant = 20;
   variable_control.insert(opt_spring_constant,"Spring Constant");
 
@@ -152,7 +152,7 @@ World::ball_init()
       ball->position = next_pos;
       ball->velocity = pVect(0,0,0);
       ball->mass = i == 0 ? 10 : 1;
-      next_pos += pVect(distance_natural,0,0);
+      next_pos += pVect(distance_relaxed,0,0);
     }
 }
 
@@ -190,7 +190,7 @@ World::time_step_cpu(double delta_t)
           // Compute how much the spring is stretched.
           //
           const float spring_stretch =
-            ball_to_neighbor.magnitude - distance_natural;
+            ball_to_neighbor.magnitude - distance_relaxed;
 
           force += opt_spring_constant * spring_stretch * ball_to_neighbor;
         }

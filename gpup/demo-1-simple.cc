@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
 
@@ -174,15 +174,15 @@ World::time_step_cpu_v0(double delta_t)
 
   if ( ball.position.y < 0 )
     {
-      // Snap ball position to surface.
-      //
-      ball.position.y = 0;
-
       // Reflect y (vertical) component of velocity, with a reduction
       // due to energy lost in the collision.
       //
       if ( ball.velocity.y < 0 )
         ball.velocity.y = - 0.9 * ball.velocity.y;
+
+      // Don't "Fix" position by snapping it to zero, that would
+      // add energy to the system.
+      //   ball.position.y = 0;  // Bad.
     }
 }
 

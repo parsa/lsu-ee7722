@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation, Graphics Code
 
@@ -294,7 +294,7 @@ public:
   void balls_push(pVect amt);
 
   float opt_spring_constant;
-  float distance_natural;
+  float distance_relaxed;
   int chain_length;
   Ball *balls;
   Sphere sphere;
