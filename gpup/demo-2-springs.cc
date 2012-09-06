@@ -102,6 +102,7 @@ public:
   pCoor position;
   pVect velocity;
   float mass, mass_inv;
+  float radius;
   void push(pVect amt);
   void translate(pVect amt);
   void stop();
@@ -126,12 +127,12 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   variable_control.insert(opt_gravity_accel,"Gravity");
 
-  ball_init();
-
   world_time = 0;
   frame_timer.work_unit_set("Steps / s");
 
   init_graphics();
+
+  ball_init();
 }
 
 ///
@@ -145,14 +146,16 @@ World::ball_init()
 {
   // Set initial position to a visibly interesting point.
   //
-  pCoor next_pos(13.7,22,-15.4);
+  pCoor next_pos(2.1,12,-20.8);
+
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
       ball->position = next_pos;
       ball->velocity = pVect(0,0,0);
       ball->mass = i == 0 ? 10 : 1;
-      next_pos += pVect(distance_relaxed,0,0);
+      ball->radius = 0.5;
+      next_pos += pVect(1,0,0);
     }
 }
 

@@ -420,11 +420,11 @@ World::render_objects(Render_Option option)
     {
       sphere.light_pos = light_location;
       for ( int i=0; i<chain_length; i++ )
-        sphere.render_shadow_volume(sphere.radius,balls[i].position);
+        sphere.render_shadow_volume(balls[i].radius,balls[i].position);
     }
   else
     for ( int i=0; i<chain_length; i++ )
-      sphere.render(balls[i].position);
+      sphere.render(balls[i].radius,balls[i].position);
 
   glDisable(GL_COLOR_SUM);
   glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
