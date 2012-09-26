@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -326,9 +326,9 @@ World::render()
 
           // Vertex 1
           //
-          sphere_coords += slice_r1;
-          sphere_coords += y1;
-          sphere_coords += 0;
+          sphere_coords += slice_r1;  // x
+          sphere_coords += y1;        // y
+          sphere_coords += 0;         // z
 
           // Vertex 2
           //
@@ -342,9 +342,9 @@ World::render()
 
               // Vertex 3  (Used for three triangles.)
               //
-              sphere_coords += slice_r1 * cos(theta1);
-              sphere_coords += y1;
-              sphere_coords += slice_r1 * sin(theta1);
+              sphere_coords += slice_r1 * cos(theta1);  // x
+              sphere_coords += y1;                      // y
+              sphere_coords += slice_r1 * sin(theta1);  // z
 
               // Vertex 4  (Used for three triangles.)
               //
