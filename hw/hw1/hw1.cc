@@ -1,3 +1,7 @@
+#if 1
+#include "hw-2-sol.cc"
+#else
+
 /// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
 
@@ -338,3 +342,4 @@ main(int argv, char **argc)
   popengl_helper.display_cb_set(world.frame_callback_w,&world);
 }
 
+#endif
