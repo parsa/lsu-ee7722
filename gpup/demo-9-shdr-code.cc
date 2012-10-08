@@ -16,11 +16,25 @@ vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 void vs_ff_vertex(vec4 vtx);
 
 
- /// Entry Point for Vertex Shader Code
+///
+/// Vertex-Shader Only Code
+///
+
+ // Entry Point for Vertex Shader Code
 //
 void
 vs_main_lighting()
 {
+  // Pre-Defined Inputs (storage qualifier "in") (Compatibility Profile)
+  //
+  // gl_Vertex, gl_Normal, gl_Color
+  // See OGSL Spec 4.3 Section 7.2
+
+  // Pre-Defined Uniforms (Compatibility Profile)
+  // See OGSL Spec 4.3 Section 7.4.1
+  //
+  // gl_ModelViewMatrix, gl_NormalMatrix, gl_ModelViewProjectionMatrix
+
   // Use custom lighting model.
   //
   vs_ff_vertex(gl_Vertex);
@@ -36,6 +50,11 @@ vs_ff_vertex(vec4 vtx)
   //
   gl_Position = gl_ModelViewProjectionMatrix * vtx;
 }
+
+
+///
+/// Routine used by Either Vertex or Fragment Shader
+///
 
 vec4
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
@@ -61,6 +80,14 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   new_color.a = color.a;
   return new_color;
 }
+
+
+///
+/// Vertex & Fragment Shader Code
+///
+
+
+
 
 // Declare variables for communication between vertex shader
 // and fragment shader.
