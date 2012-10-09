@@ -7,10 +7,11 @@
 /// Purpose
 //
 //   Demonstrate use of Vertex and Fragment Shaders
+//   See demo-9-shdr-code.cc for shader program source code.
 
 /// References
 //
-//  OpenGL 3.0 Specification
+//  OpenGL 4.3 Specification
 
 ///  Keyboard Commands
  //
@@ -30,6 +31,8 @@
  /// Simulation Options
  //  (Also see variables below.)
  //
+ //  'v'    Toggle "lighting" shader program (vertex shader) on and off.
+ //  'f'    Toggle "Phong" shader program (vertex and fragment shader).
  //  'm'    Change method used to specify vertices.
  //  'r'    Toggle vertex re-computation on and off.
  //  'F11'  Change size of text.
@@ -68,6 +71,7 @@
 #include <gp/pstring.h>
 #include <gp/misc.h>
 #include <gp/gl-buffer.h>
+#include <gp/texture-util.h>
 #include "shapes.h"
 
 
@@ -98,6 +102,7 @@ public:
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
   float *coords;
+  float *tcoords;
   int coords_size;
 
   pCoor sphere_location;
@@ -106,6 +111,9 @@ public:
   pCoor eye_location;
   pVect eye_direction;
   pMatrix modelview;
+
+  GLuint texture_id_syllabus;
+  GLuint texture_id_image;
 
   int opt_method;
   bool opt_recompute;
@@ -123,6 +131,7 @@ World::init()
 {
   frame_timer.work_unit_set("Steps / s");
   coords = NULL;
+  tcoords = NULL;
   gpu_buffer = 0;
 
   opt_method = 0;
@@ -142,18 +151,27 @@ World::init()
 
   opt_move_item = MI_Light;
 
+  texture_id_syllabus = pBuild_Texture_File("gpup.png",false,255);
+  texture_id_image = pBuild_Texture_File("mult.png", false,255);
+
   // Declared like a programmable shader, but used for fixed-functionality.
   //
   vs_fixed = new pShader();
 
   // Prepare a vertex shader implementing a simple lighting model.
   //
-  vs_lighting = new pShader("demo-9-shdr-code.cc","vs_main_lighting();");
+  vs_lighting = new pShader
+    ("demo-9-shdr-code.cc",  // File holding shader program.
+     "vs_main_lighting();"   // Name of vertex shader main routine.
+     );
 
   // Prepare a vertex shader and fragment shader, implementing a Phong shader.
   //
   vs_phong = new pShader
-    ("demo-9-shdr-code.cc","vs_main_phong();","fs_main_phong();");
+    ("demo-9-shdr-code.cc",   // File holding shader program.
+     "vs_main_phong();",      // Name of vertex shader main routine.
+     "fs_main_phong();"       // Name of fragment shader main routine.
+     );
 
   opt_fshader = false;
   opt_vshader = false;
@@ -260,16 +278,52 @@ World::render()
   glEnable(GL_COLOR_MATERIAL);
   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
 
+  // Set texture unit for commands such as gl_BindTexture, gl_TexEnv.
+  //
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
+
+  // Set parameters that apply to a texture (texture_id_syllabus).
+  //
+  glTexParameterf
+    (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameterf
+    (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+
+  // Set parameter for texture unit.
+  //
+  glTexEnvi
+    (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
   // If 1, use back color and -normal if back side facing user.
   //
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
 
-  if ( opt_fshader )
-    vs_phong->use();
-  else if ( opt_vshader )
-    vs_lighting->use();
+  if ( opt_vshader && !opt_fshader )
+    {
+      // Install the "lighting" vertex shader into the vertex stage of
+      // the rendering pipeline. The other stages, including fragment
+      // stage, do not have shader programs installed so they realize
+      // fixed functionality.
+      //
+      vs_lighting->use();
+      //
+      // Note that vs_lighting is an instance of pShader, a class
+      // written for use with this course. See ../include/shader.h.
+    }
+  else if ( opt_fshader )
+    {
+      // Install the "phong" vertex/fragment shaders in the respective
+      // stages.
+      //
+      vs_phong->use();
+    }
   else
-    vs_fixed->use();
+    {
+      // Set all programmable units to use fixed functionality.
+      //
+      vs_fixed->use();
+    }
 
   ///
   /// Paint Single Triangle.
@@ -288,10 +342,14 @@ World::render()
   pCoor p2( 0,    5, -3 );
   pCoor p3( 9,    6, -7 );
   pNorm triangle_normal = cross(p1,p2,p3);
+
+  // Specify normal and vertex using course-defined objects pCoor and
+  // pNorm. OpenGL sees these as pointers to floats.
+
   glNormal3fv(triangle_normal);
-  glVertex3fv(p1);
-  glVertex3fv(p2);
-  glVertex3fv(p3);
+  glTexCoord2f(0.95,1.0); glVertex3fv(p1);
+  glTexCoord2f(0.00,0.1); glVertex3fv(p2);
+  glTexCoord2f(0.90,0.0); glVertex3fv(p3);
 
   glEnd();
 
@@ -356,6 +414,7 @@ World::render()
 
       coords_size = sphere_coords.occ();
       coords = sphere_coords.take_storage();
+      tcoords = texture_coords.take_storage();
     }
 
 
@@ -368,6 +427,14 @@ World::render()
   glTranslatef(sphere_location.x,sphere_location.y,sphere_location.z);
   glScalef(sphere_size,sphere_size,sphere_size);
   glRotatef(60,0,1,0);
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texture_id_image);
+
+  // Specify pointer into array to use for texture coordinates.
+  //
+  glTexCoordPointer(2,GL_FLOAT,0,tcoords);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
   // Specify pointer into array to use for normals.
   //
@@ -396,6 +463,7 @@ World::render()
 
   glDisableClientState(GL_NORMAL_ARRAY);
   glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
   if ( opt_recompute )
     {

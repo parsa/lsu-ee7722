@@ -13,44 +13,57 @@
 
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
-void vs_ff_vertex(vec4 vtx);
 
 
 ///
-/// Vertex-Shader Only Code
+/// Vertex-Shader Only Code -- "Lighting" Program
 ///
 
  // Entry Point for Vertex Shader Code
 //
+#ifdef _VERTEX_SHADER_
 void
 vs_main_lighting()
 {
-  // Pre-Defined Inputs (storage qualifier "in") (Compatibility Profile)
+  /// Pre-Defined Inputs
   //
   // gl_Vertex, gl_Normal, gl_Color
+  //
+  // (storage qualifier "in") (Compatibility Profile)
   // See OGSL Spec 4.3 Section 7.2
 
-  // Pre-Defined Uniforms (Compatibility Profile)
-  // See OGSL Spec 4.3 Section 7.4.1
+  /// Pre-Defined Outputs
   //
-  // gl_ModelViewMatrix, gl_NormalMatrix, gl_ModelViewProjectionMatrix
+  // gl_Position, gl_FrontColor, etc.
+  //
+  // (storage qualifier "out")
 
-  // Use custom lighting model.
+  /// Pre-Defined Uniforms 
   //
-  vs_ff_vertex(gl_Vertex);
+  // gl_ModelViewMatrix, gl_NormalMatrix, gl_ModelViewProjectionMatrix, ..
+  //
+  // (storage qualifier uniform) (Compatibility Profile)
+  // See OGSL Spec 4.3 Section 7.4.1
+
+  // Transform vertex coordinate to clip space.
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+
+  // Compute eye-space coordinates for vertex and normal.
+  //
   vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
   vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
-  gl_FrontColor = generic_lighting(vertex_e,gl_Color,normal_e);
-}
 
-void
-vs_ff_vertex(vec4 vtx)
-{
-  // Transform VTX in the same way fixed functionality would.
+  // Call our lighting routine to compute the lighted color of this
+  // vertex.
   //
-  gl_Position = gl_ModelViewProjectionMatrix * vtx;
-}
+  gl_FrontColor = generic_lighting(vertex_e,gl_Color,normal_e);
 
+  // Copy texture coordinate to output (no need to modify it).
+  // Only copy x and y components since it's a 2D texture.
+  //
+  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
+}
+#endif
 
 ///
 /// Routine used by Either Vertex or Fragment Shader
@@ -59,9 +72,8 @@ vs_ff_vertex(vec4 vtx)
 vec4
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 {
-  // Perform lighting calculations VTX, using COLOR and NORMAL.
+  // Return lighted color of vertex_e.
   //
-
   vec4 light_pos = gl_LightSource[0].position;
   vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
   float phase_light = max(0.0f,dot(normal_e, normalize(v_vtx_light).xyz));
@@ -73,12 +85,12 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
     gl_LightSource[0].constantAttenuation +
     gl_LightSource[0].linearAttenuation * dist +
     gl_LightSource[0].quadraticAttenuation * distsq;
-  vec4 new_color;
-  new_color.rgb =
+  vec4 lighted_color;
+  lighted_color.rgb =
     color.rgb * gl_LightModel.ambient.rgb
     + color.rgb * ( ambient_light + phase_light * diffuse_light ) / atten_inv;
-  new_color.a = color.a;
-  return new_color;
+  lighted_color.a = color.a;
+  return lighted_color;
 }
 
 
@@ -95,22 +107,35 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 #ifdef _VERTEX_SHADER_
 out vec3 var_normal_e;
 out vec4 var_vertex_e;
+out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
 #endif
 #ifdef _FRAGMENT_SHADER_
 in vec3 var_normal_e;
 in vec4 var_vertex_e;
+in vec2 gl_TexCoord[]; // We can change its interpolation, say to noperspective.
+uniform sampler2D tex_unit_0;
 #endif
 
 #ifdef _VERTEX_SHADER_
 void
 vs_main_phong()
 {
-  // Use custom lighting model.
+  // Transform vertex to clip space.
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+
+  // Compute eye-space vertex coordinate and normal.
+  // These are outputs of the vertex shader and inputs to the frag shader.
   //
-  vs_ff_vertex(gl_Vertex);
   var_vertex_e = gl_ModelViewMatrix * gl_Vertex;
   var_normal_e = normalize(gl_NormalMatrix * gl_Normal);
+
+  // Copy color to output unmodified. Lighting calculations will
+  // be performed in the fragment shader.
+  //
   gl_BackColor = gl_FrontColor = gl_Color;
+
+  // Copy texture coordinate to output (no need to modify it).
+  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
 }
 #endif
 
@@ -121,8 +146,17 @@ fs_main_phong()
   // Note: gl_Color in fragment shader is either gl_FrontColor or gl_BackColor
   // in vertex shader.
 
+  // Get filtered texel.
+  //
+  vec4 texel = texture(tex_unit_0,gl_TexCoord[0].xy);
+  
+  // Multiply filtered texel color with lighted color of fragment.
+  //
   gl_FragColor =
-    generic_lighting(var_vertex_e,gl_Color,normalize(var_normal_e));
+    texel * generic_lighting(var_vertex_e,gl_Color,normalize(var_normal_e));
+
+  // Copy fragment depth unmodified.
+  //
   gl_FragDepth = gl_FragCoord.z;
 }
 #endif
