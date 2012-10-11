@@ -105,29 +105,25 @@ pEnum_Label texture_mag_filters[] = {
 };
 
 
+// A similar routine is defined in gp/texture-util.h
+//
 GLuint
-pTexture_From_Image
-(char *file_name, int option = 0, int transp = 256 )
+rpBuild_Texture_File
+(const char *name, bool invert = false, int transp = 256 )
 {
-  P_Image_Read image(file_name,transp);
+  // Read image from file.
+  //
+  P_Image_Read image(name,transp);
   if ( !image.image_loaded ) return 0;
-  if ( option & PT_To_Alpha ) image.gray_to_alpha();
-  if ( option & PT_Invert ) image.color_invert();
-  GLuint texture_id;
 
-  // Generate a texture id (name). (This doesn't create a texture object.)
+  // Invert colors. (E.g., to show text as white on black.)
   //
-  glGenTextures(1,&texture_id);
+  if ( invert ) image.color_invert();
 
-  // Create a texture object for texture_id (since one doesn't yet exist).
-  //
-  glBindTexture(GL_TEXTURE_2D,texture_id);
-
-  // Set some parameters for our new texture object.
-  //
-  glTexParameteri(GL_TEXTURE_2D,GL_GENERATE_MIPMAP,1);
-  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
-  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+  GLuint tid;
+  glGenTextures(1,&tid);
+  glBindTexture(GL_TEXTURE_2D,tid);
+  glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 
   // Load data into the texture object.
   //
@@ -142,9 +138,8 @@ pTexture_From_Image
      (void*)image.data);
   pError_Check();
 
-  return texture_id;
+  return tid;
 }
-
 
 
 class World {
@@ -187,6 +182,7 @@ public:
   int opt_method;
   bool opt_recompute;
 
+  float tex_scale;  // Amount by which to scale the texture on the triangle.
   GLuint texture_id_syllabus;
   GLuint texture_id_image;
 
@@ -218,6 +214,9 @@ World::init()
   sphere_size = 5;
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
+
+  tex_scale = 2;
+  variable_control.insert(tex_scale,"Texture Scaling");
 
   opt_move_item = MI_Eye;
 
@@ -361,16 +360,20 @@ World::render()
   ///
 
   glEnable(GL_COLOR_MATERIAL);
-  glColor3ub( 0x58, 0x0d, 0xa6); // Red, Green, Blue
+  pColor color_tri(0x7815b6); // Red, Green, Blue
+  glColor3fv( color_tri );
 
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
 
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+
   // Set parameters that apply to a texture (texture_id_syllabus).
   //
-  glTexParameterf
+  glTexParameteri
     (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameterf
+  glTexParameteri
     (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
   // Set parameter for texture unit.
@@ -389,9 +392,12 @@ World::render()
   const float dz = 2;
 
   glNormal3f(0,1,0);
-  glTexCoord2f(0.95,1.0);  glVertex3f( 9.5, -5, dz + -3.2 );
-  glTexCoord2f(0.00,0.1);  glVertex3f( 0,   5, dz + -5 );
-  glTexCoord2f(0.90,0.0);  glVertex3f( 9,   6, dz + -9 );
+  glTexCoord2f(tex_scale * 0.95, tex_scale * 1.0);
+  glVertex3f( 9.5, -5, dz + -3.2 );
+  glTexCoord2f(tex_scale * 0.00, tex_scale * 0.1);
+  glVertex3f( 0,   5, dz + -5 );
+  glTexCoord2f(tex_scale * 0.90, tex_scale * 0.0);  
+  glVertex3f( 9,   6, dz + -9 );
 
   glEnd();
 
@@ -486,11 +492,11 @@ World::render()
 
       // Set parameters in texture object (texture_id_image).
       //
-      glTexParameterf
+      glTexParameteri
         (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
          texture_min_filters[opt_texture_min_filter].value);
 
-      glTexParameterf
+      glTexParameteri
         (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
          texture_mag_filters[opt_texture_mag_filter].value);
 
@@ -503,6 +509,8 @@ World::render()
       glEnable(GL_TEXTURE_2D);
     }
 
+  // Specify pointer into array to use for texture coordinates.
+  //
   glTexCoordPointer(2,GL_FLOAT,0,tcoords);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
