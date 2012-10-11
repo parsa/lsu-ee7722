@@ -173,6 +173,10 @@ World::init()
      "fs_main_phong();"       // Name of fragment shader main routine.
      );
 
+  vs_phong->print_active_attrib();
+  vs_phong->print_active_uniform();
+  vs_phong->print_active_varying();
+
   opt_fshader = false;
   opt_vshader = false;
 
@@ -285,9 +289,9 @@ World::render()
 
   // Set parameters that apply to a texture (texture_id_syllabus).
   //
-  glTexParameterf
+  glTexParameteri
     (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameterf
+  glTexParameteri
     (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 
   // Set parameter for texture unit.
