@@ -124,6 +124,8 @@ public:
   pShader *vs_lighting;  // Lighting tweak.
   pShader *vs_phong;     // Phong shading.
 
+  GLint uni_loc_material_color;
+
 };
 
 void
@@ -154,6 +156,20 @@ World::init()
   texture_id_syllabus = pBuild_Texture_File("gpup.png",false,255);
   texture_id_image = pBuild_Texture_File("mult.png", false,255);
 
+  glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
+
+  // Set parameters that apply to a texture (texture_id_syllabus).
+  //
+  glTexParameteri
+    (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri
+    (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+
+  // Do the same for the image.
+  glBindTexture(GL_TEXTURE_2D,texture_id_image);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+
   // Declared like a programmable shader, but used for fixed-functionality.
   //
   vs_fixed = new pShader();
@@ -172,6 +188,8 @@ World::init()
      "vs_main_phong();",      // Name of vertex shader main routine.
      "fs_main_phong();"       // Name of fragment shader main routine.
      );
+
+  uni_loc_material_color = vs_phong->uniform_location("material_color");
 
   vs_phong->print_active_attrib();
   vs_phong->print_active_uniform();
@@ -287,13 +305,6 @@ World::render()
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
 
-  // Set parameters that apply to a texture (texture_id_syllabus).
-  //
-  glTexParameteri
-    (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameteri
-    (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-
   // Set parameter for texture unit.
   //
   glTexEnvi
@@ -333,7 +344,26 @@ World::render()
   /// Paint Single Triangle.
   ///
 
-  glColor3ub( 0x58, 0x0d, 0xa6); // Red, Green, Blue
+  pColor color_tri(0x7815b6); // Red, Green, Blue
+
+  // Set color using OpenGL pre-defined vertex attribute.
+  //
+  // Unless the driver is clever, resources will be needed so that
+  // each vertex can have its own color despite the fact that all
+  // vertices of this triangle are the same color.
+  //
+  glColor3fv( color_tri );
+
+  // Set uniform variable used to hold color.
+  //
+  // Value gets written into a uniform variable.  A single
+  // copy is shared by all vertices.
+  //
+  if ( opt_fshader || opt_vshader )
+    glUniform4fv
+      ( uni_loc_material_color,   // Location of uniform.
+        1,                        // Number of uniform variables set.
+        color_tri );              // Pointer to storage.
 
   //  Indicate type of primitive.
   //
@@ -459,6 +489,12 @@ World::render()
   // and used a color array.
   //
   glColor3fv(lsu_spirit_gold);
+
+  if ( opt_fshader || opt_vshader )
+    glUniform4fv
+      ( uni_loc_material_color,   // Location of uniform.
+        1,                        // Number of uniform variables set.
+        lsu_spirit_gold );        // Pointer to storage.
 
   // Draw triangle strips using enabled arrays.
   // Start at element 0, render a total of coords_size/3 vertices.

@@ -9,10 +9,14 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 150 compatibility
+#version 420 compatibility
 
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
+
+#define USE_MATERIAL_COLOR
+
+uniform vec4 material_color;
 
 
 ///
@@ -53,10 +57,16 @@ vs_main_lighting()
   vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
   vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
 
+#ifdef USE_MATERIAL_COLOR
+  vec4 our_color = material_color;
+#else
+  vec4 our_color = gl_Color;
+#endif
+
   // Call our lighting routine to compute the lighted color of this
   // vertex.
   //
-  gl_FrontColor = generic_lighting(vertex_e,gl_Color,normal_e);
+  gl_FrontColor = generic_lighting(vertex_e,our_color,normal_e);
 
   // Copy texture coordinate to output (no need to modify it).
   // Only copy x and y components since it's a 2D texture.
@@ -132,7 +142,9 @@ vs_main_phong()
   // Copy color to output unmodified. Lighting calculations will
   // be performed in the fragment shader.
   //
+#ifndef USE_MATERIAL_COLOR
   gl_BackColor = gl_FrontColor = gl_Color;
+#endif
 
   // Copy texture coordinate to output (no need to modify it).
   gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
@@ -149,11 +161,17 @@ fs_main_phong()
   // Get filtered texel.
   //
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0].xy);
-  
+
+#ifdef USE_MATERIAL_COLOR
+  vec4 our_color = material_color;
+#else
+  vec4 our_color = gl_Color;
+#endif
+
   // Multiply filtered texel color with lighted color of fragment.
   //
   gl_FragColor =
-    texel * generic_lighting(var_vertex_e,gl_Color,normalize(var_normal_e));
+    texel * generic_lighting(var_vertex_e,our_color,normalize(var_normal_e));
 
   // Copy fragment depth unmodified.
   //
