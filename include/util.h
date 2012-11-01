@@ -483,7 +483,7 @@ public:
   static void cb_idle_w(){ opengl_helper_self_->cb_idle(); }
   void cb_idle()
   {
-    if ( !ptr_glXGetVideoSyncSGI ) { use_timer(); return; }
+    if ( true || !ptr_glXGetVideoSyncSGI ) { use_timer(); return; }
 #   ifdef GLX_SGI_video_sync
     unsigned int count;
     ptr_glXGetVideoSyncSGI(&count);
