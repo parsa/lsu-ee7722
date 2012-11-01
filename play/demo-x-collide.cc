@@ -155,6 +155,7 @@
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
 #include <gp/cuda-util.h>
+#include <gp/colors.h>
 #include "shapes.h"
 #include "demo-x.cuh"
 
@@ -340,123 +341,12 @@ public:
   World& w;
 };
 
-
-const pColor red(0.8,0.1,0.1);
-const pColor green(0.1,0.8,0.1);
-const pColor blue(0.1,0.1,0.8);
-const pColor cyan(0.1,0.8,0.8);
 const pColor dark(0);
-const pColor light_gray(0.8,0.8,0.8);
-const pColor dark_gray(0.15,0.15,0.15);
-const pColor white(0xffffff);
-const pColor lsu_business_purple(0x7f5ca2);
-const pColor lsu_spirit_purple(0x580da6);
-const pColor lsu_spirit_gold(0xf9b237);
-const pColor lsu_official_purple(0x2f0462);
-
-const pColor color_orange_red(0xff4500);
-const pColor color_dark_orange(0xff8c00);
-const pColor color_orange(0xffa500);
-const pColor color_gold(0xffd700);
-const pColor color_yellow(0xffff00);
-const pColor color_chartreuse(0x7fff00);
-const pColor color_lawn_green(0x7cfc00);
-const pColor color_spring_green(0x00ff7f);
-const pColor color_medium_spring_green(0x00fa9a);
-const pColor color_deep_sky_blue(0x00bfff);
-const pColor color_medium_blue(0x0000cd);
-const pColor color_dark_violet(0x9400d3);
-const pColor color_dark_magenta(0x8b008b);
-const pColor color_magenta(0xff00ff);
-const pColor color_dark_red(0x8b0000);
-const pColor color_brown(0xa52a2a);
-const pColor color_firebrick(0xb22222);
-const pColor color_indian_red(0xcd5c5c);
-const pColor color_light_coral(0xf08080);
-const pColor color_salmon(0xfa8072);
-const pColor color_light_salmon(0xffa07a);
-const pColor color_tomato(0xff6347);
-const pColor color_coral(0xff7f50);
-const pColor color_dark_salmon(0xe9967a);
-const pColor color_rosy_brown(0xbc8f8f);
-const pColor color_sienna(0xa0522d);
-const pColor color_saddle_brown(0x8b4513);
-const pColor color_chocolate(0xd2691e);
-const pColor color_peru(0xcd853f);
-const pColor color_sandy_brown(0xf4a460);
-const pColor color_burlywood(0xdeb887);
-const pColor color_tan(0xd2b48c);
-const pColor color_navajo_white(0xffdead);
-const pColor color_wheat(0xf5deb3);
-const pColor color_dark_goldenrod(0xb8860b);
-const pColor color_goldenrod(0xdaa520);
-const pColor color_light_goldenrod(0xeedd82);
-const pColor color_pale_goldenrod(0xeee8aa);
-const pColor color_cornsilk(0xfff8dc);
-const pColor color_dark_khaki(0xbdb76b);
-const pColor color_khaki(0xf0e68c);
-const pColor color_lemon_chiffon(0xfffacd);
-const pColor color_dark_olive_green(0x556b2f);
-const pColor color_olive_drab(0x6b8e23);
-const pColor color_yellow_green(0x9acd32);
-const pColor color_green_yellow(0xadff2f);
-const pColor color_light_green(0x90ee90);
-const pColor color_forest_green(0x228b22);
-const pColor color_lime_green(0x32cd32);
-const pColor color_pale_green(0x98fb98);
-const pColor color_dark_sea_green(0x8fbc8f);
-const pColor color_sea_green(0x2e8b57);
-const pColor color_medium_sea_green(0x3cb371);
-const pColor color_light_sea_green(0x20b2aa);
-const pColor color_medium_aquamarine(0x66cdaa);
-const pColor color_aquamarine(0x7fffd4);
-const pColor color_dark_cyan(0x008b8b);
-const pColor color_medium_turquoise(0x48d1cc);
-const pColor color_turquoise(0x40e0d0);
-const pColor color_pale_turquoise(0xafeeee);
-const pColor color_powder_blue(0xb0e0e6);
-const pColor color_light_blue(0xadd8e6);
-const pColor color_sky_blue(0x87ceeb);
-const pColor color_light_sky_blue(0x87cefa);
-const pColor color_cadet_blue(0x5f9ea0);
-const pColor color_steel_blue(0x4682b4);
-const pColor color_dark_slate_gray(0x2f4f4f);
-const pColor color_slate_gray(0x708090);
-const pColor color_light_slate_gray(0x778899);
-const pColor color_royal_blue(0x4169e1);
-const pColor color_dodger_blue(0x1e90ff);
-const pColor color_cornflower_blue(0x6495ed);
-const pColor color_light_steel_blue(0xb0c4de);
-const pColor color_dark_blue(0x00008b);
-const pColor color_navy(0x000080);
-const pColor color_midnight_blue(0x191970);
-const pColor color_dark_slate_blue(0x483d8b);
-const pColor color_slate_blue(0x6a5acd);
-const pColor color_medium_slate_blue(0x7b68ee);
-const pColor color_light_slate_blue(0x8470ff);
-const pColor color_medium_purple(0x9370db);
-const pColor color_blue_violet(0x8a2be2);
-const pColor color_purple(0xa020f0);
-const pColor color_dark_orchid(0x9932cc);
-const pColor color_medium_orchid(0xba55d3);
-const pColor color_orchid(0xda70d6);
-const pColor color_thistle(0xd8bfd8);
-const pColor color_plum(0xdda0dd);
-const pColor color_violet(0xee82ee);
-const pColor color_medium_violet_red(0xc71585);
-const pColor color_violet_red(0xd02090);
-const pColor color_pale_violet_red(0xdb7093);
-const pColor color_maroon(0xb03060);
-const pColor color_deep_pink(0xff1493);
-const pColor color_hot_pink(0xff69b4);
-const pColor color_pink(0xffc0cb);
-const pColor color_light_pink(0xffb6c1);
-const pColor color_snow(0xfffafa);
 
 const int colors_mask = 0xf;
 const pColor* const colors[colors_mask+1] =
-  { &lsu_spirit_gold, &lsu_spirit_purple, &green, &blue,
-    &red, &cyan, &light_gray, &dark_gray,
+  { &color_lsu_spirit_gold, &color_lsu_spirit_purple, &color_green, &color_blue,
+    &color_red, &color_cyan, &color_light_gray, &color_dark_gray,
     &color_orange, &color_spring_green, &color_dark_violet, &color_salmon,
     &color_burlywood, &color_cornsilk, &color_sky_blue, &color_deep_pink };
 
@@ -884,7 +774,7 @@ World::init()
   opt_debug2 = false;
   opt_block_color_pass = 0;
 
-  mirror_tint = lsu_spirit_purple * 0.5;
+  mirror_tint = color_lsu_spirit_purple * 0.5;
 
   // Instantiate shaders used for reflections.
   //
@@ -4960,7 +4850,7 @@ World::render_objects(bool attempt_ot)
   // Write darker-colored, untextured, mirror tiles.
   //
   glEnable(GL_BLEND);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color_white);
   glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
   glDisable(GL_TEXTURE_2D);
   glColor3fv(mirror_tint);
@@ -5071,13 +4961,13 @@ World::render()
   const float spec_intensity = opt_light_intensity * 0.4;
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
-  glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, color_white * opt_light_intensity);
   glLightfv(GL_LIGHT0, GL_AMBIENT, dark);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, white * spec_intensity);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, color_white * spec_intensity);
 
-  glLightfv(GL_LIGHT1, GL_DIFFUSE, white * opt_light_intensity);
+  glLightfv(GL_LIGHT1, GL_DIFFUSE, color_white * opt_light_intensity);
   glLightfv(GL_LIGHT1, GL_AMBIENT, dark);
-  glLightfv(GL_LIGHT1, GL_SPECULAR, white * spec_intensity);
+  glLightfv(GL_LIGHT1, GL_SPECULAR, color_white * spec_intensity);
 
   glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,true);
 
@@ -5387,7 +5277,7 @@ World::render()
   //
   if ( opt_normals_visible )
     {
-      glColor3fv(lsu_spirit_gold);
+      glColor3fv(color_lsu_spirit_gold);
       for ( int i=0; i<platform_tile_coords.elements; i++ )
         cone.render(platform_tile_coords[i],0.2,5 * platform_tile_norms[i]);
     }
@@ -5482,13 +5372,13 @@ World::cb_keyboard()
       Ball* const b1 = new Ball(this);
       b1->position = pCoor(30,22,20);
       b1->velocity = pVect(0,0,0);
-      b1->color = lsu_spirit_purple;
+      b1->color = color_lsu_spirit_purple;
       physs += b1;
       Ball* const b2 = new Ball(this);
       b2->position = b1->position;
       b2->position.z += 4 * opt_ball_radius;
       b2->velocity = pVect(0,0,0);
-      b2->color = lsu_spirit_gold;
+      b2->color = color_lsu_spirit_gold;
       physs += b2;
     }
     break;
