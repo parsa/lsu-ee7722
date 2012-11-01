@@ -1,6 +1,6 @@
-/// LSU EE X70X-X (Sp 2011), GPU Microarchitecture
+/// LSU EE X70X-X (Fall 2012), GPU Programming
 //
- /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
+ /// Demo of Dynamic Simulation, Multiple Balls and Boxes on Curved Platform
 
 // $Id:$
 
@@ -10,18 +10,9 @@
 //   This file contains GPU/cuda code.
 //   See demo-x-collide.cc for main program.
 
+#include <gp/cuda-util-kernel.h>
 #include "demo-x.cuh"
 
-
-// Emulation Code
-//
-// The code below is only included when the kernel is compiled to
-// run on the CPU, for debugging.
-//
-#ifdef __DEVICE_EMULATION__
-#include <stdio.h>
-#define ASSERTS(expr) { if ( !(expr) ) abort();}
-#endif
 
 ///
 /// Variables Read or Written By With Host Code
@@ -50,15 +41,28 @@ __constant__ CUDA_Ball_X balls_x;
 __constant__ int *block_balls_needed;
 
  /// Shared memory array holding balls updated cooperating threads in a block.
+#undef USE_STRUCT
+#ifdef USE_STRUCT
 extern __shared__ CUDA_Phys_W sm_balls[];
+#else
+extern __shared__ float3 sm_balls[];
+__shared__ uchar4 sm_balls_misc[300];
+#endif
 
  /// Pairs of Balls to Check
 //
 __constant__ SM_Idx2 *tacts_schedule;
 
+ /// Box/Box Intersect
+//
+__constant__ XX_Pair *xx_pairs;
+__constant__ float4 *xx_sects_center;
+__constant__ float4 *xx_sects_dir;
+__constant__ float4 *xx_sects_debug;
+
 
 __constant__ float3 gravity_accel_dt;
-__constant__ float opt_bounce_loss;
+__constant__ float opt_bounce_loss, opt_bounce_loss_box;
 __constant__ float opt_friction_coeff, opt_friction_roll;
 __constant__ float platform_xmin, platform_xmax;
 __constant__ float platform_zmin, platform_zmax;
@@ -69,6 +73,8 @@ __constant__ bool opt_debug, opt_debug2;
 
 __constant__ CUDA_Wheel wheel;
 extern __shared__ float block_torque_dt[];
+
+static __host__ void collect_symbols();
 
 
 ///
@@ -93,6 +99,8 @@ __device__ pVect operator -(pCoor a,float4 b)
 { return make_float3(a.x-b.x,a.y-b.y,a.z-b.z); }
 __device__ pVect operator *(float s, pVect v)
 {return make_float3(s*v.x,s*v.y,s*v.z);}
+__device__ pVect operator *(pVect u, pVect v)
+{return make_float3(u.x*v.x,u.y*v.y,u.z*v.z);}
 __device__ pVect operator -(pVect v) { return make_float3(-v.x,-v.y,-v.z); }
 __device__ float3 operator -=(float3& a, pVect b) {a = a - b; return a;}
 __device__ float3 operator +=(float3& a, pVect b) {a = a + b; return a;}
@@ -119,6 +127,7 @@ __device__ void set_f4(float4& a, float3 b, float c)
 __device__ pVect
 mv(float x, float y, float z){ return make_float3(x,y,z); }
 __device__ pVect mv(float3 a, float3 b) { return b-a; }
+__device__ pVect mv(float a) { return make_float3(a,a,a); }
 
 __device__ float dot(pVect a, pVect b){ return a.x*b.x + a.y*b.y + a.z*b.z;}
 __device__ float dot(pVect a, pNorm b){ return dot(a,b.v); }
@@ -147,6 +156,11 @@ __device__ pNorm mn(pVect v)
 }
 __device__ pNorm mn(float4 a, float4 b) {return mn(b-a);}
 __device__ pNorm mn(pCoor a, pCoor b) {return mn(b-a);}
+__device__ pNorm mn(float x, float y, float z) {return mn(mv(x,y,z));}
+__device__ pNorm mn(float4 v4)
+{ pNorm n; n.v = m3(v4);  n.magnitude = v4.w;  return n; }
+__device__ pNorm mn(float3 v3, float mag)
+{ pNorm n; n.v = v3;  n.magnitude = mag;  return n; }
 
 // The unary - operator doesn't seem to work when used in an argument.
 __device__ pNorm operator -(pNorm n)
@@ -183,6 +197,10 @@ __device__ float4 quat_normalize(float4 q)
 __device__ float4 m4(pQuat q){ return make_float4(q.v.x,q.v.y,q.v.z,q.w); }
 __device__ float4 m4(pNorm v, float w) { return m4(v.v,w); }
 
+__device__ pVect fabs(pVect v){ return mv(fabs(v.x),fabs(v.y),fabs(v.z)); }
+__device__ float min(pVect v){ return min(min(v.x,v.y),v.z); }
+__device__ float max(pVect v){ return max(max(v.x,v.y),v.z); }
+__device__ float sum(pVect v){ return v.x+v.y+v.z; }
 
 // Cross Product of Two Vectors
 __device__ float3
@@ -212,8 +230,6 @@ __device__ float4 quat_mult(float4 a, float4 b)
   return make_float4(v.x,v.y,v.z,w);
 };
 
-
-struct pMatrix3x3 { float3 r0, r1, r2; };
 
 __device__ void
 pMatrix_set_rotation(pMatrix3x3& m, pVect u, float theta)
@@ -375,7 +391,7 @@ wheel_collect_tile_force(CUDA_Tile_W& tile, pCoor tact, pVect delta_mo)
 
 
 ///
-/// Collision (Penetration) Detection and Resolution Routine
+/// Collision (Penetration) Detection and Resolution Routines
 ///
 
 // Used in both passes.
@@ -383,9 +399,12 @@ wheel_collect_tile_force(CUDA_Tile_W& tile, pCoor tact, pVect delta_mo)
 
 __device__ bool
 penetration_balls_resolve
-(CUDA_Ball_W& ball1, CUDA_Ball_W& ball2, bool b2_real)
+(CUDA_Ball_W& ball1, CUDA_Ball_W& ball2, bool b2_real, Force_Types ft)
 {
   /// Update velocity and angular momentum for a pair of balls in contact.
+
+  // Later, separate friction and other forces.
+  if ( ft == FT_Friction ) return false;
 
   pVect zero_vec = mv(0,0,0);
   pNorm dist = mn(ball1.position,ball2.position);
@@ -566,6 +585,326 @@ penetration_balls_resolve
   return true;
 }
 
+//
+// Generic operations used by box code.
+//
+
+__device__ float3
+sign_mask(int idx, float3 v)
+{
+  return make_float3
+    (idx & 4 ? v.x : -v.x, idx & 2 ? v.y : -v.y, idx & 1 ? v.z : -v.z );
+}
+
+// Multiply transpose of matrix m by column vector v.
+__device__ float3 mm_transpose(pMatrix3x3 m, float3 v)
+{ return v.x * m.r0 + v.y * m.r1 + v.z * m.r2; }
+
+__device__ float
+set_min(float &a, float b)
+{
+  if ( b < a ) a = b;
+  return a;
+}
+
+__device__ float
+set_max(float &a, float b)
+{
+  if ( b > a ) a = b;
+  return a;
+}
+
+// Set matrix m to a rotation matrix based on quaternion q.
+__device__ void
+pMatrix_set_rotation(pMatrix3x3& m, float4 q)
+{
+  m.r0.x = 1.f - 2.f * q.y * q.y - 2.f * q.z * q.z;
+  m.r0.y = 2.f * q.x * q.y - 2.f * q.w * q.z;
+  m.r0.z = 2.f * q.x * q.z + 2.f * q.w * q.y;
+  m.r1.x = 2.f * q.x * q.y + 2.f * q.w * q.z;
+  m.r1.y = 1.f - 2.f * q.x * q.x - 2.f * q.z * q.z;
+  m.r1.z = 2.f * q.y * q.z - 2.f * q.w * q.x;
+  m.r2.x = 2.f * q.x * q.z - 2.f * q.w * q.y;
+  m.r2.y = 2.f * q.y * q.z + 2.f * q.w * q.x;
+  m.r2.z = 1.f - 2.f * q.x * q.x - 2.f * q.y * q.y;
+}
+
+// Set transpose of matrix m to a rotation matrix based on quaternion q.
+__device__ void
+pMatrix_set_rotation_transpose(pMatrix3x3& m, float4 q)
+{
+  m.r0.x = 1.f - 2.f * q.y * q.y - 2.f * q.z * q.z;
+  m.r1.x = 2.f * q.x * q.y - 2.f * q.w * q.z;
+  m.r2.x = 2.f * q.x * q.z + 2.f * q.w * q.y;
+  m.r0.y = 2.f * q.x * q.y + 2.f * q.w * q.z;
+  m.r1.y = 1.f - 2.f * q.x * q.x - 2.f * q.z * q.z;
+  m.r2.y = 2.f * q.y * q.z - 2.f * q.w * q.x;
+  m.r0.z = 2.f * q.x * q.z - 2.f * q.w * q.y;
+  m.r1.z = 2.f * q.y * q.z + 2.f * q.w * q.x;
+  m.r2.z = 1.f - 2.f * q.x * q.x - 2.f * q.y * q.y;
+}
+
+//
+// Box operations.
+//
+
+struct pLine {
+  __device__ pLine() {};
+  __device__ pLine(pCoor s, pVect d, float l):start(s),dir(d),len(l){};
+  pCoor start;
+  pVect dir;
+  float len;
+};
+
+
+__device__ int8_t
+get_edge_vtx_idx(int edge)
+{
+  // Index: xyz (z is LSB).
+#if 1
+  const int axis = edge >> 2;
+  const int mask = 0xc >> axis;
+  const int face_vtx = edge & 3;
+  const int box_vtx_check = ( face_vtx & mask ) + face_vtx;
+  return box_vtx_check;
+#else
+  static const int8_t bi[12] =
+    {
+      0, 1, 2, 3,
+      0, 1, 4, 5,
+      0, 2, 4, 6
+    };
+  return bi[edge];
+#endif
+}
+
+__device__ float3
+box_get_vertices(CUDA_Box_W& box, int vertex)
+{
+  return box.position + mm_transpose(box.rot_inv,sign_mask(vertex,box.to_111));
+}
+
+__device__ float3
+box_get_axis_norm(CUDA_Box_W& box, int axis)
+{
+  return axis == 0 ? box.rot_inv.r0 :
+    axis == 1 ? box.rot_inv.r1 : box.rot_inv.r2;
+}
+
+__device__ float3
+box_get_face_norm(CUDA_Box_W& box, int face)
+{
+  pVect norm_raw = box_get_axis_norm(box,face>>1);
+  return face & 1 ? norm_raw : -norm_raw;
+}
+
+__device__ float
+box_get_axis_len(CUDA_Box_W& box, int axis)
+{
+  return 2.0f * 
+    ( axis == 0 ? box.to_111.x : axis == 1 ? box.to_111.y : box.to_111.z );
+}
+
+__device__ pLine
+box_get_edge(CUDA_Box_W& box, int edge)
+{
+  const int axis = edge >> 2;
+  const int8_t box_vtx = get_edge_vtx_idx(edge);
+  return
+    pLine(box_get_vertices(box,box_vtx), 
+          box_get_axis_norm(box,axis), 
+          box_get_axis_len(box,axis));
+}
+
+__device__ void
+box_set_mi_vec(CUDA_Box_W& box,float3 to_111)
+{
+  pVect dsq = to_111 * to_111;
+  float dsqs = dsq.x + dsq.y + dsq.z;
+  float mass_factor = 1.0f / ( box.mass_inv * 3.0f );
+  box.mi_vec = mass_factor * ( mv(dsqs) - dsq );
+}
+
+__device__ void
+box_set_mi_vec(CUDA_Box_W& box)
+{
+  box_set_mi_vec(box,box.to_111);
+}
+
+__device__ float
+box_get_moment_of_inertia_inv(CUDA_Box_W& box, pNorm axis);
+
+
+__device__ float3
+box_get_vel(CUDA_Box_W&box, float3 pos)
+{
+  pVect cent_to_pt = mv(box.position,pos);
+  pVect rot_vel = cross(box.omega,cent_to_pt);
+  return rot_vel + box.velocity;
+}
+
+__device__ void
+box_geometry_update(CUDA_Box_W& box)
+{
+  pMatrix_set_rotation_transpose(box.rot_inv, box.orientation);
+  box_set_mi_vec(box);
+}
+
+__device__ void
+box_apply_force_dt(CUDA_Box_W& box, float3 tact, float3 force)
+{
+  box.velocity += box.mass_inv * force;
+  pVect cent_to_tact = mv(box.position,tact);
+  pVect torque = cross(cent_to_tact,force);
+  pNorm torqueN = mn(torque);
+  float mi_inv = box_get_moment_of_inertia_inv(box,torqueN);
+  box.omega += mi_inv * torque;
+}
+
+__device__ float
+box_get_moment_of_inertia_inv(CUDA_Box_W& box, pNorm axis)
+{
+  if ( axis.mag_sq < 1e-11f ) return 0;
+  pVect tl = box.rot_inv * axis.v;
+  pVect tls = tl * tl;
+  float mi = dot(tls,box.mi_vec);
+  return 1.0f / mi;
+}
+
+__device__ float
+box_get_moment_of_inertia_inv(CUDA_Box_W& box, float3 tact, pNorm dir)
+{
+  pVect cent_to_tact = mv(box.position,tact);
+  pNorm torque_axis = mn(cross(cent_to_tact,dir));
+  return box_get_moment_of_inertia_inv(box,torque_axis);
+}
+
+__device__ void
+box_apply_force_fric_dt
+(CUDA_Box_W& box, float3 tact, pNorm force_dir, float force_mag_dt)
+{
+  box_apply_force_dt(box,tact,force_mag_dt*force_dir);
+}
+
+__device__ CUDA_SectTT
+sect_init()
+{
+  CUDA_SectTT sect;
+  sect.exists = false;
+  return sect;
+}
+
+#include "demo-x-boxes.cu"
+
+///
+/// Pass Box/Box Intersect
+///
+
+__global__ void pass_xx_intersect(int xx_pairs_count);
+
+__host__ void
+pass_xx_intersect_launch(dim3 dg, dim3 db, int xx_pairs_count)
+{
+  const int shared_amt = 0;
+  pass_xx_intersect<<<dg,db,shared_amt>>>(xx_pairs_count);
+}
+
+__device__ void
+penetration_boxes_resolve_force
+(CUDA_Box_W& box1, CUDA_Box_W& box2, float3 pos, pNorm sep_normal)
+{
+  const float pen_dist = 0.1f * sep_normal.magnitude;
+
+  pVect vel1 = box_get_vel(box1,pos);
+  pVect vel2 = box_get_vel(box2,pos);
+  pVect velto1 = vel2 - vel1;
+
+  const float sep_vel = dot(velto1,sep_normal.v);
+
+  const float loss_factor = 1 - opt_bounce_loss_box;
+  const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+  const bool separating = sep_vel >= 0;
+  const float appr_force_dt = separating
+    ? force_dt_no_loss * loss_factor : force_dt_no_loss;
+
+  pVect sep_force = appr_force_dt * sep_normal.v;
+
+  box_apply_force_dt(box1, pos, -sep_force );
+  box_apply_force_dt(box2, pos, sep_force );
+}
+
+__device__ void
+penetration_boxes_resolve_fric
+(CUDA_Box_W& box1, CUDA_Box_W& box2, float3 pos, pNorm sep_normal)
+{
+  const float pen_dist = 0.1f * sep_normal.magnitude;
+  const float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+  const float fric_force_dt_potential =
+    force_dt_no_loss * opt_friction_coeff;
+  
+  /// Torque
+  //
+  //
+  // Account for forces of surfaces twisting against each
+  // other. (For example, if one box is spinning on top of
+  // another.)
+  //
+  const float appr_omega =
+    dot(box2.omega,sep_normal) - dot(box1.omega,sep_normal);
+  {
+    const float mi1_inv = box_get_moment_of_inertia_inv(box1,sep_normal);
+    const float mi2_inv = box_get_moment_of_inertia_inv(box2,sep_normal);
+    const float fdt_limit = fabs(appr_omega) / ( mi1_inv + mi2_inv );
+    const bool rev = appr_omega < 0;
+    const float fdt_raw = min(fdt_limit,fric_force_dt_potential);
+    const pVect fdt_v = ( rev ? -fdt_raw : fdt_raw ) * sep_normal;
+    box1.omega += mi1_inv * fdt_v;
+    box2.omega -= mi2_inv * fdt_v;
+  }
+
+  pVect vel1b = box_get_vel(box1,pos);
+  pVect vel2b = box_get_vel(box2,pos);
+  pVect velto1b = vel2b - vel1b;
+
+  const float sep_velb = dot(velto1b,sep_normal);
+  pNorm tan_vel = mn(velto1b - sep_velb * sep_normal);
+
+  const float fdt_limit =
+    0.5f *
+    tan_vel.magnitude /
+    ( box1.mass_inv + box2.mass_inv
+      + box_get_moment_of_inertia_inv(box1,pos,tan_vel)
+      + box_get_moment_of_inertia_inv(box2,pos,tan_vel) );
+
+  const float fric_force_dt = min(fdt_limit,fric_force_dt_potential);
+
+  box_apply_force_fric_dt(box1,pos, tan_vel, fric_force_dt);
+  box_apply_force_fric_dt(box2,pos, -tan_vel, fric_force_dt);
+}
+
+
+__device__ bool
+penetration_boxes_resolve
+(CUDA_Phys_W& phys1, CUDA_Phys_W& phys2, int tsidx, Force_Types ft)
+{
+  /// Update velocity and angular momentum for a pair of boxes in contact.
+
+  CUDA_Box_W& box1 = phys1.box;
+  CUDA_Box_W& box2 = phys2.box;
+
+  float4 dir_and_mag = xx_sects_dir[tsidx];
+  if ( dir_and_mag.w == 0 ) return false;
+  float4 center_and_um = xx_sects_center[tsidx];
+  float3 center = m3(center_and_um);
+  pNorm sep_normal = mn(dir_and_mag);
+  if ( ft & FT_NonFriction )
+    penetration_boxes_resolve_force(box1,box2,center,sep_normal);
+  if ( ft & FT_Friction )
+    penetration_boxes_resolve_fric(box1,box2,center,sep_normal);
+  return true;
+}
+
+
 ///
 /// Pairs Pass
 ///
@@ -574,22 +913,74 @@ penetration_balls_resolve
 
 __global__ void pass_pairs
 (int prefetch_offset, int schedule_offset, int round_cnt, 
- int max_balls_per_thread, int balls_per_block);
+ int max_balls_per_thread, int balls_per_block, Force_Types ft);
 
-__host__ void 
+__host__ void
 pass_pairs_launch
 (dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt,
- int max_balls_per_thread, int balls_per_block)
+ int max_balls_per_thread, int balls_per_block, Force_Types ft)
 {
+#ifdef USE_STRUCT
   const int shared_amt = balls_per_block * sizeof(CUDA_Phys_W);
+#else
+  const int shared_amt = balls_per_block * sizeof(sm_balls[0]) * 8;
+#endif
   pass_pairs<<<dg,db,shared_amt>>>
     (prefetch_offset, schedule_offset, round_cnt,
-     max_balls_per_thread, balls_per_block);
+     max_balls_per_thread, balls_per_block, ft);
+}
+
+#ifndef USE_STRUCT
+struct SM_Offsets {
+  int idx_pos;
+  int idx_vel;
+  int idx_omega;
+  int idx_prev_vel;
+  int idx_rad_etc;
+  int idx_to_111;
+  int idx_ori_xyz;
+  int factor;
+};
+
+__device__ CUDA_Phys_W
+get_sm_ball(SM_Offsets& smo, int idx)
+{
+  CUDA_Phys_W phys;
+  const int sidx = idx * smo.factor;
+  phys.box.velocity = sm_balls[smo.idx_vel+sidx];
+  phys.box.prev_velocity = sm_balls[smo.idx_prev_vel+sidx];
+  phys.box.position = sm_balls[smo.idx_pos+sidx];
+  phys.box.omega = sm_balls[smo.idx_omega+sidx];
+  phys.box.radius = sm_balls[smo.idx_rad_etc+sidx].x;
+  phys.box.mass_inv = sm_balls[smo.idx_rad_etc+sidx].y;
+  phys.read_only = phys.box.mass_inv == 0;
+  return phys;
 }
 
 __device__ void
+upgrade_sm_box(CUDA_Phys_W& phys, SM_Offsets& smo, int idx)
+{
+  const int sidx = idx * smo.factor;
+  float4 ori;
+  set_f4(ori,sm_balls[smo.idx_ori_xyz+sidx],
+         sm_balls[smo.idx_rad_etc+sidx].z);
+  pMatrix_set_rotation_transpose(phys.box.rot_inv,ori);
+  float3 to_111 = sm_balls[smo.idx_to_111+sidx];
+  phys.box.to_111 = to_111;
+  box_set_mi_vec(phys.box);
+}
+
+__device__ void
+put_sm_phys(SM_Offsets& smo, int sidx, CUDA_Phys_W& phys)
+{
+  sm_balls[smo.idx_vel+sidx] = phys.ball.velocity;
+  sm_balls[smo.idx_omega+sidx] = phys.ball.omega;
+}
+#endif
+
+__global__ void
 pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
-           int max_balls_per_thread, int balls_per_block)
+           int max_balls_per_thread, int balls_per_block, Force_Types ft)
 {
   const int tid = threadIdx.x;
 
@@ -601,8 +992,9 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
   const int sp_block_size = blockIdx.x * round_cnt * blockDim.x;
   const int sp_block_base = schedule_offset + sp_block_size + tid;
 
-  /// Prefetch balls to shared memory.
+  /// Prefetch objects to shared memory.
   //
+#ifdef USE_STRUCT
   for ( int i=0; i<max_balls_per_thread; i++ )
     {
       int idx = tid + i * blockDim.x;
@@ -610,6 +1002,7 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
       const int m_idx = block_balls_needed[ si_block_base + i * blockDim.x ];
       CUDA_Phys_W& phys = sm_balls[idx];
       CUDA_Ball_W& ball = phys.ball;
+      CUDA_Box_W& box = phys.box;
       phys.m_idx = m_idx;
       if ( m_idx < 0 ) continue;
 
@@ -617,7 +1010,8 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
       phys.pt_type = tact_counts.x;
       phys.contact_count = tact_counts.y;
       phys.debug_pair_calls = tact_counts.z;
-      phys.part_of_wheel = tact_counts.w;
+      phys.part_of_wheel = bool(tact_counts.w & 2);
+      phys.read_only = tact_counts.w & 1;
 
       ball.velocity = xyz(balls_x.velocity[m_idx]);
       ball.prev_velocity = xyz(balls_x.prev_velocity[m_idx]);
@@ -626,8 +1020,59 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
       float4 ball_props = balls_x.ball_props[m_idx];
       ball.radius = ball_props.x;
       ball.mass_inv = ball_props.y;
-      ball.pad = ball_props.z;
+      ball.pad1 = ball_props.z;
+      ball.pad2 = ball_props.w;
+      if ( phys.pt_type == PT_Box )
+        {
+          set_f3(box.to_111, balls_x.to_111[m_idx]);
+          box.orientation = balls_x.orientation[m_idx];
+          box_geometry_update(box);
+        }
     }
+#else
+
+  SM_Offsets smo;
+  smo.idx_pos = 0;
+  smo.idx_vel = 1;
+  smo.idx_omega = 2;
+  smo.idx_prev_vel = 3;
+  smo.idx_rad_etc = 4;
+  smo.idx_to_111 = 5;
+  smo.idx_ori_xyz = 6;
+  smo.factor = 7;
+
+  for ( int i=0; i<max_balls_per_thread; i++ )
+    {
+      int idx = tid + i * blockDim.x;
+      if ( idx >= balls_per_block ) continue;
+      const int m_idx = block_balls_needed[ si_block_base + i * blockDim.x ];
+
+      if ( m_idx < 0 ) continue;
+
+      int4 tact_counts = balls_x.tact_counts[m_idx];
+      const int pt_type = tact_counts.x;
+      sm_balls_misc[idx].x = tact_counts.x; // pt_type
+      sm_balls_misc[idx].y = tact_counts.y; // contact count
+      sm_balls_misc[idx].z = tact_counts.z; // debug_pair_calls
+      sm_balls_misc[idx].w = tact_counts.w; // Part of wheel is bit 0x2
+
+      const int sidx = idx * smo.factor;
+
+      sm_balls[smo.idx_vel+sidx] = m3(balls_x.velocity[m_idx]);
+      sm_balls[smo.idx_prev_vel+sidx] = m3(balls_x.prev_velocity[m_idx]);
+      sm_balls[smo.idx_pos+sidx] = m3(balls_x.position[m_idx]);
+      sm_balls[smo.idx_omega+sidx] = m3(balls_x.omega[m_idx]);
+      float4 props =balls_x.ball_props[m_idx];
+      sm_balls[smo.idx_rad_etc+sidx] = m3(props);
+      if ( pt_type == PT_Box )
+        {
+          sm_balls[smo.idx_to_111+sidx] = m3(balls_x.to_111[m_idx]);
+          const float4 orientation = balls_x.orientation[m_idx];
+          sm_balls[smo.idx_ori_xyz+sidx] = m3(orientation);
+          sm_balls[smo.idx_rad_etc+sidx].z = orientation.w;
+        }
+    }
+#endif
 
   const pVect zero_vec = mv(0,0,0);
 
@@ -635,7 +1080,10 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
   //
   for ( int round=0; round<round_cnt; round++ )
     {
-      SM_Idx2 indices = tacts_schedule[ sp_block_base + round * blockDim.x ];
+      const int tsidx = sp_block_base + round * blockDim.x;
+      SM_Idx2 indices = tacts_schedule[ tsidx ];
+      const int ix = indices.x;
+      const int iy = indices.y;
 
       // Wait for all threads to reach this point (to avoid having
       // two threads operate on the same ball simultaneously).
@@ -644,38 +1092,97 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
 
       if ( indices.x == indices.y ) continue;
 
-      CUDA_Phys_W& physx = sm_balls[indices.x];
-      CUDA_Phys_W& physy = sm_balls[indices.y];
-      CUDA_Ball_W& bally = sm_balls[indices.y].ball;
+#ifdef USE_STRUCT
+      CUDA_Phys_W& physx = sm_balls[ix];
+      CUDA_Phys_W& physy = sm_balls[iy];
+      const unsigned char ptx = physx.pt_type;
+      const unsigned char pty = physy.pt_type;
+#else
+      const int six = ix * smo.factor;
+      const int siy = iy * smo.factor;
+      CUDA_Phys_W physx = get_sm_ball(smo,ix);
+      CUDA_Phys_W physy = get_sm_ball(smo,iy);
+      const int ptx = sm_balls_misc[ix].x;
+      const int pty = sm_balls_misc[iy].x;
+#endif
 
-      sm_balls[indices.x].debug_pair_calls++;
-      sm_balls[indices.y].debug_pair_calls++;
-
-      if ( physx.pt_type == PT_Ball )
+      if ( ft & FT_NonFriction )
         {
-          CUDA_Ball_W& ballx = sm_balls[indices.x].ball;
-          int rv = penetration_balls_resolve(ballx,bally,true);
-          physx.contact_count += rv;
-          physy.contact_count += rv;
+#ifdef USE_STRUCT          
+          physx.debug_pair_calls++; physy.debug_pair_calls++;
+#else
+          sm_balls_misc[ix].z++; sm_balls_misc[iy].z++;
+#endif
+        }
+
+      char rv;
+
+      if ( ptx == PT_Box && pty == PT_Box )
+        {
+#ifndef USE_STRUCT
+          upgrade_sm_box(physx,smo,ix);
+          upgrade_sm_box(physy,smo,iy);
+#endif
+          rv = penetration_boxes_resolve(physx,physy,tsidx,ft);
+        }
+      else if ( ptx == PT_Ball && pty == PT_Box )
+        {
+#ifndef USE_STRUCT
+          upgrade_sm_box(physy,smo,iy);
+#endif
+          rv = penetration_box_ball_resolve(physy,physx,ft);
+        }
+      else if ( pty == PT_Ball )
+        {
+          CUDA_Ball_W& ballx = physx.ball;
+          CUDA_Ball_W& bally = physy.ball;
+          rv = penetration_balls_resolve(ballx,bally,true,ft);
+        }
+      else if ( pty == PT_Box )
+        {
+          // Note: Tile / Box collisions not yet handled.
+          rv = 0;
         }
       else
         {
-          CUDA_Tile_W& tilex = sm_balls[indices.x].tile;
+          CUDA_Ball_W& ballx = physx.ball;
+          CUDA_Tile_W& tiley = physy.tile;
           pCoor tact_pos;
           pVect tact_dir;
-          if ( !tile_ball_collide(tilex, bally, tact_pos, tact_dir) ) continue;
+          rv = tile_ball_collide(tiley, ballx, tact_pos, tact_dir);
+          if ( !rv ) continue;
           CUDA_Ball_W pball;
           pball.radius = 1;
           pball.omega = pball.prev_velocity = pball.velocity = zero_vec;
           pball.position = tact_pos + tact_dir;
-          pVect vbefore = physy.ball.velocity;
-          penetration_balls_resolve(bally, pball, false);
-          physy.contact_count++;
-          pVect delta_mo = ( 1.0f / bally.mass_inv )
-            * ( bally.velocity - vbefore );
-          if ( !physx.part_of_wheel ) continue;
-          wheel_collect_tile_force(tilex, tact_pos, delta_mo);
+          pVect vbefore = physx.ball.velocity;
+          penetration_balls_resolve(ballx, pball, false, ft);
+          pVect delta_mo = ( 1.0f / ballx.mass_inv )
+            * ( ballx.velocity - vbefore );
+#ifdef USE_STRUCT
+          const bool part_of_wheel = physy.part_of_wheel;
+#else
+          const bool part_of_wheel = sm_balls_misc[iy].w & 2;
+#endif
+          if ( part_of_wheel )
+            {
+              wheel_collect_tile_force(tiley, tact_pos, delta_mo);
+              // Note: Need to fix this.
+            }
+#ifndef USE_STRUCT
+          put_sm_phys(smo,six,physx);
+          sm_balls_misc[ix].y += 1;
+          continue;
+#endif
         }
+
+#ifdef USE_STRUCT
+      physx.contact_count += rv; physy.contact_count += rv;
+#else
+      put_sm_phys(smo,six,physx);
+      put_sm_phys(smo,siy,physy);
+      sm_balls_misc[ix].y += rv; sm_balls_misc[iy].y += rv;
+#endif
     }
 
   __syncthreads();
@@ -686,10 +1193,23 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
     {
       int idx = tid + i * blockDim.x;
       if ( idx >= balls_per_block ) continue;
+
+#ifdef USE_STRUCT
       CUDA_Phys_W& phys = sm_balls[idx];
-      CUDA_Ball_W& ball = phys.ball;
       const int m_idx = phys.m_idx;
       if ( m_idx < 0 ) continue;
+      if ( phys.read_only ) continue;
+#else
+      const int sidx = idx * smo.factor;
+      const int m_idx = block_balls_needed[ si_block_base + i * blockDim.x ];
+      if ( m_idx < 0 ) continue;
+      const float mass_inv = sm_balls[smo.idx_rad_etc+sidx].y;
+      const bool read_only = mass_inv == 0;
+      if ( read_only ) continue;
+#endif
+
+#ifdef USE_STRUCT
+      CUDA_Ball_W& ball = phys.ball;
 
       int4 tact_counts;
       tact_counts.x = phys.pt_type;
@@ -697,12 +1217,18 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
       tact_counts.z = phys.debug_pair_calls;
       tact_counts.w = phys.part_of_wheel;
       balls_x.tact_counts[m_idx] = tact_counts;
-
+      const char pt_type = phys.pt_type;
       set_f4(balls_x.velocity[m_idx], ball.velocity);
-
-      if ( phys.pt_type != PT_Ball ) continue;
-
+      if ( pt_type == PT_Tile ) continue;
       set_f4(balls_x.omega[m_idx], ball.omega);
+#else
+      balls_x.tact_counts[m_idx].y = sm_balls_misc[idx].y;
+      balls_x.tact_counts[m_idx].z = sm_balls_misc[idx].z;
+      const unsigned char pt_type = sm_balls_misc[idx].x;
+      set_f4(balls_x.velocity[m_idx], sm_balls[smo.idx_vel+sidx]);
+      if ( pt_type == PT_Tile ) continue;
+      set_f4(balls_x.omega[m_idx], sm_balls[smo.idx_omega+sidx]);
+#endif
     }
 }
 
@@ -715,22 +1241,29 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
 // and orientation.
 
 __device__ void platform_collision(CUDA_Phys_W& phys);
+__device__ void platform_collision_box(CUDA_Phys_W& phys);
 __global__ void pass_platform(int ball_count);
 __device__ void pass_platform_ball(CUDA_Phys_W& phys, int idx);
 __device__ void pass_platform_tile(CUDA_Phys_W& phys, int idx);
+__device__ void pass_platform_box(CUDA_Phys_W& phys, int idx);
 
 
 __host__ cudaError_t
 cuda_get_attr_plat_pairs
 (struct cudaFuncAttributes *attr_platform,
- struct cudaFuncAttributes *attr_pairs)
+ struct cudaFuncAttributes *attr_pairs,
+ struct cudaFuncAttributes *attr_xx_intersect)
 {
+  collect_symbols();
+
   // Return attributes of CUDA functions. The code needs the
   // maximum number of threads.
   cudaError_t e1 = cudaFuncGetAttributes(attr_platform,pass_platform);
   if ( e1 ) return e1;
   cudaError_t e2 = cudaFuncGetAttributes(attr_pairs,pass_pairs);
-  return e2;
+  if ( e2 ) return e2;
+  cudaError_t e3 = cudaFuncGetAttributes(attr_xx_intersect,pass_xx_intersect);
+  return e3;
 }
 
 __host__ void
@@ -765,10 +1298,11 @@ pass_platform(int ball_count)
   int4 tact_counts = balls_x.tact_counts[idx];
   phys.pt_type = tact_counts.x;
   phys.contact_count = tact_counts.y;
-  phys.part_of_wheel = tact_counts.w;
+  phys.part_of_wheel = tact_counts.w & 1;
 
-  if ( phys.pt_type == PT_Ball ) pass_platform_ball(phys, idx);
-  else                           pass_platform_tile(phys, idx);
+  if ( phys.pt_type == PT_Ball )     pass_platform_ball(phys, idx);
+  else if ( phys.pt_type == PT_Box ) pass_platform_box(phys, idx);
+  else                               pass_platform_tile(phys, idx);
 
   /// Copy other updated data to memory.
   //
@@ -805,7 +1339,7 @@ pass_platform_ball(CUDA_Phys_W& phys, int idx)
   /// Update Position and Orientation
   //
   ball.position +=
-    0.5 * delta_t * ( ball.prev_velocity + ball.velocity );
+    0.5f * delta_t * ( ball.prev_velocity + ball.velocity );
 
   pNorm axis = mn(ball.omega);
   balls_x.orientation[idx] =
@@ -870,6 +1404,191 @@ pass_platform_tile(CUDA_Phys_W& phys, int idx)
   if ( idx == wheel.idx_start ) wheel.omega[0] = omega;
 }
 
+__device__ void
+pass_platform_box(CUDA_Phys_W& phys, int idx)
+{
+  // One box per thread.
+
+  CUDA_Box_W& box = phys.box;
+
+  /// Copy data from memory to local variables.
+  //
+  //  Local variables hopefully will be in GPU registers, not
+  //  slow local memory.
+  //
+
+  float4 box_props = balls_x.ball_props[idx];
+  box.mass_inv = box_props.y;
+  if ( box.mass_inv == 0 ) return; // Read only.
+  box.prev_velocity = xyz(balls_x.prev_velocity[idx]);
+  box.velocity = xyz(balls_x.velocity[idx]) + gravity_accel_dt;
+  set_f3(box.position,balls_x.position[idx]);
+  set_f3(box.omega, balls_x.omega[idx]);
+  set_f3(box.to_111, balls_x.to_111[idx]);
+  box.orientation = balls_x.orientation[idx];
+
+  /// Handle Ball/Platform Collision
+  //
+  platform_collision_box(phys);
+
+  /// Update Position and Orientation
+  //
+  box.position +=
+    0.5f * delta_t * ( box.prev_velocity + box.velocity );
+
+  pNorm axis = mn(box.omega);
+  balls_x.orientation[idx] =
+    quat_normalize
+    ( quat_mult
+      ( mq( axis, delta_t * axis.magnitude ), box.orientation ));
+
+  /// Copy other updated data to memory.
+  //
+  set_f4(balls_x.velocity[idx], box.velocity);
+  set_f4(balls_x.prev_velocity[idx], box.velocity);
+  set_f4(balls_x.omega[idx], box.omega);
+  set_f4(balls_x.position[idx], box.position, box_props.x);
+}
+
+__device__ void
+platform_collision_box(CUDA_Phys_W& phys)
+{
+  CUDA_Box_W& box = phys.box;
+
+  float radius = length(box.to_111);
+
+  if ( box.position.y - radius >= 0 ) return;
+  if ( box.position.z + radius <= platform_zmin ) return;
+  if ( box.position.z - radius >= platform_zmax ) return;
+
+  float3 axis = mv(platform_xmid,0,box.position.z);
+  pVect btoa = mv(box.position,axis);
+  if ( dot(btoa,btoa) < (platform_xrad-radius)*(platform_xrad-radius) ) return;
+
+  box_geometry_update(box);
+
+  int inside = 0;
+  int outside_under = 0;
+  float pen_dists[8];
+  CUDA_SectTT psects[5];
+  int ps_next = 0;
+  float min_pd = 0;  // For vertices between ends.
+  float max_pd = 0;
+
+  // Find vertices that are under the platform.
+  //
+  for ( int v=0; v<8; v++ )
+    {
+      int v_bit = 1 << v;
+      float3 pos = box_get_vertices(box,v);
+      if ( pos.y > 0 ) { pen_dists[v] = 0; continue; }
+      float3 axis = mc(platform_xmid,0,pos.z);
+      pNorm tact_dir = mn(axis,pos);
+      float pen_dist = tact_dir.magnitude - platform_xrad;
+      pen_dists[v] = pen_dist;
+      if ( pos.z < platform_zmin || pos.z > platform_zmax )
+        {
+          if ( pen_dist > 0 ) outside_under |= v_bit;
+          continue;
+        }
+      set_min(min_pd,pen_dist);
+      set_max(max_pd,pen_dist);
+      if ( pen_dist > 1 ) continue;
+      inside |= v_bit;
+      if ( pen_dist <= 0 ) continue;
+      CUDA_SectTT* sect = &psects[ps_next++];
+      sect->start = pos;
+      sect->dir = tact_dir.v;
+      sect->pen_dist = pen_dist;
+    }
+
+  bool object_inside = max_pd < -min_pd;
+  if ( !object_inside ) return;
+
+  // Examine vertices that are off the edge of the platform (in the
+  // z direction), to see if an adjoining edge intersects the platform
+  // edge.
+  //
+  for ( int v=0; v<8; v++ )
+    {
+      int v_bit = 1 << v;
+      if ( ! ( v_bit & outside_under )  ) continue;
+
+      // Outside Vertex (beyond z_max or z_min).
+      //
+      pCoor pos = box_get_vertices(box,v);
+      float pen_dist_out = pen_dists[v];
+      float v_z = pos.z;
+      float ref_z =
+        v_z >= platform_zmax ? platform_zmax : platform_zmin;
+      float outside_z_len = fabs(v_z - ref_z);
+
+      // Look for adjoining vertices that are over the platform.
+      //
+      for ( int axis = 0; axis < 3; axis++ )
+        {
+          int vn = v ^ ( 1 << axis );
+          int vn_bit = 1 << vn;
+          if ( ! ( inside & vn_bit ) ) continue;
+          float pen_len = pen_dists[vn] - pen_dist_out;
+          // Inside Vertex
+          pCoor pos_in = box_get_vertices(box,vn);
+
+          // Compute the contact point at penetration distance.
+          //
+          float z_len = fabs(v_z - pos_in.z);
+          if ( z_len < 0.0001f ) continue;
+          float scale = outside_z_len / z_len;
+          pVect to_inside = mv(pos,pos_in);
+          pCoor tact = pos + scale * to_inside;
+          float pen_tact = pen_dist_out + scale * pen_len;
+          if ( pen_tact <= 0 ) continue;
+          CUDA_SectTT* sect = &psects[ps_next++];
+          sect->start = tact;
+          sect->pen_dist = pen_tact;
+          pNorm dir = mn(cross(to_inside,mv(-tact.y,tact.x,0)));
+          sect->dir = pen_len >= 0 ? normalize(mv(tact.x,tact.y,0)) : dir.v;
+        }
+    }
+
+  //  if ( ps_next > 0 ) phys.contact_count++;
+
+  for ( int i=0; i<ps_next; i++ )
+    {
+      CUDA_SectTT *sect = &psects[i];
+      pCoor pos = sect->start;
+      pVect tact_dir = sect->dir;
+      pNorm ctopos = mn(box.position,pos);
+      pVect vel = box_get_vel(box,pos);
+      float pen_dist = sect->pen_dist;
+      float rad_vel = dot(vel,tact_dir);
+      double loss_factor = 1 - opt_bounce_loss;
+      float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+      float max_fdt_in = rad_vel / box.mass_inv;
+      float appr_force_dt = rad_vel > 0
+        ? min(max_fdt_in,force_dt_no_loss) : force_dt_no_loss * loss_factor;
+      box_apply_force_dt(box,pos, - appr_force_dt * tact_dir );
+    }
+
+  for ( int i=0; i<ps_next; i++ )
+    {
+      CUDA_SectTT *sect = &psects[i];
+      pCoor pos = sect->start;
+      pVect tact_dir = sect->dir;
+      float pen_dist = sect->pen_dist;
+      float force_dt_no_loss = elasticity_inv_dt * pen_dist;
+      pVect vel2 = box_get_vel(box,pos);
+      float rad_vel2 = dot(vel2,tact_dir);
+      pNorm tan_vel = mn( vel2 - rad_vel2 * tact_dir );
+      float mi_inv = box_get_moment_of_inertia_inv(box,pos,tan_vel);
+      float fdt_limit = 
+        tan_vel.magnitude / ( box.mass_inv + mi_inv );
+      float fric_force_dt_no_loss =
+        force_dt_no_loss * opt_friction_coeff;
+      float fric_force_dt = min(fdt_limit, fric_force_dt_no_loss);
+      box_apply_force_fric_dt(box,pos, tan_vel, -fric_force_dt);
+    }
+}
 
 __device__ void
 platform_collision(CUDA_Phys_W& phys)
@@ -946,7 +1665,7 @@ platform_collision(CUDA_Phys_W& phys)
   pball.prev_velocity = pball.velocity = zero_vec;
   pball.radius = ball.radius;
   pball.mass_inv = ball.mass_inv;
-  if ( penetration_balls_resolve(phys.ball,pball,false) )
+  if ( penetration_balls_resolve(phys.ball,pball,false,FT_All) )
     phys.contact_count++;
 }
 
@@ -1104,5 +1823,30 @@ ball_min_z_get
   const float z_min = position.z + position.x - m * lifetime_delta_t
     - 2 * radius;
   return z_min;
+}
+
+static __host__ void collect_symbols()
+{
+  CU_SYM(balls_x);
+  CU_SYM(block_balls_needed);
+  CU_SYM(tacts_schedule);
+  CU_SYM(xx_pairs);
+  CU_SYM(xx_sects_center);
+  CU_SYM(xx_sects_dir);
+  CU_SYM(xx_sects_debug);
+  CU_SYM(gravity_accel_dt);
+  CU_SYM(opt_bounce_loss); CU_SYM(opt_bounce_loss_box);
+  CU_SYM(opt_friction_coeff); CU_SYM(opt_friction_roll);
+  CU_SYM(platform_xmin); CU_SYM(platform_xmax);
+  CU_SYM(platform_zmin); CU_SYM(platform_zmax);
+  CU_SYM(platform_xmid); CU_SYM(platform_xrad);
+  CU_SYM(delta_t);
+  CU_SYM(elasticity_inv_dt);
+  CU_SYM(opt_debug); CU_SYM(opt_debug2);
+  CU_SYM(wheel);
+  CU_SYM(z_sort_indices);
+  CU_SYM(z_sort_z_max);
+  CU_SYM(cuda_prox);
+  CU_SYM(pass_sched_debug);
 }
 

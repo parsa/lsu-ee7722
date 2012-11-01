@@ -1025,3 +1025,172 @@ tiles.h
 Makefile:
  Move -O3 to CFLAGS.
 
+:: 10 November 2011, 18:37:42 CST
+
+Optimizing boxes code.
+
+Looking at CPU
+Without opt flat:
+20ms
+
+4.3ms  With opt. need more towers.
+
+77ms  Lots of towers.
+62ms  Get rid of edge markers.
+61ms  Some small changes, including not initing sects.
+
+:: 11 November 2011, 15:30:37 CST
+
+Add separate float and double dot products.
+ Existing dot products now return float.
+In several places use float functions such as sqrtf.
+pMatrix::set_transpose3x3: New.
+pMatrix::cv: New
+mult_transpose_MV: New.
+pVect::pVect(float *a): New
+pVect::elt(int idx): New
+pVect::mask(int idx): New
+pVect::sign_mask(int idx): New
+pVect::operator /
+pVect:: fabs, min, max, sum
+
+:: 15 November 2011, 14:26:55 CST
+
+45 ms: Sort face pair by dot product.
+41 ms: Sort faces by dot product.
+39 ms: Return don't examine box 1 if a single face eliminates all b2's edges.
+32 ms: Compute volumes as lines are found, rather than later.
+23 ms: Add line when adding points to [face][face] array. 
+       This speedup may have been due to compiler shyness caused
+       by the code adding line segments to sl.
+
+
+:: 15 November 2011, 17:51:18 CST
+
+demo-x-collide.cc
+
+
+Changes for Boxes.
+New file boxes.h
+Number keys now set up different scenes.
+New scenes: tower, brick wall.
+
+Phys:
+ New: geometry_update, get_moment_of_inertia_inv, density, mass, mass_inv,
+      position, velocity, orientation, omega, prev_velocity, prev_omega, etc.
+Balls:
+ Remove members that are now in Phys.
+tiles.h:
+Allow destructor to be called.
+
+svn commit demo-x-collide.cc demo-x.cuh demo-x-shdr.cc tiles.h boxes.h --file /home/faculty/koppel/teach/gpcom/gpup/play/msg
+
+
+:: 22 November 2011, 12:54:39 CST
+
+Tuning boxes gpu code:
+
+CPU Wall
+11 ms
+
+Five-block tower
+19 ms  
+15 ms: Remove return from edge loop.
+ 0.195 ms/r
+6.5 ms:  Precompute edge lines in own loop, which compiler is able to unroll.
+ 0.167 ms/r
+
+0.158: Don't sort faces.
+0.237: Run box_box_intersect_2 twice. 0.237 - 0.158 = 0.079
+0.150: sect_2: Use an array of live edges.
+0.146: sect_2: Use live edge count as loop limit.
+0.205: Run box_box_intersect_2 twice. 0.205 - 0.146 = 0.059  0.087 / 0.059
+
+Weekend improvements.
+
+0.048
+
+Pairs
+0.173 
+0.183 Prefetch twice. : Prefetch 0.010
+0.270 Boxes resolve twice. : Boxes resolve: 0.100
+0.130 Align on 4 floats rather than 8.
+
+:: 29 November 2011, 11:57:36 CST
+
+Using structs:
+
+ptxas info    : Function properties for _Z10pass_pairsiiiii11Force_Types
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 56 registers, 56 bytes cmem[0], 264 bytes cmem[2], 28 bytes cmem[16]
+
+Using float3s:
+
+ptxas info    : Function properties for _Z10pass_pairsiiiii11Force_Types
+    376 bytes stack frame, 280 bytes spill stores, 232 bytes spill loads
+ptxas info    : Used 63 registers, 56 bytes cmem[0], 264 bytes cmem[2], 28 bytes cmem[16]
+
+Using float3 and uchar4.
+ptxas info    : Compiling entry function '_Z10pass_pairsiiiii11Force_Types' for 'sm_21'
+ptxas info    : Function properties for _Z10pass_pairsiiiii11Force_Types
+    304 bytes stack frame, 248 bytes spill stores, 200 bytes spill loads
+ptxas info    : Used 63 registers, 1600+0 bytes smem, 56 bytes cmem[0], 264 bytes cmem[2], 28 bytes cmem[16]
+
+Umm
+ptxas info    : Compiling entry function '_Z10pass_pairsiiiii11Force_Types' for 'sm_21'
+ptxas info    : Function properties for _Z10pass_pairsiiiii11Force_Types
+    280 bytes stack frame, 184 bytes spill stores, 136 bytes spill loads
+ptxas info    : Used 63 registers, 1600+0 bytes smem, 56 bytes cmem[0], 264 bytes cmem[2], 28 bytes cmem[16]
+
+
+Pairs
+0.160 ? Use float3s for ball data.
+0.145 Use separate int array for pt_type, tic.
+0.123 Only compute rot matrix for boxes near use.
+0.130 The struct version.
+
+Pairs for plates separated by balls.
+1.000
+
+
+ptxas info    : Compiling entry function '_Z10pass_pairsiiiii11Force_Types' for 'sm_21'
+ptxas info    : Function properties for _Z10pass_pairsiiiii11Force_Types
+    280 bytes stack frame, 192 bytes spill stores, 132 bytes spill loads
+ptxas info    : Used 63 registers, 1200+0 bytes smem, 56 bytes cmem[0], 264 bytes cmem[2], 28 bytes cmem[16]
+
+::  9 December 2011, 13:15:56 CST
+
+Pairs
+0.113 Minor changes, such as eliminating more doubles. Latest CUDA.
+0.115 Compute rotation matrix twice. (I assume compiler is doing that.)
+      Note: time has large margin of error.
+:: 31 October 2012, 17:02:40 CDT
+
+Check in code in preparation for creating a project base
+directory.
+
+Notes:
+ demo-x-kernel.cu Works with and without USE_STRUCT defined.
+ 
+
+Check in new textures:
+
+Check in:
+
+Makefile
+.bt-mural.jpeg
+.mult.png
+.gpup.png
+
+.demo-x-boxes.cu
+.demo-x-collide.cc
+.demo-x-kernel.cu
+.demo-x-shdr.cc
+.demo-x.cuh
+.boxes.h
+.tiles.h (unmodified)
+
+Add GPU computation of box intersection.
+Added textures to boxes.
+Changes for CUDA 5.
+Removed definition of ASSERTS, used only in emulation mode.

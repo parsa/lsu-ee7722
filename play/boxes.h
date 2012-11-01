@@ -29,6 +29,7 @@ public:
     omega = pVect(0,0,0);
     orientation = pQuat(pVect(0,1,0),0);
     density = 0.01;
+    bzero(texid_faces,sizeof(texid_faces));
     set(pt_000,to_111p);
   }
   Box(Box *box_global, Box *box_ref):
@@ -39,6 +40,7 @@ public:
   ~Box(){ rebuild = true; }
 
   void set(pCoor pt_000, pVect to_111p);
+  void set_face_texture(int face, GLuint texid);
 
   float max_z_get(double delta_t);
   float min_z_get(double delta_t);
@@ -78,11 +80,12 @@ public:
   // The variables below are computed. See geometry_update.
   pCoor vertices[8];            // Vertices, computed.
   pVect normals[6];             // Normal of each face.
-  float radius;                 // Radius of bounding sphere.
   pMatrix rot;                  // Orientation of box.
   pMatrix rot_inv;              // Normal of each axis (inv of orientation).
 
   pVect mi_vec;                 // Moment of inertia along each axis.
+
+  GLuint texid_faces[6];
 };
 
 
@@ -105,6 +108,12 @@ Box::set(pCoor pt_000, pVect to_111p)
   mi_vec.z = mass / 12 * ( dsqs - dsq.z );
 
   geometry_update();
+}
+
+void
+Box::set_face_texture(int face, GLuint texid)
+{
+  texid_faces[face] = texid;
 }
 
 pCoor
@@ -265,7 +274,7 @@ Box::apply_force_dt(pCoor tact, pVect force)
   pNorm check2 = check - torque;
   ASSERTS( check2.mag_sq < 0.0001 );
 #endif
-  omega += torque * mi_inv;
+  omega += mi_inv * torque;
 }
 
 
@@ -299,14 +308,16 @@ Box::apply_force_fric_dt(pCoor tact, pNorm force_dir, float force_mag_dt)
 class Box_Manager {
 public:
   Box_Manager(){ phys_list = NULL; cuda_stale = true;  rebuild = false; };
-  void init(Phys_List *pl){ phys_list = pl; }
+  void init(World *wp, Phys_List *pl){ w = wp; phys_list = pl; }
   void rebuild_maybe();
-  void render(bool simple = false);
+  void render(bool color_events, bool simple = false);
   void render_simple();
   void render_shadow_volume(pCoor light_pos);
   Box* new_box(pCoor pt_000, pVect to_111, pColor color);
+  Box* new_box_ctr(pCoor center, pVect to_111, pColor color);
   Box* iterate();
   int occ() { return boxes.occ(); }
+  void phys_insert(Phys *p);
 
 private:
   World* w;
@@ -322,10 +333,17 @@ Box*
 Box_Manager::new_box(pCoor pt_000, pVect to_111, pColor color)
 {
   Box* const box = new Box(cuda_stale,rebuild,pt_000,to_111);
-  boxes += box;
   box->color = color;
-  box->idx = phys_list->occ();  phys_list->push(box);
+  boxes += box;
+  phys_insert(box);
   return box;
+}
+
+Box*
+Box_Manager::new_box_ctr(pCoor center, pVect to_111, pColor color)
+{
+  pCoor pt_000 = center - 0.5 * to_111;
+  return new_box(pt_000,to_111,color);
 }
 
 Box*
@@ -346,13 +364,16 @@ Box_Manager::rebuild_maybe()
 }
 
 void
-Box_Manager::render(bool simple)
+Box_Manager::render(bool color_events, bool simple)
 {
   rebuild_maybe();
   for ( PStackIterator<Box*> box(boxes); box; box++ )
     {
       if ( !simple )
-        glColor3fv(box->color);
+        if ( color_events )
+          glColor3fv(box->color_event);
+        else
+          glColor3fv(box->color);
 
       for ( int f=0; f<6; f++ )
         {
@@ -360,15 +381,25 @@ Box_Manager::render(bool simple)
           pCoor lr = box->get_face_vtx(f,1);
           pCoor ul = box->get_face_vtx(f,2);
           pCoor ur = box->get_face_vtx(f,3);
+          const GLuint texid = simple ? 0 : box->texid_faces[f];
+          if ( texid )
+            {
+              glEnable(GL_TEXTURE_2D);
+              glBindTexture(GL_TEXTURE_2D,texid);
+            }
+          else
+            {
+              glDisable(GL_TEXTURE_2D);
+            }
           glBegin(GL_TRIANGLES);
           glNormal3fv(box->normals[f]);
 
-          glVertex3fv(ul);
-          glVertex3fv(ll);
+          glTexCoord2f(0,0); glVertex3fv(ul);
+          glTexCoord2f(0,1); glVertex3fv(ll);
+          glTexCoord2f(1,1); glVertex3fv(lr);
           glVertex3fv(lr);
-          glVertex3fv(lr);
-          glVertex3fv(ur);
-          glVertex3fv(ul);
+          glTexCoord2f(1,0); glVertex3fv(ur);
+          glTexCoord2f(0,0); glVertex3fv(ul);
           glEnd();
 #if 0
           // Show normal vectors.
@@ -382,7 +413,7 @@ Box_Manager::render(bool simple)
 }
 
 void
-Box_Manager::render_simple(){ render(true); }
+Box_Manager::render_simple(){ render(false,true); }
 
 void
 Box_Manager::render_shadow_volume(pCoor light_pos)
@@ -487,7 +518,7 @@ class Isect_Boxes {
 public:
   Isect_Boxes(PStack<SectTT>* sl):sl(sl){
     ref_pt_set = false;
-    volume_sum = 0;
+    volume_sum = 0;  vol_pieces = 0;
     vec_sum = pVect(0,0,0);
     face_vector1 = face_vector2 = 0;
   };
@@ -502,6 +533,7 @@ public:
   bool ref_pt_set;
   pVect vec_sum;
   float volume_sum;
+  int vol_pieces;
 };
 
 void
@@ -523,8 +555,11 @@ Isect_Boxes::intersect_point_add(int f1p, int f2p, bool first, pCoor pt)
   const int f2 = first ? f2p : f1p;
   Isect_Line* const il = &l[f1][f2];
   if ( il->occ ) line_add(f1,f2+6,il->pt,pt,0);
-  il->pt = pt;
-  il->occ = true;
+  //  else
+    {
+      il->pt = pt;
+      il->occ = true;
+    }
 }
 
 void
@@ -559,6 +594,7 @@ Isect_Face::line_add
   const float volx6 = fabs(dot(vol_to_face,cp));
   pVect centroidx3 = ( p1 + p2 + face_ref_pt );
   b->volume_sum += volx6;
+  b->vol_pieces++;
   b->vec_sum += volx6 * centroidx3;
   if ( !area ) return;
   const float areax2 = dot(cp,cp);
@@ -590,7 +626,14 @@ box_box_intersect(Box *box1, Box *box2, PStack<SectTT>* sl)
   if ( box2i ) box_box_intersect_2(box2,box1,false,sl,2,&isb);
 
   float vol_area_sum = 0;
+  float vol_area_sum2 = 0;
   pVect dir(0,0,0);
+
+  for ( int f=0; f<6; f++ )
+    if ( isb.faces[f].ref_pt_set ) vol_area_sum2 += isb.faces[f].area_sum;
+
+  int area_pt = 0;
+  float a[6];  int aidx=0;
 
   for ( int f=6; f<12; f++ )
     {
@@ -599,20 +642,27 @@ box_box_intersect(Box *box1, Box *box2, PStack<SectTT>* sl)
       const float wt = isb.faces[f].area_sum;
       dir += wt * n2;
       vol_area_sum += wt;
+      area_pt++;
+      a[aidx++] = wt;
     }
 
   isb.vec_sum += isb.volume_sum * isb.vol_ref_pt;
+  sect.end.z = isb.vol_pieces;
+  sect.end.w = area_pt;
 
   if ( isb.volume_sum < 0.001 ) return sect;
-  if ( vol_area_sum < 0.001 ) return sect;
+  if ( vol_area_sum < 0.01 ) return sect;
   pCoor centroid = pVect(0,0,0) + (0.25/isb.volume_sum) * isb.vec_sum;
   pNorm dirN(dir);
-  pVect dir_scaled = -(isb.volume_sum/vol_area_sum) * dir;
   sect.start = centroid;
-  sect.dir = dir_scaled;
-  sect.end = sect.start + sect.dir;
+  sect.dir = -dirN;
+  //  sect.dir.x = a[0]; sect.dir.y = a[1]; sect.dir.z = a[2];
+  sect.end.x = isb.volume_sum;
+  sect.end.y = vol_area_sum2;
   sect.exists = true;
   sect.type = ST_Centroid;
+  sect.t_start = isb.volume_sum;
+  sect.t_end = vol_area_sum;
 
 #ifdef TUNE
   const float margin = 0.1;
@@ -714,25 +764,24 @@ box_box_intersect_1(Box *box1, Box *box2, Isect_Boxes *isb, bool first)
               const float p1p2dist = dot(p1p2,n1);
               const bool p2_outside = p1p2dist > 0;
               const float l = line2.len;
-              if ( fabs(u2dn1) < 0.0001 ) {
-                if ( p2_outside ) OUTSIDE;
-                continue; }
               const bool e_inward = u2dn1 < 0;
-              const float t = -p1p2dist / u2dn1;
-              if ( p2_outside )
+              const bool edge_par_to_face = fabs(u2dn1) < 0.0001f;
+              const float t = edge_par_to_face ? 0 : -p1p2dist / u2dn1;
+              if ( edge_par_to_face ) {
+                if ( p2_outside ) OUTSIDE;
+              }
+              else if ( p2_outside )
                 {
-                  if ( !e_inward ) { OUTSIDE;  continue; }
-                  if ( t >= l ) { OUTSIDE;  continue; }
-                  if ( t > ie->lo_t ) {
-                    if ( t > ie->hi_t ) { OUTSIDE;  continue; }
+                  if ( !e_inward ) { OUTSIDE; }
+                  else if ( t >= l ) { OUTSIDE; }
+                  else if ( t > ie->hi_t ) { OUTSIDE; }
+                  else if ( t > ie->lo_t ) {
                     ie->lo_face = face1;  ie->lo_t = t; }
-                  continue;
                 }
-              if ( e_inward ) continue;
-              if ( t > l ) { set_min(ie->hi_t,l);  continue; }
-              if ( t < ie->hi_t ) {
-                if ( t < ie->lo_t ) { OUTSIDE;  continue; }
-                ie->hi_face = face1;  ie->hi_t = t; }
+              else if ( e_inward ) { /* Do nothing. */ }
+              else if ( t > l ) { set_min(ie->hi_t,l); }
+              else if ( t < ie->lo_t ) { OUTSIDE; }
+              else if ( t < ie->hi_t ) {ie->hi_face = face1;  ie->hi_t = t;}
             }
         }
     }
@@ -827,7 +876,8 @@ box_sphere_interpenetrate(Box *box, pCoor sphere_pos, float radius)
   pNorm dir(sect.start,sphere_pos);
   if ( dir.mag_sq > radius*radius ) return sect;
   const float pen = radius - dir.magnitude;
-  sect.dir = pen * dir;
+  sect.dir = dir;
+  sect.end.x = pen;
   sect.type = ST_Centroid;
   sect.exists = true;
   return sect;
