@@ -10,8 +10,8 @@
 //   This file contains headers for CPU and GPU/cuda code.
 //   See demo-x-collide.cc for main program.
 
-#ifndef DEMO_X_CUH
-#define DEMO_X_CUH
+#ifndef K_MAIN_CUH
+#define K_MAIN_CUH
 
 #undef XX_DEBUG
 

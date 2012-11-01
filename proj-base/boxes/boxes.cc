@@ -156,8 +156,8 @@
 #include <gp/texture-util.h>
 #include <gp/cuda-util.h>
 #include <gp/colors.h>
-#include "shapes.h"
-#include "demo-x.cuh"
+#include "gra-shapes.h"
+#include "k-main.cuh"
 
 
 ///
@@ -382,8 +382,8 @@ typedef PStackIterator<Phys*> Phys_Iterator;
 // Include class definitions for tiles.  Yes, this code
 // is disorganized.
 //
-#include "tiles.h"
-#include "boxes.h"
+#include "phys-obj-tile.h"
+#include "phys-obj-box.h"
 
 class Tact_Box_Box {
 public:
@@ -783,7 +783,7 @@ World::init()
   //
   vs_reflect =
     new pShader
-    ("demo-x-shdr.cc","vs_main_reflect();", "gs_main_reflect();", NULL);
+    ("shdr.cc","vs_main_reflect();", "gs_main_reflect();", NULL);
   if ( vs_reflect->okay() )
     {
       sun_platform_xrad = vs_reflect->uniform_location("platform_xrad");
@@ -795,13 +795,13 @@ World::init()
       sun_opt_color_events = vs_reflect->uniform_location("opt_color_events");
     }
 
-  vs_plain = new pShader("demo-x-shdr.cc","vs_main_plain();");
+  vs_plain = new pShader("shdr.cc","vs_main_plain();");
   if ( vs_plain->okay() )
     {
       sun_vs_options = vs_plain->uniform_location("vs_options");
     }
 
-  vs_xfrom_only = new pShader("demo-x-shdr.cc","vs_main_xform_only();");
+  vs_xfrom_only = new pShader("shdr.cc","vs_main_xform_only();");
 
   // Instantiate a non-shader shader object, which will be used to
   // tell OpenGL to used fixed functionality for all programmable

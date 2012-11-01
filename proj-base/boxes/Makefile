@@ -15,7 +15,7 @@ COMPILERFLAGS = -O3  -Xcompiler -Wall -Xcompiler -Wno-unused-function \
 
 COMPILERFLAGS = -O3  -Xcompiler -Wall -Xcompiler -Wno-unused-function \
  -Xcompiler -Wno-parentheses \
- --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_21
+ --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_20
 
 
 CC = gcc
@@ -33,10 +33,10 @@ INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
 	        gl-buffer.h texture-util.h 
 
 INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
-	 shapes.h Makefile
+	 Makefile
 
 
-default: demo-x-collide
+default: boxes
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -47,14 +47,14 @@ default: demo-x-collide
 	$(CUDUMP) -sass $*.cubin > $*.sass &
 	$(CXX) $(CFLAGS) --compile $*.cu
 
-demo-x-collide.o: Makefile $(INCLUDES)
-demo-x-collide.o: demo-x-collide.cc shapes.h demo-x-kernel.cu demo-x.cuh
-demo-x-collide.o: tiles.h boxes.h
+boxes.o: Makefile $(INCLUDES)
+boxes.o: boxes.cc gra-shapes.h k-main.cuh
+boxes.o: phys-obj-box.h phys-obj-tile.h
 
-demo-x-kernel.o: Makefile demo-x.cuh demo-x-kernel.cu demo-x-collide.cc
-demo-x-kernel.o: demo-x-kernel.cu demo-x-boxes.cu
+k-main.o: Makefile k-main.cuh k-main.cu boxes.cc
+k-main.o: k-main.cu k-boxes.h
 
-demo-x-collide: demo-x-collide.o demo-x-kernel.o
+boxes: boxes.o k-main.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 clean:

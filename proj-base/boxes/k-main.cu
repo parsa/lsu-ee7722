@@ -11,7 +11,7 @@
 //   See demo-x-collide.cc for main program.
 
 #include <gp/cuda-util-kernel.h>
-#include "demo-x.cuh"
+#include "k-main.cuh"
 
 
 ///
@@ -794,7 +794,7 @@ sect_init()
   return sect;
 }
 
-#include "demo-x-boxes.cu"
+#include "k-boxes.h"
 
 ///
 /// Pass Box/Box Intersect
