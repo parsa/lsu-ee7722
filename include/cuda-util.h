@@ -20,6 +20,7 @@
 #include <GL/glx.h>
 #include <GL/glxext.h>
 #endif
+#include <cuda.h> 
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 #include <memory>
@@ -41,6 +42,40 @@
 
 inline void pError_Check_CUDA() {CE(cudaGetLastError());}
 
+#include <map>
+#include <string>
+using std::map;
+using std::string;
+class CUDA_Util_Data {
+public:
+  CUDA_Util_Data() { init = true; }
+  void sym_insert(const char *name, void *symbol)
+  { str_to_sym[name] = symbol; }
+  void *sym_lookup(const char *name)
+  {
+    map<string, void*>::iterator it = str_to_sym.find(name);
+    if ( it != str_to_sym.end() ) return it->second;
+    if ( CUDA_VERSION < 5000 ) return (void*) name;
+    pStringF msg
+      (
+       "LSU GP Library Error: CUDA variable %s not registered.\n"
+       "  Maybe add the following to an initialization routine in an nvcc-compiled\n"
+       "  file (one typically ending in .cu):\n\n"
+       "     #include <gp/cuda-util-kernel.h>\n\n"
+       "    __host__ void my_init_routine() {\n"
+       "      CU_SYM(%s);\n"
+       "    }\n",
+       name,name);
+    pError_Msg_NP(msg.s);
+    return NULL;
+  }
+private:
+  bool init;
+  map<string, void*> str_to_sym;
+};
+
+CUDA_Util_Data cuda_util_data;
+
 ///
  /// Routines for Copying Variables to Device Memory
 ///
@@ -50,7 +85,8 @@ void to_dev_ds(const char* const dst_name, int idx, T src)
 {
   T cpy = src;
   const int offset = sizeof(void*) * idx;
-  CE(cudaMemcpyToSymbol(dst_name,&cpy,sizeof(T),offset,cudaMemcpyHostToDevice));
+  void* const symbol = cuda_util_data.sym_lookup(dst_name);
+  CE(cudaMemcpyToSymbol(symbol,&cpy,sizeof(T),offset,cudaMemcpyHostToDevice));
 }
 
 #define TO_DEV_DS(dst,src) to_dev_ds(#dst,0,src);
@@ -82,6 +118,12 @@ void vec_sets4(pVect& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
  ///
  /// Class for managing CUDA device memory.
  ///
+
+void
+cuda_util_symbol_insert(const char *name, void *symbol)
+{
+  cuda_util_data.sym_insert(name,symbol);
+}
 
 template <typename T>
 class pCUDA_Memory {
@@ -213,9 +255,10 @@ public:
     void* const dev_addr = get_dev_addr(side);
     if ( dev_ptr_name[side] == dev_name ) return;
     dev_ptr_name[side] = dev_name;
+    void* const dev_symbol = cuda_util_data.sym_lookup(dev_name);
     dev_addr_seen[side] = true;
     CE(cudaMemcpyToSymbol
-       (dev_name, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
+       (dev_symbol, &dev_addr, sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
   }
 
   void ptrs_to_cuda(const char *dev_name_0, const char *dev_name_1 = NULL)
@@ -417,8 +460,9 @@ public:
     dev_ptr_name[side] = dev_name;
     while ( pCM_Struc_Info* const si = struc_info.iterate() )
       soa[si->soa_elt_idx] = dev_base + si->soa_cpu_base;
+    void* const dev_symbol = cuda_util_data.sym_lookup(dev_name);
     CE(cudaMemcpyToSymbol
-       (dev_name, soa, sizeof(Tsoa), 0, cudaMemcpyHostToDevice));
+       (dev_symbol, soa, sizeof(Tsoa), 0, cudaMemcpyHostToDevice));
     cuda_mem_all.set_dev_addr_seen(side);
   }
   void ptrs_to_cuda(const char *dev_name_0, const char *dev_name_1 = NULL)
