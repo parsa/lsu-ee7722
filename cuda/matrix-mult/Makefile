@@ -13,7 +13,7 @@ CUDUMP = $(CUDAPATH)/bin/cuobjdump
 # -Xptxas -dlcm=cg
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  -use_fast_math -g --gpu-architecture=sm_21
+ --ptxas-options=-v  -use_fast_math -g --gpu-architecture=sm_20
 
 
 # -maxrregcount

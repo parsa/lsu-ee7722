@@ -1,4 +1,5 @@
 #include "matrix-mult.cuh"
+#include <gp/cuda-util-kernel.h>
 
 // Constants holding array sizes and pointers and coefficients.
 //
@@ -26,9 +27,22 @@ template <int dim_block> __global__ void
 mm_blk_cache_a_local_t();
 
 
+static __host__ void
+collect_symbols()
+{
+  CU_SYM(array_size); CU_SYM(array_size_lg);
+  CU_SYM(row_stride); CU_SYM(row_stride_lg); CU_SYM(dim_block_lg);
+  CU_SYM(a); CU_SYM(b); CU_SYM(c);
+  CU_SYM(t_compute); CU_SYM(t_all);
+  CU_SYM(cs_itid_stride);
+}
+
+
 static __host__ int
 kernels_get_attr_(pCUDA_Func_Attributes *attr)
 {
+  collect_symbols();
+
   int count = 0;
 
 #define GETATTR(func)                                                         \
