@@ -345,9 +345,6 @@ pCoor mult_MC(pMatrix& m, pCoor c)
   return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
 }
 
-pVect mult_transpose_MV(pMatrix m, pVect v)
-{ return pVect( dot(m.cv(0),v), dot(m.cv(1),v), dot(m.cv(2),v));}
-
 inline void
 pCoor::add_vector(pVect v)
 {
