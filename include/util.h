@@ -79,7 +79,12 @@ lprint_attribute(int token, const char *name)
 }
 
 class pOpenGL_Helper;
+
+#ifdef GP_UTIL_DECLARE_ONLY
+extern pOpenGL_Helper* opengl_helper_self_;
+#else
 pOpenGL_Helper* opengl_helper_self_ = NULL;
+#endif
 
 
 struct pTimer_Info {
@@ -150,6 +155,8 @@ private:
 
   PStack<pTimer_Info> timer_info;
 };
+
+#ifndef GP_UTIL_DECLARE_ONLY
 
 void
 pFrame_Timer::init()
@@ -290,6 +297,8 @@ pFrame_Timer::frame_end()
     frame_rate_text.sprintf
       ("  %s %.2f ms (%.1f%%)", ti->label.s, 1000 * ti->last, 100 * ti->frac);
 }
+
+#endif
 
 struct pVariable_Control_Elt
 {

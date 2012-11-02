@@ -70,6 +70,11 @@ private:
  /// Create and initialize texture object using image file.
  ///
 
+#ifdef GP_UTIL_DECLARE_ONLY
+GLuint
+pBuild_Texture_File
+(const char *name, bool invert = false, int transp = 256 );
+#else
 GLuint
 pBuild_Texture_File
 (const char *name, bool invert = false, int transp = 256 )
@@ -103,5 +108,6 @@ pBuild_Texture_File
 
   return tid;
 }
+#endif
 
 #endif

@@ -17,16 +17,24 @@ typedef int (*lfunc_i_uK)(unsigned int, const char*);
 typedef void (*lfunc_v_uusSSEC)(uint,uint,
                                 GLsizei,GLsizei*,GLsizei*,GLenum*,char*);
 
+#ifdef GP_UTIL_DECLARE_ONLY
+#define PTR_INIT(t,name) extern t ptr_##name;
+#else
 #define PTR_INIT(t,name) t ptr_##name;
+#endif
 #include "glextfuncs.h"
 #undef PTR_INIT
 #define PTR_INIT(t,name) ptr_##name = (t) glutGetProcAddress(#name);
 
-inline void
+#ifdef GP_UTIL_DECLARE_ONLY
+void lglext_ptr_init();
+#else
+void
 lglext_ptr_init()
 {
 # include "glextfuncs.h"  
 }
+#endif
 
 #undef PTR_INIT
 

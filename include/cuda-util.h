@@ -74,14 +74,18 @@ private:
   map<string, void*> str_to_sym;
 };
 
+#ifdef GP_UTIL_DECLARE_ONLY
+extern CUDA_Util_Data cuda_util_data;
+#else
 CUDA_Util_Data cuda_util_data;
+#endif
 
 ///
  /// Routines for Copying Variables to Device Memory
 ///
 
 template <typename T>
-void to_dev_ds(const char* const dst_name, int idx, T src)
+inline void to_dev_ds(const char* const dst_name, int idx, T src)
 {
   T cpy = src;
   const int offset = sizeof(void*) * idx;
@@ -101,29 +105,33 @@ void to_dev_ds(const char* const dst_name, int idx, T src)
  /// Routines for Copying Coordinate Class Objects to CUDA Types
 ///
 
-void vec_set(float4& a, pQuat b)
+inline void vec_set(float4& a, pQuat b)
 {a.x = b.v.x; a.y = b.v.y; a.z = b.v.z;  a.w = b.w; }
-void vec_set(pQuat&a, float4 b)
+inline void vec_set(pQuat&a, float4 b)
 {a.v.x = b.x; a.v.y = b.y; a.v.z = b.z;  a.w = b.w; }
 
-void vec_set(float3& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z;}
-void vec_sets(pCoor& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z;}
-void vec_sets(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w = b.w;}
-void vec_set(pVect& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
-void vec_sets3(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
-void vec_sets3(float4& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z; }
-void vec_sets4(pVect& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+inline void vec_set(float3& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z;}
+inline void vec_sets(pCoor& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z;}
+inline void vec_sets(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; a.w = b.w;}
+inline void vec_set(pVect& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+inline void vec_sets3(pCoor& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+inline void vec_sets3(float4& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z; }
+inline void vec_sets4(pVect& a, float4 b) {a.x = b.x; a.y = b.y; a.z = b.z; }
 
 
  ///
  /// Class for managing CUDA device memory.
  ///
 
+#ifdef GP_UTIL_DECLARE_ONLY
+void cuda_util_symbol_insert(const char *name, void *symbol);
+#else
 void
 cuda_util_symbol_insert(const char *name, void *symbol)
 {
   cuda_util_data.sym_insert(name,symbol);
 }
+#endif
 
 template <typename T>
 class pCUDA_Memory {

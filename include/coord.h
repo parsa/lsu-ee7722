@@ -172,7 +172,7 @@ public:
   inline void column_set(int col, pVect v);
 };
 
-pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
+inline pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
 
 inline void
 pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2)
@@ -306,19 +306,19 @@ inline float dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
 inline double dotd(pVect a, pVect b)
 {return double(a.x) * b.x + double(a.y) * b.y + double(a.z) * b.z;}
 
-float dot(pCoor a, pCoor b)
+inline float dot(pCoor a, pCoor b)
 {return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;}
-double dotd(pCoor a, pCoor b)
+inline double dotd(pCoor a, pCoor b)
 {return double(a.x) * b.x + double(a.y) * b.y + double(a.z) * b.z
     + double(a.w) * b.w;}
 
-pVect cross(pVect a, pVect b)
+inline pVect cross(pVect a, pVect b)
 {
   return pVect
     ( a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x );
 }
 
-pVect cross(pCoor a, pCoor b, pCoor c)
+inline pVect cross(pCoor a, pCoor b, pCoor c)
 {
   return cross(pVect(b,a),pVect(b,c));
 }
@@ -337,7 +337,7 @@ pangle(pCoor a, pCoor b, pCoor c)
   return pangle(pVect(b,a),pVect(b,c));
 }
 
-pVect pMatrix::cv(int col)
+inline pVect pMatrix::cv(int col)
 { return pVect(rc_get(0,col),rc_get(1,col),rc_get(2,col)); }
 
 pCoor mult_MC(pMatrix& m, pCoor c)
@@ -421,7 +421,7 @@ public:
   float w;
 };
 
-pQuat operator *(pQuat a, pQuat b)
+inline pQuat operator *(pQuat a, pQuat b)
 {
   pQuat p;
   p.w = a.w * b.w - dot(a.v,b.v);
@@ -439,7 +439,7 @@ pMatrix::column_set(int col, pVect v)
 }
 
 
-void
+inline void
 pMatrix::set_rotation(pVect u, double theta)
 {
   set_zero();
@@ -457,11 +457,11 @@ pMatrix::set_rotation(pVect u, double theta)
   rc(3,3) = 1.0;
 }
 
-void
+inline void
 pMatrix::set_translation(pVect pos)
 { set_translation(pos.x,pos.y,pos.z); }
 
-void
+inline void
 pMatrix::set_translation(float x, float y, float z)
 {
   set_identity();
@@ -471,19 +471,19 @@ pMatrix::set_translation(float x, float y, float z)
   rc(3,3) = 1;
 }
 
-void
+inline void
 pMatrix::local_rotation(pVect u, float theta)
 {
   pMatrix mt; mt.set_rotation(u,theta);
   local(mt);
 }
 
-float distance(pCoor a, pCoor b)
+inline float distance(pCoor a, pCoor b)
 {
   pVect diff(a,b); return diff.mag();
 }
 
-float distance_sq(pCoor a, pCoor b)
+inline float distance_sq(pCoor a, pCoor b)
 {
   pVect diff(a,b); return dot(diff,diff);
 }
@@ -603,9 +603,10 @@ private:
 
 };
 
-
-pMatrix
-invert(pMatrix& original)
+#ifdef GP_UTIL_DECLARE_ONLY
+pMatrix invert(pMatrix& original);
+#else
+pMatrix invert(pMatrix& original)
 {
   const bool check = true;
   pMatrix a = original;
@@ -646,8 +647,7 @@ invert(pMatrix& original)
     }
   return b;
 }
-
-
+#endif
 
 
 #endif

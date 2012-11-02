@@ -13,7 +13,7 @@
 
 #include "pstring.h"
 
-double
+inline double
 time_wall_fp()
 {
   struct timespec now;
@@ -21,7 +21,7 @@ time_wall_fp()
   return now.tv_sec + ((double)now.tv_nsec) * 1e-9;
 }
 
-double
+inline double
 time_process_fp()
 {
   struct timespec now;
