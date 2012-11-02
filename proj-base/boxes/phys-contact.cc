@@ -183,7 +183,6 @@ World::cuda_contact_pairs_find()
 
   // Block size chosen to maximize multiprocessor utilization
   // or is set to 32, whichever is larger.
-  // HW 4 note: The block size chosen here may not be the best.
   //
   dim3 dim_grid, dim_block;
   const int plat_block_size_1pmp =
