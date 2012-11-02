@@ -403,9 +403,6 @@ World::variables_update()
   if ( opt_bounce_loss > 1 ) opt_bounce_loss = 1;
 }
 
-#include "gra-platform.h"
-
-
 void
 World::modelview_update()
 {
@@ -420,9 +417,6 @@ World::modelview_update()
 ///
 /// Physical Simulation Code
 ///
-
- /// Initialize Simulation
-//
 
 
 bool

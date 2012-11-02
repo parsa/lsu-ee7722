@@ -29,7 +29,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 SRC_FILES = boxes.cc cuda-data.cc cuda-sched.cc \
 	phys.cc phys-obj-tile.cc phys-obj-box.cc phys-obj-ball.cc \
 	phys-contact.cc phys-resolve.cc \
-	gra-shapes.cc gra-alhazan.cc \
+	gra-platform.cc gra-shapes.cc gra-alhazan.cc \
 	scene-setup.cc \
 	render.cc
 

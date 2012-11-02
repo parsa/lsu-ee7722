@@ -1,3 +1,13 @@
+/// LSU EE X70X GPU Prog / Microarch
+//
+ /// Code for Half-Cylinder Platform
+
+#include "boxes.h"
+#include "world.h"
+#include "phys-obj-ball.h"
+#include "phys-obj-box.h"
+#include "phys-obj-tile.h"
+
 void
 World::platform_update()
 {
