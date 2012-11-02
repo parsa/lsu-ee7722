@@ -97,7 +97,7 @@ World::setup_brick_wall(float max_y)
   all_remove();
 
   // If true, bottom bricks don't move.
-  const bool glued = false;
+  const bool glued = true;
 
   float block_width = 4;
   const float block_depth = block_width * 16.375 / 12.675; // Moving boxes.
@@ -124,7 +124,7 @@ World::setup_brick_wall(float max_y)
         {
           Box* const b = box_manager->new_box
             (block_base, block_diag_long, color_yellow_green);
-          if ( glued && layer == 0 ) b->read_only = true;
+          if ( glued && layer == 0 ) b->set_read_only();
           block_base.z += block_diag_long.z;
         }
 
@@ -134,7 +134,7 @@ World::setup_brick_wall(float max_y)
         {
           Box* const b = box_manager->new_box
             (block_base, block_diag, color_maroon);
-          if ( glued && layer == 0 ) b->read_only = true;
+          if ( glued && layer == 0 ) b->set_read_only();
           for ( int i=0; i<6; i++ )
             b->set_face_texture(i,texid_mural);
           block_base.z += pitch;
@@ -147,7 +147,7 @@ World::setup_brick_wall(float max_y)
           block_base.z -= (pitch_factor-1)*block_diag.z;
           Box* const b = box_manager->new_box
             (block_base, block_diag_long, color_yellow_green);
-          if ( glued && layer == 0 ) b->read_only = true;
+          if ( glued && layer == 0 ) b->set_read_only();
           block_base.z += block_diag_long.z;
         }
     }
@@ -189,7 +189,7 @@ World::setup_tower(float base, int layers, bool balls)
 
       // Maybe fix it in place if its the bottom block.
       //
-      if ( glued && i == 0 ) b->read_only = true;
+      if ( glued && i == 0 ) b->set_read_only();
 
       // Increment the tower y position.
       //
@@ -238,7 +238,7 @@ World::setup_house_of_cards()
   Box* const base = box_manager->new_box
     (base_pos,pVect(2*platform_wh,base_height,platform_zmax),
      pColor(0.5,0.5,0.5));
-  base->read_only = true;
+  base->set_read_only();
   pVect card_diag(10,5,0.1);
 
   drip_location.x = 0;
