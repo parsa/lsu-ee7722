@@ -51,6 +51,11 @@ include $(SRC_FILES:.cc=.d)
          sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
          rm -f $@.$$$$
 
+%.d: %.cu
+	@set -e; rm -f $@; \
+         $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
