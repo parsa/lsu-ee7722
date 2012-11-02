@@ -288,6 +288,7 @@ public:
 
   void to_cuda()
   {
+    if ( !elements ) return;
     alloc_gpu_buffer();
     if ( !dev_addr_seen[current] )
       pError_Msg("Data sent to CUDA before sending address of data.");
@@ -296,12 +297,14 @@ public:
 
   void from_cuda()
   {
+    if ( !elements ) return;
     CE(cudaMemcpy(data, dev_addr[current], chars, cudaMemcpyDeviceToHost));
   }
 
 #ifdef ALSO_GL
   void cuda_to_gl()
   {
+    if ( !elements ) return;
     alloc_gl_buffer();
     // Due to a bug in CUDA 2.1 this is slower than copying through host.
     CE(cudaGLMapBufferObject(&bo_ptr,bid));
