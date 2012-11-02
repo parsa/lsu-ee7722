@@ -1,6 +1,6 @@
 /// LSU EE X70X-X (Fall 2012), GPU Programming
 //
- /// Demo of Dynamic Simulation, Multiple Balls and Boxes on Curved Platform
+ /// CUDA code for computing intersections and time-stepping physics model.
 
 // $Id:$
 

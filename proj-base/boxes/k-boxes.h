@@ -1,17 +1,8 @@
 /// LSU EE X70X-X (Fall 2012), GPU Programming
 //
- /// Demo of Dynamic Simulation, Multiple Balls and Boxes on Curved Platform
+ /// CUDA code for computing intersection volume of boxes.
 
 // $Id:$
-
-/// Purpose
-//
-//   Demonstrate Several Graphical and Simulation Techniques.
-//   This file contains GPU/cuda code.
-//   See demo-x-collide.cc for main program.
-
-// For now this is included from demo-x-kernel.cu.
-// Hopefully, no one but me will ever read this.
 
 struct Isect_Boxes;
 
