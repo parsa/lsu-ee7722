@@ -257,7 +257,6 @@ World::init()
   drip_run = 7;
   spray_run = 8;
   dball = NULL;
-  opt_verify = true;
   opt_verify = false;
   opt_time_step_factor = 18;
 
@@ -314,33 +313,17 @@ World::init()
   platform_update();
   modelview_update();
 
-  if (false)
-    {
-      // Place barriers at either end of platform.
-      //
-      pCoor far_corner(-platform_xrad,-platform_xrad,platform_zmin);
-      pVect forward(0,0,platform_zmax-platform_zmin);
-      pVect across(2 * platform_xrad,0,0);
-      pVect up(0, 0.5 * platform_xrad,0);
-      tile_manager->new_tile(far_corner,across,up);
-      tile_manager->new_tile(far_corner+forward,across,up);
-    }
-
-  /// Initialize Ball Positions
+  // Initialize scene to show a brick wall.
   //
-  //  Code below places balls in one of several ways.
-  //  Some of the ball arrangements are intended for debugging.
-
-  if ( opt_spray_on )
-    {
-      physs += new Ball(this);
-      return;
-    }
-  //  setup_tower(20,10,true); return;
-
   setup_brick_wall(); return;
-  opt_physics_method = GP_cuda;
-  setup_debug(); return;
+
+  /// The configurations below are for debugging.
+  //
+  // Objects are placed is such a way as to expose the bug or other
+  // issue being worked on.
+  //
+  // These are activated by commenting out the line above and then
+  // setting the if condition for the desired configuration.
 
   const float r_short = platform_xrad - opt_ball_radius;
 
@@ -362,29 +345,34 @@ World::init()
         }
     }
 
-  if (false){
-    {
-      Ball* const b = new Ball(this);
-      b->position = pCoor(0,-r_short,40);
-      b->velocity = pVect(0,0,0);
-      physs += b;
-    }
-    {
-      Ball* const b = new Ball(this);
-      b->position = pCoor(r_short*cos(1.75*M_PI),r_short*sin(1.75*M_PI),40);
-      b->velocity = pVect(0,0,0);
-      physs += b;
-    }
-  }
-
   if ( false )
+    {
+      {
+        Ball* const b = new Ball(this);
+        b->position = pCoor(0,-r_short,40);
+        b->velocity = pVect(0,0,0);
+        physs += b;
+      }
+      {
+        Ball* const b = new Ball(this);
+        b->position = pCoor(r_short*cos(1.75*M_PI),r_short*sin(1.75*M_PI),40);
+        b->velocity = pVect(0,0,0);
+        physs += b;
+      }
+    }
+
+  if ( true )
     {
       // Ramp.
       pCoor ramp_pos(-10,-55,platform_zmax-30);
       Box* const ramp = 
         box_manager->new_box(ramp_pos,pVect(1,40,20),color_powder_blue);
       ramp->rotate(pVect(0,0,1),0.45*M_PI);
-      ramp->read_only = true;
+      ramp->set_read_only();
+      Ball* const b = new Ball(this);
+      b->position = pCoor(-4.2,-32,60);
+      b->velocity = pVect(0,0,0);
+      physs += b;
     }
 }
 
@@ -1326,12 +1314,14 @@ World::cb_keyboard()
     }
 }
 
+World *wg;
 
 int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
+  wg = &world;
 
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.render_w,&world);
