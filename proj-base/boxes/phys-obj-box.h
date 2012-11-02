@@ -33,7 +33,7 @@ public:
 
   void set(pCoor pt_000, pVect to_111p);
   void set_face_texture(int face, GLuint texid);
-  bool set_read_only(bool val)
+  bool set_read_only(bool val = true)
   {
     if ( val == read_only ) return val;
     read_only = val;  constants_update();
