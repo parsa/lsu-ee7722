@@ -764,7 +764,7 @@ box_apply_force_dt(CUDA_Box_W& box, float3 tact, float3 force)
 __device__ float
 box_get_moment_of_inertia_inv(CUDA_Box_W& box, pNorm axis)
 {
-  if ( axis.mag_sq < 1e-11f ) return 0;
+  if ( axis.mag_sq < 1e-11f || box.mass_inv == 0 ) return 0;
   pVect tl = box.rot_inv * axis.v;
   pVect tls = tl * tl;
   float mi = dot(tls,box.mi_vec);
