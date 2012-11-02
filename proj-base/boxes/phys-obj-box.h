@@ -33,6 +33,16 @@ public:
 
   void set(pCoor pt_000, pVect to_111p);
   void set_face_texture(int face, GLuint texid);
+  bool set_read_only(bool val)
+  {
+    if ( val == read_only ) return val;
+    read_only = val;  constants_update();
+    return !val;
+  }
+  void set_density(float densityp)
+  { density = densityp; constants_update(); }
+
+  void constants_update();
 
   float max_z_get(double delta_t);
   float min_z_get(double delta_t);

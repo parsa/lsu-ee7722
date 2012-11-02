@@ -31,17 +31,8 @@ Box::set(pCoor pt_000, pVect to_111p)
   ASSERTS( min_d > 0 );
   to_111 = 0.5 * to_111p;
   position = pt_000 + to_111;
-  radius = to_111.mag();
 
-  mass = read_only ? 1e10 : density * to_111p.x * to_111p.y * to_111p.z;
-  mass_inv = read_only ? 0 : 1.0 / mass;
-
-  pVect dsq = to_111p * to_111p;
-  const float dsqs = sum(dsq);
-  mi_vec.x = mass / 12 * ( dsqs - dsq.x );
-  mi_vec.y = mass / 12 * ( dsqs - dsq.y );
-  mi_vec.z = mass / 12 * ( dsqs - dsq.z );
-
+  constants_update();
   geometry_update();
 }
 
@@ -49,6 +40,40 @@ void
 Box::set_face_texture(int face, GLuint texid)
 {
   texid_faces[face] = texid;
+}
+
+void
+Box::constants_update()
+{
+  radius = to_111.mag();
+  mass = read_only ? 1e10 : 8 * density * to_111.x * to_111.y * to_111.z;
+  mass_inv = read_only ? 0 : 1.0 / mass;
+  pVect dsq = 4 * to_111 * to_111;
+  const float dsqs = sum(dsq);
+  mi_vec.x = mass / 12 * ( dsqs - dsq.x );
+  mi_vec.y = mass / 12 * ( dsqs - dsq.y );
+  mi_vec.z = mass / 12 * ( dsqs - dsq.z );
+}
+
+void
+Box::geometry_update()
+{
+  rot = pMatrix_Rotation(orientation);
+  rot_inv.set_transpose3x3(rot);
+
+  for ( int v=0; v<8; v++ )
+    vertices[v] = position + rot * to_111.sign_mask(v);
+
+  for ( int d=0; d<3; d++ )
+    {
+      // Optimize me.
+      const int fidx = d << 1;
+      const pVect vmask = pVect(1,1,1).mask(1<<d);
+      const bool flip = dot(vmask,to_111.mask(1<<d)) < 0;
+      pVect norm = rot * vmask;
+      normals[fidx] = flip ? norm : -norm;
+      normals[fidx+1] = flip ? -norm : norm;
+    }
 }
 
 pCoor
@@ -165,26 +190,6 @@ Box::contained(pCoor pos, float margin)
   return min_dist >= -margin;
 }
 
-void
-Box::geometry_update()
-{
-  rot = pMatrix_Rotation(orientation);
-  rot_inv.set_transpose3x3(rot);
-
-  for ( int v=0; v<8; v++ )
-    vertices[v] = position + rot * to_111.sign_mask(v);
-
-  for ( int d=0; d<3; d++ )
-    {
-      // Optimize me.
-      const int fidx = d << 1;
-      const pVect vmask = pVect(1,1,1).mask(1<<d);
-      const bool flip = dot(vmask,to_111.mask(1<<d)) < 0;
-      pVect norm = rot * vmask;
-      normals[fidx] = flip ? norm : -norm;
-      normals[fidx+1] = flip ? -norm : norm;
-    }
-}
 
 void
 Box::set_local_partial(Box *gbox, Box *rbox)
