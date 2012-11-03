@@ -41,7 +41,7 @@ default: boxes
 
 # Include dependencies that were created by %.d rule.
 #
-include $(SRC_FILES:.cc=.d)
+include $(SRC_FILES:.cc=.d) $(CU_SRC_FILE:.cu=.d)
 
 # Prepare file holding dependencies, to be included in this file.
 #
@@ -57,10 +57,10 @@ include $(SRC_FILES:.cc=.d)
          sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
          rm -f $@.$$$$
 
-.cc.o:
+%.o: %.cc Makefile
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
-.cu.o:
+%.o: %.cu Makefile
 	$(CXX) $(CFLAGS) --ptx $*.cu -o $*.ptx && \
 	$(CXX) $(CFLAGS) --cubin $*.ptx -o $*.cubin && \
 	$(CUDUMP) -sass $*.cubin > $*.sass &
