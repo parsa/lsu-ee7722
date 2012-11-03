@@ -377,6 +377,58 @@ World::init()
 }
 
 void
+World::main_callback()
+{
+  // This routine called whenever window needs to be updated.
+
+  // Get any waiting keyboard commands.
+  //
+  cb_keyboard();
+
+  // Start a timer object used for tuning this code.
+  //
+  frame_timer.frame_start();
+
+  const double time_now = time_wall_fp();
+
+  if ( opt_pause || last_frame_time == 0 )
+    {
+      /// Don't change simulation state.
+      //
+      last_frame_time = time_now;
+    }
+  else
+    {
+      // If we are recording a video base world time on video frame
+      // rate rather than wall clock time.
+      //
+      if ( ogl_helper.animation_record )
+        world_time = time_now - ogl_helper.frame_period;
+
+      // Advance simulation state by wall clock time.
+      //
+      const double elapsed_time = time_now - last_frame_time;
+      const int iter_limit =
+        int( min( opt_time_step_factor * 3.0, 0.5 + elapsed_time / delta_t));
+      for ( int iter=0; iter < iter_limit; iter++ )
+        {
+          if ( opt_physics_method == GP_cpu )
+            time_step_cpu();
+          else
+            time_step_cuda(iter,iter_limit);
+
+          world_time += delta_t;
+        }
+      last_frame_time = time_now;
+      frame_timer.work_amt_set(iter_limit);
+    }
+
+  // Note: Render routine calls frame_timer.frame_end();
+  //
+  render();
+}
+
+void
 World::variables_update()
 {
   // Updated pre-computed constants.
@@ -1324,5 +1376,5 @@ main(int argv, char **argc)
   wg = &world;
 
   popengl_helper.rate_set(30);
-  popengl_helper.display_cb_set(world.render_w,&world);
+  popengl_helper.display_cb_set(world.main_callback_w,&world);
 }

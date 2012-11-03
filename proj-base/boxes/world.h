@@ -26,7 +26,8 @@ public:
   (int zidx, double lifetime_delta_t, bool verify);
   void cuda_contact_pairs_find();
 
-  static void render_w(void *moi){ ((World*)moi)->render(); }
+  static void main_callback_w(void *moi){((World*)moi)->main_callback();}
+  void main_callback();
   void render();
   void render_objects(bool attempt_occlusion_test);
   void render_shadow_volumes(pCoor light_pos);
@@ -97,7 +98,7 @@ public:
   bool penetration_box_ball_resolve(Box *box, Ball *ball);
 
   void balls_render(bool attempt_ot);
-  void balls_render_simple();
+  void render_objects_simple();
 
   void phys_check();
   void all_remove();

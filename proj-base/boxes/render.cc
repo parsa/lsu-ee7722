@@ -9,305 +9,8 @@
 #include "phys-obj-ball.h"
 
 void
-World::balls_render_simple()
-{
-  // Render balls without textures. Intended for casting shadows.
-
-  tile_manager->render_simple();
-  box_manager->render_simple();
-
-  for ( Ball *ball; balls_iterate(ball); )
-    {
-      const int c = ball->contact_count;
-
-      // Assume that a ball in contact with more than 6 others
-      // won't cast a visible shadow.
-      //
-      if ( c > 6 ) continue;
-
-      Sphere* const s =
-        opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
-
-      s->render_simple(ball->radius,ball->position);
-    }
-}
-
-void
-World::balls_render(bool attempt_ot)
-{
-  physs_occluded = 0;
-  int iter=0;
-  for ( Phys *phys; eye_dist.iterate(phys); )
-    {
-      Ball* const ball = BALL(phys);
-      iter++;
-      if ( !ball ) continue;
-      pColor color =
-        opt_color_events ? ball->color_event : ball->color;
-
-      // Retrieve the result of an occlusion test on this ball.
-      //
-      while ( attempt_ot && ball->occlusion_query_active )
-        {
-          GLint avail = -1;
-          glGetQueryObjectiv
-            (ball->query_occlusion_id,GL_QUERY_RESULT_AVAILABLE,&avail);
-          if ( !avail ) break;
-          GLint samples_passed = -1;
-          glGetQueryObjectiv
-            (ball->query_occlusion_id,GL_QUERY_RESULT,&samples_passed);
-          ball->occlusion_query_active = false;
-          ball->occluded = samples_passed == 0;
-          if ( ball->occluded ) ball->occluded_run++;
-          else                  ball->occluded_run = 0;
-          ball->occlusion_countdown = 3;
-          break;
-        }
-
-      if ( ball->occluded ) physs_occluded++;
-      
-      // Decide whether to perform an occlusion test.
-      //
-      const bool do_ot = attempt_ot && ball->occlusion_countdown-- == 0;
-
-      // Don't render this ball because it hasn't resulted in
-      // anything being written to the frame buffer more than
-      // 10 consecutive times.
-      //
-      if ( ball->occluded_run > 10 && !do_ot ) continue;
-
-      // Maybe start an occlusion query.
-      if ( do_ot )
-        glBeginQuery(GL_SAMPLES_PASSED,ball->query_occlusion_id);
-
-      if ( ball->occluded_run > 10 )
-        {
-          // Ball is probably not visible, so render it with
-          // a simple sphere.
-          //
-          sphere_lite.render_simple(ball->radius,ball->position);
-        }
-      else
-        {
-          // Get sphere with detail level appropriate for viewer distance.
-          //
-          Sphere* const s = 
-            opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
-
-          // Set ball's color, position, and orientation, and
-          // render it.
-          //
-          pMatrix_Rotation rot(ball->orientation);
-          s->color = color;
-          s->render(ball->radius,ball->position,rot);
-        }
-      if ( do_ot )
-        {
-          ball->occlusion_query_active = true;
-          glEndQuery(GL_SAMPLES_PASSED);
-        }
-    }
-}
-
-void
-World::render_shadow_volumes(pCoor light_pos)
-{
-  // Render objects' shadow volumes.
-
-  // Make sure that only stencil buffer written.
-  //
-  glColorMask(false,false,false,false);
-  glDepthMask(false);
-
-  // Don't waste time computing lighting.
-  //
-  glDisable(GL_LIGHTING);
-  glDisable(GL_TEXTURE_2D);
-
-  // Set up stencil test to count shadow volume surfaces: plus 1 for
-  // entering the shadow volume, minus 1 for leaving the shadow
-  // volume.
-  //
-  glEnable(GL_STENCIL_TEST);
-  // sfail, dfail, dpass
-  glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
-  glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
-  glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
-
-  if ( opt_shadow_volumes )
-    {
-      // Make shadow volumes visible.
-
-      glColorMask(true,true,true,true);
-      glColor3f(0.8,0,0);
-    }
-
-  // Render balls' shadow volumes.
-  //
-  for ( Ball *ball; balls_iterate(ball); )
-    {
-      Sphere* const s = 
-        opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
-      s->light_pos = light_pos;
-      s->render_shadow_volume(ball->radius,ball->position);
-    }
-
-  // Render tiles' shadow volumes.
-  //
-  tile_manager->render_shadow_volume(light_pos);
-  box_manager->render_shadow_volume(light_pos);
-
-  // Restore assumed state.
-  //
-  glColorMask(true,true,true,true);
-  glDepthMask(true);
-}
-
-void
-World::render_objects(bool attempt_ot)
-{
-  // Render objects normally.
-
-  const float shininess_ball = 20;
-  pColor spec_color(0.2,0.2,0.2);
-
-  glEnable(GL_LIGHTING);
-  glEnable(GL_TEXTURE_2D);
-
-  //
-  // Render Balls
-  //
-
-  // Set up cool specular lighting parameters.
-  //
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
-  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
-  glEnable(GL_COLOR_SUM);
-
-  glBindTexture(GL_TEXTURE_2D,texid_ball);
-
-  // Render each ball.
-  //
-  balls_render(attempt_ot);
-
-  glDisable(GL_COLOR_SUM);
-  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
-
-  // Render each tile.
-  //
-  tile_manager->render();
-  box_manager->render(opt_color_events);
-  while ( SectTT* const sect = sects.iterate() )
-    {
-      switch ( sect->sect_case ){
-      case 0: glColor3f(0.1,0.1,0.1); break;
-      case 1: glColor3fv(color_violet_red); break;
-      case 2: glColor3f(0,0,0.8); break;
-      case 3: glColor3f(0,1,0); break;
-      default: glColor3f(1,0,0); break;
-      }
-
-      switch ( sect->type ) {
-      case ST_Intersect_Line:
-        cone.render(sect->start,0.2,sect->dir,0.8);
-        break;
-      case ST_Centroid:
-        cone.render(sect->start,0.2,50*sect->dir,0.05);
-        break;
-      default:
-        ASSERTS( false );
-      }
-    }
-
-  //
-  // Render Platform
-  //
-
-  // Set up attribute (vertex, normal, etc.) arrays.
-  //
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D,texid_plat);
-  platform_tile_coords.bind();
-  glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
-  glEnableClientState(GL_VERTEX_ARRAY);
-  platform_tile_norms.bind();
-  glNormalPointer(GL_FLOAT,sizeof(platform_tile_norms.data[0]), 0);
-  glEnableClientState(GL_NORMAL_ARRAY);
-  platform_tex_coords.bind();
-  glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-  // Write lighter-colored, textured tiles.
-  //
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
-  glColor3f(0.35,0.35,0.35);
-  glDrawArrays(GL_QUADS,0,platform_even_vtx_cnt);
-
-  // Write darker-colored, untextured, mirror tiles.
-  //
-  glEnable(GL_BLEND);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color_white);
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
-  glDisable(GL_TEXTURE_2D);
-  glColor3fv(mirror_tint);
-  glDrawArrays(GL_QUADS,platform_even_vtx_cnt,platform_odd_vtx_cnt);
-
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_NORMAL_ARRAY);
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
-}
-
-
-void
 World::render()
 {
-  // This routine called whenever window needs to be updated.
-
-  // Get any waiting keyboard commands.
-  //
-  cb_keyboard();
-
-  // Start a timer object used for tuning this code.
-  //
-  frame_timer.frame_start();
-
-  const double time_now = time_wall_fp();
-
-  if ( opt_pause || last_frame_time == 0 )
-    {
-      /// Don't change simulation state.
-      //
-      last_frame_time = time_now;
-    }
-  else
-    {
-      // If we are recording a video base world time on video frame
-      // rate rather than wall clock time.
-      //
-      if ( ogl_helper.animation_record )
-        world_time = time_now - ogl_helper.frame_period;
-
-      // Advance simulation state by wall clock time.
-      //
-      const double elapsed_time = time_now - last_frame_time;
-      const int iter_limit =
-        int( min( opt_time_step_factor * 3.0, 0.5 + elapsed_time / delta_t));
-      for ( int iter=0; iter < iter_limit; iter++ )
-        {
-          if ( opt_physics_method == GP_cpu )
-            time_step_cpu();
-          else
-            time_step_cuda(iter,iter_limit);
-
-          world_time += delta_t;
-        }
-      last_frame_time = time_now;
-      frame_timer.work_amt_set(iter_limit);
-    }
-
   /// Emit a Graphical Representation of Simulation State
   //
   const int win_width = ogl_helper.get_width();
@@ -421,6 +124,7 @@ World::render()
      physs.occ() - physs_occluded, physs_occluded,
      box_manager->occ(), pos.x,pos.y,pos.z, vel.x,vel.y,vel.z, tri_count);
 
+  const double time_now = time_wall_fp();
   const bool blink_visible = int64_t(time_now*3) & 1;
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
@@ -697,3 +401,254 @@ World::render()
   glutSwapBuffers();
 }
 
+void
+World::render_objects(bool attempt_ot)
+{
+  // Render objects normally.
+
+  const float shininess_ball = 20;
+  pColor spec_color(0.2,0.2,0.2);
+
+  glEnable(GL_LIGHTING);
+  glEnable(GL_TEXTURE_2D);
+
+  //
+  // Render Balls
+  //
+
+  // Set up cool specular lighting parameters.
+  //
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess_ball);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
+  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
+  glEnable(GL_COLOR_SUM);
+
+  glBindTexture(GL_TEXTURE_2D,texid_ball);
+
+  // Render each ball.
+  //
+  balls_render(attempt_ot);
+
+  glDisable(GL_COLOR_SUM);
+  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
+
+  // Render each tile.
+  //
+  tile_manager->render();
+  box_manager->render(opt_color_events);
+  while ( SectTT* const sect = sects.iterate() )
+    {
+      switch ( sect->sect_case ){
+      case 0: glColor3f(0.1,0.1,0.1); break;
+      case 1: glColor3fv(color_violet_red); break;
+      case 2: glColor3f(0,0,0.8); break;
+      case 3: glColor3f(0,1,0); break;
+      default: glColor3f(1,0,0); break;
+      }
+
+      switch ( sect->type ) {
+      case ST_Intersect_Line:
+        cone.render(sect->start,0.2,sect->dir,0.8);
+        break;
+      case ST_Centroid:
+        cone.render(sect->start,0.2,50*sect->dir,0.05);
+        break;
+      default:
+        ASSERTS( false );
+      }
+    }
+
+  //
+  // Render Platform
+  //
+
+  // Set up attribute (vertex, normal, etc.) arrays.
+  //
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texid_plat);
+  platform_tile_coords.bind();
+  glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  platform_tile_norms.bind();
+  glNormalPointer(GL_FLOAT,sizeof(platform_tile_norms.data[0]), 0);
+  glEnableClientState(GL_NORMAL_ARRAY);
+  platform_tex_coords.bind();
+  glTexCoordPointer(2, GL_FLOAT,2*sizeof(float), 0);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+  // Write lighter-colored, textured tiles.
+  //
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,spec_color);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
+  glColor3f(0.35,0.35,0.35);
+  glDrawArrays(GL_QUADS,0,platform_even_vtx_cnt);
+
+  // Write darker-colored, untextured, mirror tiles.
+  //
+  glEnable(GL_BLEND);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color_white);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
+  glDisable(GL_TEXTURE_2D);
+  glColor3fv(mirror_tint);
+  glDrawArrays(GL_QUADS,platform_even_vtx_cnt,platform_odd_vtx_cnt);
+
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
+}
+
+void
+World::render_objects_simple()
+{
+  // Render balls without textures. Intended for casting shadows.
+
+  tile_manager->render_simple();
+  box_manager->render_simple();
+
+  for ( Ball *ball; balls_iterate(ball); )
+    {
+      const int c = ball->contact_count;
+
+      // Assume that a ball in contact with more than 6 others
+      // won't cast a visible shadow.
+      //
+      if ( c > 6 ) continue;
+
+      Sphere* const s =
+        opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
+
+      s->render_simple(ball->radius,ball->position);
+    }
+}
+
+void
+World::render_shadow_volumes(pCoor light_pos)
+{
+  // Render objects' shadow volumes.
+
+  // Make sure that only stencil buffer written.
+  //
+  glColorMask(false,false,false,false);
+  glDepthMask(false);
+
+  // Don't waste time computing lighting.
+  //
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
+
+  // Set up stencil test to count shadow volume surfaces: plus 1 for
+  // entering the shadow volume, minus 1 for leaving the shadow
+  // volume.
+  //
+  glEnable(GL_STENCIL_TEST);
+  // sfail, dfail, dpass
+  glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
+  glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
+  glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
+
+  if ( opt_shadow_volumes )
+    {
+      // Make shadow volumes visible.
+
+      glColorMask(true,true,true,true);
+      glColor3f(0.8,0,0);
+    }
+
+  // Render balls' shadow volumes.
+  //
+  for ( Ball *ball; balls_iterate(ball); )
+    {
+      Sphere* const s = 
+        opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
+      s->light_pos = light_pos;
+      s->render_shadow_volume(ball->radius,ball->position);
+    }
+
+  // Render tiles' shadow volumes.
+  //
+  tile_manager->render_shadow_volume(light_pos);
+  box_manager->render_shadow_volume(light_pos);
+
+  // Restore assumed state.
+  //
+  glColorMask(true,true,true,true);
+  glDepthMask(true);
+}
+
+void
+World::balls_render(bool attempt_ot)
+{
+  physs_occluded = 0;
+  int iter=0;
+  for ( Phys *phys; eye_dist.iterate(phys); )
+    {
+      Ball* const ball = BALL(phys);
+      iter++;
+      if ( !ball ) continue;
+      pColor color =
+        opt_color_events ? ball->color_event : ball->color;
+
+      // Retrieve the result of an occlusion test on this ball.
+      //
+      while ( attempt_ot && ball->occlusion_query_active )
+        {
+          GLint avail = -1;
+          glGetQueryObjectiv
+            (ball->query_occlusion_id,GL_QUERY_RESULT_AVAILABLE,&avail);
+          if ( !avail ) break;
+          GLint samples_passed = -1;
+          glGetQueryObjectiv
+            (ball->query_occlusion_id,GL_QUERY_RESULT,&samples_passed);
+          ball->occlusion_query_active = false;
+          ball->occluded = samples_passed == 0;
+          if ( ball->occluded ) ball->occluded_run++;
+          else                  ball->occluded_run = 0;
+          ball->occlusion_countdown = 3;
+          break;
+        }
+
+      if ( ball->occluded ) physs_occluded++;
+      
+      // Decide whether to perform an occlusion test.
+      //
+      const bool do_ot = attempt_ot && ball->occlusion_countdown-- == 0;
+
+      // Don't render this ball because it hasn't resulted in
+      // anything being written to the frame buffer more than
+      // 10 consecutive times.
+      //
+      if ( ball->occluded_run > 10 && !do_ot ) continue;
+
+      // Maybe start an occlusion query.
+      if ( do_ot )
+        glBeginQuery(GL_SAMPLES_PASSED,ball->query_occlusion_id);
+
+      if ( ball->occluded_run > 10 )
+        {
+          // Ball is probably not visible, so render it with
+          // a simple sphere.
+          //
+          sphere_lite.render_simple(ball->radius,ball->position);
+        }
+      else
+        {
+          // Get sphere with detail level appropriate for viewer distance.
+          //
+          Sphere* const s = 
+            opt_pause && opt_fixed_lod < 0 ? &sphere : sphere_get(ball);
+
+          // Set ball's color, position, and orientation, and
+          // render it.
+          //
+          pMatrix_Rotation rot(ball->orientation);
+          s->color = color;
+          s->render(ball->radius,ball->position,rot);
+        }
+      if ( do_ot )
+        {
+          ball->occlusion_query_active = true;
+          glEndQuery(GL_SAMPLES_PASSED);
+        }
+    }
+}
