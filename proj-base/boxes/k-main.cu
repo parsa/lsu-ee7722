@@ -99,6 +99,8 @@ __device__ pVect operator -(pCoor a,float4 b)
 { return make_float3(a.x-b.x,a.y-b.y,a.z-b.z); }
 __device__ pVect operator *(float s, pVect v)
 {return make_float3(s*v.x,s*v.y,s*v.z);}
+__device__ float4 operator *(float s, float4 v)
+{return make_float4(s*v.x,s*v.y,s*v.z,s*v.w);}
 __device__ pVect operator *(pVect u, pVect v)
 {return make_float3(u.x*v.x,u.y*v.y,u.z*v.z);}
 __device__ pVect operator -(pVect v) { return make_float3(-v.x,-v.y,-v.z); }
@@ -129,6 +131,8 @@ mv(float x, float y, float z){ return make_float3(x,y,z); }
 __device__ pVect mv(float3 a, float3 b) { return b-a; }
 __device__ pVect mv(float a) { return make_float3(a,a,a); }
 
+__device__ float dot(float4 a, float4 b)
+{ return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;}
 __device__ float dot(pVect a, pVect b){ return a.x*b.x + a.y*b.y + a.z*b.z;}
 __device__ float dot(pVect a, pNorm b){ return dot(a,b.v); }
 __device__ float dot3(float4 a, float4 b){ return dot(m3(a),m3(b)); }
@@ -185,12 +189,9 @@ __device__ float4 mq(pNorm axis, float angle)
 
 __device__ float4 quat_normalize(float4 q)
 {
-  float cos_angle = q.w;
-  float len_sq = dot(m3(q),m3(q));
-  float rad = 1.0f - len_sq;
-  float new_cos = rad > 0 ? sqrtf( rad ) : 0;
-  q.w = cos_angle > 0 ? new_cos : -new_cos;
-  return q;
+  float len_sq = dot(q,q);
+  float norm_factor = 1.0f / sqrtf(len_sq);
+  return norm_factor * q;
 }
 
 // Make float4
