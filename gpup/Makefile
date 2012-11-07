@@ -30,7 +30,7 @@ LIBDIR  =
 default: all
 all:demo-1c-coord demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
 	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays demo-8-texture \
-	demo-9-shader demo-1d-objects
+	demo-9-shader demo-1d-objects demo-10-shader
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -88,3 +88,6 @@ demo-9-shader.o: $(INCLUDES)
 demo-9-shader: demo-9-shader.o
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
+demo-10-shader.o: $(INCLUDES)
+demo-10-shader: demo-10-shader.o
+	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
