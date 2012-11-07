@@ -52,6 +52,8 @@ pError_Check(int error = -1)
   return true; // Unreachable.
 }
 
+inline void GE() { pError_Check(); }
+
 #define P_GL_PRINT_STRING(token) lprint_string(token,#token);
 
 inline void
