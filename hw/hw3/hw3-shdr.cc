@@ -17,7 +17,7 @@ vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
 layout ( location = 2 ) uniform float wire_radius;
 layout ( binding = 1 ) buffer Helix_Coord  { vec4  helix_coord[];  };
-xuniform sampler2D tex_unit_0;
+uniform sampler2D tex_unit_0;
 
 
 ///
