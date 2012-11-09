@@ -309,7 +309,7 @@ struct pVariable_Control_Elt
   float inc_factor, dec_factor;
   int *ivar;
   int inc, min, max;
-  bool power_of_2;
+  bool exponential;
   double get_val() const { return var ? *var : double(*ivar); }
 };
 
@@ -328,15 +328,21 @@ public:
     elt->inc = 1;
     elt->min = min;
     elt->max = max;
+    elt->exponential = false;
   }
 
-  void insert(float &var, const char *name, float inc_factor = 0)
+  void insert(float &var, const char *name, float inc_factor = 0, 
+              bool exponentialp = true )
   {
     pVariable_Control_Elt* const elt = insert_common(name);
     elt->var = &var;
     elt->inc_factor = inc_factor ? inc_factor : inc_factor_def;
     elt->dec_factor = 1.0 / elt->inc_factor;
+    elt->exponential = exponentialp;
   }
+
+  void insert_linear(float &var, const char *name, float inc_factor = 0)
+  { insert(var,name,inc_factor,false); }
 
   void insert_power_of_2(int &var, const char *name)
   {
@@ -344,7 +350,7 @@ public:
     elt->ivar = &var;
     elt->inc_factor = 1;
     elt->dec_factor = 1;
-    elt->power_of_2 = true;
+    elt->exponential = true;
   }
 
 private:
@@ -358,29 +364,35 @@ private:
     elt->name = strdup(name);
     elt->ivar = NULL;
     elt->var = NULL;
-    elt->power_of_2 = false;
     return elt;
   }
 public:
 
   void adjust_higher() {
     if ( !current ) return;
-    if ( current->power_of_2 ) current->ivar[0] <<= 1;
-    else if ( current->var )   current->var[0] *= current->inc_factor;
-    else                
+    if ( current->var )
       {
-        current->ivar[0] += current->inc;
+        if ( current->exponential ) current->var[0] *= current->inc_factor;
+        else                        current->var[0] += current->inc_factor;
+      }
+    else
+      {
+        if ( current->exponential ) current->ivar[0] <<= 1;
+        else                        current->ivar[0] += current->inc;
         set_min(current->ivar[0],current->max);
       }
   }
   void adjust_lower() {
     if ( !current ) return;
-    if ( current->power_of_2 ) 
-      { if ( current->ivar[0] ) current->ivar[0] >>= 1; }
-    else if ( current->var )   current->var[0] *= current->dec_factor;
+    if ( current->var )
+      {
+        if ( current->exponential ) current->var[0] *= current->dec_factor;
+        else                        current->var[0] -= current->inc_factor;
+      }
     else
       {
-        current->ivar[0] -= current->inc;
+        if ( current->exponential ) current->ivar[0] >>= 1;
+        else                        current->ivar[0] -= current->inc;
         set_max(current->ivar[0],current->min);
       }
   }
