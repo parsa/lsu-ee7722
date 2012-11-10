@@ -76,6 +76,14 @@ Box::geometry_update()
     }
 }
 
+float
+Box::get_face_area(int face)
+{
+  const int d = face >> 1;
+  return 4 * ( d == 0 ? to_111.x * to_111.y :
+               d == 1 ? to_111.z * to_111.x : to_111.y * to_111.z );
+}
+
 pCoor
 Box::get_face_vtx(int face, int vtxp)
 {
@@ -500,7 +508,7 @@ Isect_Face::line_add
   b->vol_pieces++;
   b->vec_sum += volx6 * centroidx3;
   if ( !area ) return;
-  const float areax2 = dot(cp,cp);
+  const float areax2 = cp.mag();
   area_sum += areax2;
 }
 
