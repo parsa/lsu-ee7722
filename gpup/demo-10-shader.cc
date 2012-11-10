@@ -400,8 +400,6 @@ World::render()
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
 
-  glDisable(GL_TEXTURE_2D);
-
   //  Indicate type of primitive.
   //
   glBegin(GL_TRIANGLES);
@@ -455,27 +453,24 @@ World::render()
       const double delta_y = 4 * wire_radius / seg_per_helix_revolution;
       const double delta_theta = 2 * M_PI / seg_per_wire_revolution;
 
-      // Point on helix. That is, center of wire that forms helix.
-      pCoor p(helix_radius,0,0);
-
-      // Vector pointing up. Used to compute point on wire surface.
-      pVect b(0,wire_radius,0);
-
       for ( int i = 0; i < segments_per_helix; i++ )
         {
-          const double eta = i * delta_eta;
           const bool last_i_iteration = i + 1 == segments_per_helix;
-          pCoor p0 = p;
-          pCoor c0(0,p0.y,0);
-          p.y += delta_y;
-          p.x = helix_radius * cos(eta);
-          p.z = helix_radius * sin(eta);
-          helix_coords += p;
-          pCoor p1 = p;
-          pCoor c1(0,p1.y,0);
+          const double eta = i * delta_eta;
+          const float cos_eta = cosf(eta);
+          const float sin_eta = sinf(eta);
 
-          pVect n0 = wire_radius * pNorm(p0,c0);
-          pVect n1 = wire_radius * pNorm(p1,c1);
+          pCoor p0( helix_radius * cos_eta,
+                    i * delta_y,
+                    helix_radius * sin_eta);
+
+          helix_coords += p0;
+
+          pVect n0( -wire_radius * cos_eta, 0, -wire_radius * sin_eta);
+          pNorm tangent( delta_eta * helix_radius * -sin_eta,
+                         delta_y,
+                         delta_eta * helix_radius * cos_eta );
+          pVect b = cross(n0,tangent);
 
           for ( int j = 0; j < seg_per_wire_revolution; j++ )
             {
