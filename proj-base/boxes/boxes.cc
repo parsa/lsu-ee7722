@@ -249,6 +249,7 @@ World::init()
   opt_ball_density = 0.0074603942589580438;
   opt_friction_coeff = 0.1;
   opt_friction_roll = 0.1;
+  opt_air_resistance = 0.001;
   opt_bounce_loss = 0.75;
   opt_bounce_loss_box = 0.9;
   opt_elasticity = 1.0 / 64;
@@ -260,6 +261,7 @@ World::init()
   opt_verify = false;
   opt_time_step_factor = 18;
 
+  variable_control.insert(opt_air_resistance,"Air Resistance");
   variable_control.insert(schedule_lifetime_steps,"Sched Life",1,1);
 
   variable_control.insert_power_of_2(opt_block_size,"Block Size");
@@ -596,6 +598,7 @@ World::balls_add(float contact_y_max)
           pColor color = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
           pVect size(rad,wid,ht);
           dball = box_manager->new_box(pos,size,color);
+          dball->omega = pVect(drand48(),drand48(),drand48());
         }
       else
         {
@@ -961,6 +964,50 @@ World::time_step_cpu()
       pball->velocity = pVect(0,0,0);
       penetration_balls_resolve(ball,pball,false);
     }
+
+  /// Air Resistance
+  //
+  for ( Phys_Iterator p(physs); p; p++ )
+    if ( Ball* const ball = BALL(p) )
+      {
+        if ( !ball->velocity.mag_sq() ) continue;
+        const float area = M_PI * ball->radius_sq;
+        pNorm force = -area * opt_air_resistance * ball->velocity;
+        const float v_change =
+          exp(- force.magnitude * ball->mass_inv * delta_t );
+        ball->velocity *= v_change;
+      }
+    else if ( Box* const box = BOX(p) )
+      {
+        if ( box->velocity.mag_sq() )
+          {
+            pVect force(0,0,0);
+            for ( int f=0; f<6; f+= 2 )
+              {
+                const pVect face_normal = box->normals[f];
+                const float amt = dot( face_normal, box->velocity );
+                const float area = box->get_face_area(f);
+                force += amt * area * face_normal;
+              }
+            pNorm force_dir(force);
+            const float v_dir = dot(force_dir,box->velocity);
+            const float resistance = force_dir.magnitude * opt_air_resistance;
+            const float v_change = exp(- resistance * box->mass_inv * delta_t );
+            box->velocity -= v_dir * (1.0f - v_change ) * force_dir;
+          }
+        if ( box->omega.mag_sq() )
+          {
+            pVect lsq = box->to_111 * box->to_111;
+            pVect amoment1( lsq.y + lsq.z, lsq.x + lsq.z, lsq.x + lsq.y );
+            pVect amoment = amoment1 * box->to_111;
+            pVect omega_l = box->rot_inv * box->omega;
+            const float torque =
+              opt_air_resistance * dot(amoment,fabs(omega_l));
+            const float mi_inv = box->get_moment_of_inertia_inv(box->omega);
+            const float o_change = exp( -torque * mi_inv * delta_t );
+            box->omega *= o_change;
+          }
+      }
 
   PSList<Tact_Box_Box*> cpairr;
   while ( Tact_Box_Box* const cpair = cpairs.iterate() )

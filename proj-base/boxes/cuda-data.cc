@@ -185,6 +185,7 @@ World::cuda_constants_update()
   TO_DEVF(delta_t);
   TO_DEVF(elasticity_inv_dt);
   TO_DEVF(opt_friction_coeff); TO_DEVF(opt_friction_roll);
+  TO_DEVF(opt_air_resistance);
   TO_DEV(opt_debug);
   TO_DEV(opt_debug2);
 }

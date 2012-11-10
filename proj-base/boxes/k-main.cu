@@ -64,6 +64,7 @@ __constant__ float4 *xx_sects_debug;
 __constant__ float3 gravity_accel_dt;
 __constant__ float opt_bounce_loss, opt_bounce_loss_box;
 __constant__ float opt_friction_coeff, opt_friction_roll;
+__constant__ float opt_air_resistance;
 __constant__ float platform_xmin, platform_xmax;
 __constant__ float platform_zmin, platform_zmax;
 __constant__ float platform_xmid, platform_xrad;
@@ -135,6 +136,7 @@ __device__ float dot(float4 a, float4 b)
 { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;}
 __device__ float dot(pVect a, pVect b){ return a.x*b.x + a.y*b.y + a.z*b.z;}
 __device__ float dot(pVect a, pNorm b){ return dot(a,b.v); }
+__device__ float dot(pNorm a, pVect b){ return dot(a.v,b); }
 __device__ float dot3(float4 a, float4 b){ return dot(m3(a),m3(b)); }
 
 __device__ float mag_sq(pVect v){ return dot(v,v); }
@@ -704,6 +706,14 @@ box_get_axis_len(CUDA_Box_W& box, int axis)
 {
   return 2.0f * 
     ( axis == 0 ? box.to_111.x : axis == 1 ? box.to_111.y : box.to_111.z );
+}
+
+__device__ float
+box_get_axis_area(CUDA_Box_W& box, int d)
+{
+  return 4 * ( d == 0 ? box.to_111.x * box.to_111.y :
+               d == 1 ? box.to_111.z * box.to_111.x :
+               box.to_111.y * box.to_111.z );
 }
 
 __device__ pLine
@@ -1337,6 +1347,13 @@ pass_platform_ball(CUDA_Phys_W& phys, int idx)
   //
   platform_collision(phys);
 
+  /// Handle Air Resistance
+  //
+  const float area = M_PI * ball.radius * ball.radius;
+  pNorm force = mn( -area * opt_air_resistance * ball.velocity );
+  const float v_change = exp( -force.magnitude * ball.mass_inv * delta_t );
+  ball.velocity = v_change * ball.velocity;
+
   /// Update Position and Orientation
   //
   ball.position +=
@@ -1427,10 +1444,39 @@ pass_platform_box(CUDA_Phys_W& phys, int idx)
   set_f3(box.omega, balls_x.omega[idx]);
   set_f3(box.to_111, balls_x.to_111[idx]);
   box.orientation = balls_x.orientation[idx];
+  box_geometry_update(box);
 
   /// Handle Ball/Platform Collision
   //
   platform_collision_box(phys);
+
+  /// Handle Air Resistance
+  //
+  pVect force = mv(0,0,0);
+  for ( int d=0; d<3; d++ )
+    {
+      const pVect face_normal = box_get_axis_norm(box,2-d);
+      const float amt = dot( face_normal, box.velocity );
+      const float area = box_get_axis_area(box,d);
+      force += amt * area * face_normal;
+    }
+  pNorm force_dir = mn(force);
+  const float v_dir = dot(force_dir,box.velocity);
+  const float resistance = force_dir.magnitude * opt_air_resistance;
+  const float v_change = expf(- resistance * box.mass_inv * delta_t );
+  box.velocity -= v_dir * (1.0f - v_change ) * force_dir;
+
+  {
+    float3 lsq = box.to_111 * box.to_111;
+    pVect amoment1 = mv( lsq.y + lsq.z, lsq.x + lsq.z, lsq.x + lsq.y );
+    float3 omega = box.omega;
+    pVect amoment = amoment1 * box.to_111;
+    pVect omega_l = box.rot_inv * omega;
+    const float torque = opt_air_resistance * dot(amoment,fabs(omega_l));
+    const float mi = box_get_moment_of_inertia_inv(box,mn(omega));
+    const float o_change = exp(- torque * mi * delta_t );
+    box.omega = o_change * omega;
+  }
 
   /// Update Position and Orientation
   //
@@ -1838,6 +1884,7 @@ static __host__ void collect_symbols()
   CU_SYM(gravity_accel_dt);
   CU_SYM(opt_bounce_loss); CU_SYM(opt_bounce_loss_box);
   CU_SYM(opt_friction_coeff); CU_SYM(opt_friction_roll);
+  CU_SYM(opt_air_resistance);
   CU_SYM(platform_xmin); CU_SYM(platform_xmax);
   CU_SYM(platform_zmin); CU_SYM(platform_zmax);
   CU_SYM(platform_xmid); CU_SYM(platform_xrad);

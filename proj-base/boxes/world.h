@@ -115,6 +115,7 @@ public:
   float opt_elasticity;
   float opt_friction_coeff;
   float opt_friction_roll;
+  float opt_air_resistance;
   int opt_time_step_factor;
 
   // Pre-computed values.

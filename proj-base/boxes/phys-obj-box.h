@@ -57,6 +57,7 @@ public:
     pVect norm_raw = get_axis_norm(face>>1);
     return face & 1 ? norm_raw : -norm_raw;
   }
+  float get_face_area(int face);
   float get_axis_len(int axis) { return 2 * to_111.elt(axis); }
   pVect get_vel(pCoor point);
   pVect get_vel_prev(pCoor point);
