@@ -39,8 +39,7 @@ all: stream stream-full stream-2
 	$(CUDUMP) -sass $*.cubin > $*.sass
 
 
-stream-full.o: stream-full.cc stream.cuh Makefile
-stream-full: stream-full.o stream-kernel.o
+stream-full: stream-full.cu
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 

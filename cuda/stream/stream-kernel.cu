@@ -1,5 +1,5 @@
 #include "stream.cuh"
-
+#include <gp/cuda-util-kernel.h>
 
 // Constants holding array sizes and pointers and coefficients.
 //
@@ -12,6 +12,13 @@ __constant__ Vector2* a;
 __constant__ float* b;
 
 __global__ void dots();
+
+__host__ void device_addr_get()
+{
+  CU_SYM(a); CU_SYM(b);
+  CU_SYM(array_size);
+  CU_SYM(v0); CU_SYM(v1); CU_SYM(v2);
+}
 
 // This routine executes on the CPU.
 //

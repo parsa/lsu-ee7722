@@ -14,6 +14,8 @@ main(int argc, char** argv)
   const int size_lg = argc > 1 ? atoi(argv[1]) : 10;
   const int array_size = 1 << size_lg;
 
+  device_addr_get();
+
   // Instantiate data arrays.
   //
   // These classes automatically allocate storage on both CPU and GPU

@@ -1,4 +1,5 @@
 #include "stream-2.cuh"
+#include <gp/cuda-util-kernel.h>
 
 // Constants holding array sizes and pointers and coefficients.
 //
@@ -46,8 +47,8 @@ dots()
   //
   if ( idx >= array_size ) return;
 
-   //  b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
-  b[idx] = v0 + v1 * ax[idx] + v2 * ay[idx];
+  b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
+  // b[idx] = v0 + v1 * ax[idx] + v2 * ay[idx];
 }
 
 // This routine executes on the CPU.
@@ -69,20 +70,19 @@ dots_iterate()
   // This will be used as an array index.
   //
   int thread_count = blockDim.x * gridDim.x;
-  int elt_per_thread = array_size / thread_count;
 
+#if 1
   int idx_start = threadIdx.x + blockIdx.x * blockDim.x;
-
-  int idx_start = ( threadIdx.x + blockIdx.x * blockDim.x ) * elt_per_thread;
-  int idx_stop = idx_start + elt_per_thread;
-
-
-  for ( int idx = idx_start; idx < idx_stop; idx++ )
-    b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
-
-
   for ( int idx = idx_start; idx < array_size; idx += thread_count )
     b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
+#else
+  int elt_per_thread = array_size / thread_count;
+  int idx_start = ( threadIdx.x + blockIdx.x * blockDim.x ) * elt_per_thread;
+  int idx_stop = idx_start + elt_per_thread;
+  for ( int idx = idx_start; idx < idx_stop; idx++ )
+    b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
+#endif
+
 }
 
 //
@@ -94,6 +94,11 @@ kernels_get_attr(struct cudaFuncAttributes *attr, char **names, int max_count)
 {
   struct cudaFuncAttributes *attr_stop = attr + max_count;
   cudaError_t er = cudaSuccess; // Tentative.
+
+  CU_SYM(a); CU_SYM(b);
+  CU_SYM(array_size);
+  CU_SYM(v0); CU_SYM(v1); CU_SYM(v2);
+
 #define GETATTR(func)                                                         \
   er = cudaFuncGetAttributes(attr,func); *names = #func; attr++; names++;     \
   if ( er || attr == attr_stop ) { *names = NULL; return er; }
