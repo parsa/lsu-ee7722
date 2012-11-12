@@ -18,8 +18,6 @@ __constant__ float *ax, *ay;
 __constant__ float* b;
 
 __global__ void dots();
-__host__ void dots_launch(dim3 dg, dim3 db);
-
 
  /// CUDA API Error-Checking Wrapper
 ///
@@ -101,7 +99,7 @@ main(int argc, char** argv)
 
   // Launch Kernel
   //
-  dots_launch(dg,db);
+  dots<<<dg,db>>>();
 
   // Retrieve data from CUDA.
   //
@@ -110,18 +108,6 @@ main(int argc, char** argv)
 
   printf("Finished with %d elements, element %d is %.5f\n",
          host_array_size, argc, host_b[argc]);
-}
-
-
-
-// This routine executes on the CPU.
-//
-__host__ void
-dots_launch(dim3 dg, dim3 db)
-{
-  // Launch the kernel, using the provided configuration (block size, etc).
-  //
-  dots<<<dg,db>>>();
 }
 
 // This routine executes on the GPU.
