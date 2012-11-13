@@ -261,10 +261,18 @@ template <typename Data>
 class PStackIterator {
 public:
   PStackIterator(PStack<Data>& pstack):pstack(pstack),index(0){}
+  PStackIterator(PStackIterator<Data>& j)
+    :pstack(j.pstack),index(j.get_idx()){}
   operator bool () { return index < pstack.first_free; }
   operator Data () { return pstack.storage[index]; }
   Data operator ++ () { fwd(); return pstack.storage[index]; }
   Data operator ++ (int) { fwd(); return pstack.storage[index-1]; }
+  bool operator == (PStackIterator j){ return get_idx() == j.get_idx(); }
+  bool operator != (PStackIterator j){ return get_idx() != j.get_idx(); }
+  bool operator > (PStackIterator j){ return get_idx() > j.get_idx(); }
+  bool operator >= (PStackIterator j){ return get_idx() >= j.get_idx(); }
+  bool operator <= (PStackIterator j){ return get_idx() <= j.get_idx(); }
+  bool operator < (PStackIterator j){ return get_idx() < j.get_idx(); }
   Data* ptr() { return &pstack.storage[index]; }
   Data operator -> () { return pstack.storage[index]; }
   int get_idx() const { return index; }
