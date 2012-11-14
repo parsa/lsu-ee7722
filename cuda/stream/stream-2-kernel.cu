@@ -12,7 +12,8 @@ __constant__ Vector2* a;
 __constant__ float* b;
 
 __global__ void dots();
-__global__ void dots_iterate();
+__global__ void dots_iterate1();
+__global__ void dots_iterate2();
 
 // This routine executes on the CPU.
 //
@@ -48,7 +49,6 @@ dots()
   if ( idx >= array_size ) return;
 
   b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
-  // b[idx] = v0 + v1 * ax[idx] + v2 * ay[idx];
 }
 
 // This routine executes on the CPU.
@@ -58,30 +58,36 @@ dots_iterate_launch(dim3 dg, dim3 db)
 {
   // Launch the kernel, using the provided configuration (block size, etc).
   //
-  dots_iterate<<<dg,db>>>();
+  dots_iterate1<<<dg,db>>>();
 }
 
 // This routine also executes on the GPU.
 //
 __global__ void
-dots_iterate()
+dots_iterate1()
 {
-  // Compute a unique index (number) for this thread.
-  // This will be used as an array index.
-  //
-  int thread_count = blockDim.x * gridDim.x;
+  // This is the preferred way of iterating over array elements
+  // because consecutive threads access consecutive elements.
 
-#if 1
+  int thread_count = blockDim.x * gridDim.x;
   int idx_start = threadIdx.x + blockIdx.x * blockDim.x;
+
   for ( int idx = idx_start; idx < array_size; idx += thread_count )
     b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
-#else
+}
+
+__global__ void
+dots_iterate2()
+{
+  // This method is less efficient.
+
+  int thread_count = blockDim.x * gridDim.x;
   int elt_per_thread = array_size / thread_count;
   int idx_start = ( threadIdx.x + blockIdx.x * blockDim.x ) * elt_per_thread;
   int idx_stop = idx_start + elt_per_thread;
+
   for ( int idx = idx_start; idx < idx_stop; idx++ )
     b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
-#endif
 
 }
 
@@ -103,7 +109,8 @@ kernels_get_attr(struct cudaFuncAttributes *attr, char **names, int max_count)
   er = cudaFuncGetAttributes(attr,func); *names = #func; attr++; names++;     \
   if ( er || attr == attr_stop ) { *names = NULL; return er; }
   GETATTR(dots);
-  GETATTR(dots_iterate);
+  GETATTR(dots_iterate1);
+  GETATTR(dots_iterate2);
   *names = NULL;
   return er;
 #undef GETATTR
