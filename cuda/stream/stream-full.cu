@@ -39,19 +39,21 @@ main(int argc, char** argv)
   const int size_lg = argc > 1 ? atoi(argv[1]) : 10;
   const int host_array_size = 1 << size_lg;
 
-  // Instantiate data arrays.
+  // Allocate storage for CPU copy of data.
   //
   float *host_ax = (float*) malloc( host_array_size * sizeof(host_ax[0]) );
   float *host_ay = (float*) malloc( host_array_size * sizeof(host_ay[0]) );
   float *host_b = (float*) malloc( host_array_size * sizeof(host_b[0]) );
 
-  // Allocate on CUDA.
-
+  // Allocate storage for GPU copy of data.
+  //
   void *ax_dev, *ay_dev, *b_dev;
   CE(cudaMalloc(&ax_dev, host_array_size * sizeof(host_ax[0]) ));
   CE(cudaMalloc(&ay_dev, host_array_size * sizeof(host_ay[0]) ));
   CE(cudaMalloc(&b_dev, host_array_size * sizeof(host_b[0]) ));
 
+  // Write GPU Scalar Variables
+  //
   CE(cudaMemcpyToSymbol
      (ax, &ax_dev, sizeof(ax_dev), 0, cudaMemcpyHostToDevice));
   CE(cudaMemcpyToSymbol
@@ -68,17 +70,19 @@ main(int argc, char** argv)
       xi += 0.1; yi += 0.1;
     }
 
-  // Move input arrays to CUDA.
+  // Move input arrays to GPU.
   //
   CE(cudaMemcpy(ax_dev, host_ax, host_array_size * sizeof(host_ax[0]),
                 cudaMemcpyHostToDevice));
   CE(cudaMemcpy(ay_dev, host_ay, host_array_size * sizeof(host_ay[0]),
                 cudaMemcpyHostToDevice));
 
-  // Initialize coefficients and send them to CUDA.
+  // Initialize some more variables ...
   //
   const float host_v0 = drand48(), host_v1 = drand48(), host_v2 = drand48();
 
+  // ... and send their values to GPU.
+  //
   CE(cudaMemcpyToSymbol
      (v0, &host_v0, sizeof(host_v0), 0, cudaMemcpyHostToDevice));
   CE(cudaMemcpyToSymbol
@@ -92,16 +96,18 @@ main(int argc, char** argv)
   // Specify Launch Configuration
   //
   dim3 db, dg;
-  db.x = 64;
+  db.x = 64;          // Number of threads per block.
   db.y = db.z = 1;
-  dg.x = int(ceil(double(host_array_size) / db.x));
+
+  dg.x =              // Number of blocks.
+    int(ceil(double(host_array_size) / db.x));
   dg.y = dg.z = 1;
 
   // Launch Kernel
   //
   dots<<<dg,db>>>();
 
-  // Retrieve data from CUDA.
+  // Copy data from GPU to CPU.
   //
   CE(cudaMemcpy(host_b, b_dev, host_array_size * sizeof(host_b[0]),
                 cudaMemcpyDeviceToHost));
@@ -128,6 +134,31 @@ dots()
   //        to block      from 0
   //        size -1       to # of
   //                      blocks.
+
+  // Array size might not be a multiple of block size.
+  //
+  if ( idx >= array_size ) return;
+
+  // Note: this will be improved.
+  //
+  b[idx] = v0 + v1 * ax[idx] + v2 * ay[idx];
+}
+
+
+
+__global__ void
+dots2()
+{
+  // Compute a unique index (number) for this thread.
+  // This will be used as an array index.
+  //
+  int idx = 
+    threadIdx.x
+    + threadIdx.y * blockDim.x
+    + threadIdx.z * blockDim.x * blockDim.y
+    + blockIdx.x * blockDim.x * blockDim.y * blockDim.z
+    + blockIdx.y * blockDim.x * blockDim.y * blockDim.z * gridDim.x
+    + blockIdx.z * blockDim.x * blockDim.y * blockDim.z * gridDim.x * gridDim.y;
 
   // Array size might not be a multiple of block size.
   //
