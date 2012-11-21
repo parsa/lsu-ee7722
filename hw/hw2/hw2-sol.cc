@@ -428,27 +428,23 @@ World::render()
               const double theta = j * delta_theta;
               const bool last_j_iteration = j == seg_per_small_circle - 1;
 
-              pCoor s0 = p0 + cos(theta) * n0 + sin(theta) * b;
-
-              // Note: The normal below could be used to compute
-              // the coordinate above.
-              pVect norm0 = cos(theta) * n0 + sin(theta) * b;
-
-              prep_coords += s0;
+              pVect p0s0 = cos(theta) * n0 + sin(theta) * b;
               // Note: Dividing out by small_r from student Zhang.
-              prep_normals += norm0 * small_r_inv;
+              pVect norm0 = small_r_inv * p0s0;
+              prep_normals += norm0;
+
+              pCoor s0 = p0 + p0s0;
+              prep_coords += s0;
 
               if ( last_i_iteration ) continue;
 
               if ( opt_use_strips )
                 {
-                  // Insert indices for triangle with one vertex on eta.
                   prep_indices += idx; // This vertex.
                   prep_indices += idx + seg_per_small_circle;
                 }
               else
                 {
-                  // Insert indices for triangle with one vertex on eta.
                   prep_indices += idx; // This vertex.
                   prep_indices += idx + seg_per_small_circle;
                   prep_indices += idx + seg_per_small_circle + 1;
@@ -457,7 +453,6 @@ World::render()
                   prep_indices += idx + seg_per_small_circle + 1;
                   prep_indices += idx + 1;
                 }
-
             }
         }
 

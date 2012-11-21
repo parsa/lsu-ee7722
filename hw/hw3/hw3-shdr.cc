@@ -65,6 +65,7 @@ out Data
 {
   vec3 normal_e;
   vec4 vertex_e;
+  float type_b;
 };
 
 #endif
@@ -74,6 +75,7 @@ in Data
 {
   vec3 normal_e;
   vec4 vertex_e;
+  float type_b;
 };
 
 in vec2 gl_TexCoord[];
@@ -121,7 +123,11 @@ vs_main_helix()
 
   // Copy texture coordinate to output.
   //
-  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
+
+
+  //  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
+
+  gl_TexCoord[0].xy = vec2(1-helix_index.x/4.0, helix_index.y/16.0);
 
 }
 #endif
@@ -131,6 +137,7 @@ vs_main_helix()
 void
 gs_main_helix()
 {
+
   const bool type_a = In[0].hidx.x < In[2].hidx.x;
 
   for ( int i=0; i<3; i++ )
@@ -152,6 +159,11 @@ void
 gs_main_helix2()
 {
   const bool type_a = In[0].hidx.x < In[2].hidx.x;
+
+  if (type_a)
+    type_b = 1.0;
+  else 
+    type_b = 0;
 
   for ( int i=0; i<3; i++ )
     {
@@ -180,9 +192,28 @@ fs_main_phong()
 
   // If primitive facing user get texel, otherwise assign a reddish shade.
   //
-  vec4 texel = gl_FrontFacing
-    ? texture(tex_unit_0,gl_TexCoord[0].xy)
-    : vec4(0.6,0.1,0.1,1);
+  vec4 texel;
+
+
+  if (gl_FrontFacing)
+    {
+
+      if ( false && type_b == 1.0) texel = texture(tex_unit_0, vec2(0.0,0.0));
+
+
+      else
+      	texel = texture(tex_unit_0,gl_TexCoord[0].xy);
+
+
+    }
+
+  else
+    texel = vec4(0.6,0.1,0.1,1);
+
+
+  // gl_FrontFacing
+  // ? texture(tex_unit_0,gl_TexCoord[0].xy)
+  //./: vec4(0.6,0.1,0.1,1);
 
   // Multiply filtered texel color with lighted color of fragment.
   //

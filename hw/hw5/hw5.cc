@@ -1,9 +1,9 @@
 /// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
 
- /// Homework 3
+ /// Homework 5
  //
- // Assignment in: http://www.ece.lsu.edu/koppel/gpup/2012/hw03.pdf
+ // Assignment in: http://www.ece.lsu.edu/koppel/gpup/2012/hw05.pdf
  //
  /// Your Name:
 
@@ -44,11 +44,6 @@
  //  '-'   Decrease variable value.
  //
  //  -- Documented Variables --
- //
- //     Door Angle
- //     - Angle of doors in surface of wire.
- //       Behavior when Problem 3 is correctly solved:
- //       When zero the surface is flat, when Pi/2 the doors point straight out.
  //
  //     Segs Per Helix Rev
  //     - The number of segments in one revolution of helix.
@@ -93,6 +88,10 @@
 #include <gp/texture-util.h>
 #include "shapes.h"
 
+#include <gp/cuda-util.h>
+
+#include "hw5.cuh"
+
 // Define storage buffer binding indices and attribute locations.
 //
 #define UNIF_IDX_BULDGE_LOC 0
@@ -100,12 +99,34 @@
 #define UNIF_IDX_WIRE_RADIUS 2
 #define ATTR_IDX_HELIX_INDICES 1
 #define SB_COORD 1
+#define SB_U 2
+#define SB_V 3
 
 
 enum Shader_Program
   { SP_Fixed, SP_Geo_Shade1, SP_Geo_Shade2, SP_ENUM_SIZE };
 const char* const shader_program[] =
   { "SP_Fixed", "SP_Geo_Shade1", "SP_Geo_Shade2", "SP_ENUM_SIZE" };
+enum GPU_Physics_Method { GP_cpu, GP_cuda, GP_ENUM_SIZE };
+const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
+
+struct Wire_Segment {
+  pCoor position;
+  pQuat orientation;
+
+  pVect velocity;
+  pVect omega;
+
+  pVect ctr_to_right_dir;
+  pVect u, v;
+  pVect nu, nv, nw;
+  pCoor pos_left, pos_right;
+
+  pVect force;
+  pVect torque;
+
+};
+
 
 class World {
 public:
@@ -128,8 +149,6 @@ public:
   //
   pFrame_Timer frame_timer;
 
-  float opt_door_angle;
-
   pCoor light_location;
   float opt_light_intensity;
 
@@ -151,14 +170,13 @@ public:
   GLuint helix_coords_bo;
   int helix_coords_size;
 
+  pCoor *helix_u, *helix_v;
+  GLuint helix_u_bo;
+  GLuint helix_v_bo;
+
   PStack<int> wire_surface_indices;
   GLuint wire_surface_indices_bo;
   int wire_surface_indices_size;
-
-  // Wire normals.
-  //
-  PStack<pVect> helix_normals;
-  GLuint helix_normals_bo;
 
   int helix_indices_size;
 
@@ -175,6 +193,53 @@ public:
   pMatrix modelview;
 
   GLuint texture_id_syllabus;
+
+  // Physics
+  double world_time;
+  float delta_t;
+  bool opt_pause;
+
+  PStack<Wire_Segment> wire_segments;
+
+  pVect gravity_accel;
+  pQuat helix_rn_trans;
+  float helix_seg_hlength;
+  float helix_seg_hlength_inv;
+  float opt_spring_constant;
+  float opt_flex_constant;
+  float opt_helix_density;
+  bool opt_gravity;
+  bool opt_interpen;
+  bool opt_test;
+  int time_step_num;
+  float helix_seg_mass;
+  float helix_seg_mass_inv;
+  float helix_seg_ma_axis;
+  float helix_seg_ma_perp_axis;
+  void helix_apply_force_at
+  (Wire_Segment *ws, pCoor pos, pVect dir, float magnitude);
+  pVect helix_get_vel_at(Wire_Segment *ws, pCoor pos);
+
+  float helix_spring_energy;
+
+  void time_step_cpu();
+
+  // CUDA Physics
+
+  int opt_physics_method;
+  bool cuda_initialized;
+  bool cuda_constants_stale;
+  cudaEvent_t frame_start_ce, frame_stop_ce;
+  int block_size_max;
+  cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
+  cudaFuncAttributes cfa_helix; // Properties of code to run on device.
+
+  pCUDA_Memory<pVect> helix_position;
+  pCUDA_Memory<pVect> helix_velocity;
+  pCUDA_Memory<pQuat> helix_orientation;
+  pCUDA_Memory<pVect> helix_omega;
+
+  void cuda_init();
 };
 
 void
@@ -182,20 +247,16 @@ World::init()
 {
   coords_stale = true;
 
-  opt_door_angle = 0.0;
-  variable_control.insert_linear(opt_door_angle,"Door Angle",M_PI/40.0);
-
   seg_per_helix_revolution = 80;
   seg_per_wire_revolution = 20;
-  variable_control.insert(seg_per_helix_revolution,"Seg Per Helix Rev");
-  variable_control.insert(seg_per_wire_revolution,"Seg Per Wire Rev");
+  //  variable_control.insert(seg_per_helix_revolution,"Seg Per Helix Rev");
+  //  variable_control.insert(seg_per_wire_revolution,"Seg Per Wire Rev");
 
   buffer_objects_stale = true;
-  helix_normals_bo = 0;
   helix_coords_bo = 0;
   wire_surface_indices_bo = 0;
 
-  eye_location = pCoor(2.6,5.7,3.8);
+  eye_location = pCoor(1.8,5.7,13.4);
   eye_direction = pVect(0,0,-1);
 
   opt_light_intensity = 1.5;
@@ -203,19 +264,20 @@ World::init()
 
   helix_location = pCoor(0,0,-5);
   helix_radius = 5;
-  wire_radius = 0.5;
+  wire_radius = 0.4;
+  variable_control.insert(wire_radius,"Wire Radius");
 
   //  variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
 
-  texture_id_syllabus = pBuild_Texture_File("hw03.png",false,255);
+  texture_id_syllabus = pBuild_Texture_File("hw05.png",false,255);
 
   // Declared like a programmable shader, but used for fixed-functionality.
   //
   sp_fixed = new pShader();
 
-  const char* const file = "hw3-shdr.cc";
+  const char* const file = "hw5-shdr.cc";
 
   sp_geo_shade1 = new pShader
     (file,           // File holding shader program.
@@ -234,6 +296,26 @@ World::init()
   opt_shader = SP_Geo_Shade1;
 
   modelview_update();
+
+  opt_physics_method = GP_cpu;
+
+  opt_spring_constant = 170000;
+  gravity_accel = pVect(0,-.098,0);
+  opt_helix_density = 1;
+  helix_u = helix_v = NULL;
+
+  opt_flex_constant = opt_spring_constant;
+  variable_control.insert(opt_spring_constant,"Spring Constant");
+
+  delta_t = 1.0 / ( 30 * 200 );
+  opt_pause = false;
+  world_time = time_wall_fp();
+  opt_gravity = true;
+  opt_interpen = false;
+  opt_test = false;
+  time_step_num = 0;
+
+  cuda_init();
 }
 
 void
@@ -279,7 +361,6 @@ World::render()
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->get_val());
 
-
   ogl_helper.fbprintf
     ("Light location: [%5.1f, %5.1f, %5.1f]  "
      "Helix Location[%5.1f, %5.1f, %5.1f]\n",
@@ -295,6 +376,24 @@ World::render()
       ("Programmable GPU API: %savailable.  GPU Code: %s\n",
        ptr_glCreateShader ? "" : "not",
        sp_geo_shade1->pobject ? "okay" : "problem");
+
+  const double time_now = time_wall_fp();
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
+  ogl_helper.fbprintf
+    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Interpenetration: %s ('i')  Debug: %d ('t')\n",
+     opt_physics_method != GP_cuda
+     ? BLINK(gpu_physics_method_str[opt_physics_method],"      ")
+     : gpu_physics_method_str[opt_physics_method],
+     opt_pause ? BLINK("ON","  ") : "OFF",
+     opt_gravity ? "ON" : "OFF",
+     opt_interpen ? "ON" : BLINK("OFF","   "),
+     opt_test);
+
+  ogl_helper.fbprintf("Spring Energy: %f\n",
+                      helix_spring_energy
+                      );
 
   const int win_width = ogl_helper.get_width();
   const int win_height = ogl_helper.get_height();
@@ -388,25 +487,47 @@ World::render()
       // Recompute helix coordinates, etc.
 
       coords_stale = false;
+      cuda_constants_stale = true;
       buffer_objects_stale = true;
 
       // Reset existing storage.
       helix_coords.reset();
-      helix_normals.reset();
       helix_indices.reset();
       wire_surface_indices.reset();
+      wire_segments.reset();
 
       // Number of times helix wraps around.
-      const int revolutions_per_helix = 6;
+      const int revolutions_per_helix = 8;
 
       const int segments_per_helix =
         revolutions_per_helix * seg_per_helix_revolution;
 
       const double delta_eta = 2 * M_PI / seg_per_helix_revolution;
       const double delta_y = 4 * wire_radius / seg_per_helix_revolution;
-      const double delta_theta = 2 * M_PI / seg_per_wire_revolution;
 
       int wire_surface_idx = 0;
+      pVect vZero(0,0,0);
+
+      const float helix_seg_hlength_xy = helix_radius * tan(0.5 * delta_eta);
+      helix_seg_hlength =
+        sqrtf( helix_seg_hlength_xy * helix_seg_hlength_xy
+               + 0.25 * delta_y * delta_y );
+
+      const double angle_seg = asinf(delta_y /( 2 * helix_seg_hlength ));
+      helix_seg_hlength_inv = 1 / helix_seg_hlength;
+
+      pQuat tilt_up_seg(pVect(0,0,1),angle_seg);
+      pQuat tilt_up_inv(pVect(0,0,1),-angle_seg);
+
+      pQuat rot(pVect(0,-1,0),delta_eta);
+      helix_rn_trans = tilt_up_inv * rot * tilt_up_seg;
+      const float wire_rad_sq = wire_radius * wire_radius;
+      helix_seg_mass =
+        opt_helix_density * M_PI * wire_rad_sq * 2 * helix_seg_hlength;
+      helix_seg_mass_inv = 1 / helix_seg_mass;
+      helix_seg_ma_axis = helix_seg_mass * wire_rad_sq / 2;
+      helix_seg_ma_perp_axis = helix_seg_mass *
+        ( 4 * helix_seg_hlength * helix_seg_hlength + 3 * wire_rad_sq ) / 12;
 
       for ( int i = 0; i < segments_per_helix; i++ )
         {
@@ -417,26 +538,20 @@ World::render()
                     i * delta_y,
                     helix_radius * sin(eta));
 
-          helix_coords += p0;
+          Wire_Segment* const ws = wire_segments.pushi();
+          ws->position = p0;
+          ws->velocity = vZero;
+          ws->omega = vZero;
+          pQuat rot(pVect(0,-1,0),eta + M_PI / 2);
+          ws->orientation = rot * tilt_up_seg;
 
-          pVect n0( -wire_radius * p0.x, 0, -wire_radius * p0.z);
-          pNorm tangent( delta_eta * helix_radius * -sin(eta),
-                         delta_y,
-                         delta_eta * helix_radius * cos(eta) );
-          pVect b = cross(n0,tangent);
+          helix_coords += p0;
 
           for ( int j = 0; j < seg_per_wire_revolution; j++ )
             {
               const int idx = wire_surface_idx++;
-              const double theta = j * delta_theta;
-
-              pVect norm0 = cos(theta) * n0 + sin(theta) * b;
-
-              helix_normals += norm0.normal();
               helix_indices += i;  helix_indices += j;
-
               if ( last_i_iteration ) continue;
-
               // Insert indices for triangle with one vertex on eta.
               wire_surface_indices += idx; // This vertex.
               wire_surface_indices += idx + seg_per_wire_revolution;
@@ -448,6 +563,58 @@ World::render()
       helix_indices_size = helix_indices.occ();
     }
 
+  if ( cuda_constants_stale )
+    {
+      cuda_constants_stale = false;
+      const int phys_helix_segments = wire_segments.occ();
+
+      helix_position.realloc(phys_helix_segments);
+      helix_position.ptrs_to_cuda("helix_position");
+      helix_velocity.realloc(phys_helix_segments);
+      helix_velocity.ptrs_to_cuda("helix_velocity");
+      helix_omega.realloc(phys_helix_segments);
+      helix_omega.ptrs_to_cuda("helix_omega");
+      helix_orientation.realloc(phys_helix_segments);
+      helix_orientation.ptrs_to_cuda("helix_orientation");
+
+      for ( int i=0; i<phys_helix_segments; i++ )
+        {
+          Wire_Segment* const ws = &wire_segments[i];
+          helix_position[i] = pVect(ws->position);
+          helix_velocity[i] = ws->velocity;
+          helix_orientation[i] = ws->orientation;
+          helix_omega[i] = ws->omega;
+        }
+      helix_position.to_cuda();
+      helix_velocity.to_cuda();
+      helix_orientation.to_cuda();
+      helix_omega.to_cuda();
+
+      Helix_Info hi;
+      const float delta_t_mass_inv = delta_t * helix_seg_mass_inv;
+      const float delta_t_ma_axis = delta_t / helix_seg_ma_axis;
+      const float delta_t_ma_perp_axis = delta_t / helix_seg_ma_perp_axis;
+
+#define SET(m) hi.m = m;
+      SET(opt_gravity);
+      SET(opt_test);
+      SET(opt_interpen);
+      SET(opt_spring_constant);
+      SET(delta_t);
+      SET(delta_t_mass_inv);
+      SET(delta_t_ma_axis);
+      SET(delta_t_ma_perp_axis);
+      SET(phys_helix_segments);
+      SET(wire_radius);
+      SET(helix_seg_hlength);
+      SET(helix_seg_mass_inv);
+      SET(gravity_accel);
+      SET(helix_rn_trans);
+
+#undef SET
+      TO_DEV(hi);
+    }
+
   // If necessary, update data in buffer objects.
   if ( buffer_objects_stale )
     {
@@ -457,8 +624,13 @@ World::render()
       //
       glGenBuffers(1,&helix_indices_bo);
       glGenBuffers(1,&helix_coords_bo);
-      glGenBuffers(1,&helix_normals_bo);
+      glGenBuffers(1,&helix_u_bo);
+      glGenBuffers(1,&helix_v_bo);
       glGenBuffers(1,&wire_surface_indices_bo);
+
+      if ( helix_u ) { free(helix_u); free(helix_v); }
+      helix_u = (pCoor*) malloc( helix_coords_size * sizeof(helix_u[0]) );
+      helix_v = (pCoor*) malloc( helix_coords_size * sizeof(helix_v[0]) );
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
@@ -471,12 +643,6 @@ World::render()
         (GL_ARRAY_BUFFER,
          2 * helix_indices_size * sizeof(helix_indices[0]),
          helix_indices.get_storage(), GL_STATIC_DRAW);
-
-      glBindBuffer(GL_ARRAY_BUFFER, helix_normals_bo);
-      glBufferData
-        (GL_ARRAY_BUFFER,
-         helix_indices_size*3*sizeof(helix_normals[0]),
-         helix_normals.get_storage(), GL_STATIC_DRAW);
 
       glBindBuffer(GL_ARRAY_BUFFER, wire_surface_indices_bo);
       glBufferData
@@ -491,6 +657,70 @@ World::render()
       pError_Check();
     }
 
+  {
+    if ( !opt_pause )
+      {
+        const int phys_helix_segments = wire_segments.occ();
+        const double time_now = time_wall_fp();
+        const int block_size = 32;
+        const int grid_size =
+          ( phys_helix_segments + block_size - 1 ) / block_size;
+
+        for ( int iter_count = 0;
+              world_time < time_now && iter_count < 1000;
+              iter_count++ )
+          {
+            if ( opt_physics_method == GP_cuda )
+              {
+                time_step_launch(grid_size,block_size);
+              }
+            else
+              time_step_cpu();
+            world_time += delta_t;
+          }
+        if ( opt_physics_method == GP_cuda )
+          {
+            helix_position.from_cuda();
+            helix_velocity.from_cuda();
+            helix_orientation.from_cuda();
+            helix_omega.from_cuda();
+            for ( int i=0; i<phys_helix_segments; i++ )
+              {
+                Wire_Segment* const ws = &wire_segments[i];
+                ws->position = helix_position[i];
+                ws->velocity = helix_velocity[i];
+                ws->orientation = helix_orientation[i];
+                ws->omega = helix_omega[i];
+              }
+          }
+      }
+    const int phys_helix_segments = wire_segments.occ();
+    for ( int i=0; i<phys_helix_segments; i++ )
+      {
+        Wire_Segment* const ws = &wire_segments[i];
+        helix_coords[i] = ws->position;
+        pMatrix_Rotation c_rot(ws->orientation);
+        helix_u[i] = c_rot * pVect(0,0,1);
+        helix_v[i] = c_rot * pVect(0,1,0);
+      }
+      glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
+      glBufferData
+        (GL_ARRAY_BUFFER,
+         helix_coords_size*4*sizeof(helix_coords[0]),
+         helix_coords.get_storage(), GL_STATIC_DRAW);
+      glBindBuffer(GL_ARRAY_BUFFER, helix_u_bo);
+      glBufferData
+        (GL_ARRAY_BUFFER,
+         helix_coords_size*sizeof(helix_u[0]),
+         helix_u, GL_STATIC_DRAW);
+      glBindBuffer(GL_ARRAY_BUFFER, helix_v_bo);
+      glBufferData
+        (GL_ARRAY_BUFFER,
+         helix_coords_size*sizeof(helix_v[0]),
+         helix_v, GL_STATIC_DRAW);
+  }
+
+
   switch ( opt_shader ){
   case SP_Fixed: break;
   case SP_Geo_Shade1: sp_geo_shade1->use(); break;
@@ -503,6 +733,8 @@ World::render()
   ///
 
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_COORD,helix_coords_bo);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_U,helix_u_bo);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_V,helix_v_bo);
 
   glUniform1f(UNIF_IDX_WIRE_RADIUS,wire_radius);  GE();
 
@@ -519,12 +751,6 @@ World::render()
   //
   glColor3fv(lsu_spirit_gold);
 
-  // Specify buffer object to use for normals.
-  //
-  glBindBuffer(GL_ARRAY_BUFFER, helix_normals_bo);
-  glNormalPointer(GL_FLOAT,0,0);
-  glEnableClientState(GL_NORMAL_ARRAY);
-
   glBindBuffer(GL_ARRAY_BUFFER, helix_indices_bo);
   glEnableVertexAttribArray(ATTR_IDX_HELIX_INDICES);
   glVertexAttribIPointer
@@ -538,7 +764,11 @@ World::render()
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, wire_surface_indices_bo);
 
-  glDrawElements(GL_TRIANGLE_STRIP,wire_surface_indices_size,GL_UNSIGNED_INT,0);
+  glDrawElements
+    (GL_TRIANGLE_STRIP,
+     wire_surface_indices_size - 4 * seg_per_wire_revolution,
+     GL_UNSIGNED_INT,
+     (const GLvoid*) ( 2 * seg_per_wire_revolution * sizeof(GL_UNSIGNED_INT)));
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -565,6 +795,188 @@ World::render()
   glutSwapBuffers();
 }
 
+void
+World::time_step_cpu()
+{
+  pVect vZero(0,0,0);
+  pVect gravity_force = helix_seg_mass_inv * gravity_accel;
+  helix_spring_energy = 0;
+
+  const int phys_helix_segments = wire_segments.occ();
+
+  for ( int i=0; i<phys_helix_segments; i++ )
+    {
+      Wire_Segment* const cseg = &wire_segments[i];
+      pMatrix_Rotation c_rot(cseg->orientation);
+
+      cseg->u = c_rot * pVect(0,0,1);
+      cseg->v = c_rot * pVect(0,1,0);
+      cseg->ctr_to_right_dir = c_rot * pVect(1,0,0);
+      pQuat cn_rot_q = cseg->orientation * helix_rn_trans;
+      pMatrix_Rotation cn_rot(cn_rot_q);
+      cseg->nu = cn_rot * pVect(0,0,1);
+      cseg->nv = cn_rot * pVect(0,1,0);
+
+      pVect ctr_to_right = helix_seg_hlength * cseg->ctr_to_right_dir;
+
+      cseg->pos_left = cseg->position - ctr_to_right;
+      cseg->pos_right = cseg->position + ctr_to_right;
+      cseg->force = opt_gravity ? gravity_force : vZero;
+      cseg->torque = vZero;
+    }
+
+  time_step_num++;
+
+  for ( int i=0; i<phys_helix_segments-1; i++ )
+    {
+      Wire_Segment* const cseg = &wire_segments[i];
+      Wire_Segment* const rseg = &wire_segments[i+1];
+
+      const int pieces = 3;
+      const float delta_theta = 2 * M_PI / pieces;
+      for ( int j=0; j<pieces; j++ )
+        {
+          const float theta = delta_theta * j;
+          pCoor c_pt =
+            cseg->pos_right + cseg->nu * cosf(theta) + cseg->nv * sinf(theta);
+          pCoor r_pt =
+            rseg->pos_left + rseg->u * cosf(theta) + rseg->v * sinf(theta);
+          pNorm dist(c_pt,r_pt);
+          const float force_mag = dist.magnitude * opt_spring_constant;
+          pCoor mid_pt = 0.5 * ( c_pt + r_pt );
+          helix_apply_force_at(cseg,mid_pt,dist,force_mag);
+          helix_apply_force_at(rseg,mid_pt,dist,-force_mag);
+        }
+    }
+
+  const float delta_t_mass_inv = delta_t * helix_seg_mass_inv;
+  const float delta_t_ma_axis = delta_t / helix_seg_ma_axis;
+  const float delta_t_ma_perp_axis = delta_t / helix_seg_ma_perp_axis;
+
+
+  /// Quick and Dirty and Slow Interpenetration Routine
+  //
+  if ( opt_interpen )
+    {
+      const int min_idx_dist = 0.999 + wire_radius / helix_seg_hlength;
+      const float four_wire_radius_sq = 4 * wire_radius * wire_radius;
+      for ( int i=1; i<phys_helix_segments; i++ )
+        for ( int j=i+min_idx_dist; j<phys_helix_segments; j++ )
+          {
+            Wire_Segment* const aseg = &wire_segments[i];
+            Wire_Segment* const bseg = &wire_segments[j];
+            pNorm dist(aseg->position,bseg->position);
+            if ( dist.mag_sq > four_wire_radius_sq ) continue;
+            const float pen = 2 * wire_radius - dist.magnitude;
+            aseg->force -= pen * opt_spring_constant * dist;
+            bseg->force += pen * opt_spring_constant * dist;
+          }
+    }
+
+  for ( int i=1; i<phys_helix_segments; i++ )
+    {
+      Wire_Segment* const cseg = &wire_segments[i];
+      cseg->velocity *= 0.9999;
+      cseg->omega *= 0.9999;
+      cseg->velocity += delta_t_mass_inv * cseg->force;
+      cseg->position += delta_t * cseg->velocity;
+      const float torque_axial_mag =
+        dot( cseg->torque, cseg->ctr_to_right_dir );
+      pVect torque_axial = torque_axial_mag * cseg->ctr_to_right_dir;
+      pVect do_axial = delta_t_ma_axis * torque_axial;
+      pVect torque_other = cseg->torque - torque_axial;
+      pVect do_other = delta_t_ma_perp_axis * torque_other;
+      cseg->omega += do_axial + do_other;
+      pNorm axis(cseg->omega);
+      cseg->orientation =
+        pQuat(axis,delta_t * axis.magnitude) * cseg->orientation;
+    }
+}
+
+
+void
+World::helix_apply_force_at
+(Wire_Segment *s, pCoor pos, pVect dir, float magnitude)
+{
+  s->force += magnitude * dir;
+  helix_spring_energy += fabs(magnitude);
+  pVect arm(s->position,pos);
+  pVect axis = cross( arm, dir );
+  pVect amt = magnitude * axis;
+  helix_spring_energy += amt.mag();
+  s->torque += amt;
+}
+
+pVect
+World::helix_get_vel_at(Wire_Segment *s, pCoor pos)
+{
+  pVect arm(s->position,pos);
+  pVect vel_rot = cross( s->omega, arm );
+  return vel_rot + s->velocity;
+}
+
+void
+World::cuda_init()
+{
+  cuda_constants_stale = true;
+
+  // Get information about GPU and its ability to run CUDA.
+  //
+  int device_count;
+  cudaGetDeviceCount(&device_count); // Get number of GPUs.
+  ASSERTS( device_count );
+  for ( int dev = 0; dev < device_count; dev ++ )
+    {
+      CE(cudaGetDeviceProperties(&cuda_prop,dev));
+      CE(cudaGLSetGLDevice(dev));
+      printf
+        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
+         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
+         int(cuda_prop.totalGlobalMem >> 20));
+
+      printf
+        ("GPU %d: CAP: %d.%d  MP: %2d  TH/WP: %3d  TH/BL: %4d\n",
+         dev, cuda_prop.major, cuda_prop.minor,
+         cuda_prop.multiProcessorCount,
+         cuda_prop.warpSize,
+         cuda_prop.maxThreadsPerBlock
+         );
+
+      printf
+        ("GPU %d: SHARED: %5d  CONST: %5d  # REGS: %5d\n",
+         dev,
+         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
+         cuda_prop.regsPerBlock
+         );
+
+    }
+
+  const int dev = 0;
+
+  printf("Using GPU %d\n",dev);
+  CE(cudaSetDevice(dev));
+
+  // Prepare events used for timing.
+  //
+  CE(cudaEventCreate(&frame_start_ce));
+  CE(cudaEventCreate(&frame_stop_ce));
+
+  cuda_setup(&cfa_helix);
+
+  block_size_max = cfa_helix.maxThreadsPerBlock;
+  set_min(block_size_max,cuda_prop.maxThreadsPerBlock);
+
+  printf("CUDA Routine Resource Usage:\n");
+  printf(" pass_helix: %6zd shared, %zd const, %zd loc, %d regs; "
+         "%d max thr\n",
+         cfa_helix.sharedSizeBytes,
+         cfa_helix.constSizeBytes,
+         cfa_helix.localSizeBytes,
+         cfa_helix.numRegs,
+         cfa_helix.maxThreadsPerBlock);
+}
+
+
 
 void
 World::cb_keyboard()
@@ -586,6 +998,12 @@ World::cb_keyboard()
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
 
+  case 'a':
+    opt_physics_method++;
+    if ( opt_physics_method > GP_cuda ) opt_physics_method = GP_cpu;
+    break;
+
+
   case 's':
     opt_shader++; if ( opt_shader == SP_ENUM_SIZE ) opt_shader = 1;
     break;
@@ -598,12 +1016,35 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
 
+  case 'g': case 'G': opt_gravity = !opt_gravity;
+    cuda_constants_stale = true;
+    break;
+
+  case 'i': case 'I': opt_interpen = !opt_interpen;
+    cuda_constants_stale = true;
+    break;
+
+  case 't': case 'T': opt_test = !opt_test; break;
+
+  case 'p': case 'P':
+    opt_pause = !opt_pause;
+    if ( !opt_pause ) world_time = time_wall_fp();
+    break;
+
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
-  case '-':case '_': variable_control.adjust_lower();  coords_stale=true; break;
-  case '+':case '=': variable_control.adjust_higher(); coords_stale=true; break;
+  case '-':case '_': variable_control.adjust_lower();
+    coords_stale=true;
+    cuda_constants_stale = true;
+    break;
+  case '+':case '=': variable_control.adjust_higher();
+    coords_stale=true;
+    cuda_constants_stale = true;
+    break;
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
+
+  coords_stale = false;
 
   // Update eye_direction based on keyboard command.
   //

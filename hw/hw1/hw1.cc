@@ -196,12 +196,20 @@ World::time_step_cpu(double delta_t)
           //
           pNorm ball_to_neighbor(ball->position,neighbor_ball->position);
 
+          // SOLUTION
+          const float distance_relaxed =
+            ball->radius + neighbor_ball->radius;
+
           // Compute how much the spring is stretched.
           //
           const float spring_stretch =
             ball_to_neighbor.magnitude - distance_relaxed;
 
-          force += opt_spring_constant * spring_stretch * ball_to_neighbor;
+          // SOLUTION
+          const float spring_constant =
+            spring_stretch < 0 ? 10 * opt_spring_constant : opt_spring_constant;
+
+          force += spring_constant * spring_stretch * ball_to_neighbor;
         }
 
       // Air Resistance
