@@ -42,8 +42,11 @@ __global__ void
 time_step()
 {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  // Use tid for helix segment number.
 
   if ( tid + 1 > hi.phys_helix_segments ) return;
+
+  // The position of segment 0 is fixed, so don't evolve it.
   if ( tid == 0 ) return;
 
   pVect vZero = mv(0,0,0);
@@ -53,9 +56,10 @@ time_step()
   float3 c_position = helix_position[tid];
 
   pMatrix3x3 c_rot;
+  // Initialize c_rot to a rotation matrix based on quaternion c_orientation.
   pMatrix_set_rotation(c_rot,c_orientation);
 
-  float3 c_u = c_rot * mv(0,0,1);
+  float3 c_u = c_rot * mv(0,0,1);  // mv: Make Vector.
   float3 c_v = c_rot * mv(0,1,0);
   float3 c_ctr_to_right_dir = c_rot * mv(1,0,0);
   pVect c_ctr_to_right = hi.helix_seg_hlength * c_ctr_to_right_dir;
@@ -68,6 +72,8 @@ time_step()
   const int pieces = 3;
   const float delta_theta = 2 * M_PI / pieces;
 
+  /// Compute forces due to right neighbor.
+  //
   if ( tid + 1 < hi.phys_helix_segments )
     {
       pQuat r_orientation = helix_orientation[tid+1];
@@ -97,6 +103,8 @@ time_step()
         }
     }
 
+  /// Compute forces due to left neighbor.
+  //
   if ( tid > 0 )
     {
       pQuat l_orientation = helix_orientation[tid-1];
@@ -125,6 +133,8 @@ time_step()
           helix_apply_force_at(c_position,force,torque,c_pt,dist.v,force_mag);
         }
     }
+
+  /// Use forces to update velocity, omega, position, and orientation.
 
   float3 velocity = helix_velocity[tid];
   velocity *= 0.9999f;

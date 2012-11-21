@@ -7,7 +7,7 @@
  //
  /// Your Name:
 
- ///  Note: Requires OpenGL 4.3
+ ///  Note: Requires OpenGL 4.3 and CUDA
 
 ///  Keyboard Commands
  //
@@ -27,7 +27,11 @@
  /// Simulation Options
  //  (Also see variables below.)
  //
- //  's'    Switch between different shaders in forward direction.
+ //  'a'    Switch between CPU and GPU physics.
+ //  'i'    Toggle interpenetration handling.
+ //  'p'    Pause simulation.
+ //  'g'    Toggle gravity on and off.
+ //  't'    Toggle state of Boolean opt_test, use it as you like.
  //  'S'    Switch between different shaders in reverse direction.
  //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
@@ -521,11 +525,14 @@ World::render()
                     i * delta_y,
                     helix_radius * sin(eta));
 
+          // Initialize a helix (wire) segment, used for physical simulation.
+          //
           Wire_Segment* const ws = wire_segments.pushi();
           ws->position = p0;
           ws->velocity = vZero;
-          ws->omega = vZero;
+          ws->omega = vZero;     // Rotation rate.
           pQuat rot(pVect(0,-1,0),eta + M_PI / 2);
+          // Rotate cylinder coordinates to world coordinates.
           ws->orientation = rot * tilt_up_seg;
 
           helix_coords += p0;
@@ -546,11 +553,15 @@ World::render()
       helix_indices_size = helix_indices.occ();
     }
 
+  // Update data on GPU if necessary.
+  //
   if ( cuda_constants_stale )
     {
       cuda_constants_stale = false;
       const int phys_helix_segments = wire_segments.occ();
 
+      // Allocate storage and write GPU variables with addresses of storage.
+      //
       helix_position.realloc(phys_helix_segments);
       helix_position.ptrs_to_cuda("helix_position");
       helix_velocity.realloc(phys_helix_segments);
@@ -560,6 +571,14 @@ World::render()
       helix_orientation.realloc(phys_helix_segments);
       helix_orientation.ptrs_to_cuda("helix_orientation");
 
+      // Copy data from our CPU-friendly wire_segments array of
+      // structures to GPU-friendly individual arrays. Note that this
+      // loop copies data from one part of CPU memory to
+      // another. Since the ultimate destination this extra CPU->CPU
+      // copying is wasteful, but that's acceptable because it only
+      // needs to be done rarely, at start up and when the user
+      // changes a variable.
+      //
       for ( int i=0; i<phys_helix_segments; i++ )
         {
           Wire_Segment* const ws = &wire_segments[i];
@@ -568,11 +587,17 @@ World::render()
           helix_orientation[i] = ws->orientation;
           helix_omega[i] = ws->omega;
         }
+
+      // Copy data from CPU to GPU.
+      //
       helix_position.to_cuda();
       helix_velocity.to_cuda();
       helix_orientation.to_cuda();
       helix_omega.to_cuda();
 
+      // Write scalar variables to a structure, and then
+      // send structure to GPU.
+      //
       Helix_Info hi;
       const float delta_t_mass_inv = delta_t * helix_seg_mass_inv;
       const float delta_t_ma_axis = delta_t / helix_seg_ma_axis;
@@ -593,7 +618,6 @@ World::render()
       SET(helix_seg_mass_inv);
       SET(gravity_accel);
       SET(helix_rn_trans);
-
 #undef SET
       TO_DEV(hi);
     }
@@ -640,10 +664,15 @@ World::render()
       pError_Check();
     }
 
+  // Run the physical simulation if not paused.
+  //
   if ( !opt_pause )
     {
       const int phys_helix_segments = wire_segments.occ();
       const double time_now = time_wall_fp();
+
+      // Use a small block size under the assumption that
+      // phys_helix_segments is small.
       const int block_size = 32;
       const int grid_size =
         ( phys_helix_segments + block_size - 1 ) / block_size;
@@ -651,6 +680,9 @@ World::render()
       if ( opt_physics_method == GP_cuda )
         CE(cudaEventRecord(frame_start_ce,0));
 
+      // Evolve simulated state in time steps of duration delta_t until
+      // simulated time reaches current time.
+      //
       for ( int iter_count = 0;
             world_time < time_now && iter_count < 1000;
             iter_count++ )
@@ -666,12 +698,23 @@ World::render()
 
       if ( opt_physics_method == GP_cuda )
         {
+          // Collect amount of time CUDa took to compute this frame.
+          //
           CE(cudaEventRecord(frame_stop_ce,0));
           CE(cudaEventSynchronize(frame_stop_ce));
           float cuda_time = -1.1;
           CE(cudaEventElapsedTime(&cuda_time,frame_start_ce,frame_stop_ce));
           frame_timer.cuda_frame_time_set(cuda_time);
 
+          // Copy data back to CPU. Some or all of this copying can be
+          // eliminated. As things are currently written, there is no
+          // need to copy back the velocity and orientation unless
+          // simulation is switching to CPU physics. If the same GPU
+          // were used for physics and graphics, there would also be
+          // no need to copy back the position and orientation. (A
+          // CUDA global memory can be mapped to an OpenGL buffer
+          // object.)
+          //
           helix_position.from_cuda();
           helix_velocity.from_cuda();
           helix_orientation.from_cuda();
@@ -686,14 +729,27 @@ World::render()
             }
         }
 
+      // Compute vectors used for drawing wire, and copy helix coordinate.
+      //
       for ( int i=0; i<phys_helix_segments; i++ )
         {
           Wire_Segment* const ws = &wire_segments[i];
+
+          // Copy helix coordinates to another array before sending
+          // back to GPU. This step could easily be eliminated since
+          // the coordinates are already linearized in helix_position.
+          //
           helix_coords[i] = ws->position;
+
+          // Compute vectors used for drawing wire.
+          //
           pMatrix_Rotation c_rot(ws->orientation);
           helix_u[i] = c_rot * pVect(0,0,1);
           helix_v[i] = c_rot * pVect(0,1,0);
         }
+
+      // Send data back to GPU.
+
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
@@ -794,13 +850,16 @@ World::time_step_cpu()
 
   const int phys_helix_segments = wire_segments.occ();
 
+  /// Initialize wire segment variables for time step.
+  //
   for ( int i=0; i<phys_helix_segments; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];
       pMatrix_Rotation c_rot(cseg->orientation);
 
-      cseg->u = c_rot * pVect(0,0,1);
-      cseg->v = c_rot * pVect(0,1,0);
+      // Compute world-space vectors of segments local coordinate space.
+      cseg->u = c_rot * pVect(0,0,1);  // Segment's +x direction.
+      cseg->v = c_rot * pVect(0,1,0);  // Etc.
       cseg->ctr_to_right_dir = c_rot * pVect(1,0,0);
       pQuat cn_rot_q = cseg->orientation * helix_rn_trans;
       pMatrix_Rotation cn_rot(cn_rot_q);
@@ -809,17 +868,24 @@ World::time_step_cpu()
 
       pVect ctr_to_right = helix_seg_hlength * cseg->ctr_to_right_dir;
 
+      // Compute location of ends of cylinder.
       cseg->pos_left = cseg->position - ctr_to_right;
       cseg->pos_right = cseg->position + ctr_to_right;
+
       cseg->force = opt_gravity ? gravity_force : vZero;
       cseg->torque = vZero;
     }
 
+  /// Apply forces due to helix segment to the "right" (+x in local space).
+  //
   for ( int i=0; i<phys_helix_segments-1; i++ )
     {
-      Wire_Segment* const cseg = &wire_segments[i];
-      Wire_Segment* const rseg = &wire_segments[i+1];
+      Wire_Segment* const cseg = &wire_segments[i];    // Us
+      Wire_Segment* const rseg = &wire_segments[i+1];  // Our right neighbor.
 
+      // Find distance between us and right neighbor at three points
+      // on cylinder surface.  We hope that the compiler unrolls this
+      // loop to avoid computing sin and cos every time.
       const int pieces = 3;
       const float delta_theta = 2 * M_PI / pieces;
       for ( int j=0; j<pieces; j++ )
@@ -879,6 +945,8 @@ World::time_step_cpu()
           }
     }
 
+  /// Using force and torque, update velocity, omega, position, and orientation.
+  //
   for ( int i=1; i<phys_helix_segments; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];
@@ -931,6 +999,9 @@ World::cuda_init()
   int device_count;
   cudaGetDeviceCount(&device_count); // Get number of GPUs.
   ASSERTS( device_count );
+
+  /// Print information about the available GPUs.
+  //
   for ( int dev = 0; dev < device_count; dev ++ )
     {
       CE(cudaGetDeviceProperties(&cuda_prop,dev));
@@ -971,6 +1042,8 @@ World::cuda_init()
   block_size_max = cfa_helix.maxThreadsPerBlock;
   set_min(block_size_max,cuda_prop.maxThreadsPerBlock);
 
+  // Print information about time_step routine.
+  //
   printf("CUDA Routine Resource Usage:\n");
   printf(" pass_helix: %6zd shared, %zd const, %zd loc, %d regs; "
          "%d max thr\n",
@@ -1010,14 +1083,6 @@ World::cb_keyboard()
     opt_physics_method++;
     if ( opt_physics_method > GP_cuda ) opt_physics_method = GP_cpu;
     if ( opt_physics_method == GP_cuda ) cuda_constants_stale = true;
-    break;
-
-  case 's':
-    opt_shader++; if ( opt_shader == SP_ENUM_SIZE ) opt_shader = 1;
-    break;
-  case 'S':
-    if ( opt_shader == 1 ) opt_shader = SP_ENUM_SIZE;
-    opt_shader--;
     break;
 
   case 'b': case 'B': opt_move_item = MI_Ball; break;
