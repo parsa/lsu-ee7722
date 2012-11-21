@@ -183,8 +183,7 @@ public:
   int opt_shader;
 
   pShader *sp_fixed;          // Fixed functionality.
-  pShader *sp_geo_shade1;
-  pShader *sp_geo_shade2;
+  pShader *sp_geo_shade;
 
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
@@ -206,12 +205,10 @@ public:
   float helix_seg_hlength;
   float helix_seg_hlength_inv;
   float opt_spring_constant;
-  float opt_flex_constant;
   float opt_helix_density;
   bool opt_gravity;
   bool opt_interpen;
   bool opt_test;
-  int time_step_num;
   float helix_seg_mass;
   float helix_seg_mass_inv;
   float helix_seg_ma_axis;
@@ -256,7 +253,7 @@ World::init()
   helix_coords_bo = 0;
   wire_surface_indices_bo = 0;
 
-  eye_location = pCoor(1.8,5.7,13.4);
+  eye_location = pCoor(-1.8,6.9,23.4);
   eye_direction = pVect(0,0,-1);
 
   opt_light_intensity = 1.5;
@@ -264,7 +261,7 @@ World::init()
 
   helix_location = pCoor(0,0,-5);
   helix_radius = 5;
-  wire_radius = 0.4;
+  wire_radius = 0.6;
   variable_control.insert(wire_radius,"Wire Radius");
 
   //  variable_control.insert(opt_light_intensity,"Light Intensity");
@@ -279,17 +276,10 @@ World::init()
 
   const char* const file = "hw5-shdr.cc";
 
-  sp_geo_shade1 = new pShader
+  sp_geo_shade = new pShader
     (file,           // File holding shader program.
      "vs_main_helix();",      // Name of vertex shader main routine.
      "gs_main_helix();",
-     "fs_main_phong();"       // Name of fragment shader main routine.
-     );
-
-  sp_geo_shade2 = new pShader
-    (file,  // File holding shader program.
-     "vs_main_helix();",      // Name of vertex shader main routine.
-     "gs_main_helix2();",
      "fs_main_phong();"       // Name of fragment shader main routine.
      );
 
@@ -299,12 +289,11 @@ World::init()
 
   opt_physics_method = GP_cpu;
 
-  opt_spring_constant = 170000;
-  gravity_accel = pVect(0,-.098,0);
+  opt_spring_constant = 900000;
+  gravity_accel = pVect(0,-.98,0);
   opt_helix_density = 1;
   helix_u = helix_v = NULL;
 
-  opt_flex_constant = opt_spring_constant;
   variable_control.insert(opt_spring_constant,"Spring Constant");
 
   delta_t = 1.0 / ( 30 * 200 );
@@ -313,7 +302,6 @@ World::init()
   opt_gravity = true;
   opt_interpen = false;
   opt_test = false;
-  time_step_num = 0;
 
   cuda_init();
 }
@@ -368,14 +356,11 @@ World::render()
      helix_location.x, helix_location.y, helix_location.z
      );
 
-  ogl_helper.fbprintf("Active Shader Program: %s  (s TO CHANGE)\n",
-                      shader_program[opt_shader]);
-
-  if ( !sp_geo_shade1->pobject )
+  if ( !sp_geo_shade->pobject )
     ogl_helper.fbprintf
       ("Programmable GPU API: %savailable.  GPU Code: %s\n",
        ptr_glCreateShader ? "" : "not",
-       sp_geo_shade1->pobject ? "okay" : "problem");
+       sp_geo_shade->pobject ? "okay" : "problem");
 
   const double time_now = time_wall_fp();
   const bool blink_visible = int64_t(time_now*3) & 1;
@@ -391,9 +376,7 @@ World::render()
      opt_interpen ? "ON" : BLINK("OFF","   "),
      opt_test);
 
-  ogl_helper.fbprintf("Spring Energy: %f\n",
-                      helix_spring_energy
-                      );
+  ogl_helper.fbprintf("Spring Energy: %f\n", helix_spring_energy);
 
   const int win_width = ogl_helper.get_width();
   const int win_height = ogl_helper.get_height();
@@ -657,52 +640,60 @@ World::render()
       pError_Check();
     }
 
-  {
-    if ( !opt_pause )
-      {
-        const int phys_helix_segments = wire_segments.occ();
-        const double time_now = time_wall_fp();
-        const int block_size = 32;
-        const int grid_size =
-          ( phys_helix_segments + block_size - 1 ) / block_size;
+  if ( !opt_pause )
+    {
+      const int phys_helix_segments = wire_segments.occ();
+      const double time_now = time_wall_fp();
+      const int block_size = 32;
+      const int grid_size =
+        ( phys_helix_segments + block_size - 1 ) / block_size;
 
-        for ( int iter_count = 0;
-              world_time < time_now && iter_count < 1000;
-              iter_count++ )
-          {
-            if ( opt_physics_method == GP_cuda )
-              {
-                time_step_launch(grid_size,block_size);
-              }
-            else
-              time_step_cpu();
-            world_time += delta_t;
-          }
-        if ( opt_physics_method == GP_cuda )
-          {
-            helix_position.from_cuda();
-            helix_velocity.from_cuda();
-            helix_orientation.from_cuda();
-            helix_omega.from_cuda();
-            for ( int i=0; i<phys_helix_segments; i++ )
-              {
-                Wire_Segment* const ws = &wire_segments[i];
-                ws->position = helix_position[i];
-                ws->velocity = helix_velocity[i];
-                ws->orientation = helix_orientation[i];
-                ws->omega = helix_omega[i];
-              }
-          }
-      }
-    const int phys_helix_segments = wire_segments.occ();
-    for ( int i=0; i<phys_helix_segments; i++ )
-      {
-        Wire_Segment* const ws = &wire_segments[i];
-        helix_coords[i] = ws->position;
-        pMatrix_Rotation c_rot(ws->orientation);
-        helix_u[i] = c_rot * pVect(0,0,1);
-        helix_v[i] = c_rot * pVect(0,1,0);
-      }
+      if ( opt_physics_method == GP_cuda )
+        CE(cudaEventRecord(frame_start_ce,0));
+
+      for ( int iter_count = 0;
+            world_time < time_now && iter_count < 1000;
+            iter_count++ )
+        {
+          if ( opt_physics_method == GP_cuda )
+            {
+              time_step_launch(grid_size,block_size);
+            }
+          else
+            time_step_cpu();
+          world_time += delta_t;
+        }
+
+      if ( opt_physics_method == GP_cuda )
+        {
+          CE(cudaEventRecord(frame_stop_ce,0));
+          CE(cudaEventSynchronize(frame_stop_ce));
+          float cuda_time = -1.1;
+          CE(cudaEventElapsedTime(&cuda_time,frame_start_ce,frame_stop_ce));
+          frame_timer.cuda_frame_time_set(cuda_time);
+
+          helix_position.from_cuda();
+          helix_velocity.from_cuda();
+          helix_orientation.from_cuda();
+          helix_omega.from_cuda();
+          for ( int i=0; i<phys_helix_segments; i++ )
+            {
+              Wire_Segment* const ws = &wire_segments[i];
+              ws->position = helix_position[i];
+              ws->velocity = helix_velocity[i];
+              ws->orientation = helix_orientation[i];
+              ws->omega = helix_omega[i];
+            }
+        }
+
+      for ( int i=0; i<phys_helix_segments; i++ )
+        {
+          Wire_Segment* const ws = &wire_segments[i];
+          helix_coords[i] = ws->position;
+          pMatrix_Rotation c_rot(ws->orientation);
+          helix_u[i] = c_rot * pVect(0,0,1);
+          helix_v[i] = c_rot * pVect(0,1,0);
+        }
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
@@ -718,13 +709,12 @@ World::render()
         (GL_ARRAY_BUFFER,
          helix_coords_size*sizeof(helix_v[0]),
          helix_v, GL_STATIC_DRAW);
-  }
+    }
 
 
   switch ( opt_shader ){
   case SP_Fixed: break;
-  case SP_Geo_Shade1: sp_geo_shade1->use(); break;
-  case SP_Geo_Shade2: sp_geo_shade2->use(); break;
+  case SP_Geo_Shade1: sp_geo_shade->use(); break;
   default: ASSERTS( false );
   }
 
@@ -825,8 +815,6 @@ World::time_step_cpu()
       cseg->torque = vZero;
     }
 
-  time_step_num++;
-
   for ( int i=0; i<phys_helix_segments-1; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];
@@ -858,18 +846,36 @@ World::time_step_cpu()
   //
   if ( opt_interpen )
     {
+      // Rule out interpenetration between segments that are closer
+      // together than MIN_IDX_DIST. In other words, assume that
+      // segment 14 and segment 15 cannot interpenetrate each other
+      // (but of course they are in contact in a normal way).
+      //
       const int min_idx_dist = 0.999 + wire_radius / helix_seg_hlength;
+
       const float four_wire_radius_sq = 4 * wire_radius * wire_radius;
+
+      // Use a brute force, O(n^2), search of all possible pairs of
+      // segments.
+      //
       for ( int i=1; i<phys_helix_segments; i++ )
         for ( int j=i+min_idx_dist; j<phys_helix_segments; j++ )
           {
             Wire_Segment* const aseg = &wire_segments[i];
             Wire_Segment* const bseg = &wire_segments[j];
             pNorm dist(aseg->position,bseg->position);
+
+            // Use bounding sphere to quickly rule out contact.
+            //
             if ( dist.mag_sq > four_wire_radius_sq ) continue;
-            const float pen = 2 * wire_radius - dist.magnitude;
-            aseg->force -= pen * opt_spring_constant * dist;
-            bseg->force += pen * opt_spring_constant * dist;
+
+            // As a crude approximation, compute depth of
+            // interpenetration using bounding sphere.
+            //
+            const float pen_depth = 2 * wire_radius - dist.magnitude;
+            pVect sep_force = pen_depth * opt_spring_constant * dist;
+            aseg->force -= sep_force;
+            bseg->force += sep_force;
           }
     }
 
@@ -948,7 +954,6 @@ World::cuda_init()
          int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
          cuda_prop.regsPerBlock
          );
-
     }
 
   const int dev = 0;
@@ -986,6 +991,9 @@ World::cb_keyboard()
   pVect user_rot_axis(0,0,0);
   const float move_amt = 0.4;
 
+  const float wire_radius_prev = wire_radius;
+  const float helix_radius_prev = helix_radius;
+
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
   case FB_KEY_RIGHT: adjustment.x = move_amt; break;
@@ -1001,8 +1009,8 @@ World::cb_keyboard()
   case 'a':
     opt_physics_method++;
     if ( opt_physics_method > GP_cuda ) opt_physics_method = GP_cpu;
+    if ( opt_physics_method == GP_cuda ) cuda_constants_stale = true;
     break;
-
 
   case 's':
     opt_shader++; if ( opt_shader == SP_ENUM_SIZE ) opt_shader = 1;
@@ -1034,17 +1042,16 @@ World::cb_keyboard()
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower();
-    coords_stale=true;
     cuda_constants_stale = true;
     break;
   case '+':case '=': variable_control.adjust_higher();
-    coords_stale=true;
     cuda_constants_stale = true;
     break;
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
 
-  coords_stale = false;
+  if ( wire_radius_prev != wire_radius || helix_radius_prev != helix_radius )
+    coords_stale = true;
 
   // Update eye_direction based on keyboard command.
   //
