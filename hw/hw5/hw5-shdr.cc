@@ -160,53 +160,6 @@ gs_main_helix()
   EndPrimitive();
 }
 
-void
-gs_main_helix2()
-{
-  // Adjust color of certain triangles.
-
-  const bool type_a = In[0].hidx.x < In[2].hidx.x;
-
-  float th = type_a ? 0 : theta;
-  vec3 pctr = (In[0].var_vertex_e + In[1].var_vertex_e
-               + In[2].var_vertex_e ).xyz * 0.333333f;
-  vec4 tctr = ( gl_TexCoordIn[0][0] + gl_TexCoordIn[1][0]
-                + gl_TexCoordIn[2][0] ) * 0.333333f;
-
-  for ( int tri=0; tri<3; tri++ )
-    {
-      vec3 p0 = In[(0+tri)%3].var_vertex_e.xyz;
-      vec3 p1 = In[(1+tri)%3].var_vertex_e.xyz;
-      int p2_idx = (2+tri)%3;
-      vec3 p2 = pctr;
-
-      vec3 v01_norm = normalize( p0 - p1 );
-      vec3 v02 = p2 - p0;
-      vec3 p01_nearest = p0 + v01_norm * dot(v01_norm,v02);
-      vec3 axis2 = p2 - p01_nearest;
-      float axis2_len = length(axis2);
-      vec3 axis2_norm = axis2/axis2_len;
-      vec3 axis1_norm = cross(v01_norm,axis2_norm);
-      vec3 axis1 = axis2_len * axis1_norm;
-      vec4 new_p2 = vec4(p01_nearest + cos(th) * axis2 + sin(th) * axis1,1);
-      vec4 new_p2_c = gl_ProjectionMatrix * new_p2; 
-      vec3 new_norm = normalize(cross(v01_norm,new_p2.xyz-p0));
-      var_normal_e = -new_norm;
-
-      for ( int i=0; i<3; i++ )
-        {
-          gl_FrontColor = gl_FrontColorIn[i];
-          gl_BackColor = vec4(.8,0,0,1);
-          gl_Position = i == p2_idx ? new_p2_c : gl_PositionIn[i];
-          gl_TexCoord[0] = i == p2_idx ? tctr : gl_TexCoordIn[i][0];
-          var_vertex_e = i == p2_idx ? new_p2 : In[i].var_vertex_e;
-
-          EmitVertex();
-        }
-      EndPrimitive();
-    }
-}
-
 #endif
 
 
