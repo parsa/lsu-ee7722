@@ -1,6 +1,6 @@
 ### LSU EE 4702-1 (Fall 2012), GPU Programming
 ##
-##  Makefile for Homework 3
+##  Makefile for Homework 3 and Solution
 ##
 ## $Id:$
 
@@ -28,7 +28,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw3
+default: hw3 hw3-sol
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -40,6 +40,12 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 	  Makefile
 
 hw3: hw3.cc $(INCLUDES)
+	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
+	-o $@ $(LIBDIR)  $(LIBRARIES) 
+	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
+	-o $@-debug $(LIBDIR) $(LIBRARIES) 
+
+hw3-sol: hw3-sol.cc $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES) 
 	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
