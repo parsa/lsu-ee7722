@@ -81,8 +81,9 @@ __device__ pNorm mn(pVect v)
     }
   else
     {
-      n.magnitude = sqrtf(n.mag_sq);
-      n.v = (1.0f/n.magnitude) * v;
+      const float rsq = 1.0f/sqrtf(n.mag_sq);
+      n.magnitude = 1.0f/rsq;
+      n.v = rsq * v;
     }
   return n;
 }
