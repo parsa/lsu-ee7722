@@ -1,12 +1,23 @@
+/// LSU EE 4702-1 (Fall 2012), GPU Programming
+//
+
+ /// Homework 5
+//
+//   See hw5.cc for details.
+
 #include "cuda-util.cu"
 #include "hw5.cuh"
 #include <gp/cuda-util-kernel.h>
 
+// Physical State Variables
+//
 __constant__ float3 *helix_position;
 __constant__ float3 *helix_velocity;
 __constant__ pQuat *helix_orientation;
 __constant__ float3 *helix_omega;
 
+// Scalar Constants (Placed in a struct for convenience.)
+//
 __constant__ Helix_Info hi;
 
 __global__ void time_step();
@@ -14,6 +25,7 @@ __global__ void time_step();
 __host__ cudaError_t
 cuda_setup(struct cudaFuncAttributes *attr_helix)
 {
+  // Pass the device address to host code. (See gp/cuda-util-kernel.h ).
   CU_SYM(helix_position);
   CU_SYM(helix_velocity);
   CU_SYM(helix_orientation);
@@ -141,30 +153,30 @@ time_step()
   float3 omega = helix_omega[tid];
   omega *= 0.9999f;
   velocity += hi.delta_t_mass_inv * force;
-  c_position += hi.delta_t * velocity;
   const float torque_axial_mag = dot( torque, c_ctr_to_right_dir );
   pVect torque_axial = torque_axial_mag * c_ctr_to_right_dir;
   pVect do_axial = hi.delta_t_ma_axis * torque_axial;
   pVect torque_other = torque - torque_axial;
   pVect do_other = hi.delta_t_ma_perp_axis * torque_other;
   omega += do_axial + do_other;
-  pNorm axis = mn(omega);
 
-  c_orientation =
-    quat_normalize
-    ( quat_mult ( mq( axis, hi.delta_t * axis.magnitude ), c_orientation));
+  // Update velocity and omega. Don't update position or orientation
+  // because we don't want threads in this kernel to accidentally read
+  // the updated values.
 
   helix_omega[tid] = omega;
   helix_velocity[tid] = velocity;
-  helix_position[tid] = c_position;
-  helix_orientation[tid] = c_orientation;
 }
+
 
 __device__ void
 helix_apply_force_at
 (float3 position, float3& force, float3& torque,
  float3 force_pos, pVect dir, float magnitude)
 {
+  // Update force and torque of segment for a force acting on FORCE_POS
+  // pointing in direction DIR of magnitude MAGNITUDE.
+  //
   force += magnitude * dir;
   pVect arm = mv(position,force_pos);
   pVect axis = cross( arm, dir );
@@ -172,3 +184,43 @@ helix_apply_force_at
   torque += amt;
 }
 
+
+__global__ void
+time_step_update_pos()
+{
+  // Update position and orientation of spring segments.
+
+  // Use tid for helix segment number.
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+  // Skip out-of-range segments.
+  if ( tid >= hi.phys_helix_segments ) return;
+  if ( tid == 0 ) return;
+
+  // Update Orientation
+  //
+  pQuat orientation = helix_orientation[tid];
+  float3 omega = helix_omega[tid];
+  pNorm axis = mn(omega);
+  helix_orientation[tid] =
+    quat_normalize
+    ( quat_mult ( mq( axis, hi.delta_t * axis.magnitude ), orientation));
+
+  // Return if at last segment and it is fixed. Note that even
+  // if the segment's position is fixed, it can still rotate.
+  //
+  if ( hi.opt_end_fixed && tid + 1 == hi.phys_helix_segments ) return;
+
+  // Update Velocity
+  //
+  float3 position = helix_position[tid];
+  float3 velocity = helix_velocity[tid];
+  helix_position[tid] = position + hi.delta_t * velocity;
+}
+
+__host__ void 
+time_step_update_pos_launch
+(int grid_size, int block_size)
+{
+  time_step_update_pos<<<grid_size,block_size>>>();
+}

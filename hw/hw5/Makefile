@@ -66,6 +66,7 @@ default: hw5
 	$(CUDUMP) -sass $*.cubin > $*.sass &
 	$(CXX) $(CFLAGS) --compile $*.cu
 
+hw5-cuda.o: hw5.cuh
 
 
 hw5: $(OBJ_FILES)

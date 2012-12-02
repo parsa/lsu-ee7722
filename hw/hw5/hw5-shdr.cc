@@ -1,7 +1,9 @@
 /// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
 
-// $Id:$
+ /// Homework 5
+ //
+ //  See hw5.cc for details.
 
 // Specify version of OpenGL Shading Language.
 //
@@ -124,8 +126,6 @@ vs_main_helix()
   // Copy texture coordinate to output (no need to modify it).
   // Only copy x and y components since it's a 2D texture.
   //
-  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
-
   gl_TexCoord[0].x = -helix_index.x * 0.25f;
   gl_TexCoord[0].y = helix_index.y * 0.05f;
 }
@@ -138,15 +138,12 @@ gs_main_helix()
 {
   // Adjust color of certain triangles.
 
-  const bool type_a = In[0].hidx.x < In[2].hidx.x;
-  vec4 color_adjust = type_a ? vec4(0.9,0.9,0.9,1) : vec4(1);
-
   for ( int i=0; i<3; i++ )
     {
       // Send the adjusted colors.
       //
-      gl_FrontColor = gl_FrontColorIn[i] * color_adjust;
-      gl_BackColor = gl_BackColorIn[i] * color_adjust;
+      gl_FrontColor = gl_FrontColorIn[i];
+      gl_BackColor = gl_BackColorIn[i];
 
       // Pass the other values through unmodified.
       //

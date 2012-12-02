@@ -1,7 +1,12 @@
 /// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
 
- /// Homework 5
+ /// Homework 5*
+ //
+ //  This version includes some changes no in original assignment.
+ //  To get the original assignment issue the following commands
+ //    in a check-out of the assignment:
+ //      svn update -r397
  //
  // Assignment in: http://www.ece.lsu.edu/koppel/gpup/2012/hw05.pdf
  //
@@ -13,9 +18,12 @@
  //
  /// Object (Eye, Light, Ball) Location or Push
  //   Arrows, Page Up, Page Down
- //   Will move object or push ball, depending on mode:
+ //   Will move object or push end of spring, depending on mode:
  //   'e': Move eye.
+ //   'b': Grab top (last segment of) of spring.
  //   'l': Move light.
+ //
+ //   'B': Release top (last segment of) spring.
  //
  /// Eye Direction
  //   Home, End, Delete, Insert
@@ -28,7 +36,12 @@
  //  (Also see variables below.)
  //
  //  'a'    Switch between CPU and GPU physics.
- //  'i'    Toggle interpenetration handling.
+ //  'i'    Cycle three methods of interpenetration handling: 
+ //           GPU Physics Mode: None, GPU-Prob-1, GPU-Prob-2.
+ //           CPU Physics Mode: None, CPU, CPU (last two equivalent).
+ //  'b'    Grab free end (last segment) of spring. Once grabbed, can 
+ //         be controlled with arrow keys (see above).
+ //  'B'    Release spring.
  //  'p'    Pause simulation.
  //  'g'    Toggle gravity on and off.
  //  't'    Toggle state of Boolean opt_test, use it as you like.
@@ -157,6 +170,8 @@ public:
   float opt_light_intensity;
 
   pCoor helix_location;
+  Wire_Segment *helix_end_ws;  // Last (end) segment of helix.
+  bool opt_end_fixed;   // If true position of "end" of helix is fixed in space.
   float helix_radius;   // Radius of helix.
   float wire_radius;    // Radius of wire forming helix.
   int seg_per_helix_revolution;
@@ -211,7 +226,7 @@ public:
   float opt_spring_constant;
   float opt_helix_density;
   bool opt_gravity;
-  bool opt_interpen;
+  int opt_interpen_method;
   bool opt_test;
   float helix_seg_mass;
   float helix_seg_mass_inv;
@@ -263,6 +278,7 @@ World::init()
   opt_light_intensity = 1.5;
   light_location = pCoor(12.2,4.0,6.9);
 
+  opt_end_fixed = false;
   helix_location = pCoor(0,0,-5);
   helix_radius = 5;
   wire_radius = 0.6;
@@ -291,7 +307,7 @@ World::init()
 
   modelview_update();
 
-  opt_physics_method = GP_cpu;
+  opt_physics_method = GP_cuda;
 
   opt_spring_constant = 900000;
   gravity_accel = pVect(0,-.98,0);
@@ -304,7 +320,7 @@ World::init()
   opt_pause = false;
   world_time = time_wall_fp();
   opt_gravity = true;
-  opt_interpen = false;
+  opt_interpen_method = 0;
   opt_test = false;
 
   cuda_init();
@@ -371,13 +387,17 @@ World::render()
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Interpenetration: %s ('i')  Debug: %d ('t')\n",
+    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Interpenetration: %s ('i')  Debug: %d ('t')\n",
      opt_physics_method != GP_cuda
      ? BLINK(gpu_physics_method_str[opt_physics_method],"      ")
      : gpu_physics_method_str[opt_physics_method],
      opt_pause ? BLINK("ON","  ") : "OFF",
      opt_gravity ? "ON" : "OFF",
-     opt_interpen ? "ON" : BLINK("OFF","   "),
+     opt_end_fixed ? "YES" : "NO",
+     opt_end_fixed ? "B" : "b",
+     opt_interpen_method ?
+     ( opt_interpen_method == 1 ? "PROB-1" : "PROB-2" )
+     : BLINK("OFF","   "),
      opt_test);
 
   ogl_helper.fbprintf("Spring Energy: %f\n", helix_spring_energy);
@@ -551,6 +571,7 @@ World::render()
       wire_surface_indices_size = wire_surface_indices.occ();
       helix_coords_size = helix_coords.occ();
       helix_indices_size = helix_indices.occ();
+      helix_end_ws = &wire_segments.peek();
     }
 
   // Update data on GPU if necessary.
@@ -606,7 +627,8 @@ World::render()
 #define SET(m) hi.m = m;
       SET(opt_gravity);
       SET(opt_test);
-      SET(opt_interpen);
+      SET(opt_end_fixed);
+      SET(opt_interpen_method);
       SET(opt_spring_constant);
       SET(delta_t);
       SET(delta_t_mass_inv);
@@ -690,6 +712,7 @@ World::render()
           if ( opt_physics_method == GP_cuda )
             {
               time_step_launch(grid_size,block_size);
+              time_step_update_pos_launch(grid_size,block_size);
             }
           else
             time_step_cpu();
@@ -910,7 +933,7 @@ World::time_step_cpu()
 
   /// Quick and Dirty and Slow Interpenetration Routine
   //
-  if ( opt_interpen )
+  if ( opt_interpen_method )
     {
       // Rule out interpenetration between segments that are closer
       // together than MIN_IDX_DIST. In other words, assume that
@@ -953,6 +976,8 @@ World::time_step_cpu()
       cseg->velocity *= 0.9999;
       cseg->omega *= 0.9999;
       cseg->velocity += delta_t_mass_inv * cseg->force;
+      if ( opt_end_fixed && i + 1 == phys_helix_segments )
+        cseg->velocity = vZero;
       cseg->position += delta_t * cseg->velocity;
       const float torque_axial_mag =
         dot( cseg->torque, cseg->ctr_to_right_dir );
@@ -1085,7 +1110,14 @@ World::cb_keyboard()
     if ( opt_physics_method == GP_cuda ) cuda_constants_stale = true;
     break;
 
-  case 'b': case 'B': opt_move_item = MI_Ball; break;
+  case 'b':
+    opt_end_fixed = true; opt_move_item = MI_Ball;
+    cuda_constants_stale = true;
+    break;
+  case 'B': 
+    opt_end_fixed = false;
+    cuda_constants_stale = true;
+    break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
 
@@ -1093,7 +1125,8 @@ World::cb_keyboard()
     cuda_constants_stale = true;
     break;
 
-  case 'i': case 'I': opt_interpen = !opt_interpen;
+  case 'i': case 'I': opt_interpen_method++;
+    if ( opt_interpen_method > 2 ) opt_interpen_method = 0;
     cuda_constants_stale = true;
     break;
 
@@ -1141,7 +1174,13 @@ World::cb_keyboard()
       switch ( opt_move_item ){
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
-      case MI_Ball: helix_location += adjustment; break;
+      case MI_Ball:
+        cuda_constants_stale = true;
+        if ( opt_end_fixed )
+          helix_end_ws->position += adjustment;
+        else
+          helix_location += adjustment;
+        break;
       default: break;
       }
       modelview_update();

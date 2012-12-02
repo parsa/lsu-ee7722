@@ -2,14 +2,15 @@
 __host__ cudaError_t cuda_setup(struct cudaFuncAttributes *attr_helix);
 
 __host__ void time_step_launch(int grid_size, int block_size);
+__host__ void time_step_update_pos_launch
+(int grid_size, int block_size);
 
-
-__host__ void time_step_intersect_launch(int grid_size, int block_size);
 
 struct Helix_Info {
   bool opt_gravity;
   bool opt_test;
-  bool opt_interpen;
+  bool opt_end_fixed;
+  int opt_interpen_method;
   float opt_spring_constant;
 
   float delta_t;
