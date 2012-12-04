@@ -1,7 +1,7 @@
 /// LSU EE 4702-1 (Fall 2012), GPU Programming
 //
 
- /// Homework 5
+ /// Homework 5 -- SOLUTION
 //
 //   See hw5.cc for details.
 
@@ -206,10 +206,11 @@ helix_apply_force_at
 __global__ void
 time_step_intersect()
 {
-  // Find intersections of one helix segment with some other segments.
-  // Each block handles one "a" segment, the threads in the block
-  //  check for intersection with other segments.
-  // The kernel is launched with one block per segment.
+  // Find intersections of one helix segment with some other
+  // segments. Each block handles one "a" segment, the threads in the
+  // block check for intersection with other segments, called "b"
+  // segments in the code. The kernel is launched with one block per
+  // segment.
 
   int a_idx = blockIdx.x;
   int b_idx_start = threadIdx.x;
@@ -247,7 +248,7 @@ time_step_intersect()
 
       // Add force to shared variable. This is time consuming but
       // done infrequently. (A segment can normally only intersect a
-      // a few other segments.
+      // a few other segments.)
       //
       atomicAdd(&force.x,f.x);
       atomicAdd(&force.y,f.y);
