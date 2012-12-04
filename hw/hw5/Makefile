@@ -52,10 +52,10 @@ CU_SRC_FILE = hw5-cuda.cu
 
 OBJ_FILES = $(SRC_FILES:.cc=.o) $(CU_SRC_FILE:.cu=.o) 
 
-default: hw5
+OBJ_FILES_SOL = hw5-sol.o hw5-sol-cuda.o
 
-.cc.o:
-	$(CXX) $(CXXFLAGS) -c $*.cc
+default: hw5 hw5-sol
+
 
 %.o: %.cc $(INCLUDES) Makefile
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -67,13 +67,17 @@ default: hw5
 	$(CXX) $(CFLAGS) --compile $*.cu
 
 hw5-cuda.o: hw5.cuh
+hw5-sol-cuda.o: hw5-sol.cuh
 
 
 hw5: $(OBJ_FILES)
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
+hw5-sol: $(OBJ_FILES_SOL)
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
 
 
 clean:
-	/bin/rm -f hw5 hw5-debug *.o *~ *.sass *.cubin *.ptx
+	/bin/rm -f hw5-sol hw5 hw5-debug *.o *~ *.sass *.cubin *.ptx
 
