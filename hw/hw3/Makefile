@@ -37,7 +37,7 @@ LIBRARIES = -lrt -lpthread
 
 default: all
 
-all: hw3
+all: hw3 hw3-sol
 
 %.o: %.cc Makefile
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -49,6 +49,9 @@ all: hw3
 	$(CUDUMP) -sass $*.cubin > $*.sass
 
 hw3: hw3.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+
+hw3-sol: hw3-sol.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 
