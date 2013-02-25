@@ -31,7 +31,7 @@ LIBRARIES =    -lrt
 
 
 
-default: stencil
+default: stencil stencil-2d
 
 .cc.o:
 	$(CXX) $(CFLAGS) -c $*.cc

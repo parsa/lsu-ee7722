@@ -1,5 +1,5 @@
 #include "stencil.cuh"
-
+#include <gp/cuda-util-kernel.h>
 
 // Constants holding array sizes and pointers and coefficients.
 //
@@ -23,6 +23,10 @@ kernels_get_attr(struct cudaFuncAttributes *attr, char **names)
   // used.
 
   cudaError_t er;
+
+  CU_SYM(a); CU_SYM(b);
+  CU_SYM(array_size);
+  CU_SYM(v0); CU_SYM(v1);
 
 #define GETATTR(func)                                                         \
   er = cudaFuncGetAttributes(attr,func); *names = #func; attr++; names++;     \
