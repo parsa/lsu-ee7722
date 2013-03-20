@@ -141,8 +141,12 @@ kernel_few_threads_d()
   const int array_size = d_app.array_size;
   Vertex zero; for ( int i=0; i<N; i++ ) zero.a[i] = 0;
 
+  const int stride_lg = 5;
+  const int stride = 1 << stride_lg;
   const int safe_limit = array_size - DEGREE * num_threads;
-  int h = tid;
+  const int lane = threadIdx.x & ( stride - 1 );
+  const int warp_num = tid >> stride_lg;
+  int h = warp_num * stride * DEGREE + lane;
 
   // Make sure compiler doesn't try to unroll it further.
 # pragma unroll 1
@@ -155,7 +159,7 @@ kernel_few_threads_d()
       //
       Vertex p[DEGREE];
       for ( int i=0; i<DEGREE; i++ )
-        p[i] = make_vertex(d_app.d_v_in_f4[h + i * num_threads]);
+        p[i] = make_vertex(d_app.d_v_in_f4[h + i * stride]);
 
       // Transform and store them.
       //
@@ -164,19 +168,23 @@ kernel_few_threads_d()
           Vertex q = zero;
           for ( int i=0; i<N; i++ )
             for ( int j=0; j<N; j++ ) q.a[i] += d_app.matrix[i][j] * p[l].a[j];
-          d_app.d_v_out[h+l*num_threads] = q;
+          d_app.d_v_out[h+l*stride] = q;
         }
     }
 
-  // Perform the last few iterations.
+  // Perform last few iterations.
   //
-  for ( ; h < array_size; h += num_threads )
+  for ( int l=0; l<DEGREE; l++ )
     {
-      Vertex p = make_vertex(d_app.d_v_in_f4[h]);
-      Vertex q = zero;
-      for ( int i=0; i<N; i++ )
-        for ( int j=0; j<N; j++ ) q.a[i] += d_app.matrix[i][j] * p.a[j];
-      d_app.d_v_out[h] = q;
+      const int idx = h + l * stride;
+      if ( idx < array_size )
+        {
+          Vertex p = make_vertex(d_app.d_v_in_f4[idx]);
+          Vertex q = zero;
+          for ( int i=0; i<N; i++ )
+            for ( int j=0; j<N; j++ ) q.a[i] += d_app.matrix[i][j] * p.a[j];
+          d_app.d_v_out[idx] = q;
+        }
     }
 }
 
