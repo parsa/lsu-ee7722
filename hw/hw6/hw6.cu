@@ -475,7 +475,7 @@ main(int argc, char **argv)
               }
 
           const double frac = data_size / elapsed_time_s / info.bw_Bps;
-          const int s_idx = full_width * ( 1 - frac );
+          const int s_idx = max(0.0,full_width * ( 1 - frac ));
 
           printf(" %2d  %9.3f  %6.2f %5.1f%%  %s\n",
                  warp_cnt, 1e6 * elapsed_time_s,
