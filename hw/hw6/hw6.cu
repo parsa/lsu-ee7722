@@ -274,7 +274,7 @@ print_gpu_info()
         ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
          "OP/ELT %.2f\n",
          dev,
-         cuda_prop.l2CacheSize,
+         cuda_prop.l2CacheSize >> 10,
          chip_bw_Bps * 1e-9,
          chip_sp_flops * 1e-9,
          4 * chip_sp_flops / chip_bw_Bps);
