@@ -15,8 +15,8 @@ double cuda_ips_get(cudaDeviceProp cuda_prop)
 {
   const int peak_ipc =
   cuda_prop.major == 1 ? 8 :
-    cuda_prop.major == 2 & cuda_prop.minor == 0 ? 32 :
-    cuda_prop.major == 2 & cuda_prop.minor == 1 ? 48 : 0;
+    cuda_prop.major == 2 && cuda_prop.minor == 0 ? 32 :
+    cuda_prop.major == 2 && cuda_prop.minor == 1 ? 48 : 0;
 
   return peak_ipc
     * 1000.0 * cuda_prop.multiProcessorCount * cuda_prop.clockRate;
@@ -315,14 +315,23 @@ public:
 
   void start()
   {
-    //  run_sort(8,4,4); return;
+    if ( false )
+      {
+        // Run just 1-bit-split block sort.
+        //  run_sort(8,4,4); return;
+
+        //  run_sort(2,4,0); run_sort(3,4,0); run_sort(4,4,0); run_sort(5,4,0);
+        run_sort(6,4,0);
+        //  run_sort(7,4,0);
+        run_sort(8,4,0);
+        return;
+      }
+
     if ( true )
       {
-        run_sort(8,4,2);
-        run_sort(8,4,3);
-        run_sort(6,4,4);
-        run_sort(7,4,4);
-        run_sort(8,3,4);
+        run_sort(6,16,4);
+        run_sort(7,16,4);
+        run_sort(8,16,4);
         return;
       }
 
@@ -458,7 +467,7 @@ public:
         scan_out.from_cuda();
         scan_r2.from_cuda();
 
-        if ( true ) for ( int tile = 0; tile < 4; tile ++ )
+        if ( version == 4 ) for ( int tile = 0; tile < 4; tile ++ )
           {
             printf("T %2d: ",tile);
             const int idx_base = tile * sort_bin_size;
@@ -474,7 +483,7 @@ public:
 
         const double peak_insn = cuda_time_ms * 1e-3 * cuda_ips_get(cuda_prop);
 
-        printf("CUDA Time %7.3f ms  Throughput %7.3f elt/s  Eff %.4f  "
+        printf("CUDA Time %7.3f ms  Throughput %7.3f G elt/s  Eff %.4f  "
                "Eff ac %.4f\n",
                cuda_time_ms,
                array_size / ( cuda_time_ms * 1e6 ),

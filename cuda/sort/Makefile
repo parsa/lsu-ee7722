@@ -11,7 +11,7 @@ CUDUMP = $(CUDAPATH)/bin/cuobjdump
 #   Execution problem occurs with --use_fast_math and certain data placement.
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  -use_fast_math
+ -O3 --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_20
 
 # -maxrregcount
 
@@ -27,6 +27,7 @@ CXX = $(CUDAPATH)/bin/nvcc
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
 LIBRARIES =    -lrt 
+LIBRARIES =   
 
 
 

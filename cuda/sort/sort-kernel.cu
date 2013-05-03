@@ -1,4 +1,5 @@
 #include "sort.cuh"
+#include <gp/cuda-util-kernel.h>
 
 // Constants holding array sizes and pointers and coefficients.
 //
@@ -33,6 +34,21 @@ static __host__ int
 kernels_get_attr_(pCUDA_Func_Attributes *attr)
 {
   int count = 0;
+
+  CU_SYM(block_lg);
+  CU_SYM(array_size); CU_SYM(array_size_lg);
+  CU_SYM(scan_in); CU_SYM(scan_out);
+  CU_SYM(scan_r2);
+
+  CU_SYM(sort_in); CU_SYM(sort_out); CU_SYM(sort_out_b);
+  CU_SYM(sort_tile_histo);
+  CU_SYM(sort_histo);
+
+  CU_SYM(sort_bin_mask);
+  CU_SYM(sort_bin_size); CU_SYM(sort_bin_count);
+  CU_SYM(sort_all_bin_count); CU_SYM(sort_all_bin_lg);
+  CU_SYM(sort_bin_lg);
+
 
 #define GETATTR(func)                                                         \
   count++;                                                                    \
@@ -173,22 +189,25 @@ sort_segments_1_bit_split()
   int elt_per_thread = 4;
   int elt_per_block = elt_per_thread * blockDim.x;
   int idx_block_start = elt_per_block * blockIdx.x;
-  int idx_block_stop = idx_block_start + elt_per_block;
 
   int idx_start = idx_block_start + threadIdx.x;
-  int key_base_rd = 0;
 
   // Load Elements
   //
-  for ( int sidx = threadIdx.x, i = 0;
-        i < elt_per_thread; i++, sidx += blockDim.x )
-    s[sidx] = sort_in[ idx_block_start + sidx ];
+  for ( int i = 0;  i < elt_per_thread; i++ )
+    {
+      const int sidx = threadIdx.x + i * blockDim.x;
+      s[ sidx ] = sort_in[ idx_block_start + sidx ];
+    }
 
   sort_block_1_bit_split(0,32);
 
-  for ( int idx = idx_start, sidx = threadIdx.x;
-        idx < idx_block_stop; sidx += blockDim.x, idx += blockDim.x )
-        sort_out[idx] = s[ key_base_rd + sidx ];
+  for ( int i = 0;  i < elt_per_thread; i++ )
+    {
+      const int sidx = threadIdx.x + i * blockDim.x;
+      const int idx = idx_start + i * blockDim.x;
+      sort_out[idx] = s[ sidx ];
+    }
 }
 
 __device__ void
@@ -207,88 +226,56 @@ sort_block_1_bit_split(int bit_low, int bit_count)
   int pfe_base_rd = elt_per_block;
   int pfi_base_rd = elt_per_block + 1;
 
-  volatile __shared__ int col_total[16];
-  if ( threadIdx.x < 16 )
-    {
-      s[ pfe_base_rd ] = 0;
-      col_total[threadIdx.x] = 0;
-    }
-
   // Sort Elements From LSB to MSB.
   //
   for ( int bit_pos=bit_low; bit_pos<bit_low+bit_count; bit_pos++ )
     {
-      int bit_mask = 1 << bit_pos;
-      int prefix_vector = 0;
+      const uint bit_mask = 1 << bit_pos;
 
       // Storage for thread's keys.
       //
       int keys[elt_per_thread];
 
-      /// Strategy:
-      //
-      //  Pack "bit" from four elements' keys into one integer, the
-      //  prefix vector, saving memory and time.
-      //
-      //  For example:
-      //   Bit position: LSB
-      //   Keys:            3,  4,  5,  7
-      //   Bits:            1,  0,  1,  1
-      //   Prefix Vector:   0x01000101
-
       __syncthreads();
 
       // Initialize data for prefix sum of bit bit_pos, and make copy of key.
       //
-      for ( int sidx = threadIdx.x, i = 0;
-            i < elt_per_thread; i++, sidx += blockDim.x )
+      int my_ones_write = 0;
+
+      for ( int i = 0; i < elt_per_thread; i++ )
         {
-          int positioned_bit = 1 << ( i * 8 );
-          keys[i] = s[ sidx ];
-          if ( keys[i] & bit_mask ) prefix_vector += positioned_bit;
+          //  const int sidx = threadIdx.x + i * blockDim.x;
+          const int sidx = threadIdx.x * elt_per_thread + i;
+
+          // Make a copy of key.
+          //
+          const int key = s[ sidx ];
+          keys[i] = key;
+          if ( key & bit_mask ) my_ones_write++;
         }
 
       // Store prefix vector for our for elements into shared memory.
       //
-      s[ pfi_base_rd + threadIdx.x ] = prefix_vector;
-      __syncthreads();
+      s[ pfi_base_rd + threadIdx.x ] = my_ones_write;
+      if ( threadIdx.x == 0 ) s[ pfe_base_rd ] = 0;
 
-      // Operate on a neighbor's vector.
-      //
-      uint pfv_1 = s[ pfe_base_rd + threadIdx.x ];
+      uint my_prefix = my_ones_write;
 
-
-      //
+      // Compute a prefix sum of vectors.
       for ( int tree_level = 0; tree_level < block_lg; tree_level++ )
         {
           int dist = 1 << tree_level;
-          int idx_0 = threadIdx.x - dist;
+          int idx_neighbor = threadIdx.x - dist;
           __syncthreads();
-          uint pfv_0 = threadIdx.x >= dist ? s[ pfe_base_rd + idx_0 ] : 0;
-          pfv_1 += pfv_0;
+          uint neighbor_prefix =
+            threadIdx.x >= dist ? s[ pfi_base_rd + idx_neighbor ] : 0;
+          
+          my_prefix += neighbor_prefix;
           __syncthreads();
-          s[ pfe_base_rd + threadIdx.x ] = pfv_1;
+          s[ pfi_base_rd + threadIdx.x ] = my_prefix;
         }
 
-      // At this point pfv_1 contains exclusive prefix of each column.
-
-      __syncthreads();
-
-      const int ct_wbase = 8;
-      if ( threadIdx.x < 8 )
-        {
-          int pfv = s[pfe_base_rd + blockDim.x - ( threadIdx.x & 0x1 ) ];
-          int shift = ( threadIdx.x & 0x6 ) << 2;
-          int my_val = ( pfv >> shift ) & 0xff;
-          int sidx = ct_wbase + threadIdx.x;
-          col_total[ sidx ] = my_val;
-          col_total[ sidx ] = my_val += col_total[ sidx - 1 ] ;
-          col_total[ sidx ] = my_val += col_total[ sidx - 2 ] ;
-          col_total[ sidx ] = my_val += col_total[ sidx - 4 ] ;
-        }
-
-      __syncthreads();
-      int ct_base = ct_wbase - 1;
+      // At this point my_prefix contains exclusive prefix of each group.
 
 #if 0
       if ( threadIdx.x == 0 && blockIdx.x == 0 )
@@ -298,21 +285,25 @@ sort_block_1_bit_split(int bit_low, int bit_count)
         }
 #endif
 
-       int total_ones = col_total[ct_base+8];
+      __syncthreads();
 
-      for ( int sidx = threadIdx.x, i = 0;
-            i < elt_per_thread; i++, sidx += blockDim.x )
+      const int total_ones = s[ pfe_base_rd + blockDim.x ];
+      const int idx_first_one = elt_per_block - total_ones;
+      int count = s[ pfe_base_rd + threadIdx.x ];
+
+      for ( int i = 0;  i < elt_per_thread;  i++ )
         {
-          int count = ( pfv_1 & 0xff ) + col_total[ct_base+2*i];
+          //  const int sidx = threadIdx.x + i * blockDim.x;
+          const int sidx = threadIdx.x * elt_per_thread + i;
           int key = keys[i];
-          int new_idx = key & bit_mask
-            ? elt_per_block - total_ones + count
-            : sidx - count;
+          int new_idx = key & bit_mask ? idx_first_one + count : sidx - count;
           s[ new_idx ] = key;
-          pfv_1 >>= 8;
+          if ( key & bit_mask ) count++;
         }
     }
+  __syncthreads();
 }
+
 
 __global__ void
 sort_block_batcher()
@@ -584,7 +575,7 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 __device__ void radix_sort_1_pass_2_tile
 (int bin_idx, int tile_idx, bool last_iter);
 
-__device__ void
+__global__ void
 radix_sort_1_pass_2(int bin_idx, bool last_iter)
 {
   int elt_per_thread = 4;
