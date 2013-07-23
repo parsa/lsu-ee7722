@@ -282,8 +282,9 @@ public:
     dev_ptr_name[0] = dev_name;
     get_dev_addr(0); get_dev_addr(1); // Force allocation.
     dev_addr_seen[0] =  dev_addr_seen[1] = true;
+    const char* const dev_symbol = cuda_util_data.sym_lookup(dev_name);
     CE(cudaMemcpyToSymbol
-       (dev_name, &dev_addr[0], sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
+       (dev_symbol, &dev_addr[0], sizeof(dev_addr), 0, cudaMemcpyHostToDevice));
   }
 
   void to_cuda()
