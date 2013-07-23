@@ -13,6 +13,8 @@
 
 #include <stdint.h>
 
+__host__ void cuda_init_routine();
+
 #define CUDA_TRI_BLOCK_LG 6
 #define CUDA_TRI_BLOCK_SIZE (1<<CUDA_TRI_BLOCK_LG)
 

@@ -55,6 +55,44 @@ __constant__ float platform_xmax;
 __constant__ float platform_zmin;
 __constant__ float platform_zmax;
 
+#include <gp/cuda-util-kernel.h>
+
+__host__ void cuda_init_routine()
+{
+  CU_SYM(vtx_strc_x);
+  CU_SYM(tri_strc_x);
+  CU_SYM(tri_data);
+  CU_SYM(vtx_data_x0);
+  CU_SYM(vtx_data_x1);
+  CU_SYM(tower_volumes);
+  CU_SYM(centroid_parts);
+  CU_SYM(tri_work_strc_x);
+  CU_SYM(tri_work_strc);
+  CU_SYM(tri_work_per_vtx);
+  CU_SYM(tri_work_per_vtx_lg);
+  CU_SYM(volume_cpu);
+  CU_SYM(tri_count);
+  CU_SYM(point_count);
+  CU_SYM(tethered_idx);
+  CU_SYM(opt_gravity);
+  CU_SYM(spring_constant);
+  CU_SYM(damping_v);
+  CU_SYM(pressure_factor_coeff);
+  CU_SYM(gas_m_over_temp);
+  CU_SYM(air_resistance);
+  CU_SYM(gas_mass_per_vertex);
+  CU_SYM(air_particle_mass);
+  CU_SYM(gravity_mag);
+  CU_SYM(delta_t);
+  CU_SYM(rep_constant);
+  CU_SYM(point_mass);
+  CU_SYM(point_mass_inv);
+  CU_SYM(platform_xmin);
+  CU_SYM(platform_xmax);
+  CU_SYM(platform_zmin);
+  CU_SYM(platform_zmax);
+}
+
 
 __device__ float4 make_float4(float3 f3, float f)
 {

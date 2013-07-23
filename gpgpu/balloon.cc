@@ -1160,7 +1160,7 @@ Balloon::time_step_cpu_once()
       Balloon_Vertex* const p = &points[rp->pi];
       Balloon_Vertex* const q = &points[rp->qi];
       pNorm p_to_q(p->pos,q->pos);
-      const double dist_sq_inv = rep_constant / max(0.001,p_to_q.mag_sq);
+      const double dist_sq_inv = rep_constant / max(0.001f,p_to_q.mag_sq);
       pVect rep_force(dist_sq_inv * p_to_q);
       p->force_rep -= rep_force;
       q->force_rep += rep_force;
@@ -1225,7 +1225,7 @@ Balloon::time_step_cpu_once()
       p->force = pVect(0,0,0);
 
       pNorm vel_norm(-p->vel);
-      const double facing_area = max(0.0,dot(vel_norm,p->surface_normal));
+      const double facing_area = max(0.0f,dot(vel_norm,p->surface_normal));
       pVect force_ar = - air_resistance * facing_area * p->vel;
 
       pVect gforce = point_mass * p->mass * gravity;
@@ -1713,6 +1713,8 @@ Balloon::init_cuda()
 
   CE(cudaEventCreate(&world.frame_start_ce));
   CE(cudaEventCreate(&world.frame_stop_ce));
+
+  cuda_init_routine();
 
   CMX_SETUP3(cuda_vtx_strc,a,n0);
   CMX_SETUP3(cuda_vtx_strc,b,n4);

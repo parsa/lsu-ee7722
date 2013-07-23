@@ -11,11 +11,11 @@ GPINCLUDE = -I../include
 #
 CCFLAGS =  $(shell Magick++-config --cxxflags) -Wall \
 	-Wno-strict-aliasing -Wno-parentheses \
-	-I $(CUDAPATH)/include $(GPINCLUDE)
+	-I $(CUDAPATH)/include
 
 # Flags that should be passed to both nvcc and the c++ compiler.
 #
-NVCCCCFLAGS = -O3 -g
+NVCCCCFLAGS = -O3 -g  $(GPINCLUDE)
 
 # Flags recognized only by nvcc.
 #
