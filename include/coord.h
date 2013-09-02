@@ -113,6 +113,9 @@ public:
       for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
   }
 
+  inline float det();
+  inline pMatrix inverse();
+
 #if 0
   void apply_translation(pVect displ);
 
@@ -172,6 +175,70 @@ public:
   inline void column_set(int col, pVect v);
 };
 
+class pMatrix3x3 {
+public:
+  float a[9];
+
+  pMatrix3x3(){set_identity();}
+
+  pMatrix3x3(pMatrix& m, int r, int c);
+
+  operator float* () { return &a[0]; }
+
+  void copy(pMatrix m){ memcpy(a,m.a,sizeof(a)); }
+
+  void set_zero(){memset(a,0,sizeof(a));}
+
+  void set_identity()
+  {
+    set_zero();
+    for ( int i=0; i<3; i++ ) rc(i,i) = 1;
+  };
+
+  void set_transpose(pMatrix3x3 m)
+  {
+    for ( int r=0; r<3; r++ )
+      for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
+  }
+
+  inline float det();
+  inline pMatrix inverse();
+
+  float* row_get(int row_num) { return &a[row_num*3]; }
+  float rc_get(int row, int col) const {return a[ ( row *3 ) + col ];}
+  float& rc(int row, int col) {return a[ ( row *3 ) + col ];}
+  inline pVect r(int row_num);
+
+  void row_swap(int r1, int r2)
+  {
+    static float buffer[3];
+    float* const row1 = row_get(r1);
+    float* const row2 = row_get(r2);
+    row_copy(buffer,row1); row_copy(row1,row2); row_copy(row2,buffer);
+  }
+
+  void row_mult(int r, double factor)
+  {
+    float* const row = row_get(r);
+    row[0] *= factor;  row[1] *= factor;
+    row[2] *= factor;
+  }
+
+  void row_copy(float *row_dest, float *row_src)
+  {
+    row_dest[0] = row_src[0];  row_dest[1] = row_src[1];
+    row_dest[2] = row_src[2];
+  }
+
+  void row_ssub(int row_dest, int row_src, double mult)
+  {
+    rc(row_dest,0) -= rc(row_src,0) * mult;
+    rc(row_dest,1) -= rc(row_src,1) * mult;
+    rc(row_dest,2) -= rc(row_src,2) * mult;
+  }
+
+};
+
 inline pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
 
 inline void
@@ -194,6 +261,23 @@ pMMultiply3x3(pMatrix& p, pMatrix m1, pMatrix m2)
 #undef T
 #undef E
 #undef C
+}
+
+pMatrix3x3::pMatrix3x3(pMatrix& m, int r, int c)
+{
+  int rj = 0;
+  for ( int ri=0; ri<4; ri++ )
+    {
+      if ( ri == r ) continue;
+      int cj = 0;
+      for ( int ci=0; ci<4; ci++ )
+        {
+          if ( ci == c ) continue;
+          rc(rj,cj) = m.rc(ri,ci);
+          cj++;
+        }
+      rj++;
+    }
 }
 
 #define VEC_REDUCE_AND(v,f) ( f(v.x) && f(v.y) && f(v.z) )
@@ -387,6 +471,59 @@ inline float sum(pVect v){ return v.x+v.y+v.z; }
 
 inline pMatrix operator * (pMatrix m1, pMatrix m2){ return pMatrix(m1,m2); }
 
+inline pVect 
+pMatrix3x3::r(int row_num)
+{
+  float* const row = row_get(row_num);
+  return pVect(row[0],row[1],row[2]);
+}
+
+inline float
+pMatrix3x3::det()
+{
+  return dot( r(0), cross( r(1), r(2) ) );
+}
+
+inline float
+pMatrix::det()
+{
+  pMatrix3x3 m00(*this,0,0);
+  pMatrix3x3 m01(*this,0,1);
+  pMatrix3x3 m02(*this,0,2);
+  pMatrix3x3 m03(*this,0,3);
+  return 
+    rc(0,0) * m00.det()
+    - rc(0,1) * m01.det()
+    + rc(0,2) * m02.det()
+    - rc(0,3) * m03.det();
+}
+
+inline pMatrix
+pMatrix::inverse()
+{
+  pMatrix minv;
+
+  const float d = det();
+  if ( d == 0 )
+    {
+      for ( int rc=0; rc<4; rc++ ) minv.rc(rc,rc) = 0;
+      return minv;
+    }
+
+  const float dinv = 1/d;
+
+  for ( int r=0; r<4; r++ )
+    for ( int c=0; c<4; c++ )
+      {
+        pMatrix3x3 mrc(*this,r,c);
+        const bool pos = (r & 1) == (c & 1);
+        const float val = mrc.det() * dinv;
+        minv.rc(c,r) = pos ? val : -val;
+      }
+
+  return minv;
+}
+
 class pNorm : public pVect {
 public:
   pNorm(){}
@@ -416,6 +553,13 @@ public:
   {
     w = cosf(angle/2);
     v = sinf(angle/2) * axis;
+  }
+  void normalize()
+  {
+    const float mag_sq = v.mag_sq() + w * w;
+    const float mag_inv = powf(mag_sq,-0.5f);
+    v *= mag_inv;
+    w *= mag_inv;
   }
   pVect v;
   float w;
@@ -609,27 +753,7 @@ pMatrix invert(pMatrix& original);
 pMatrix invert(pMatrix& original)
 {
   const bool check = true;
-  pMatrix a = original;
-  pMatrix b; b.set_identity();
-
-  for ( int dia = 0; dia < 4; dia++ )
-    {
-      if ( a.rc(dia,dia) == 0 )
-        for ( int row = dia + 1; row < 4; row++ )
-          if ( a.rc(row,dia) != 0 )
-            { a.row_swap(row,dia);  b.row_swap(row,dia);  break;}
-      const float a00 = a.rc(dia,dia);
-      if ( a00 == 0 ) pError_Exit();
-      const double mult = 1.0 / a00;
-      a.row_mult(dia,mult);  b.row_mult(dia,mult);
-      for ( int row = 0; row < 4; row++ )
-        {
-          if ( row == dia ) continue;
-          const float adc = a.rc(row,dia);
-          if ( adc == 0 ) continue;
-          a.row_ssub(row,dia,adc);  b.row_ssub(row,dia,adc);
-        }
-    }
+  pMatrix b = original.inverse();
 
   if ( check )
     {
@@ -639,9 +763,9 @@ pMatrix invert(pMatrix& original)
       for ( int r=0; r<4; r++ )
         for ( int c=0; c<4; c++ )
           sum += fabs(ihope.rc(r,c)-iis.rc(r,c));
-      if ( sum > 1e-5 )
+      if ( sum > 1e-4 )
         {
-          //  printf("Can't invert, sum: %f\n",sum);
+          printf("Can't invert, sum: %f\n",sum);
           //  pError_Exit();
         }
     }
