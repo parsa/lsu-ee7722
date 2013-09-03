@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation, Graphics Code
 
@@ -7,6 +7,7 @@
 
 // $Id:$
 
+#undef DB_SV
 
 #define GL_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
@@ -230,13 +231,7 @@ public:
   }
 };
 
-const pColor white(0xffffff);
-const pColor gray(0x303030);
-const pColor lsu_business_purple(0x7f5ca2);
-const pColor lsu_spirit_purple(0x580da6);
-const pColor lsu_spirit_gold(0xf9b237);
-const pColor lsu_official_purple(0x2f0462);
-const pColor dark(0);
+#include <gp/colors.h>
 
 class World {
 public:
@@ -254,10 +249,12 @@ public:
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
   double world_time;
+  double last_frame_wall_time;
+  int time_step_count;
   float opt_gravity_accel;      // Value chosen by user.
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
-  bool opt_head_lock;
+  bool opt_head_lock, opt_tail_lock;
   bool opt_time_step_alt;
 
   // Tiled platform for ball.
@@ -277,6 +274,8 @@ public:
   float opt_light_intensity;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
   bool opt_pause;
+  bool opt_single_frame;      // Simulate for one frame.
+  bool opt_single_time_step;  // Simulate for one time step.
   int viewer_shadow_volume;
 
   pCoor eye_location;
@@ -284,7 +283,8 @@ public:
   pMatrix modelview;
   pMatrix transform_mirror;
 
-  void ball_init();
+  void ball_setup_1();
+  void ball_setup_2();
   void time_step_cpu(double);
   void balls_stop();
   void balls_freeze();
@@ -294,6 +294,7 @@ public:
   void balls_push(pVect amt);
 
   float opt_spring_constant;
+  float opt_air_resistance;
   float distance_relaxed;
   int chain_length;
   Ball *balls;
@@ -310,6 +311,7 @@ World::init_graphics()
 
   opt_platform_texture = true;
   opt_head_lock = false;
+  opt_tail_lock = false;
 
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
@@ -328,6 +330,8 @@ World::init_graphics()
 
   opt_move_item = MI_Eye;
   opt_pause = false;
+  opt_single_time_step = false;
+  opt_single_frame = false;
 
   sphere.init(40);
 
@@ -416,19 +420,53 @@ World::render_objects(Render_Option option)
       glEnable(GL_COLOR_SUM);
     }
 
+  Cone cone; cone.apex_radius = 1; cone.set_color(color_lsu_spirit_purple);
   if ( option == RO_Shadow_Volumes )
     {
+#ifdef DB_SV
+      glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
+      glEnable(GL_COLOR_SUM);
+      glColor3f(0.5,0,0);
+#endif
+      cone.light_pos = light_location;
       sphere.light_pos = light_location;
+
       for ( int i=0; i<chain_length; i++ )
         sphere.render_shadow_volume(balls[i].radius,balls[i].position);
+      for ( int i=1; i<chain_length; i++ )
+        {
+          Ball *const ball1 = &balls[i-1];
+          Ball *const ball2 = &balls[i];
+          cone.render_shadow_volume
+            (ball1->position,0.3*ball1->radius,
+             ball2->position-ball1->position);
+        }
     }
   else
-    for ( int i=0; i<chain_length; i++ )
-      sphere.render(balls[i].radius,balls[i].position);
+    {
+      for ( int i=0; i<chain_length; i++ )
+        {
+          if ( balls[i].contact )
+            sphere.color = color_gray;
+          else if ( i == 0 && opt_head_lock
+                    || i == chain_length-1 && opt_tail_lock )
+            sphere.color = color_pale_green;
+          else
+            sphere.color = color_lsu_spirit_gold;
+          sphere.render(balls[i].radius,balls[i].position);
+        }
+      for ( int i=1; i<chain_length; i++ )
+        {
+          Ball *const ball1 = &balls[i-1];
+          Ball *const ball2 = &balls[i];
+          cone.render(ball1->position,0.3*ball1->radius,
+                      ball2->position-ball1->position);
+        }
+    }
 
   glDisable(GL_COLOR_SUM);
   glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, dark);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, color_black);
 
   //
   // Render Platform
@@ -516,9 +554,9 @@ World::render()
   pColor ambient_color(0x555555);
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
-  glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
-  glLightfv(GL_LIGHT0, GL_AMBIENT, dark);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, white * opt_light_intensity);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, color_white * opt_light_intensity);
+  glLightfv(GL_LIGHT0, GL_AMBIENT, color_black);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, color_white * opt_light_intensity);
 
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
@@ -542,7 +580,18 @@ World::render()
   glEnable(GL_RESCALE_NORMAL);
   glEnable(GL_NORMALIZE);
 
+  const double time_now = time_wall_fp();
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
+
+  ogl_helper.fbprintf
+    ("Time Step: %8d  World Time: %11.6f  %s\n",
+     time_step_count, world_time,
+     opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
+     "Press 'p' to pause."
+     );
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
@@ -553,7 +602,7 @@ World::render()
   Ball& ball = balls[0];
 
   ogl_helper.fbprintf
-    ("Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+    ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z );
 
@@ -635,7 +684,7 @@ World::render()
 
   // Write lighter-colored, textured tiles.
   //
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,gray);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color_gray);
   glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,2.0);
   glColor3f(0.35,0.35,0.35);
   glDrawArrays(GL_QUADS,0,half_elements+4);
@@ -643,10 +692,10 @@ World::render()
   // Write darker-colored, untextured, mirror tiles.
   //
   glEnable(GL_BLEND);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,color_white);
   glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,20);
   glDisable(GL_TEXTURE_2D);
-  glColor3fv(lsu_spirit_purple);
+  glColor3fv(color_lsu_spirit_purple);
   glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
   glDisable(GL_BLEND);
 
@@ -674,7 +723,7 @@ World::render()
 
   // Turn off ambient light, turn on light 0.
   //
-  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
+  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, color_black);
   glEnable(GL_LIGHT0);
 
 
@@ -682,12 +731,14 @@ World::render()
 
   // Make sure that only stencil buffer written.
   //
+#ifndef DB_SV
   glColorMask(false,false,false,false);
   glDepthMask(false);
 
   // Don't waste time computing lighting.
   //
   glDisable(GL_LIGHTING);
+#endif
   glDisable(GL_TEXTURE_2D);
 
   // Set up stencil test to count shadow volume surfaces: plus 1 for
@@ -753,7 +804,8 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const float move_amt = 0.4;
+  const bool shift = ogl_helper.keyboard_shift;
+  const float move_amt = shift ? 2.0 : 0.4;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -766,16 +818,23 @@ World::cb_keyboard()
   case FB_KEY_INSERT: user_rot_axis.y =  -1; break;
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
+  case '1': ball_setup_1(); break;
+  case '2': ball_setup_2(); break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H': opt_head_lock = !opt_head_lock; break;
+  case 't': case 'T': opt_tail_lock = !opt_tail_lock; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': case 'S': balls_stop(); break;
   case 'v': case 'V': opt_time_step_alt = !opt_time_step_alt; break;
+  case ' ': 
+    if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
+    opt_pause = true; 
+    break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;

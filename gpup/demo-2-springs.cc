@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Simple Demo of Point Masses and Springs
 
@@ -12,22 +12,22 @@
 /// What Code Does
 
 // Simulates a string bouncing over a platform. The string is modeled
-// as point masses connected by springs with motion damped by air
-// resistance. The platform consists of tiles, some are purple-tinted
+// as point masses connected by springs with a long relaxed
+// length. The platform consists of tiles, some are purple-tinted
 // mirrors (showing a reflection of the ball), the others show the
-// course syllabus. The ball and the shape of the platform can be
-// manipulated by the user.
+// course syllabus.
 
 
 ///  Keyboard Commands
  //
  /// Object (Eye, Light, Ball) Location or Push
  //   Arrows, Page Up, Page Down
- //   Will move object or push ball, depending on mode:
+ //        Move object or push ball, depending on mode.
+ //        With shift key pressed, motion is 5x faster.
  //   'e': Move eye.
  //   'l': Move light.
- //   'b': Move ball. (Change position but not velocity.)
- //   'B': Push ball. (Add velocity.)
+ //   'b': Move head (first) ball. (Change position but not velocity.)
+ //   'B': Push head ball. (Add velocity.)
  //
  /// Eye Direction
  //   Home, End, Delete, Insert
@@ -39,12 +39,16 @@
  /// Simulation Options
  //  (Also see variables below.)
  //
+ //  '1'    Set up scene 1.
+ //  '2'    Set up scene 2.
  //  'p'    Pause simulation. (Press again to resume.)
- //  'k'    Freeze position of end of string. (Press again to release.)
+ //  ' '    (Space bar.) Advance simulation by 1/30 second.
+ //  'S- '  (Shift-space bar.) Advance simulation by one time step.
+ //  'k'    Freeze position of first ball. (Press again to release.)
+ //  't'    Freeze position of last ball. (Press again to release.)
  //  's'    Stop ball.
  //  'S'    Freeze ball. (Set velocity of all vertices to zero.)
  //  'g'    Turn gravity on and off.
- //  'f'    Toggle between flat and curved platform.
  //  'F12'  Write screenshot to file.
 
  /// Variables
@@ -58,9 +62,10 @@
  //  '+'   Increase variable value.
  //  '-'   Decrease variable value.
  //
+ //  VAR Spring Constant - Set spring constant.
+ //  VAR Air Resistance - Set air resistance.
  //  VAR Light Intensity - The light intensity.
  //  VAR Gravity - Gravitational acceleration. (Turn on/off using 'g'.)
- //  VAR Platform Depth - Adjust depth of curved platform. (On/off suing 'f'.)
 
 
 #define GL_GLEXT_PROTOTYPES
@@ -103,6 +108,7 @@ public:
   pVect velocity;
   float mass, mass_inv;
   float radius;
+  bool contact;
   void push(pVect amt);
   void translate(pVect amt);
   void stop();
@@ -115,11 +121,11 @@ public:
 void
 World::init()
 {
-  chain_length = 20;
+  chain_length = 10;
   balls = new Ball[chain_length];
-
-  distance_relaxed = 1;
-  opt_spring_constant = 20;
+ 
+  distance_relaxed = 25 / chain_length;
+  opt_spring_constant = 1000;
   variable_control.insert(opt_spring_constant,"Spring Constant");
 
   opt_gravity_accel = 9.8;
@@ -127,12 +133,17 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   variable_control.insert(opt_gravity_accel,"Gravity");
 
+  opt_air_resistance = 0.001;
+  variable_control.insert(opt_air_resistance,"Air Resistance");  
+
   world_time = 0;
+  time_step_count = 0;
+  last_frame_wall_time = time_wall_fp();
   frame_timer.work_unit_set("Steps / s");
 
   init_graphics();
 
-  ball_init();
+  ball_setup_1();
 }
 
 ///
@@ -142,21 +153,47 @@ World::init()
  /// Initialize Simulation
 //
 void
-World::ball_init()
+World::ball_setup_1()
 {
   // Set initial position to a visibly interesting point.
   //
-  pCoor next_pos(2.1,12,-20.8);
+  pCoor next_pos(12.5,0.1,-13.7);
 
   for ( int i=0; i<chain_length; i++ )
     {
+      // Put the first ball on top because that one can be moved and locked.
+      //
+      Ball* const ball = &balls[chain_length-i-1];
+      ball->position = next_pos;
+      ball->velocity = pVect(0,0,0);
+      ball->radius = 0.5;
+      ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
+      ball->contact = false;
+      next_pos += pVect(0.1,distance_relaxed,0);
+    }
+}
+
+void
+World::ball_setup_2()
+{
+  // Arrange and size balls to form a pendulum.
+  //
+  pCoor next_pos(13.4,21.8,-9.2);
+
+  for ( int i=0; i<chain_length; i++ )
+    {
+      // Put the first ball on top because that one can be moved and locked.
+      //
       Ball* const ball = &balls[i];
       ball->position = next_pos;
       ball->velocity = pVect(0,0,0);
-      ball->mass = i == 0 ? 10 : 1;
-      ball->radius = 0.5;
-      next_pos += pVect(1,0,0);
+      ball->radius = i == chain_length - 1 ? 1 : 0.5;
+      ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
+      ball->contact = false;
+      next_pos += pVect(distance_relaxed,0,0);
     }
+
+  opt_head_lock = true;
 }
 
  /// Advance Simulation State by delta_t Seconds
@@ -164,12 +201,22 @@ World::ball_init()
 void
 World::time_step_cpu(double delta_t)
 {
+  time_step_count++;
+
   //
   /// Compute force and update velocity of each ball.
   //
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
+
+      // Skip locked balls.
+      //
+      if ( opt_head_lock && i == 0 || opt_tail_lock && i == chain_length - 1 )
+        {
+          ball->velocity = pVect(0,0,0);
+          continue;
+        }
 
       pVect force(0,0,0);
 
@@ -190,19 +237,31 @@ World::time_step_cpu(double delta_t)
           //
           pNorm ball_to_neighbor(ball->position,neighbor_ball->position);
 
-          // Compute how much the spring is stretched.
+          // Compute the speed of ball towards neighbor_ball.
+          //
+          pVect delta_v = neighbor_ball->velocity - ball->velocity;
+          float delta_s = dot( delta_v, ball_to_neighbor );
+
+          // Compute by how much the spring is stretched (positive value)
+          // or compressed (negative value).
           //
           const float spring_stretch =
             ball_to_neighbor.magnitude - distance_relaxed;
 
-          force += opt_spring_constant * spring_stretch * ball_to_neighbor;
-        }
+          // Determine whether spring is gaining energy (whether its length
+          // is getting further from its relaxed length).
+          //
+          const bool gaining_e = ( delta_s > 0.0 ) == ( spring_stretch > 0 );
 
-      // Air Resistance
-      //
-      const float air_resistance = 0.02;
-      pVect ar_force  = -pow(1.0 - air_resistance,delta_t) * ball->velocity;
-      force += ar_force;
+          // Use a smaller spring constant when spring is loosing energy,
+          // a quick and dirty way of simulating energy loss due to spring
+          // friction.
+          //
+          const float spring_constant =
+            gaining_e ? opt_spring_constant : opt_spring_constant * 0.7;
+
+          force += spring_constant * spring_stretch * ball_to_neighbor;
+        }
 
       // Update Velocity
       //
@@ -210,21 +269,21 @@ World::time_step_cpu(double delta_t)
       // step. This is clearly wrong when balls are moving with
       // respect to each other because the springs are changing
       // length. This inaccuracy will make the simulation unstable
-      // which tight springs (large opt_spring_constant) and long time
-      // steps (large delta_t).
+      // when spring constant is large for the time step.
       //
       ball->velocity += ( force / ball->mass ) * delta_t;
+
+      // Air Resistance
+      //
+      const double fs = pow(1+opt_air_resistance,-delta_t);
+      ball->velocity *= fs;
     }
 
   ///
   /// Update Position of Each Ball
   ///
 
-  // Skip first ball if head_lock option true.
-  //
-  const int ball_first_idx = opt_head_lock ? 1 : 0;
-
-  for ( int i=ball_first_idx; i<chain_length; i++ )
+  for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
 
@@ -304,21 +363,37 @@ World::frame_callback()
 
   const double time_now = time_wall_fp();
 
-  if ( opt_pause || world_time == 0 )
+  if ( !opt_pause || opt_single_frame || opt_single_time_step )
     {
-      /// Don't change simulation state.
+      /// Advance simulation state.
+
+      // Amount of time since the user saw the last frame.
       //
-      world_time = time_now;
-    }
-  else
-    {
-      /// Advance simulation state by wall clock time.
+      const double wall_delta_t = time_now - last_frame_wall_time;
+
+      const double time_step_duration = 0.0001;
+
+      // Compute amount by which to advance simulation state for this frame.
       //
-      const double delta_t = time_now - world_time;
-      time_step_cpu(delta_t);
-      world_time += delta_t;
+      const double duration =
+        opt_single_time_step ? time_step_duration :
+        opt_single_frame ? 1/30.0 : 
+        wall_delta_t;
+
+      const double world_time_target = world_time + duration;
+
+      while ( world_time < world_time_target )
+        {
+          time_step_cpu(time_step_duration);
+          world_time += time_step_duration;
+        }
+
+      // Reset these, just in case they were set.
+      //
+      opt_single_frame = opt_single_time_step = false;
     }
 
+  last_frame_wall_time = time_now;
   render();
 }
 
