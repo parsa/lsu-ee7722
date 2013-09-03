@@ -271,13 +271,80 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 
 class Cone {
 public:
-  Cone(){};
+  Cone(){ apex_radius = 0.1; dont_set_color = true; };
+  void render_shadow_volume(pCoor base, float radius, pVect to_apex)
+  {
+    const int sides = 10;
+    const double delta_theta = 2 * M_PI / sides;
+    const double base_radius = 1;
+    const double apex_height = 1;
+    const float to_height = to_apex.mag();
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    pVect from_apex(0,0,1);
+    pNorm rn(from_apex,to_apex);
+    const float rot_angle = pangle(from_apex,to_apex);
+
+    pMatrix_Translate trans_transl(base);
+    pMatrix_Rotation trans_rot(rn,rot_angle);
+    pMatrix_Scale trans_scale(radius); trans_scale.rc(2,2) = to_height;
+    pMatrix xform = trans_transl * trans_rot * trans_scale;
+
+    glMultTransposeMatrixf(xform.a);
+
+    pMatrix inv = invert(xform);
+    pCoor light_local = inv * light_pos;
+
+    pCoor ptop(0,0,apex_height);
+    pCoor pbottom(0,0,0);
+    pCoor p00, p01;
+    const float height = 1000;
+
+    for ( int i=0; i<=sides; i++ )
+      {
+        const double theta = delta_theta * i;
+        const double cos_t = cos(theta);
+        const double sin_t = sin(theta);
+        pCoor p10( apex_radius * cos_t, apex_radius * sin_t, apex_height);
+        pCoor p11( base_radius * cos_t, base_radius * sin_t, 0);
+        if ( i )
+          {
+            pNorm l_to_00(light_local,p00);
+            pCoor p00_2 = p00 + height * l_to_00;
+            pCoor p01_2 = p01 + height * pNorm(light_local,p01);
+            pCoor p10_2 = p10 + height * pNorm(light_local,p10);
+            pCoor p11_2 = p11 + height * pNorm(light_local,p11);
+            pVect quad_normal = cross(p00,p01,p11);
+            const bool facing_light = dot(quad_normal,l_to_00) > 0;
+            glFrontFace(facing_light ? GL_CCW : GL_CW );
+
+            glBegin(GL_QUAD_STRIP);
+            glVertex3fv(p00);
+            glVertex3fv(p00_2);
+            glVertex3fv(p01);
+            glVertex3fv(p01_2);
+            glVertex3fv(p11);
+            glVertex3fv(p11_2);
+            glVertex3fv(p10);
+            glVertex3fv(p10_2);
+            glVertex3fv(p00);
+            glVertex3fv(p00_2);
+            glEnd();
+          }
+        p00 = p10;
+        p01 = p11;
+      }
+
+    glPopMatrix();
+    glFrontFace(GL_CCW);
+  }
   void render(pCoor base, float radius, pVect to_apex)
   {
     const int sides = 10;
     const double delta_theta = 2 * M_PI / sides;
     const double base_radius = 1;
-    const double apex_radius = 0.1;
     const double apex_height = 1;
     const double alpha = atan2(apex_height,base_radius-apex_radius);
     const double vec_z = sin(alpha);
@@ -287,11 +354,16 @@ public:
     glPushMatrix();
 
     pVect from_apex(0,0,1);
-    pVect rn(from_apex,to_apex);
+    pNorm rn(from_apex,to_apex);
     const float rot_angle = pangle(from_apex,to_apex);
-    glTranslatef(base.x,base.y,base.z);
-    glRotatef(rot_angle * 180.0 / M_PI,rn.x,rn.y,rn.z);
-    glScalef(radius,radius,to_height);
+    pMatrix_Translate trans_transl(base);
+    pMatrix_Rotation trans_rot(rn,rot_angle);
+    pMatrix_Scale trans_scale(radius); trans_scale.rc(2,2) = to_height;
+    pMatrix xform = trans_transl * trans_rot * trans_scale;
+
+    glMultTransposeMatrixf(xform.a);
+
+    if ( !dont_set_color ) glColor3fv(color);
     glBegin(GL_QUAD_STRIP);
     for ( int i=0; i<=sides; i++ )
       {
@@ -305,6 +377,13 @@ public:
     glEnd();
     glPopMatrix();
   }
+
+  void set_color(const pColor &c) { color = c;  dont_set_color = false; }
+
+  bool dont_set_color;
+  pColor color;
+  pCoor light_pos;
+  double apex_radius;
 };
 
 // Display a tetrahedron, used to indicate light position.
