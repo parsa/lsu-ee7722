@@ -531,6 +531,8 @@ public:
   // no key pressed.
   //
   int keyboard_key;
+  int keyboard_modifiers;
+  bool keyboard_shift, keyboard_control, keyboard_alt;
   int keyboard_x, keyboard_y;  // Mouse location when key pressed.
 
   PStack<pString> user_frame_text;
@@ -633,6 +635,10 @@ private:
   void cb_keyboard(int key=0, int x=0, int y=0)
   {
     keyboard_key = key;
+    keyboard_modifiers = key ? glutGetModifiers() : 0;
+    keyboard_shift = keyboard_modifiers & GLUT_ACTIVE_SHIFT;
+    keyboard_alt = keyboard_modifiers & GLUT_ACTIVE_ALT;
+    keyboard_control = keyboard_modifiers & GLUT_ACTIVE_CTRL;
     keyboard_x = x;
     keyboard_y = y;
     if ( !key ) return;
