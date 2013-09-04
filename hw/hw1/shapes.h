@@ -413,3 +413,5 @@ insert_tetrahedron(pCoor& loc, float size)
 
   glEnable(GL_LIGHTING);
 }
+
+#endif
