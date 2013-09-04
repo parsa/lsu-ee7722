@@ -47,6 +47,8 @@ public:
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
   double world_time;
+  double last_frame_wall_time;
+  int time_step_count;
   float opt_gravity_accel;      // Value chosen by user.
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
@@ -70,6 +72,8 @@ public:
   float opt_light_intensity;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
   bool opt_pause;
+  bool opt_single_frame;      // Simulate for one frame.
+  bool opt_single_time_step;  // Simulate for one time step.
 
   pCoor eye_location;
   pVect eye_direction;
@@ -101,8 +105,12 @@ World::init_graphics()
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
+  time_step_count = 0;
+
   opt_move_item = MI_Eye;
   opt_pause = false;
+  opt_single_frame = false;
+  opt_single_time_step = false;
   opt_time_step_alt = false;
 
   frame_timer.work_unit_set("Steps / s");
@@ -235,6 +243,13 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
 void
 World::render()
 {
+  // Reset these, just in case they were set.
+  //
+  // This code more properly belongs near the call of the time step routine,
+  // but put it here to keep things simple in student-facing code.
+  //
+  opt_single_frame = opt_single_time_step = false;
+
   // Get any waiting keyboard commands.
   //
   cb_keyboard();
@@ -328,7 +343,17 @@ World::render()
   glEnable(GL_RESCALE_NORMAL);
   glEnable(GL_NORMALIZE);
 
+  const double time_now = time_wall_fp();
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
+
+  ogl_helper.fbprintf
+    ("Time Step: %8d  World Time: %11.6f  %s\n",
+     time_step_count, world_time,
+     opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
+     "Press 'p' to pause.");
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
@@ -522,7 +547,8 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const float move_amt = 0.4;
+  const bool shift = ogl_helper.keyboard_shift;
+  const float move_amt = shift ? 2.0 : 0.4;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -545,6 +571,10 @@ World::cb_keyboard()
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': case 'S': ball.stop(); break;
   case 'v': case 'V': opt_time_step_alt = !opt_time_step_alt; break;
+  case ' ': 
+    if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
+    opt_pause = true; 
+    break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;

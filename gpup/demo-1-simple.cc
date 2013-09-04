@@ -104,6 +104,7 @@ World::init()
   // Time in our simulated world.
   //
   world_time = 0;
+  last_frame_wall_time = time_wall_fp();
 
   //
   // Set acceleration vector based on scalar.
@@ -147,6 +148,8 @@ World::init()
 void
 World::time_step_cpu_v0(double delta_t)
 {
+  time_step_count++;
+
   /// Update Position and Velocity of Ball
   //
   //  Advance physical state by delta_t seconds.
@@ -220,20 +223,16 @@ World::frame_callback()
 
   const double time_now = time_wall_fp();
 
-  if ( opt_pause || world_time == 0 )
-    {
-      /// Don't change simulation state.
-      //
-      world_time = time_now;
-    }
-  else
+  if ( !opt_pause || opt_single_frame || opt_single_time_step )
     {
       /// Advance simulation state by wall clock time.
       //
-      const double delta_t = time_now - world_time;
+      const double delta_t = time_now - last_frame_wall_time;
       time_step_cpu_v0(delta_t);
       world_time += delta_t;
     }
+
+  last_frame_wall_time = time_now;
 
   // Emit graphical representation of the just-updated physical state.
   //
