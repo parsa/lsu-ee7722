@@ -140,7 +140,7 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   variable_control.insert(opt_gravity_accel,"Gravity");
 
-  opt_air_resistance = 0.5;
+  opt_air_resistance = 0.001;
   variable_control.insert(opt_air_resistance,"Air Resistance");
 
   world_time = 0;
