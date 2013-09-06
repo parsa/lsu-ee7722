@@ -285,6 +285,9 @@ public:
 
   void ball_setup_1();
   void ball_setup_2();
+  void ball_setup_3();
+  void ball_setup_4();
+  void ball_setup_5();
   void time_step_cpu(double);
   void balls_stop();
   void balls_freeze();
@@ -820,6 +823,9 @@ World::cb_keyboard()
   case FB_KEY_END: user_rot_axis.x = -1; break;
   case '1': ball_setup_1(); break;
   case '2': ball_setup_2(); break;
+  case '3': ball_setup_3(); break;
+  case '4': ball_setup_4(); break;
+  case '5': ball_setup_5(); break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;

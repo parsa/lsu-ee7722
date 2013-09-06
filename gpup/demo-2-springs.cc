@@ -196,6 +196,22 @@ World::ball_setup_2()
   opt_head_lock = true;
 }
 
+void
+World::ball_setup_3()
+{
+}
+
+void
+World::ball_setup_4()
+{
+}
+
+void
+World::ball_setup_5()
+{
+}
+
+
  /// Advance Simulation State by delta_t Seconds
 //
 void
