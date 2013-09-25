@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Simple Demo of OpenGL
 
@@ -167,11 +167,41 @@ World::render()
   glDepthFunc(GL_LESS);     // FB written if z value to write < current z.
 
   glShadeModel(GL_SMOOTH);
-  glEnable(GL_LIGHT0);
+
+  /// Lighting Computation
+  //
+  //  Three Sets of Settings:
+  //
+  //  - Light Source Parameters
+  //  - Material Parameters
+  //  - Lighting Model Parameters
+  //
+  ///  Light Source Parameters
+  //
+  //   Set using glLightX(LIGHT_NUMBER, PARAMETER_NAME, PARAMETER_VALUE)
+  //   Some Parameters:
+  //      GL_POSITION
+  //      GL_DIFFUSE: Color of diffuse component of light.
+  //      GL_CONSTANT_ATTENUATION: k_0 in formula.
+  //      GL_LINEAR_ATTENUATION: k_1 in formula.
+  //      GL_QUADRATIC_ATTENUATION: k_2 in formula.
+  //
+  ///  Material Parameters
+  //
+  //   Set using Umm.
+  //   Some Parameters:
+  //      GL_DIFFUSE: Diffuse color.
+  //
+  ///  Lighting Model Parameters
+  //
+  //   Set using glLightModelX
+
   glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHT0);
 
   glEnable(GL_COLOR_MATERIAL);
   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
+
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
