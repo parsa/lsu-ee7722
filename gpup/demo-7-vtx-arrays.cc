@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -403,20 +403,32 @@ World::render()
       //  glVertex is replaced by glVertexPointer and glEnableClientState.
 
 
-      // Specify that vertices will come from an array.
+      /// Specify that vertices will come from an array.
       //
       glEnableClientState(GL_VERTEX_ARRAY);
 
-      // Specify pointer to the array of vertices.
+      /// Specify pointer to the array of vertices.
       //
-      glVertexPointer(3,GL_FLOAT,3*sizeof(float),coords);
+      glVertexPointer( 3, GL_FLOAT, 3*sizeof(float), coords);
+      //               N  Type      Stride           Pointer
       //
-      // Args: Number of dimensions, type, stride of vertex, array pointer.
+      // Args: N: 
+      //         Number of dimensions.  Valid: 2-4.
+      //       Type: 
+      //         Data type. Other possibilities: GL_DOUBLE, GL_INT, ..
+      //       Stride:
+      //         Easy but not 100% correct:  size of data for vertex coord.
+      //         Correct answer: Number of bytes between vertex i and i + 1.
+      //         A value of 0 means set stride to N * sizeof(Type)
+      //       Pointer:
+      //         Address of first coordinate.
 
       // Ditto for normals.
       //
       glEnableClientState(GL_NORMAL_ARRAY);
-      glNormalPointer(GL_FLOAT,0,coords);
+      glNormalPointer( GL_FLOAT, 0,       coords);
+      //               Type      Stride   Pointer
+      //
       // Fewer arguments than glNormalPointer because normals always have
       // three dimensions.
 
@@ -427,12 +439,19 @@ World::render()
       //
       glColor3fv(lsu_spirit_gold);
 
-      // Draw triangle strips using enabled arrays.
+      /// Draw triangle strips using enabled arrays.
       //
-      glDrawArrays(GL_TRIANGLE_STRIP,0,coords_size/3);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0,         coords_size/3);
+      //           Primitive          StartIdx   Count
       // Args:
-      //   Primitive, starting element (0 means first), number of vertices.
-      // Note: We could have rendered a sub-sequence of the arrays.
+      //
+      //   Primitive:
+      //     Type of primitive.
+      //   StartIdx:
+      //     Starting element index. A zero means the first element
+      //     in the array specified using glVertexPointer, glNormalPointer, etc.
+      //   Count:
+      //     Number of vertices.
 
       // Turn off arrays.
       //
@@ -483,9 +502,13 @@ World::render()
       glBindBuffer(GL_ARRAY_BUFFER,gpu_buffer);
 
       // Specify array of vertices.
-      // The array pointer, NULL, is an offset (of zero) into gpu_buffer.
       //
-      glVertexPointer(3,GL_FLOAT,3*sizeof(float),NULL);
+      glVertexPointer( 3, GL_FLOAT, 3*sizeof(float), NULL);
+      //               N  Type      Stride           Pointer
+      //
+      // Pointer indicates the starting point in the array buffer,
+      // NULL (a zero) means start at the beginning.
+      
       glEnableClientState(GL_VERTEX_ARRAY);
 
       // Ditto. Note that vertices and normals read from same buffer.
