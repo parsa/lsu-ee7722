@@ -157,6 +157,10 @@ public:
   }
   void render_probb(pCoor base, float radius, pVect to_apex)
     {
+      // The code below demonstrates the use of an automatically sized
+      // array type, PStack.  Except for the line declaring "floats",
+      // the code below will not be needed in your solution.
+      //
       PStack<float> floats;
       for ( float f = 0; f < 10; f++ ) floats += f;
       float* farray = floats.get_storage();
