@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
 
  /// More Shaders
@@ -237,16 +237,16 @@ World::init()
      );
 
   sp_geo_shade = new pShader
-    ("demo-10-shdr-simple.cc",  // File holding shader program.
-     "vs_main_helix();",      // Name of vertex shader main routine.
-     "gs_main_helix();",
-     "fs_main_phong();"       // Name of fragment shader main routine.
+    ("demo-10-shdr-simple.cc", // File holding shader program.
+     "vs_main_helix();",       // Name of vertex shader main routine.
+     "gs_main_helix();",       // Name of geometry shader main routine.
+     "fs_main_phong();"        // Name of fragment shader main routine.
      );
 
   sp_geo_animation = new pShader
-    ("demo-10-shdr-geo.cc",  // File holding shader program.
+    ("demo-10-shdr-geo.cc",   // File holding shader program.
      "vs_main_helix();",      // Name of vertex shader main routine.
-     "gs_main_helix();",
+     "gs_main_helix();",      // Name of geometry shader main routine.
      "fs_main_phong();"       // Name of fragment shader main routine.
      );
 
@@ -562,11 +562,23 @@ World::render()
       pError_Check();
     }
 
+  /// Switch to selected set of shader programs.
+  //
   switch ( opt_shader ){
-  case SP_Fixed: case SP_Phong: break;
-  case SP_Vtx_Animation: sp_vtx_animation->use(); break;
-  case SP_Geo_Shade: sp_geo_shade->use(); break;
-  case SP_Geo_Animation: sp_geo_animation->use(); break;
+
+  case SP_Fixed: case SP_Phong: 
+    // The current shader is the one we want, don't change it.
+    break;
+
+  case SP_Vtx_Animation: 
+    sp_vtx_animation->use(); break;
+
+  case SP_Geo_Shade: 
+    sp_geo_shade->use(); break;
+
+  case SP_Geo_Animation: 
+    sp_geo_animation->use(); break;
+
   default: ASSERTS( false );
   }
 
@@ -587,9 +599,9 @@ World::render()
     {
       glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_COORD,helix_coords_bo);
 
-      glUniform1f(UNIF_IDX_BULDGE_LOC,bulge_pos);  GE();
-      glUniform1f(UNIF_IDX_BULDGE_DIST_THRESH,opt_bulge_dist_thresh);  GE();
-      glUniform1f(UNIF_IDX_WIRE_RADIUS,wire_radius);  GE();
+      glUniform1f(UNIF_IDX_BULDGE_LOC,         bulge_pos);              GE();
+      glUniform1f(UNIF_IDX_BULDGE_DIST_THRESH, opt_bulge_dist_thresh);  GE();
+      glUniform1f(UNIF_IDX_WIRE_RADIUS,        wire_radius);            GE();
     }
 
   glMatrixMode(GL_MODELVIEW);
@@ -673,7 +685,8 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const float move_amt = 0.4;
+  const bool shift = ogl_helper.keyboard_shift;
+  const float move_amt = shift ? 2.0 : 0.4;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
