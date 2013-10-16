@@ -46,6 +46,8 @@ layout ( binding = SB_COORD  ) buffer Helix_Coord  { vec4  helix_coord[];  };
 
 #ifdef _VERTEX_SHADER_
 
+ /// Declaration of Rendering Pipeline Input (Vertex Attribute)
+//
 // Written by CPU code as a vertex attribute.
 //
 // Location index must agree with argument to  glEnableVertexAttribArray
@@ -116,6 +118,7 @@ vs_main_helix()
 // Indicate type of input primitive expected by geometry shader.
 //
 layout ( triangles ) in;
+layout ( triangle_strip ) out;
 
 // Indicate the maximum number of vertices that the geometry shader
 // can write.
@@ -133,21 +136,37 @@ gs_main_helix()
 
   if ( bulge_dist_0 > bulge_dist_thresh )
     {
+      /// Bulge is far away, just emit one triangle.
+      //
       for ( int i=0; i<3; i++ )
         {
-          int hidx = In[i].hidx;
-          vec4 c = helix_coord[hidx];
+          // Lighten the color to distinguish this area of helix from
+          // the part with the bulge.
+          //
           vec4 shade = vec4(0.8,0.8,0.8,1);
           gl_FrontColor = In[i].color * shade;
           gl_BackColor = In[i].color * shade;
+
+          // Compute the vertex coordinate.
+          //
+          int hidx = In[i].hidx;
+          vec4 c = helix_coord[hidx];  // Coordinate of core of helix.
+
+          // Vertex normal in object space.
           vec3 norm_o = wire_radius * In[i].normal_o;
+
+          // Vertex coordinate in object space.
           vec4 pos_o = c + vec4(norm_o,0);
 
           gl_Position = gl_ModelViewProjectionMatrix * pos_o;
           var_normal_e = gl_NormalMatrix * In[i].normal_o;
           var_vertex_e = gl_ModelViewMatrix * pos_o;
+
+          // Indicate that vertex is finished.
           EmitVertex();
         }
+
+      // Indicate that primitive is finished.
       EndPrimitive();
       return;
     }
