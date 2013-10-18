@@ -93,10 +93,18 @@ inline void to_dev_ds(const char* const dst_name, int idx, T src)
   CE(cudaMemcpyToSymbol(symbol,&cpy,sizeof(T),offset,cudaMemcpyHostToDevice));
 }
 
+template <typename T>
+inline void from_dev_ds(T& dst, const char* const src_name)
+{
+  const char* const symbol = cuda_util_data.sym_lookup(src_name);
+  CE(cudaMemcpyFromSymbol(&dst,symbol,sizeof(T)));
+}
+
 #define TO_DEV_DS(dst,src) to_dev_ds(#dst,0,src);
 #define TO_DEV_DSS(dst,src1,src2) \
         to_dev_ds(#dst,0,src1); to_dev_ds(#dst,1,src2);
 #define TO_DEV(var) to_dev_ds<typeof var>(#var,0,var)
+#define FROM_DEV(var) from_dev_ds<typeof var>(var,#var)
 #define TO_DEVF(var) to_dev_ds<float>(#var,0,float(var))
 #define TO_DEV_OM(obj,memb) to_dev_ds(#memb,0,obj.memb)
 #define TO_DEV_OM_F(obj,memb) to_dev_ds(#memb,0,float(obj.memb))
