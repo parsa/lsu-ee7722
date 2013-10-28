@@ -344,12 +344,15 @@ public:
   void insert_linear(float &var, const char *name, float inc_factor = 0)
   { insert(var,name,inc_factor,false); }
 
-  void insert_power_of_2(int &var, const char *name)
+  void insert_power_of_2
+  (int &var, const char *name, int min = 1, int max = 0x7fffffff)
   {
     pVariable_Control_Elt* const elt = insert_common(name);
     elt->ivar = &var;
     elt->inc_factor = 1;
     elt->dec_factor = 1;
+    elt->min = min;
+    elt->max = max;
     elt->exponential = true;
   }
 
