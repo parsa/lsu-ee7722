@@ -55,7 +55,9 @@ struct CUDA_SectTT {
   bool exists; // If false, no intersection.
 };
 
+#ifndef COORD_H
 struct pMatrix3x3 { float3 r0, r1, r2; };
+#endif
 
 struct CUDA_Box_W { // W is for work.
   float3 position;
