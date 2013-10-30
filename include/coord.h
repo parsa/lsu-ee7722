@@ -263,6 +263,7 @@ pMMultiply3x3(pMatrix& p, pMatrix m1, pMatrix m2)
 #undef C
 }
 
+inline
 pMatrix3x3::pMatrix3x3(pMatrix& m, int r, int c)
 {
   int rj = 0;
