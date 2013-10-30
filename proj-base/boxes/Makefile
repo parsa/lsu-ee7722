@@ -1,6 +1,10 @@
 
-COURSE_INCLUDE_DIR = ../../include
 CUDAPATH = /usr/local/cuda
+COURSE_INCLUDE_DIR_POSSIBILITIES = ../include ../../include
+
+FOUND := $(foreach dir, $(COURSE_INCLUDE_DIR_POSSIBILITIES), \
+           $(shell test -e $(dir) && echo $(dir)))
+COURSE_INCLUDE_DIR := $(firstword $(FOUND))
 
 INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  -I$(COURSE_INCLUDE_DIR)
 LIBDIR  =
