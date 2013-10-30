@@ -235,7 +235,7 @@ __device__ float4 quat_mult(float4 a, float4 b)
 
 
 __device__ void
-pMatrix_set_rotation(pMatrix3x3& m, pVect u, float theta)
+pMatrix_set_rotation(pcMatrix3x3& m, pVect u, float theta)
 {
   const float cos_theta = __cosf(theta);
   const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta );
@@ -250,7 +250,7 @@ pMatrix_set_rotation(pMatrix3x3& m, pVect u, float theta)
   m.r2.z = u.z * u.z + cos_theta * ( 1 - u.z * u.z );
 }
 
-__device__ float3 operator *(pMatrix3x3 m, float3 coor)
+__device__ float3 operator *(pcMatrix3x3 m, float3 coor)
 { return make_float3(dot(m.r0,coor), dot(m.r1,coor), dot(m.r2,coor)); }
 
 
@@ -600,7 +600,7 @@ sign_mask(int idx, float3 v)
 }
 
 // Multiply transpose of matrix m by column vector v.
-__device__ float3 mm_transpose(pMatrix3x3 m, float3 v)
+__device__ float3 mm_transpose(pcMatrix3x3 m, float3 v)
 { return v.x * m.r0 + v.y * m.r1 + v.z * m.r2; }
 
 __device__ float
@@ -619,7 +619,7 @@ set_max(float &a, float b)
 
 // Set matrix m to a rotation matrix based on quaternion q.
 __device__ void
-pMatrix_set_rotation(pMatrix3x3& m, float4 q)
+pMatrix_set_rotation(pcMatrix3x3& m, float4 q)
 {
   m.r0.x = 1.f - 2.f * q.y * q.y - 2.f * q.z * q.z;
   m.r0.y = 2.f * q.x * q.y - 2.f * q.w * q.z;
@@ -634,7 +634,7 @@ pMatrix_set_rotation(pMatrix3x3& m, float4 q)
 
 // Set transpose of matrix m to a rotation matrix based on quaternion q.
 __device__ void
-pMatrix_set_rotation_transpose(pMatrix3x3& m, float4 q)
+pMatrix_set_rotation_transpose(pcMatrix3x3& m, float4 q)
 {
   m.r0.x = 1.f - 2.f * q.y * q.y - 2.f * q.z * q.z;
   m.r1.x = 2.f * q.x * q.y - 2.f * q.w * q.z;
@@ -1408,7 +1408,7 @@ pass_platform_tile(CUDA_Phys_W& phys, int idx)
 
   const float delta_theta = omega * delta_t;
 
-  pMatrix3x3 rot;
+  pcMatrix3x3 rot;
   pMatrix_set_rotation(rot,wheel.axis_dir,delta_theta);
   const float3 rpt_ll = wheel.center + rot * ( pt_ll - wheel.center );
   const float3 rnorm_rt = rot * norm_rt;

@@ -55,9 +55,7 @@ struct CUDA_SectTT {
   bool exists; // If false, no intersection.
 };
 
-#ifndef COORD_H
-struct pMatrix3x3 { float3 r0, r1, r2; };
-#endif
+struct pcMatrix3x3 { float3 r0, r1, r2; };
 
 struct CUDA_Box_W { // W is for work.
   float3 position;
@@ -67,7 +65,7 @@ struct CUDA_Box_W { // W is for work.
   float mass_inv, radius;
   float4 orientation;
   float3 to_111;
-  pMatrix3x3 rot_inv;
+  pcMatrix3x3 rot_inv;
   float3 mi_vec;
 };
 
