@@ -249,7 +249,7 @@ World::init()
   opt_ball_density = 0.0074603942589580438;
   opt_friction_coeff = 0.1;
   opt_friction_roll = 0.1;
-  opt_air_resistance = 0.001;
+  opt_air_resistance = 0.00001;
   opt_bounce_loss = 0.75;
   opt_bounce_loss_box = 0.9;
   opt_elasticity = 1.0 / 64;
