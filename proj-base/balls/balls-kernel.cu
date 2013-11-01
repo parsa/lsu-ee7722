@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Sp 2010), GPU Microarchitecture
+/// LSU EE 4702-X/7722 GPU Programming / Microarch
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -11,7 +11,7 @@
 //   See balls.cc for main program.
 
 #include "balls.cuh"
-
+#include <gp/cuda-util-kernel.h>
 
 // Emulation Code
 //
@@ -606,7 +606,7 @@ pass_pairs_launch
      max_balls_per_thread, balls_per_block);
 }
 
-__device__ void
+__global__ void
 pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
            int max_balls_per_thread, int balls_per_block)
 {
@@ -739,18 +739,6 @@ __device__ void pass_platform_ball(CUDA_Phys_W& phys, int idx);
 __device__ void pass_platform_tile(CUDA_Phys_W& phys, int idx);
 
 
-__host__ cudaError_t
-cuda_get_attr_plat_pairs
-(struct cudaFuncAttributes *attr_platform,
- struct cudaFuncAttributes *attr_pairs)
-{
-  // Return attributes of CUDA functions. The code needs the
-  // maximum number of threads.
-  cudaError_t e1 = cudaFuncGetAttributes(attr_platform,pass_platform);
-  if ( e1 ) return e1;
-  cudaError_t e2 = cudaFuncGetAttributes(attr_pairs,pass_pairs);
-  return e2;
-}
 
 __host__ void 
 pass_platform_launch
@@ -960,10 +948,7 @@ platform_collision(CUDA_Phys_W& phys)
 }
 
 
-/// Spring 2010 Homework 4
-
-
- /// Compute Phys Proximity Pairs
+/// Compute Phys Proximity Pairs
 
 
 // Mapping from z-sort index to ball array index.
@@ -1116,4 +1101,48 @@ ball_min_z_get
 {
   return
     position.z + min(0.0f,-fabs(velocity.z)) * lifetime_delta_t - radius;
+}
+
+__host__ cudaError_t
+cuda_get_attr_plat_pairs(GPU_Info *gpu_info)
+{
+  CU_SYM(balls_x);
+  CU_SYM(block_balls_needed);
+  CU_SYM(tacts_schedule);
+  CU_SYM(gravity_accel_dt);
+  CU_SYM(opt_bounce_loss);
+  CU_SYM(opt_friction_coeff); CU_SYM(opt_friction_roll);
+  CU_SYM(platform_xmin); CU_SYM(platform_xmax);
+  CU_SYM(platform_zmin); CU_SYM(platform_zmax);
+  CU_SYM(platform_xmid); CU_SYM(platform_xrad);
+  CU_SYM(delta_t);
+  CU_SYM(elasticity_inv_dt);
+  CU_SYM(wheel);
+
+  CU_SYM(z_sort_indices);
+  CU_SYM(z_sort_z_max);
+  CU_SYM(cuda_prox);
+  CU_SYM(opt_debug); CU_SYM(opt_debug2);
+  CU_SYM(pass_sched_debug);
+
+  // Return attributes of CUDA functions. The code needs the
+  // maximum number of threads.
+
+  cudaError_t e1 = cudaSuccess;
+
+#define GET_INFO(proc_name) {                                                 \
+  const int idx = gpu_info->num_kernels++;                                    \
+  if ( idx >= gpu_info->num_kernels_max ) return e1;                          \
+  gpu_info->ki[idx].name = #proc_name;                                        \
+  gpu_info->ki[idx].func_ptr = (void(*)())proc_name;                          \
+  e1 = cudaFuncGetAttributes(&gpu_info->ki[idx].cfa,proc_name);               \
+  if ( e1 != cudaSuccess ) return e1; }
+
+  GET_INFO(pass_platform);
+  GET_INFO(pass_pairs);
+  GET_INFO(pass_sched);
+
+#undef GET_INFO
+
+  return e1;
 }

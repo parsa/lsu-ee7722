@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011),  GPU Programming
+/// LSU EE 4702-X/7722 GPU Programming / Microarch
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -1194,21 +1194,65 @@ World::cuda_init()
   int device_count;
   cudaGetDeviceCount(&device_count); // Get number of GPUs.
   ASSERTS( device_count );
-  const int dev = 0;
-  CE(cudaGetDeviceProperties(&cuda_prop,dev));
-  CE(cudaGLSetGLDevice(dev));
-  printf
-    ("GPU: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-     cuda_prop.name, cuda_prop.clockRate/1e6,
-     int(cuda_prop.totalGlobalMem >> 20));
-  printf
-    ("CAP: %d.%d  NUM MP: %d  TH/BL: %d  SHARED: %d  CONST: %d  "
-     "# REGS: %d\n",
-     cuda_prop.major, cuda_prop.minor,
-     cuda_prop.multiProcessorCount, cuda_prop.maxThreadsPerBlock,
-     int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-     cuda_prop.regsPerBlock
-     );
+  GPU_Info gpu_info;
+
+  /// Print information about the available GPUs.
+  //
+  for ( int dev=0; dev<device_count; dev++ )
+    {
+      CE(cudaGetDeviceProperties(&cuda_prop,dev));
+
+      printf
+        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
+         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
+         int(cuda_prop.totalGlobalMem >> 20));
+
+      const int cc_per_mp =
+        cuda_prop.major == 1 ? 8 :
+        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
+        cuda_prop.major == 3 ? 192 : 0;
+
+      const double chip_bw_Bps = gpu_info.bw_Bps =
+        2 * cuda_prop.memoryClockRate * 1000.0
+        * ( cuda_prop.memoryBusWidth >> 3 );
+      const double chip_sp_flops =
+        1000.0 * cc_per_mp * cuda_prop.clockRate
+        * cuda_prop.multiProcessorCount;
+
+      printf
+        ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  TH/BL: %4d\n",
+         dev, cuda_prop.major, cuda_prop.minor,
+         cuda_prop.multiProcessorCount,
+         cc_per_mp,
+         cuda_prop.maxThreadsPerBlock);
+
+      printf
+        ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
+         dev,
+         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
+         cuda_prop.regsPerBlock);
+
+      printf
+        ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
+         "OP/ELT %.2f\n",
+         dev,
+         cuda_prop.l2CacheSize >> 10,
+         chip_bw_Bps * 1e-9,
+         chip_sp_flops * 1e-9,
+         4 * chip_sp_flops / chip_bw_Bps);
+    }
+
+  const int chosen_dev = 0;
+  CE(cudaGLSetGLDevice(chosen_dev));
+  CE(cudaGetDeviceProperties(&cuda_prop,chosen_dev));
+
+  // Determine resources used by each CUDA kernel.
+  // See balls-kernel.cu for code.
+  //
+  gpu_info.num_kernels = 0;
+  cuda_get_attr_plat_pairs(&gpu_info);
+  cfa_platform = gpu_info.ki[0].cfa;
+  cfa_pairs = gpu_info.ki[1].cfa;
 
   // Prepare events used for timing.
   //
@@ -1239,29 +1283,26 @@ World::cuda_init()
   //
   cuda_balls.ptrs_to_cuda("balls_x");
 
-  // Determine resources used by each CUDA kernel.
-  // See balls-kernel.cu for code.
+  // Print information about time_step routine.
   //
-  CE(cuda_get_attr_plat_pairs(&cfa_platform,&cfa_pairs));
+  printf("\nCUDA Routine Resource Usage:\n");
+
+  for ( int i=0; i<gpu_info.num_kernels; i++ )
+    {
+      printf("For %s:\n", gpu_info.ki[i].name);
+      printf("  %6zd shared, %zd const, %zd loc, %d regs; "
+             "%d max threads per block.\n",
+             gpu_info.ki[i].cfa.sharedSizeBytes,
+             gpu_info.ki[i].cfa.constSizeBytes,
+             gpu_info.ki[i].cfa.localSizeBytes,
+             gpu_info.ki[i].cfa.numRegs,
+             gpu_info.ki[i].cfa.maxThreadsPerBlock);
+    }
 
   block_size_max =
     min(cfa_platform.maxThreadsPerBlock, cfa_pairs.maxThreadsPerBlock);
   set_min(block_size_max,cuda_prop.maxThreadsPerBlock);
 
-  printf("CUDA Routine Resource Usage:\n");
-  printf(" pass_platform: %6zd shared, %zd const, %zd loc, %d regs; "
-         "%d max thr\n",
-         cfa_platform.sharedSizeBytes,
-         cfa_platform.constSizeBytes,
-         cfa_platform.localSizeBytes,
-         cfa_platform.numRegs,
-         cfa_platform.maxThreadsPerBlock);
-  printf(" pass_pairs: %6zd shared, %zd const, %zd loc, %d regs; %d max thr\n",
-         cfa_pairs.sharedSizeBytes,
-         cfa_pairs.constSizeBytes,
-         cfa_pairs.localSizeBytes,
-         cfa_pairs.numRegs,
-         cfa_pairs.maxThreadsPerBlock);
   balls_per_block_max = int(cuda_prop.sharedMemPerBlock / sizeof(CUDA_Phys_W));
   printf(" Shared Memory: %d balls, based on ball size of %zd chars.\n",
          balls_per_block_max, sizeof(CUDA_Phys_W));
@@ -2098,7 +2139,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
     pNorm tact1_roll_vel_dir = tact1_roll_vel;
     pVect lost_vel(0,0,0);
 
-    const double rfric_loss_dv_1 =
+    const float rfric_loss_dv_1 =
       torque_limit_sort_of * 2.5 * ball1->mass_inv *
       ( tact1_roll_vel_dir.magnitude * opt_friction_roll /
         ( 1 + tact1_roll_vel_dir.magnitude * opt_friction_roll ) );
@@ -2113,7 +2154,7 @@ World::penetration_balls_resolve(Ball *ball1, Ball *ball2, bool b2_real)
         pVect tact2_rot_vel = ball2->point_rot_vel(-dist);
         pVect tact2_roll_vel = tact2_rot_vel - tan_b12_vel;
         pNorm tact2_roll_vel_dir = tact2_roll_vel;
-        const double rfric_loss_dv_2 =
+        const float rfric_loss_dv_2 =
           torque_limit_sort_of * 2.5 * ball2->mass_inv *
           ( tact2_roll_vel_dir.magnitude * opt_friction_roll /
             ( 1 + tact2_roll_vel_dir.magnitude * opt_friction_roll ) );

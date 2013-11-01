@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Sp 2010), GPU Microarchitecture
+/// LSU EE 4702-X/7722 GPU Programming / Microarch
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -12,6 +12,23 @@
 
 #ifndef BALLS_CUH
 #define BALLS_CUH
+
+// Info about a specific kernel.
+//
+struct Kernel_Info {
+  void (*func_ptr)();           // Pointer to kernel function.
+  char *name;                   // ASCII version of kernel name.
+  cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
+};
+
+// Info about GPU and each kernel.
+//
+struct GPU_Info {
+  double bw_Bps;
+  static const int num_kernels_max = 4;
+  int num_kernels;
+  Kernel_Info ki[num_kernels_max];
+};
 
 enum Phys_Type { PT_Unset =0, PT_Ball=1, PT_Tile=2, PT_ENUM_SIZE=3 };
 
@@ -78,17 +95,13 @@ struct CUDA_Wheel {
 
 __host__ void pass_platform_launch(dim3 dg, dim3 db, int ball_count);
 
-__host__ cudaError_t cuda_get_attr_plat_pairs
-(struct cudaFuncAttributes *attr_platform,
- struct cudaFuncAttributes *attr_pairs);
+__host__ cudaError_t cuda_get_attr_plat_pairs(GPU_Info *gpu_info);
 
 __host__ void 
 pass_pairs_launch
 (dim3 dg, dim3 db, int prefetch_offset, int schedule_offset, int round_cnt,
  int max_balls_per_thread, int balls_per_block_max);
 
-
- /// Code for Spring 2010 Homework 4
 
 __host__ void
 pass_sched_launch
