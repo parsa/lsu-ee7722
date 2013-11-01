@@ -60,6 +60,9 @@ cuda_thread_start()
 
   if ( tid >= d_app.num_threads ) return;
 
+  // Warning: The order in which d_v_in is accessed is inefficient.
+  //          See demo-cuda-02-basics for a better ordering.
+  //
   const int elt_per_thread = d_app.array_size / d_app.num_threads;
   const int start = elt_per_thread * tid;
   const int stop = start + elt_per_thread;
