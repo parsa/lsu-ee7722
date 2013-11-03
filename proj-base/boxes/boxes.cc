@@ -177,7 +177,8 @@ World::init()
   prox_test_per_ball_prev = 0;
 
   frame_timer.work_unit_set("Steps / s");
-  last_frame_time = world_time = 0;
+  world_time = 0;
+  last_frame_wall_time = time_wall_fp();
   opt_gravity_accel = 20;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
@@ -192,6 +193,7 @@ World::init()
   opt_debug = false;
   opt_debug2 = false;
   opt_block_color_pass = 0;
+  opt_extra_cuda_info = false;  // Display CUDA tuning info.
 
   mirror_tint = color_lsu_spirit_purple * 0.5;
 
@@ -285,6 +287,8 @@ World::init()
 
   opt_move_item = MI_Eye;
   opt_pause = false;
+  opt_single_time_step = false;
+  opt_single_frame = false;
 
   pball = new Ball(this); 
   pball->prev_velocity = pVect(0,0,0);
@@ -403,25 +407,23 @@ World::main_callback()
 
   const double time_now = time_wall_fp();
 
-  if ( opt_pause || last_frame_time == 0 )
+  if ( !opt_pause || opt_single_frame || opt_single_time_step )
     {
-      /// Don't change simulation state.
+      // Amount of time since the user saw the last frame.
       //
-      last_frame_time = time_now;
-    }
-  else
-    {
-      // If we are recording a video base world time on video frame
-      // rate rather than wall clock time.
-      //
-      if ( ogl_helper.animation_record )
-        world_time = time_now - ogl_helper.frame_period;
+      const double wall_delta_t = time_now - last_frame_wall_time;
 
-      // Advance simulation state by wall clock time.
+      // Compute amount by which to advance simulation state for this frame.
       //
-      const double elapsed_time = time_now - last_frame_time;
+      const double duration =
+        opt_single_time_step ? delta_t :
+        opt_single_frame || ogl_helper.animation_record
+        ? ogl_helper.frame_period :
+        wall_delta_t;
+
       const int iter_limit =
-        int( min( opt_time_step_factor * 3.0, 0.5 + elapsed_time / delta_t));
+        int( min( opt_time_step_factor * 3.0, 0.5 + duration / delta_t));
+
       for ( int iter=0; iter < iter_limit; iter++ )
         {
           if ( opt_physics_method == GP_cpu )
@@ -431,9 +433,14 @@ World::main_callback()
 
           world_time += delta_t;
         }
-      last_frame_time = time_now;
       frame_timer.work_amt_set(iter_limit);
     }
+
+  last_frame_wall_time = time_now;
+
+  // Reset these, just in case they were set.
+  //
+  opt_single_frame = opt_single_time_step = false;
 
   // Note: Render routine calls frame_timer.frame_end();
   //
@@ -1331,7 +1338,8 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const float move_amt = 0.4;
+  const bool shift = ogl_helper.keyboard_shift;
+  const float move_amt = shift ? 2.0 : 0.4;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -1376,6 +1384,7 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'i': opt_info = true; break;
+  case 'I': opt_extra_cuda_info = !opt_extra_cuda_info; break;
   case 'j': opt_drop_boxes = !opt_drop_boxes; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'm': opt_mirror = !opt_mirror; break;
@@ -1411,6 +1420,12 @@ World::cb_keyboard()
       physs += b2;
     }
     break;
+
+  case ' ':
+    if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
+    opt_pause = true;
+    break;
+
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;

@@ -45,11 +45,12 @@ public:
   bool opt_debug;   // Turns something on and off. Changes frequently.
   bool opt_debug2;  // Turns something else on and off. Changes frequently.
   bool opt_info;    // Request info to be printed to stdout.
+  bool opt_extra_cuda_info;
   int opt_fixed_lod;
 
   // Time in simulated world.
   //
-  double world_time, last_frame_time;
+  double world_time, last_frame_wall_time;
 
   // Physical objects (Balls, Tiles, etc.) being Simulated
   //
@@ -157,6 +158,8 @@ public:
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_Drip, MI_Wheel, MI_COUNT } 
     opt_move_item;
   bool opt_pause;
+  bool opt_single_frame;      // Simulate for one frame.
+  bool opt_single_time_step;  // Simulate for one time step.
 
   pCoor eye_location;
   pVect eye_direction;

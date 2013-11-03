@@ -129,11 +129,12 @@ World::render()
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Debug Options: %d %d ('qQ')  "
+    ("Physics: %s ('a')  Pause: %s ('p')  Debug Options: %d %d ('qQ')  "
      "Physics Verification %s ('v')\n",
      opt_physics_method != GP_cuda
      ? BLINK(gpu_physics_method_str[opt_physics_method],"      ") 
      : gpu_physics_method_str[opt_physics_method], 
+     opt_pause ? BLINK("ON","  ") : "OFF",
      opt_debug, opt_debug2,
      opt_verify ? BLINK("On ","   ") : "Off");
 
@@ -152,7 +153,11 @@ World::render()
          * ceil(opt_block_size / 32.0)
          * round_count_prev
          );
+      }
 
+  if ( opt_extra_cuda_info
+       && opt_physics_method == GP_cuda && cuda_initialized )
+    {
       ogl_helper.fbprintf
         ("Time  Intersect %.3f ms  Pairs  %.3f ms  Platform  %.3f\n",
          xx_pairs_cumulative / max(1, pairs_cumulative_count),
@@ -195,12 +200,14 @@ World::render()
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->get_val());
 
+#if 0
   ogl_helper.fbprintf("CUDA Prox %s ('F4' to change) "
                       "CPU test/ball: %.3f total %d,  Full %d\n",
                       opt_cuda_prox ? "On" : BLINK("Off","   "),
                       double(prox_test_per_ball_prev) / physs.occ(),
                       prox_test_per_ball_prev,
                       cuda_prox_full_prev);
+#endif
 
   // Sort balls by distance from user's eye.
   // This is needed for the occlusion test.
