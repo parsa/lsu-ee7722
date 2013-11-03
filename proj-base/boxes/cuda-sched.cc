@@ -64,6 +64,7 @@ World::cuda_schedule()
       phys->pass = -1;
       phys->pass_todo = 0;
       phys->block = -1;
+      if ( phys->read_only ) continue;
       physs_todo_later->enqueue(phys);
     }
 
@@ -186,6 +187,7 @@ World::cuda_schedule()
       // Get a phys to consider.
       //
       Phys* const phys1 = neighborhood.dequeue();
+      ASSERTS( !phys1->read_only );
 
       // Check whether this ball already used in this pass.
       //
@@ -218,14 +220,16 @@ World::cuda_schedule()
           Contact* const c = &contact_pairs[c_idx];
           if ( c->pass >= 0 ) continue;
           Phys* const phys2 = c->other_phys(phys1);
-          const bool b2_placed = phys2->block >= block_num_base;
+          const bool b2_placed =
+            phys2->block >= block_num_base;
 
           // If other ball used in this pass but not this block
           // then we can't consider the phys1/phys2 contact in this
           // pass, so try again in the next pass. (Either phys1 or phys2
-          // could be added, phys1 may be more efficient.)
+          // could be added, phys1 may be more efficient.) This doesn't
+          // apply to read-only objects.
           //
-          if ( b2_placed && phys2->block != block_num )
+          if ( b2_placed && phys2->block != block_num && !phys2->read_only )
             { NEXT_PASS_ADD(phys1);  continue; }
 
           if ( !b2_placed ) phys2->rounds = 0;
@@ -247,7 +251,10 @@ World::cuda_schedule()
           Contact* const c = &contact_pairs[c_idx];
           Phys* const phys2 = c->other_phys(phys1);
           const bool b1_placed = phys1->block >= block_num_base;
-          const bool b2_placed = phys2->block >= block_num_base;
+          const bool b2_placed = 
+            phys2->read_only
+            ? phys2->block == block_num
+            : phys2->block >= block_num_base;
           const int code_path = c->code_path;
 
           // Bit positions indicate rounds in which ball is used.
@@ -313,15 +320,17 @@ World::cuda_schedule()
 
           if ( !b2_placed )
             {
+              if ( !phys2->read_only || phys2->block < block_num_base )
+                p->ball_cnt++;
               phys2->block = block_num;
-              p->ball_cnt++;
               pref_balls.insert
                 ( ( block_num << ball_idx_bits ) | phys2->idx, phys2 );
 
               // Put phys2 at the head of the todo list since phys1 and phys2
               // are likely to have common neighbors.
               //
-              neighborhood += phys2;
+              if ( !phys2->read_only )
+                neighborhood += phys2;
             }
 
           ball_count = next_ball_count;
@@ -381,10 +390,11 @@ World::cuda_schedule()
   Static PSList<Contact*,int64_t> pair_check;
   pair_check.reset();
   while ( Contact* const c = contact_pairs.iterate() )
-    pair_check.insert
-      ( c->block * max_rounds * block_size
-        + c->round * block_size + int64_t(c->thread) ,
-        c );
+    if ( !c->phys1->read_only || !c->phys2->read_only )
+      pair_check.insert
+        ( c->block * max_rounds * block_size
+          + c->round * block_size + int64_t(c->thread) ,
+          c );
   pair_check.sort();
 
   // Sanity Check: Make sure phys scheduled in at most one

@@ -765,6 +765,7 @@ box_geometry_update(CUDA_Box_W& box)
 __device__ void
 box_apply_force_dt(CUDA_Box_W& box, float3 tact, float3 force)
 {
+  if ( box.mass_inv == 0 ) return;
   box.velocity += box.mass_inv * force;
   pVect cent_to_tact = mv(box.position,tact);
   pVect torque = cross(cent_to_tact,force);
