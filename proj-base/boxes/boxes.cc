@@ -56,24 +56,33 @@
  //   down, Delete should rotate eye left, Insert should rotate eye
  //   right.  The eye direction vector is displayed in the upper left.
 
- /// Simulation Options
- //  (Also see variables below.)
+ /// Scene Setup
  //
- //  'p'    Pause simulation. (Press again to resume.)
- //  'a'    Switch physics method (CPU to GPU/CUDA).
+ //  '|'    Switch between curved and flat platform.
+ //  '1'    Set up brick wall scene. (Also '!')
+ //  '2'    Set up tower scene.
+ //  '3'    Set up stacked plates scene.
+ //  '4'    Set up staircase scene.
+ //  '5'    Set up house of cards scene.
+ //  'R'    Remove all but one ball.
+ //  't'    Run 5-tier-of-balls benchmark.
+ //  'T'    Run 1-tier-of-balls benchmark.
 
+ /// Scene Interaction
+ //
  //  'd'    Toggle dripping of objects.
  //  'j'    Toggle between dripping boxes and balls.
  //  'x'    Toggle shower of balls.
  //  'X'    Release one pair of balls.
+ //  'g'    Turn gravity on and off.
+ //  's'    Stop objects linear motion.
+ //  'S'    Stop objects rotational motion.
 
- //  't'    Run 5-tier-of-balls benchmark.
- //  'T'    Run 1-tier-of-balls benchmark.
- //  '1'    Set up brick wall scene. (Also '1')
- //  '2'    Set up tower scene.
- //  '3'    Set up stacked plates scene.
- //  '4'    Set up staircase scene.
- //  'R'    Remove all but one ball.
+ /// Other Options
+ //  (Also see variables below.)
+ //
+ //  'p'    Pause simulation. (Press again to resume.)
+ //  'a'    Switch physics method (CPU to GPU/CUDA).
 
  //  'm'    Toggle reflections on mirror tiles.
  //  'w'    Toggle shadows.
@@ -83,13 +92,9 @@
  //  'o'    Toggle visibility of box/box intersections. (Compile with -D TUNE).
  //  'q'    Toggle visibility of boxes.
 
- //  's'    Stop objects linear motion.
- //  'S'    Stop objects rotational motion.
-
  //  'c'    Use colors to show number of reflected points, and other info.
  //  'M'    Switch between different shortcuts in computing reflections.
 
- //  'g'    Turn gravity on and off.
  //  'F10'  Write video to file.
  //  'F12'  Write screenshot to file.
 
