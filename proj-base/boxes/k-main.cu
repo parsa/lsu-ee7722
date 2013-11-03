@@ -65,6 +65,7 @@ __constant__ float3 gravity_accel_dt;
 __constant__ float opt_bounce_loss, opt_bounce_loss_box;
 __constant__ float opt_friction_coeff, opt_friction_roll;
 __constant__ float opt_air_resistance;
+__constant__ bool opt_platform_curved;
 __constant__ float platform_xmin, platform_xmax;
 __constant__ float platform_zmin, platform_zmax;
 __constant__ float platform_xmid, platform_xrad;
@@ -1345,7 +1346,8 @@ pass_platform_ball(CUDA_Phys_W& phys, int idx)
 
   /// Handle Ball/Platform Collision
   //
-  platform_collision(phys);
+  if ( opt_platform_curved )
+    platform_collision(phys);
 
   /// Handle Air Resistance
   //
@@ -1448,7 +1450,8 @@ pass_platform_box(CUDA_Phys_W& phys, int idx)
 
   /// Handle Ball/Platform Collision
   //
-  platform_collision_box(phys);
+  if ( opt_platform_curved )
+    platform_collision_box(phys);
 
   /// Handle Air Resistance
   //
@@ -1885,6 +1888,7 @@ static __host__ void collect_symbols()
   CU_SYM(opt_bounce_loss); CU_SYM(opt_bounce_loss_box);
   CU_SYM(opt_friction_coeff); CU_SYM(opt_friction_roll);
   CU_SYM(opt_air_resistance);
+  CU_SYM(opt_platform_curved);
   CU_SYM(platform_xmin); CU_SYM(platform_xmax);
   CU_SYM(platform_zmin); CU_SYM(platform_zmax);
   CU_SYM(platform_xmid); CU_SYM(platform_xrad);

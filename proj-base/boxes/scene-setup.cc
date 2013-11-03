@@ -164,8 +164,10 @@ World::setup_tower(float base, int layers, bool balls)
   float block_width = base;
   pCoor block_base
     (0,
-     -sqrt(platform_xrad * platform_xrad
-           - 0.25 * block_width * block_width),
+     opt_platform_curved
+     ? -sqrt(platform_xrad * platform_xrad
+             - 0.25 * block_width * block_width)
+     : platform_y,
      drip_location.z);
 
   for ( int i=0; i<layers; i++ )
@@ -232,13 +234,17 @@ World::setup_house_of_cards()
 
   const float base_depth = 0.8 * platform_xrad;
   const float base_height = 2;
-  const float surface_y = -base_depth + base_height;
-  const float platform_wh = sqrtf(SQ(platform_xrad)-SQ(base_depth));
-  pCoor base_pos(-platform_wh,-base_depth,0);
-  Box* const base = box_manager->new_box
-    (base_pos,pVect(2*platform_wh,base_height,platform_zmax),
-     pColor(0.5,0.5,0.5));
-  base->set_read_only();
+  const float surface_y = 
+    opt_platform_curved ? -base_depth + base_height : platform_y;
+  if ( opt_platform_curved )
+    {
+      const float platform_wh = sqrtf(SQ(platform_xrad)-SQ(base_depth));
+      pCoor base_pos(-platform_wh,-base_depth,0);
+      Box* const base = box_manager->new_box
+        (base_pos,pVect(2*platform_wh,base_height,platform_zmax),
+         pColor(0.5,0.5,0.5));
+      base->set_read_only();
+    }
   pVect card_diag(10,5,0.1);
 
   drip_location.x = 0;

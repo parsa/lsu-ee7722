@@ -21,15 +21,19 @@ public:
     omega = pVect(0,0,0);
     orientation = pQuat(pVect(0,1,0),0);
     density = 0.01;
+    idx = -2;
+    to_me_ptr = NULL;
     bzero(texid_faces,sizeof(texid_faces));
     set(pt_000,to_111p);
   }
   Box(Box *box_global, Box *box_ref):
     Phys(PT_Box),cuda_stale(box_global->cuda_stale),
     rebuild(box_global->rebuild)
-  { set_local_partial(box_global,box_ref); }
+  { set_local_partial(box_global,box_ref);  idx = -3; }
 
-  ~Box(){ rebuild = true; }
+  ~Box(){ rebuild = true; if ( to_me_ptr ) *to_me_ptr = NULL; }
+  void set_pointer(Box **ptr) { to_me_ptr = ptr; }
+  Box **to_me_ptr;
 
   void set(pCoor pt_000, pVect to_111p);
   void set_face_texture(int face, GLuint texid);

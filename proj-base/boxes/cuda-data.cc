@@ -179,6 +179,7 @@ World::cuda_constants_update()
   TO_DEV(gravity_accel_dt);
   TO_DEV(opt_bounce_loss);
   TO_DEV(opt_bounce_loss_box);
+  TO_DEV(opt_platform_curved);
   TO_DEV(platform_xmin); TO_DEV(platform_xmax);
   TO_DEV(platform_zmin); TO_DEV(platform_zmax);
   TO_DEV(platform_xmid); TO_DEV(platform_xrad);

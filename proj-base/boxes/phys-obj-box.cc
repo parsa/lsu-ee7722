@@ -275,6 +275,7 @@ void
 Box_Manager::phys_insert(Phys *p)
 {
   w->cuda_at_balls_change();
+  p->idx = w->physs.occ();
   w->physs += p;
 }
 

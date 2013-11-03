@@ -213,7 +213,7 @@ World::render()
     }
   eye_dist.sort();
 
-  if ( opt_mirror && vs_reflect->okay() )
+  if ( opt_platform_curved && opt_mirror && vs_reflect->okay() )
     {
       //
       // Render ball reflection.  (Will be blended with dark tiles.)

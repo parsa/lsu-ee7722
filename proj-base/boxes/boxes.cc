@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Project Base Code: Balls and Boxes on a Curved Platform
 
@@ -226,6 +226,8 @@ World::init()
   eye_location = pCoor(17.9,-14,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
 
+  opt_platform_curved = false;
+  platform_box = NULL;
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -80; platform_zmax = 80;
 
@@ -313,6 +315,7 @@ World::init()
 
   variables_update();
   platform_update();
+  platform_object_setup();
   modelview_update();
 
   // Initialize scene to show a brick wall.
@@ -328,6 +331,8 @@ World::init()
   // setting the if condition for the desired configuration.
 
   const float r_short = platform_xrad - opt_ball_radius;
+
+  ASSERTS( opt_platform_curved ); // Code below not updated for flat platform.
 
   if ( false )
     {
@@ -511,13 +516,32 @@ World::platform_collision_possible(Ball *ball, float ts_mov_max)
 
 void World::phys_check()
 {
-  for ( Phys_Iterator phys(physs); phys; phys++ )
+  int bad_count = 0;
+  for ( Phys *phys; phys_live_iterate(phys); )
     {
       Phys* const p = phys;
       if ( p->phys_type == PT_Tile ) continue;
-      ASSERTS( VEC_REDUCE_AND(p->position,isfinite) );
-      ASSERTS( VEC_REDUCE_AND(p->velocity,isfinite) );
+      const bool valid_pos = VEC_REDUCE_AND(p->position,isfinite);
+      const bool valid_vel = VEC_REDUCE_AND(p->velocity,isfinite);
+
+      if ( !valid_pos || !valid_vel )
+        { 
+          bad_count++;
+          p->position.y = -1e6;
+        }
+      continue;
     }
+
+  if ( !bad_count ) return;
+  cuda_at_balls_change();
+
+  for ( Phys *phys; phys_live_iterate(phys); )
+    if ( phys->position.y == -1e6 )
+      {
+        ASSERTS( false );
+        physs.iterate_yank(); 
+        delete phys;
+      }
 }
 
 void World::all_remove()
@@ -529,6 +553,7 @@ void World::all_remove()
       delete phys;
     }
   tile_manager->rebuild();
+  platform_object_setup();
 }
 
 // Remove all but one ball.
@@ -634,7 +659,7 @@ World::balls_add(float contact_y_max)
 
       th += delta_theta;
 
-      if ( !sphere_empty(position,radius) ) return;
+      if ( !sphere_empty(position,3*radius) ) return;
 
       pColor color = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
 
@@ -665,10 +690,10 @@ World::sphere_empty(pCoor center, float radius)
   // Determine if volume of space is ball-free within radius of center.
   //
   for ( Phys_Iterator phys(physs); phys; phys++ )
-    if ( Ball* const ball = BALL(phys) )
+    if ( ! phys->read_only )
       {
-        const double radii = radius + ball->radius;
-        pNorm dist(ball->position,center);
+        const double radii = radius + phys->radius;
+        pNorm dist(phys->position,center);
         if ( dist.mag_sq <= radii * radii ) return false;
       }
   return true;
@@ -779,7 +804,7 @@ World::time_step_cpu()
 
   /// Apply force for platform contact to boxes.
   //
-  for ( Box *box; boxes_iterate(box); )
+  if ( opt_platform_curved ) for ( Box *box; boxes_iterate(box); )
     {
       if ( box->position.y - box->radius >= 0 ) continue;
       if ( box->position.z + box->radius <= platform_zmin ) continue;
@@ -906,7 +931,7 @@ World::time_step_cpu()
 
   /// Apply force for platform contact.
   //
-  for ( Ball *ball; balls_iterate(ball); )
+  if ( opt_platform_curved ) for ( Ball *ball; balls_iterate(ball); )
     {
       const pCoor pos(ball->position);
       if ( !platform_collision_possible(ball) ) continue;
@@ -1057,6 +1082,8 @@ World::time_step_cuda(int iter, int iters_per_frame)
 {
   /// Advance physical state by one time step using CUDA for computation.
 
+  CE(cudaGetLastError());
+
   const bool just_before_render = iter + 1 == iters_per_frame;
 
   cuda_init();
@@ -1069,7 +1096,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
 
   // Set configuration for platform pass.
   //
-  dim_grid.x = int(ceil(double(ball_cnt)/plat_block_size));
+  dim_grid.x = max(1,int(ceil(double(ball_cnt)/plat_block_size)));
   dim_grid.y = dim_grid.z = 1;
   dim_block.x = plat_block_size;
   dim_block.y = dim_block.z = 1;
@@ -1119,6 +1146,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
   //
   CE(cudaEventRecord(frame_start_ce,0));
 
+  CE(cudaGetLastError());
   cpu_data_to_cuda();
   data_location = DL_ALL_CUDA;
 
@@ -1171,20 +1199,27 @@ World::time_step_cuda(int iter, int iters_per_frame)
     }
 
   CE(cudaEventRecord(pairs_start_ce,0));
+  CE(cudaGetLastError());
 
   // Launch the contact pair kernel for as many passes as needed.
   //
   while ( Pass* const p = passes_curr->iterate() )
-    pass_pairs_launch
-      (p->dim_grid,p->dim_block,
-       p->prefetch_offset,p->schedule_offset,p->round_cnt,
-       p->balls_per_thread_max,p->balls_per_block_max,FT_NonFriction);
+    {
+      pass_pairs_launch
+        (p->dim_grid,p->dim_block,
+         p->prefetch_offset,p->schedule_offset,p->round_cnt,
+         p->balls_per_thread_max,p->balls_per_block_max,FT_NonFriction);
+      CE(cudaGetLastError());
+    }
 
   while ( Pass* const p = passes_curr->iterate() )
-    pass_pairs_launch
-      (p->dim_grid,p->dim_block,
-       p->prefetch_offset,p->schedule_offset,p->round_cnt,
-       p->balls_per_thread_max,p->balls_per_block_max,FT_Friction);
+    {
+      pass_pairs_launch
+        (p->dim_grid,p->dim_block,
+         p->prefetch_offset,p->schedule_offset,p->round_cnt,
+         p->balls_per_thread_max,p->balls_per_block_max,FT_Friction);
+      CE(cudaGetLastError());
+    }
 
   CE(cudaGetLastError());
   CE(cudaEventRecord(pairs_stop_ce,0));
@@ -1193,6 +1228,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
   //
   pass_platform_launch(dim_grid,dim_block,physs.occ());
 
+  CE(cudaGetLastError());
   CE(cudaEventRecord(platform_stop_ce,0));
 
   // If data is needed to render a frame, copy from CUDA to CPU.
@@ -1240,6 +1276,8 @@ World::time_step_cuda(int iter, int iters_per_frame)
   // Update counter used for shower spray.
   //
   ball_countdown -= delta_t;
+
+  CE(cudaGetLastError());
 
   if ( ! ( data_location & DL_CV_CPU ) ) return;
 
@@ -1316,6 +1354,10 @@ World::cb_keyboard()
   case '3': setup_tower(20,10,true); break;
   case '4': setup_staircase(); break;
   case '5': setup_house_of_cards(); break;
+  case '|': opt_platform_curved = !opt_platform_curved;
+    platform_update();
+    platform_object_setup();
+    break;
   case 'a':
     if ( opt_physics_method == GP_cuda ) cuda_at_balls_change();
     opt_physics_method++;

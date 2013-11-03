@@ -34,7 +34,7 @@ SRC_FILES = boxes.cc cuda-data.cc cuda-sched.cc \
 	phys.cc phys-obj-tile.cc phys-obj-box.cc phys-obj-ball.cc \
 	phys-contact.cc phys-resolve.cc \
 	gra-platform.cc gra-shapes.cc gra-alhazan.cc \
-	scene-setup.cc \
+	scene-setup.cc phys-platform.cc \
 	render.cc
 
 CU_SRC_FILE = k-main.cu

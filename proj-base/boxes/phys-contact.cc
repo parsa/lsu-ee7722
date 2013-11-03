@@ -86,6 +86,7 @@ World::contact_pairs_proximity_check
         {
           Ball* const ball = ball1 ? ball1 : ball9;
           Tile* const tile = tile1 ? tile1 : tile9;
+          if ( !ball9 ) continue; // Actually a box. But tile/box not handled.
           const float delta_s = ball->velocity.mag() * lifetime_delta_t;
           if ( !tile_sphere_intersect
                (tile, ball->position, ball->radius + delta_s) ) continue;

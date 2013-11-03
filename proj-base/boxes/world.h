@@ -133,6 +133,9 @@ public:
 
   /// Tiled platform for ball.  (Not to be confused with Tile class.)
   //
+  bool opt_platform_curved;
+  Box *platform_box;  // Used when opt_platform_curved is false.
+  float platform_y;
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_xmid, platform_xrad, platform_xrad_inv;
   float delta_theta_inv, tile_size_inv;
@@ -146,6 +149,7 @@ public:
   pColor mirror_tint;           // Color of mirrored tiles.
 
   void platform_update();
+  void platform_object_setup();  // Add physical objects to simulation.
   bool platform_collision_possible(Ball *ball, float ts_mov_max = 0);
 
   pCoor light_location;

@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Fall 2012), GPU Programming
+/// LSU EE X70X-X (Fall 2013), GPU Programming -*- c++ -*-
 //
  /// CUDA code for computing intersection volume of boxes.
 
@@ -243,7 +243,9 @@ pass_xx_intersect(int xx_pairs_count)
     make_float4(ref_pt_count,isb.vol_pieces,volume_sum,vol_area_sum);
 #endif
 
-  if ( volume_sum < 0.001f || vol_area_sum < 0.01f )
+  pNorm dirN = mn(dir);
+
+  if ( volume_sum < 0.001f || vol_area_sum < 0.01f || dirN.magnitude == 0 )
     {
       xx_sects_dir[box_pair.z] = make_float4(volume_sum,0,1.1f,0);
       return;
@@ -251,7 +253,6 @@ pass_xx_intersect(int xx_pairs_count)
 
   pCoor centroid = mv(0,0,0) + (0.25f/volume_sum) * vec_sum;
 
-  pNorm dirN = mn(dir);
   float4 dir_and_m = m4(-dirN.v,volume_sum);
   xx_sects_dir[box_pair.z] = dir_and_m;
   xx_sects_center[box_pair.z] = m4(centroid,volume_sum);
@@ -323,6 +324,18 @@ box_box_intersect_2
   const int face_y_axis = axis2 == 2 ? 2 : 4;
   const int face_x = face_x_axis + ( ( edge2 & 2 ) >> 1 );
   const int face_y = face_y_axis + ( edge2 & 1 );
+  if ( ie2.lo_face >= 0 && ie2.hi_face >= 0
+       && ie2.lo_face >> 1 == ie2.hi_face >> 1 )
+    {
+      if ( ie2.lo_t < ( line2.len - ie2.hi_t ) )
+        {
+          ie2.lo_t = 0; ie2.lo_face = -1;
+        }
+      else
+        {
+          ie2.hi_t = line2.len; ie2.hi_face = -1;
+        }
+    }
 
   isb->line_add(it,face_base+face_x,face_base+face_y,pt_lo,pt_hi);
 
