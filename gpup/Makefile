@@ -32,7 +32,7 @@ default: all
 all:demo-1c-coord demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
 	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays demo-8-texture \
 	demo-9-shader demo-1d-objects demo-10-shader demo-2-live \
-	demo-cuda-01-simple demo-cuda-02-basics
+	demo-cuda-01-simple demo-cuda-02-basics demo-cuda-03-shared-mem
 
 INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
 	        gl-buffer.h texture-util.h cuda-util.h
@@ -115,6 +115,9 @@ demo-cuda-01-simple: demo-cuda-01-simple.o
 	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 demo-cuda-02-basics: demo-cuda-02-basics.o
+	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+
+demo-cuda-03-shared-mem: demo-cuda-03-shared-mem.o
 	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 clean:
