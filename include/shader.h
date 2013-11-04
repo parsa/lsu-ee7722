@@ -127,18 +127,6 @@ public:
           shader_load(GL_GEOMETRY_SHADER_EXT,source_path,main_body_gs);
         if ( gs_object == 0 ) return 0;
         glAttachShader(pobject,gs_object);
-        glProgramParameteriEXT
-          (pobject,
-           GL_GEOMETRY_INPUT_TYPE_EXT,
-           GL_TRIANGLES);
-        glProgramParameteriEXT
-          (pobject,
-           GL_GEOMETRY_OUTPUT_TYPE_EXT,
-           GL_TRIANGLE_STRIP);
-        glProgramParameteriEXT
-          (pobject,
-           GL_GEOMETRY_VERTICES_OUT_EXT,
-           9);
       }
     else
       {
