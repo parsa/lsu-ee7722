@@ -13,7 +13,7 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 150 compatibility
+#version 430 compatibility
 
 // The _GEOMETRY_SHADER_ define is put there by code in shader.h.
 //
@@ -115,6 +115,17 @@ flat out int count;        // Number of mirror points found.
 #endif
 
 #ifdef _GEOMETRY_SHADER_
+
+// Indicate type of input primitive expected by geometry shader.
+//
+layout ( triangles ) in;
+layout ( triangle_strip ) out;
+
+// Indicate the maximum number of vertices that the geometry shader
+// can write.
+//
+layout ( max_vertices = 12 ) out;
+
 flat in vec3 world_pos0[3];
 flat in vec3 world_pos1[3];
 flat in vec3 world_pos2[3];
