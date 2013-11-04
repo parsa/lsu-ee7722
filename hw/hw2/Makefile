@@ -30,7 +30,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw2
+default: hw2-sol
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -42,6 +42,12 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 	 shapes.h Makefile
 
 hw2: hw2.cc $(INCLUDES) hw2-graphics.cc
+	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
+	-o $@ $(LIBDIR)  $(LIBRARIES) 
+	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
+	-o $@-debug $(LIBDIR) $(LIBRARIES) 
+
+hw2-sol: hw2-sol.cc $(INCLUDES) hw2-graphics.cc
 	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES) 
 	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
