@@ -786,6 +786,7 @@ void
 World::init()
 {
   opt_cuda_prox = true;
+  wheel = NULL;
 
   /// Initialize scheduler thread, used for computing CUDA schedule.
   //
