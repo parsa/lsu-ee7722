@@ -558,6 +558,7 @@ public:
   void normalize()
   {
     const float mag_sq = v.mag_sq() + w * w;
+    if ( mag_sq == 0 ) return;
     const float mag_inv = powf(mag_sq,-0.5f);
     v *= mag_inv;
     w *= mag_inv;
