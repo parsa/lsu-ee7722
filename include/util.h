@@ -278,26 +278,32 @@ pFrame_Timer::frame_end()
   frame_rate_text += "  GPU.GL ";
   if ( query_timer_id )
     frame_rate_text.sprintf
-      ("%.3f ms (%.1f%%)", 1000 * gpu_tlast, 100 * gpu_frac);
+      ("%6.3f ms (%4.1f%%)", 1000 * gpu_tlast, 100 * gpu_frac);
   else
     frame_rate_text += "---";
 
   frame_rate_text += "  GPU.CU ";
   if ( cuda_in_use )
     frame_rate_text.sprintf
-      ("%.3f ms (%.1f%%)", 1000 * cuda_tlast, 100 * cuda_frac);
+      ("%6.3f ms (%4.1f%%)", 1000 * cuda_tlast, 100 * cuda_frac);
   else
     frame_rate_text += "---";
 
   frame_rate_text.sprintf
-    ("  CPU %.2f ms (%.1f%%)", 1000 * cpu_tlast, 100 * cpu_frac);
+    ("  CPU %6.2f ms (%4.1f%%)", 1000 * cpu_tlast, 100 * cpu_frac);
 
   if ( work_description )
-    frame_rate_text.sprintf("  %s %.3f", work_description, work_rate);
+    frame_rate_text.sprintf("  %s %7.1f", work_description, work_rate);
 
   while ( pTimer_Info* const ti = timer_info.iterate() )
-    frame_rate_text.sprintf
-      ("  %s %.2f ms (%.1f%%)", ti->label.s, 1000 * ti->last, 100 * ti->frac);
+    {
+      struct { double mult; const char* lab; } fmt;
+      if ( ti->last >= 0.001 ) { fmt.mult = 1000; fmt.lab = "ms"; } 
+      else { fmt.mult =1e6; fmt.lab= "µs"; }
+      frame_rate_text.sprintf
+        ("  %s %7.3f %s (%4.1f%%)", ti->label.s,
+         fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
+    }
 }
 
 #endif
@@ -509,7 +515,7 @@ public:
   static void cb_idle_w(){ opengl_helper_self_->cb_idle(); }
   void cb_idle()
   {
-    if ( true || !ptr_glXGetVideoSyncSGI ) { use_timer(); return; }
+    if ( false || !ptr_glXGetVideoSyncSGI ) { use_timer(); return; }
 #   ifdef GLX_SGI_video_sync
     unsigned int count;
     ptr_glXGetVideoSyncSGI(&count);
@@ -596,7 +602,7 @@ private:
     lglext_ptr_init();
 
     glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL );
-    glutInitWindowSize(640,480);
+    glutInitWindowSize(854,480);
 
     pStringF title("OpenGL Demo - %s",exe_file_name);
 
