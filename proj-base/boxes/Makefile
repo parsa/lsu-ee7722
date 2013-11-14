@@ -45,7 +45,9 @@ default: boxes
 
 # Include dependencies that were created by %.d rule.
 #
-include $(SRC_FILES:.cc=.d) $(CU_SRC_FILE:.cu=.d)
+ifneq ($(MAKECMDGOALS),clean)
+-include $(SRC_FILES:.cc=.d) $(CU_SRC_FILE:.cu=.d)
+endif
 
 # Prepare file holding dependencies, to be included in this file.
 #
