@@ -65,7 +65,9 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 
 # Include dependencies that were created by %.d rule.
 #
-include $(SRC_FILES:.cc=.d) $(CU_SRC_FILES:.cu=.d)
+ifneq ($(MAKECMDGOALS),clean)
+-include $(SRC_FILES:.cc=.d) $(CU_SRC_FILES:.cu=.d)
+endif
 
 # Prepare file holding dependencies, to be included in this file.
 #
