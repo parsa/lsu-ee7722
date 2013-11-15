@@ -14,7 +14,7 @@ If nil, assume ~/.emacs file is a simlink to lisp directory.")
         (file-name-directory (file-truename "~/.emacs"))))
 
 (unless (file-readable-p (concat gpu-lisp-directory "/gpu-settings.el"))
-  (error "Could not find directory for EE 7700-X files. See ~/.emacs"))
+  (error "Could not find directory for EE files. See ~/.emacs"))
 
 (add-to-list 'load-path gpu-lisp-directory)
 (require 'popular-settings)

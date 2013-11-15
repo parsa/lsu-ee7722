@@ -9,12 +9,30 @@
   (error "Initialization file intended for Emacs 21.0 and higher"))
 
 (provide 'popular-settings)
+(require 'p-util)
 
 ; Tell Emacs to use mouse wheel (if you have one).
 (when (fboundp 'mouse-wheel-mode) (mouse-wheel-mode 1))
 (setq mouse-wheel-progressive-speed nil)
 
 (when (fboundp 'blink-cursor-mode) (blink-cursor-mode 0))
+
+;;; CUDA, OpenGL, OpenCL Settings
+
+; OpenCL
+(add-to-list 'auto-mode-alist '("\\.cl\\'" . c++-mode))
+(add-to-list 'auto-mode-alist '("\\.hcl\\'" . c++-mode))
+
+; OpenGL Shader Language
+(add-to-list 'auto-mode-alist '("\\.glsl\\'" . c-mode))
+
+; CUDA
+(add-to-list 'auto-mode-alist '("\\.cu\\'" . c++-mode))
+(add-to-list 'auto-mode-alist '("\\.cuh\\'" . c++-mode))
+(add-to-list 'auto-mode-alist '("\\.cup\\'" . c++-mode))
+(add-to-list 'auto-mode-alist '("\\.ptx\\'" . asm-mode))
+(add-to-list 'auto-mode-alist '("\\.sass\\'" . asm-mode))
+
 
 ;;; Misc. Settings
 
@@ -83,12 +101,21 @@
 (setq font-lock-maximum-decoration t)
 (jit-lock-mode 1)
 
+(defvar p-ss-family-name
+  (if (>= emacs-major-version 23)
+      (p-first-member
+       (list
+        "DejaVu LGC Sans" "DejaVu Sans" "Nimbus Sans L"
+        "FreeSans") (p-font-family-list))
+      "Helv"))
+
+
 (when (fboundp 'set-face-attribute)
   (set-face-attribute 'modeline nil :weight 'bold :family "helv"))
 
 (set-face-attribute
  'font-lock-function-name-face nil
- :family "helv" :weight 'bold :height 1.4 :foreground "black")
+ :family p-ss-family-name :weight 'bold :height 1.4 :foreground "black")
 (set-face-attribute
  'font-lock-comment-face nil
  :foreground "Firebrick")
@@ -108,14 +135,27 @@
  'font-lock-constant-face nil
  :foreground "MediumSeaGreen")
 
+(defface font-lock-api-face
+  `((t (:foreground "medium blue" :weight normal :slant normal)))
+  "Personal font lock face for API calls, set 1")
+
+(defface font-lock-api2-face
+  `((t (:foreground "navy" :weight normal :slant normal)))
+  "Personal font lock face for API calls, set 2.")
+
+(defface font-lock-api3-face
+  `((t (:foreground "dark cyan" :weight normal :slant normal)))
+  "Personal font lock face for API calls, set 3.")
+
 
 ;; Comment heading.
 
 (defface comment-heading-face
-  '((t (:family "helv" :weight bold :height 1.5)))
+  `((t (:family ,p-ss-family-name :weight bold :height 1.5)))
   "Comment heading face.")
 (defface comment-sub-heading-face
-  '((t (:family "helv" :weight bold :inherit 'font-lock-comment-face)))
+  `((t (:family ,p-ss-family-name :weight bold 
+                :inherit 'font-lock-comment-face)))
   "Comment sub-heading face.")
 
 (font-lock-add-keywords
@@ -130,6 +170,124 @@
  'cperl-mode
  '(("^## +\\(.*\\)" (1 'comment-heading-face t))
    ("^ +## +\\(.*\\)" (1 'comment-sub-heading-face t))))
+
+
+;; CUDA-related Highlighting
+
+(font-lock-add-keywords
+ 'c++-mode
+ '(("\\<[cg]l[A-Z][A-Za-z0-9]+\\>" . 'font-lock-api-face)
+   ("\\<cu\\(da\\)?[A-Z][A-Za-z0-9]+\\>" . 'font-lock-api2-face)
+   ("__syncthreads\\>" . 'font-lock-api2-face)
+   ("\\<pthread_[_a-z0-9]+\\>" . 'font-lock-api2-face)
+   ("\\<cupti[A-Z][A-Za-z0-9]+\\>" . 'font-lock-api3-face)
+   ("\\<[GC]L_[A-Z][_A-Z0-9]+" . 'font-lock-constant-face)
+   ("__\\(global\\|device\\|shared\\|constant\\|host\\)__"
+    . 'font-lock-keyword-face)
+   ))
+
+;; OpenGL Shader Language storage and layout specifiers
+
+(font-lock-add-keywords
+ 'c++-mode
+ '(("\\<\\(in\\|out\\|uniform\\|attribute\\|varying\\|buffer\\)\\>"
+    . 'font-lock-keyword-face)
+   ("\\<\\(layout\\|binding\\|location\\)\\>"
+    . 'font-lock-keyword-face)))
+   
+
+;; Highlight long numbers to improve visibility.
+
+(defface number-highlight-face
+    `((t (:foreground "cyan4")))
+    "Face for highlighting digit groups in numbers.")
+
+(defface number-radix-face
+    `((t (:foreground "gray60")))
+    "Face for 0x prefix in certain hexadecimal numbers.")
+
+(defvar p-number-highlight-keywords
+  '(
+    ;; Hexidecimal Integers
+;;    ("0x\\([0-9a-fA-F]?[0-9a-fA-F]?[0-9a-fA-F]?[0-9a-fA-F]\\)[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]\\>"
+    ;;     (1 (quote number-highlight-face) t))
+    ("\\(0x\\)[0-9a-fA-F]\\{1,4\\}\\>"
+     (1 (quote number-radix-face) t))
+
+    ("\\(0x\\)\\([0-9a-fA-F]\\{1,4\\}\\)[0-9a-fA-F]\\{4\\}\\([Ll]\\{0,2\\}\\)\\>"
+     (1 (quote number-radix-face) t)
+     (2 (quote number-highlight-face) t)
+     (3 (quote number-radix-face) t))
+
+    ("\\(0x\\)[0-9a-fA-F]\\{1,4\\}\\([0-9a-fA-F]\\{4\\}\\)[0-9a-fA-F]\\{4\\}\\([lL]\\{0,2\\}\\)\\>"
+     (1 (quote number-radix-face) t)
+     (2 (quote number-highlight-face) t)
+     (1 (quote number-radix-face) t)
+     )
+
+    ("\\(0x\\)\\([0-9a-fA-F]\\{1,4\\}\\)[0-9a-fA-F]\\{4\\}\\([0-9a-fA-F]\\{4\\}\\)[0-9a-fA-F]\\{4\\}\\([lL]\\{0,2\\}\\)\\>"
+     (1 (quote number-radix-face) t)
+     (2 (quote number-highlight-face) t)
+     (3 (quote number-highlight-face) t)
+     (4 (quote number-radix-face) t))
+
+    ;; Integer part, highlight thousands and billions (10^9)
+    ("\\([^.]\\|^\\)\\<[$]?\\([0-9][0-9]\\)[0-9][0-9][0-9]%?\\>"
+     (2 (quote number-highlight-face) t))
+    ("\\([^.]\\|^\\)\\<[$]?[0-9]?[0-9]?[0-9]?\\([0-9][0-9][0-9]\\)[0-9][0-9][0-9]%?\\>"
+     (2 (quote number-highlight-face) t))
+    ("\\([^.]\\|^\\)\\<[$]?\\([0-9]?[0-9]?[0-9]\\)[0-9][0-9][0-9]\\([0-9][0-9][0-9]\\)[0-9][0-9][0-9]%?\\>"
+     (2 (quote number-highlight-face) t ) (3 (quote number-highlight-face) t ))
+
+    ("\\([^.]\\|^\\)\\<[$]?[0-9]\\{1,3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}%?\\>"
+     (2 'number-highlight-face t)
+     (3 (quote number-highlight-face) t))
+
+    ("\\([^.]\\|^\\)\\<[$]?\\([0-9]\\{1,3\\}\\)[0-9]\\{3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}%?\\>"
+     (2 'number-highlight-face t)
+     (3 (quote number-highlight-face) t)
+     (4 'number-highlight-face t))
+
+    ("\\([^.]\\|^\\)\\<[$]?[0-9]\\{1,3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}\\([0-9]\\{3\\}\\)[0-9]\\{3\\}%?\\>"
+     (2 'number-highlight-face t)
+     (3 (quote number-highlight-face) t)
+     (4 'number-highlight-face t)
+     )
+
+    ;; Fractional Part
+    ("\\(?:[0-9 ]\\|^\\)\\.[0-9]\\{3\\}\\(?:\\(?4:[0-9]\\{3\\}\\)[0-9]\\{0,3\\}\\|\\(?4:[0-9]\\{3\\}\\)\\)\\(?6:[DdEe]\\|\\)\\>"
+     (4 'number-highlight-face t)
+     (6 'number-radix-face t))
+
+    ("\\(?:[0-9 ]\\|^\\)\\.[0-9]\\{1,5\\}\\(?6:[DdEe]\\)\\>"
+     (6 'number-radix-face t))
+
+    ("\\(?:[0-9 ]\\|^\\)\\.[0-9]\\{3\\}\\(?3:[0-9]\\{3\\}\\)[0-9]\\{3\\}\\(?:\\(?4:[0-9]\\{3\\}\\)[0-9]\\{0,3\\}\\|\\(?4:[0-9]\\{1,3\\}\\)\\)\\(?6:[DdEe]\\|\\)\\>"
+     (3 'number-highlight-face t)
+     (4 'number-highlight-face t)
+     (6 'number-radix-face t))
+
+    ("\\(?:[0-9 ]\\|^\\)\\.[0-9]\\{3\\}\\(?2:[0-9]\\{3\\}\\)[0-9]\\{3\\}\\(?3:[0-9]\\{3\\}\\)[0-9]\\{3\\}\\(?:\\(?4:[0-9]\\{3\\}\\)[0-9]\\{0,3\\}\\|\\(?4:[0-9]\\{1,3\\}\\)\\)\\(?6:[DdEe]\\|\\)\\>"
+     (2 'number-highlight-face t)
+     (3 'number-highlight-face t)
+     (4 'number-highlight-face t)
+     (6 'number-radix-face t)))
+
+  "Font lock keywords for highlighting groups of digits.
+Highlights thousands and billions in integers and second group of
+four in hexadecimal integers.")
+
+
+(font-lock-add-keywords
+ 'c++-mode
+ p-number-highlight-keywords)
+(font-lock-add-keywords
+ 'c-mode
+ p-number-highlight-keywords)
+(font-lock-add-keywords
+ 'cperl-mode
+ p-number-highlight-keywords)
+
 
 ;; Hi-lock Highlight based on regexps.
 

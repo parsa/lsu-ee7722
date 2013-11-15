@@ -1,51 +1,59 @@
 ;;; Assembler and SPIM Code for use in LSU ECE classes by David Koppelman
 ;;
-;; Includes settings for asm-mode for highlighting MIPS and SPARC
-;; assembler code, and for running XSPIM.
-
-;; $Id:$
+;; Includes settings for asm-mode for highlighting assembly code and
+;; for running XSPIM. The following instruction sets are supported:
+;; MIPS, SPARC, IA-32, OpenGL Vertex Program 1, NVIDIA PTX, NVIDIA
+;; SASS (Tesla, Fermi, Kepler).
 
 ;; Variables for SPIM
 
-(provide 'asm-class)
+(require 'p-util)
 
 (defvar default-spim-options
   "-notrap -delayed_branches -dont_fix -fg black -bg white"
   "Options to pass to spim for normal invocation.")
 
-(defvar spim-program "xspim" "Location of xspim")
-;(defvar spim-program "/home/classes/ee4720/com/bin/xspim"
- ; "Location of xspim")
-
-
-;(setq spim-program "/fac/drk/pub/sim/spim-6.3/xspim")
+(defvar spim-program "/home/faculty/koppel/pub/ee4720/bin/xspim"
+  "Location of xspim")
+(defvar asv-program "/home/faculty/koppel/pub/ee4720/bin/asv"
+  "Location of script to convert assembler into Verilog for MIPS input.")
 
 (defvar spim-menu (make-sparse-keymap "SPIM") "Menu for SPIM")
 
 (define-key spim-menu [rspim]
   '(menu-item "Run XSPIM on current buffer."
               start-spim
-              :help "What are you waiting for?"))
+              :help "Start XSPIM simulator."))
 
 (define-key spim-menu [mipstov]
   '(menu-item "Assemble buffer into Verilog."
               mips-to-verilog
-              :help "Go ahead, don't be shy!"))
+              :help "Convert MIPS assembler code into a form that can be read by our MIPS Verilog models."))
 
 ;; Font Lock Settings for asm-mode
 
+(defvar asm-ss-family-name
+  (if (>= emacs-major-version 23)
+      (p-first-member
+       (list "DejaVu LGC Sans" "DejaVu Sans" "FreeSans") (p-font-family-list))
+      "Helv"))
+
 (defface asm-comment-heading-face
-  '((t (:family "helv" :weight bold :height 1.5)))
+  '((t (:family "DejaVu Sans" :weight bold :height 1.5)))
   "Assembler comment heading face.")
+
 (defface asm-comment-sub-heading-face
-  '((t (:family "helv" :weight bold :inherit font-lock-comment-face)))
+  '((t (:family "DejaVu Sans" :weight bold :inherit font-lock-comment-face)))
   "Assembler comment sub-heading face.")
 (defface asm-directive-face
   '((t (:foreground "navy" :slant italic)))
   "Assembler directive face.")
 (defface asm-memory-space-face
-  '((t (:foreground "dark olive green" :slant normal)))
+  '((t (:foreground "dark magenta" :slant italic)))
   "Assembler memory space face. (For CUDA memory/register categories.")
+(defface asm-insn-modifier-face
+  '((t (:foreground "medium blue" :slant normal)))
+  "Assembler face for instruction modifiers (other than size).")
 (defface asm-constant-radix-face
   '((t (:foreground "gray60")))
   "Assembler radix indicator face.")
@@ -65,23 +73,23 @@
   '((t (:foreground "ForestGreen" :weight bold)))
   "Face for example heading in assembler lecture code.")
 (defface asm-defined-term-face
-  '((t (:foreground "Black" :family "helv" :weight bold :slant italic)))
+  '((t (:foreground "Black" :family "DejaVu Sans" :weight bold :slant italic)))
   "Face for defined terms in assembler lecture code.")
 (defface asm-heading-syntax-face
   '((t (:foreground "magenta" :slant italic )))
   "Face for syntax heading in assembler lecture code.")
 
 (when nil
-  (regexp-opt 
+  (regexp-opt
    (list
     "movl" "pushl" "call" "jmp"
 )))
 
 (defvar ia32-all-instr-regexp
-  "\\<\\(movl\\|pushl\\|call\\|jmp\\)\\>"
+  "\\<\\(\\(shr\\|sar\\|neg\\|lea\\|test\\|v?sub[sp]?\\|v?add[sp]?\\|[vi]?div[sp]\\|[iv]?mul[sp]?\\|not\\|and\\|v?xor[spd]*\\|or\\|cmp\\|pop\\|sal\\|clt\\|push\\)[bldq]\\|call\\|\\(j\\|set\\)\\([bngla]?e?\\)\\|re[pt]\\|jmp\\|v?mov[ah]?p?[bsldq]*\\)\\>"
   "IA-32 Instruction Regexps")
 (when nil
-  (regexp-opt 
+  (regexp-opt
    (list
     "add" "addc" "addcc" "addccc" "addx" "addxcc" "alignaddr" "alignaddrl"
     "and" "andcc" "andn" "andncc" "array16" "array32" "array8" "b" "ba"
@@ -216,11 +224,11 @@
 
 (when nil
   (regexp-opt
-   (list 
+   (list
 
     "add" "sub" "addc" "subc" "mul" "mad" "mul24" "mad24" "sad" "div"
     "div.sat"
-    "rem" "abs" "neg" "min" "max" 
+    "rem" "abs" "neg" "min" "max"
 
     "setp.eq" "setp.ne" "setp.lt" "setp.le" "setp.gt" "setp.ge"
     "setp.lo" "setp.ls" "setp.hi" "setp.hs" "setp.equ" "setp.neu"
@@ -239,11 +247,94 @@
     "rcp" "sqrt" "rsqrt"
     "sin" "cos" "lg2" "ex2" "trap" "brkpt"
 
+    "fma" "cvta"
+
     ) 'words))
 
 (defvar ptx-all-instr-regexp
-  "\\<\\(a\\(?:bs\\|ddc?\\|nd\\|tom\\)\\|b\\(?:ar\\.sync\\|r\\(?:a\\(?:\\.uni\\)?\\|kpt\\)\\)\\|c\\(?:all\\(?:\\.uni\\)?\\|not\\|os\\|vt\\)\\|div\\(?:\\.sat\\)?\\|ex\\(?:2\\|it\\)\\|l\\(?:d\\(?:\\.volatile\\)?\\|g2\\)\\|m\\(?:a\\(?:d24\\|[dx]\\)\\|in\\|ov\\|ul\\(?:24\\)?\\)\\|n\\(?:eg\\|ot\\)\\|or\\|r\\(?:cp\\|e\\(?:t\\.uni\\|[dmt]\\)\\|sqrt\\)\\|s\\(?:ad\\|e\\(?:lp\\|t\\(?:\\.\\(?:equ?\\|g\\(?:[et]u\\|[et]\\)\\|h[is]\\|l\\(?:[et]u\\|[eost]\\)\\|n\\(?:an\\|eu?\\|um\\)\\)\\|p\\.\\(?:equ?\\|g\\(?:[et]u\\|[et]\\)\\|h[is]\\|l\\(?:[et]u\\|[eost]\\)\\|n\\(?:an\\|eu?\\|um\\)\\)\\)\\)\\|h[lr]\\|in\\|lct\\|qrt\\|t\\|ubc?\\)\\|t\\(?:ex\\.\\(?:[123]d\\)\\|rap\\)\\|vote\\.\\(?:a\\(?:ll\\|ny\\)\\|uni\\)\\|xor\\)\\>"
+  "\\<\\(a\\(?:bs\\|ddc?\\|nd\\|tom\\)\\|b\\(?:ar\\.sync\\|r\\(?:a\\(?:\\.uni\\)?\\|kpt\\)\\)\\|c\\(?:all\\(?:\\.uni\\)?\\|not\\|os\\|vta?\\)\\|div\\(?:\\.sat\\)?\\|ex\\(?:2\\|it\\)\\|fma\\|l\\(?:d\\(?:\\.volatile\\)?\\|g2\\)\\|m\\(?:a\\(?:d24\\|[dx]\\)\\|in\\|ov\\|ul\\(?:24\\)?\\)\\|n\\(?:eg\\|ot\\)\\|or\\|r\\(?:cp\\|e\\(?:t\\.uni\\|[dmt]\\)\\|sqrt\\)\\|s\\(?:ad\\|e\\(?:lp\\|t\\(?:\\.\\(?:equ?\\|g\\(?:[et]u\\|[et]\\)\\|h[is]\\|l\\(?:[et]u\\|[eost]\\)\\|n\\(?:an\\|eu?\\|um\\)\\)\\|p\\.\\(?:equ?\\|g\\(?:[et]u\\|[et]\\)\\|h[is]\\|l\\(?:[et]u\\|[eost]\\)\\|n\\(?:an\\|eu?\\|um\\)\\)\\)\\)\\|h[lr]\\|in\\|lct\\|qrt\\|t\\|ubc?\\)\\|t\\(?:ex\\.\\(?:[123]d\\)\\|rap\\)\\|vote\\.\\(?:a\\(?:ll\\|ny\\)\\|uni\\)\\|xor\\)\\>"
   "Regexp matching PTX instructions.")
+
+;;
+;; VP 1  (Vertex Program)
+;;
+
+(when nil
+  (regexp-opt
+   (list
+    "ARL" "MOV" "MUL" "ADD" "MAD"
+    "RCP" "RSQ" "DP3" "DP4" "DST" "MIN" "MAX" "SLT" "SGE" "EXP" "LOG" "LIT"
+    ) 'words)
+  )
+
+(defvar vp1-all-instr-regexp
+"\\<\\(A\\(?:DD\\|RL\\)\\|D\\(?:P[34]\\|ST\\)\\|EXP\\|L\\(?:IT\\|OG\\)\\|M\\(?:A[DX]\\|IN\\|OV\\|UL\\)\\|R\\(?:CP\\|SQ\\)\\|S\\(?:GE\\|LT\\)\\)\\>")
+
+
+;; SASS GT200 (NVIDIA native)
+
+(when nil
+  (regexp-opt
+   (list
+    "A2R" "ADA" "BAR" "BRA" "BRK" "BRX" "C2R" "CAL" "COS" "DADD"
+    "DFMA" "DMAX" "DMIN" "DMUL" "DSET"
+    "EX2" "F2F" "F2I" "FADD" "FADD32" "FADD32I" "FCMP" "FMAD" "FMAD32"
+    "FMAD32I" "FMAX"
+    "FMIN" "FMUL" "FMUL32" "FMUL32I" "FSET" "G2R" "GLD"
+    "GLD.LCK" "R2G.UNL" "GST" "I2F" "I2I"
+    "IADD" "IADD32" "IADD32I" "IMAD" "IMAD32" "IMAD32I"
+    "IMAX" "IMIN" "IMUL" "IMUL32"
+    "IMUL32I" "ISAD" "ISAD32" "ISET" "LG2" "LLD" "LST"
+    "LOP.XOR" "LOP.AND" "LOP.OR" 
+    "MOV" "MOV32" "MVC" "MVI" "NOP"
+    "R2A" "R2C" "R2G" "RCP" "RCP32" "RET" "RRO" "RSQ" "S2R"
+    "SHL" "SHR" "SIN" "SSY" "TEX" "TEX32" "VOTE"
+    ) 'words)
+)
+
+(defvar sass-gt200-all-instr-regexp
+"\\<\\(A\\(?:2R\\|DA\\)\\|B\\(?:AR\\|R[AKX]\\)\\|C\\(?:2R\\|AL\\|OS\\)\\|D\\(?:ADD\\|FMA\\|M\\(?:AX\\|IN\\|UL\\)\\|SET\\)\\|EX2\\|F\\(?:2[FI]\\|ADD\\(?:32I?\\)?\\|CMP\\|M\\(?:A\\(?:D32I?\\|[DX]\\)\\|IN\\|UL\\(?:32I?\\)?\\)\\|SET\\)\\|G\\(?:2R\\|LD\\(?:\\.LCK\\)?\\|ST\\)\\|I\\(?:2[FI]\\|ADD\\(?:32I?\\)?\\|M\\(?:A\\(?:D32I?\\|[DX]\\)\\|IN\\|UL\\(?:32I?\\)?\\)\\|S\\(?:AD\\(?:32\\)?\\|ET\\)\\)\\|L\\(?:G2\\|LD\\|OP\\.\\(?:AND\\|X?OR\\)\\|ST\\)\\|M\\(?:OV\\(?:32\\)?\\|V[CI]\\)\\|NOP\\|R\\(?:2\\(?:G\\.UNL\\|[ACG]\\)\\|CP\\|ET\\|RO\\|SQ\\)\\|S\\(?:2R\\|H[LR]\\|IN\\|SY\\)\\|TEX\\(?:32\\)?\\|RCP32\\|VOTE\\|GATOM\\.\\(IADD\\|EXCH\\|CAS\\|IMIN\\|IMAX\\|INC\\|DEC\\|IAND\\|IOR\\|IXOR\\)\\|GRED\\.\\(IADD\\|IMIN\\|IMAX\\|INC\\|DEC\\|IAND\\|IOR\\|IXOR\\)\\|PBK\\)\\>")
+
+;; SASS Fermi (NVIDIA native)
+
+(when nil
+  (regexp-opt
+   (list
+    "ATOM" "B2R" "BAR" "BFE" "BFI" "BPT" "BRA" "BRK" "BRX" "CAL" "CCTL"
+    "CCTLL" "CONT" "CSET" "CSETP" "DADD" "DFMA" "DMNMX" "DMUL" "DSET"
+    "DSETP" "EXIT" "F2F" "F2I" "FADD" "FCMP" "FFMA" "FLO" "FMNMX" 
+    "FMUL" "FMUL32I"
+    "FSET" "FSETP" "FSWZ" "I2F" "I2I" "IADD" "ICMP" "IMAD" "IMNMX" "IMUL"
+    "ISAD" "ISCADD" "ISET" "ISETP" "JCAL" "JMP" "JMX" "LD" "LDC" "LDL"
+    "LDLK" "LDS" "LDSLK" "LDS_LDU" "LDU" "LDU" "LD_LDU" "LEPC" "LONGJMP"
+    "LOP" "LOP32I"
+    "MEMBAR" "MOV" "MOV32I" "MUFU" "NOP" "P2R" "PBK" "PCNT" "PLONGJMP"
+    "POPC" "PRET" "PRMT" "PSET" "PSETP" "R2P" "RED" "RET" "RRO" "S2R"
+    "SEL" "SHL" "SHR" "SSY" "ST" "STL" "STS" "STSUL" "STUL" "SULD"
+    "SULEA" "SUQ" "SURED" "SUST" "TEX" "TLD" "TLD4" "TXQ" "VOTE"
+    ) 'words))
+
+(defvar sass-fermi-all-instr-regexp
+  "\\<\\(ATOM\\|B\\(?:2R\\|AR\\|F[EI]\\|PT\\|R[AKX]\\)\\|C\\(?:AL\\|CTLL?\\|ONT\\|SETP?\\)\\|D\\(?:ADD\\|FMA\\|M\\(?:NMX\\|UL\\)\\|SETP?\\)\\|EXIT\\|F\\(?:2[FI]\\|ADD\\|CMP\\|FMA\\|LO\\|M\\(?:NMX\\|UL\\)\\|S\\(?:ETP?\\|WZ\\)\\)\\|I\\(?:2[FI]\\|ADD\\|CMP\\|M\\(?:AD\\|NMX\\|UL\\)\\|S\\(?:AD\\|CADD\\|ETP?\\)\\)\\|J\\(?:CAL\\|M[PX]\\)\\|L\\(?:D\\(?:LK\\|S\\(?:LK\\|_LDU\\)\\|_LDU\\|[CLSU]\\)?\\|EPC\\|O\\(?:\\(?:NGJM\\)?P\\)\\)\\|M\\(?:EMBAR\\|OV\\|UFU\\)\\|NOP\\|P\\(?:2R\\|BK\\|CNT\\|LONGJMP\\|OPC\\|R\\(?:[EM]T\\)\\|SETP?\\)\\|R\\(?:2P\\|E[DT]\\|RO\\)\\|S\\(?:2R\\|EL\\|H[LR]\\|SY\\|T\\(?:S?UL\\|[LS]\\)?\\|U\\(?:L\\(?:D\\|EA\\)\\|Q\\|RED\\|ST\\)\\)\\|T\\(?:EX\\|LD4?\\|XQ\\)\\|VOTE\\)\\>")
+
+;; SASS Kepler (NVIDIA native)
+(when nil
+  (regexp-opt
+   (list
+    "FFMA" "FADD" "FCMP" "FMUL" "FMNMX" "FSWZ" "FSET" "FSETP" "FCHK" "RRO"
+    "MUFU" "DFMA" "DADD" "DMUL" "DMNMX" "DSET" "DSETP" "IMAD" "IMADSP"
+    "IMUL" "IADD" "ISCADD" "ISAD" "IMNMX" "BFE" "BFI" "SHR" "SHL" "SHF"
+    "LOP" "FLO" "ISET" "ISETP" "ICMP" "POPC" "F2F" "F2I" "I2F" "I2I" "MOV"
+    "SEL" "PRMT" "SHFL" "P2R" "R2P" "CSET" "CSETP" "PSET" "PSETP" "TEX"
+    "TLD" "TLD4" "TXQ" "LDC" "LD" "LDG" "LDL" "LDS" "LDSLK" "ST" "STL"
+    "STS" "STSCUL" "ATOM" "RED" "CCTL" "CCTLL" "MEMBAR" "SUCLAMP" "SUBFM"
+    "SUEAU" "SULDGA" "SUSTGA" "BRA" "BRX" "JMP" "JMX" "CAL" "JCAL" "RET"
+    "BRK" "CONT" "SSY" "PBK" "PCNT" "PRET" "BPT" "EXIT" "NOP" "S2R" "B2R"
+    "BAR" "VOTE" "MOV32I"
+    ) 'words))
+
+(defvar sass-kepler-all-instr-regexp
+  "\\<\\(ATOM\\|B\\(?:2R\\|AR\\|F[EI]\\|PT\\|R[AKX]\\)\\|C\\(?:AL\\|CTLL?\\|ONT\\|SETP?\\)\\|D\\(?:ADD\\|FMA\\|M\\(?:NMX\\|UL\\)\\|SETP?\\)\\|EXIT\\|F\\(?:2[FI]\\|ADD\\|C\\(?:HK\\|MP\\)\\|FMA\\|LO\\|M\\(?:NMX\\|UL\\)\\|S\\(?:ETP?\\|WZ\\)\\)\\|I\\(?:2[FI]\\|ADD\\|CMP\\|M\\(?:AD\\(?:SP\\)?\\|NMX\\|UL\\)\\|S\\(?:AD\\|CADD\\|ETP?\\)\\)\\|J\\(?:CAL\\|M[PX]\\)\\|L\\(?:D\\(?:SLK\\|[CGLS]\\)?\\|OP\\)\\|M\\(?:EMBAR\\|OV\\|UFU\\)\\|NOP\\|P\\(?:2R\\|BK\\|CNT\\|OPC\\|R\\(?:[EM]T\\)\\|SETP?\\)\\|R\\(?:2P\\|E[DT]\\|RO\\)\\|S\\(?:2R\\|EL\\|H\\(?:FL\\|[FLR]\\)\\|SY\\|T\\(?:SCUL\\|[LS]\\)?\\|U\\(?:BFM\\|CLAMP\\|EAU\\|\\(?:LD\\|ST\\)GA\\)\\)\\|T\\(?:EX\\|LD4?\\|XQ\\)\\|VOTE\\|MOV32I\\)\\>")
 
 
 (setq asm-markup-extra-font-lock-keywords
@@ -293,14 +384,247 @@
 (defun asm-mode-prefs ()
   "Assembler mode settings for SPARC or MIPS.
 Called before asm-mode initializes."
-
   (cond
+   ((save-excursion
+      ;; Vertex Program.
+      (goto-char (point-min))
+      (looking-at "!!ARBvp"))
+    (setq
+     asm-comment-char ?#
+     asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list
+            (cons vp1-all-instr-regexp
+                  font-lock-keyword-face))
+
+           '(
+             ;; Line Labels (PTX)
+             ("\\$L[_A-Z0-9a-z]+" . font-lock-constant-face)
+
+             ;; Line Labels (Decuda)
+             ("^[A-Z]+:" . font-lock-constant-face)
+             ("\\.label \\(label[0-9]+\\)" (1 font-lock-constant-face))
+
+             ;; Instruction Modifiers
+             ("[. ][busf]\\(8\\|16\\|32\\|64\\|128\\)\\>" . font-lock-type-face)
+             ("\\.[xyzwrgba]\\>" . font-lock-type-face)
+             ("\\<\\(ld\\|\\(ld\\|st\\)\\.volatile\\|st\\)\\.\\(param\\|const\\|shared\\|global\\)"
+              (3 'asm-memory-space-face))
+             ("\\.\\(r[nzmp]i?\\)\\>" . font-lock-keyword-face)
+             ("\\<\\(ld\\|st\\)\\.\\(local\\)"
+              (2 font-lock-warning-face))
+
+             ;; nv50
+             ("\\<\\(e\\|lg\\|bar\\|join\\(at\\)?\\|set\\)\\>"
+              . font-lock-keyword-face)
+
+             ; Predicated Instruction Prefix
+             ("\\(@!?\\)[%$]p[0-9]" (1 font-lock-keyword-face))
+
+             ;; Alignment, Vector
+             ("\\.\\(align\\|v2\\|v4\\)\\>"
+              (1 (list font-lock-type-face 'italic)))
+
+             ;; Assembler Directives
+             ("\\.\\(loc\\|file\\|version\\|target\\)\\>"
+              (1 'asm-directive-face))
+
+             ;; Registers
+             ("\\(tex[0-9]+\\|c.[0-9]+.\\|R[0-9]+\\|\\(vertex\\|result\\)\\.[a-z]+\\)\\>"
+              (1 font-lock-variable-name-face) )
+
+             ))))
+
+   ((save-excursion
+      ;; SASS GT200 (NVIDIA native)
+      (goto-char (point-min))
+      (or
+       (re-search-forward "code for sm_1" 1000 t)))
+    (setq asm-comment-char ?#
+          asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list (cons sass-gt200-all-instr-regexp font-lock-keyword-face))
+           '(
+             ;; Instruction Modifiers
+             ("[.][FSU]\\(8\\|16\\|32\\|64\\|128\\)\\>" . font-lock-type-face)
+
+             ;; Reconvergence points.
+             ("[A-Z264][.]\\(S\\)\\>"
+              (1 (list font-lock-constant-face 'italic)))
+             ("\\<\\(SSY\\|PBK\\) \\(0x\\([a-f0-9]+\\)\\)"
+              (2 'italic)
+              (3 (list 'italic font-lock-constant-face)))
+
+             ;; Predicates
+             ("\\((\\)\\(C[0-9]\\)\\(\\.\\)\\([A-Z]+\\)\\()\\)"
+              (1 (list 'italic font-lock-constant-face))
+              (2 (list 'italic font-lock-variable-name-face))
+              (3 (list 'italic font-lock-constant-face))
+              (4 (list 'italic 'asm-insn-modifier-face))
+              (5 (list 'italic font-lock-constant-face)))
+
+             ; Memory Space Indicator
+             ("\\(global14\\|c\\|o\\|g\\) *\\["
+              (1 'asm-memory-space-face))
+             ; Memory Space Indicator
+             ("\\(local\\) *\\["
+              (1 (list font-lock-warning-face 'italic)))
+
+             ; Comparison
+             ("\\<\\(LT\\|GT\\|EQU?\\|NEU?\\|GE\\|LE\\)\\>"
+              . 'asm-insn-modifier-face)
+
+             ;; Assembler Directives
+             ("\\.\\(loc\\|file\\|version\\|target\\)\\>"
+              (1 'asm-directive-face))
+
+             ;; Registers
+             ("\\<\\(R[0-9]+\\)\\([LH]*\\)\\>"
+              (1 font-lock-variable-name-face)
+              (2 font-lock-type-face)
+              )
+
+             ("\\<\\(C[0-9]\\|A[0-9]+\\)\\>"
+              (1 font-lock-variable-name-face) )
+
+             ))))
+
+   ((save-excursion
+      ;; SASS Fermi (NVIDIA native)
+      (goto-char (point-min))
+      (or
+       (re-search-forward "code for sm_2" 1000 t)))
+    (setq asm-comment-char ?#
+          asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list (cons sass-fermi-all-instr-regexp font-lock-keyword-face))
+           '(
+             ;; Instruction Modifiers
+             ("[.][FSU]\\(8\\|16\\|32\\|64\\|128\\)\\>" . font-lock-type-face)
+
+             ;; Instruction Modifiers
+             ("[.]\\(FTZ\\|HI\\|[WXE]\\)\\>" . font-lock-type-face)
+
+             ;; Reconvergence points.
+             ("[A-Z264][.]\\(S\\)\\>"
+              (1 (list font-lock-constant-face 'italic)))
+             ("\\<\\(SSY\\|PBK\\) \\(0x\\([a-f0-9]+\\)\\)"
+              (2 'italic)
+              (3 (list 'italic font-lock-constant-face)))
+
+             ; Comparison
+             ("\\<\\(LTU?\\|GTU?\\|EQU?\\|NEU?\\|GEU?\\|LEU?\\|OR\\|AND\\|XOR\\)\\>"
+              . 'asm-insn-modifier-face)
+
+             ;; Assembler Directives
+             ("\\.\\(loc\\|file\\|version\\|target\\)\\>"
+              (1 'asm-directive-face))
+
+             ;; Predicate Registers
+             ("\\<@?\\(P[0-9]+\\)\\>"
+              (1 font-lock-constant-face))
+
+             ;; Registers
+             ("\\<\\(R[0-9]+\\)\\([LH]*\\)\\>"
+              (1 font-lock-variable-name-face)
+              (2 font-lock-type-face)
+              )
+
+             ; Constant Memory
+             ("\\(c\\) *\\["
+              (1 'asm-memory-space-face))
+
+             ;; Local Memory
+             ("\\(LDL\\|STL\\)"
+              (1 (list font-lock-warning-face 'italic) t))
+
+             ;; Shared Memory
+             ("\\(LDS\\|STS\\)"
+              (1 'asm-memory-space-face t))
+
+             ;; Multi Funk (Special FP Unit?) Insn
+             ("\\<MUFU\\.\\(RSQ\\|RCP\\|SIN\\|COS\\)\\>"
+              (1 font-lock-keyword-face t))
+
+             ;; Special Registers
+             ("\\<\\(SR_[A-Za-z_]+\\|RZ\\)\\>"
+              (1 (list font-lock-variable-name-face 'italic)))
+
+             ))))
+
+   ((save-excursion
+      ;; SASS Kepler (NVIDIA native)
+      (goto-char (point-min))
+      (or
+       (re-search-forward "code for sm_3" 1000 t)))
+    (setq asm-comment-char ?#
+          asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list (cons sass-kepler-all-instr-regexp font-lock-keyword-face))
+           '(
+             ;; Instruction Modifiers
+             ("[.][FSU]\\(8\\|16\\|32\\|64\\|128\\)\\>" . font-lock-type-face)
+
+             ;; Instruction Modifiers
+             ("[.]\\(FTZ\\|HI\\|[WXE]\\)\\>" . font-lock-type-face)
+
+             ;; Reconvergence points.
+             ("[A-Z264][.]\\(S\\)\\>"
+              (1 (list font-lock-constant-face 'italic)))
+             ("\\<\\(SSY\\|PBK\\) \\(0x\\([a-f0-9]+\\)\\)"
+              (2 'italic)
+              (3 (list 'italic font-lock-constant-face)))
+
+             ; Comparison
+             ("\\<\\(LTU?\\|GTU?\\|EQU?\\|NEU?\\|GEU?\\|LEU?\\|OR\\|AND\\|XOR\\)\\>"
+              . 'asm-insn-modifier-face)
+
+             ;; Assembler Directives
+             ("\\.\\(loc\\|file\\|version\\|target\\)\\>"
+              (1 'asm-directive-face))
+
+             ;; Predicate Registers
+             ("\\<@?\\(P[0-9]+\\)\\>"
+              (1 font-lock-constant-face))
+
+             ;; Registers
+             ("\\<\\(R[0-9]+\\)\\([LH]*\\)\\>"
+              (1 font-lock-variable-name-face)
+              (2 font-lock-type-face)
+              )
+
+             ; Constant Memory
+             ("\\(c\\) *\\["
+              (1 'asm-memory-space-face))
+
+             ;; Local Memory
+             ("\\(LDL\\|STL\\)"
+              (1 (list font-lock-warning-face 'italic) t))
+
+             ;; Shared Memory
+             ("\\(LDS\\|STS\\)"
+              (1 'asm-memory-space-face t))
+
+             ;; Multi Func (Special FP Unit?) Insn
+             ("\\<MUFU\\.\\(RSQ\\|RCP\\|SIN\\|COS\\)\\>"
+              (1 font-lock-keyword-face t))
+
+             ;; Special Registers
+             ("\\<\\(SR[0-9]+\\|SR_[A-Za-z_]+\\|RZ\\)\\>"
+              (1 (list font-lock-variable-name-face 'italic)))
+
+             ))))
+
    ((save-excursion
       ;; PTX (NVIDIA CUDA)
       (goto-char (point-min))
       (or
        (string-match "\\.ptx$" (buffer-file-name))
-       (re-search-forward "\\/cuda\\/" 1000 t)))
+       (re-search-forward "NVIDIA NVVM" 1000 t)))
     (setq asm-font-lock-keywords
           (append
            asm-markup-extra-font-lock-keywords
@@ -317,7 +641,7 @@ Called before asm-mode initializes."
              ("\\.label \\(label[0-9]+\\)" (1 font-lock-constant-face))
 
              ;; Instruction Modifiers
-             ("\\.[busf]\\(8\\|16\\|32\\|64\\)\\>" . font-lock-type-face)
+             ("[. ][busf]\\(8\\|16\\|32\\|64\\|128\\)\\>" . font-lock-type-face)
              ("\\.pred\\>" . font-lock-type-face)
              ("\\<\\(ld\\|ld\\.volatile\\|st\\)\\.\\(param\\|const\\|shared\\|global\\)"
               (2 'asm-memory-space-face))
@@ -325,8 +649,13 @@ Called before asm-mode initializes."
              ("\\<\\(ld\\|st\\)\\.\\(local\\)"
               (2 font-lock-warning-face))
 
+             ;; nv50
+             ("\\<\\(e\\|lg\\|bar\\|join\\(at\\)?\\|set\\)\\>"
+              . font-lock-keyword-face)
+
              ;; Decuda Instructions
-             ("\\(movsh\\|join\\.label\\|nop\\)" . font-lock-keyword-face)
+             ("\\(movsh\\|join\\.label\\|nop\\)"
+              . font-lock-keyword-face)
 
              ; Predicated Instruction Prefix
              ("\\(@!?\\)[%$]p[0-9]" (1 font-lock-keyword-face))
@@ -336,11 +665,11 @@ Called before asm-mode initializes."
               (1 (list font-lock-type-face 'italic)))
 
              ;; Assembler Directives
-             ("\\.\\(loc\\|file\\|version\\|target\\)\\>"
+             ("\\.\\(loc\\|file\\|version\\|target\\|address_size\\)\\>"
               (1 'asm-directive-face))
 
              ;; Register/Memory Space Definitions
-             ("^\\s +\\.\\(const\\|tex\\|reg\\|shared\\|local\\|param\\)\\>"
+             ("^\\s *\\.\\(const\\|tex\\|reg\\|shared\\|local\\|param\\)\\>"
               (1 'asm-memory-space-face))
 
              ;; Decuda Register/Memory Space Definitions
@@ -356,16 +685,23 @@ Called before asm-mode initializes."
               (2 font-lock-function-name-face))
 
              ;; Registers
-             ("\\(\\%\\|\\$\\)\\(tex[0-9]+\\|ofs[0-3]\\|p[0-9]+\\|fd?[0-9]+\\|pm[0-3]\\|r[hd]?[0-9]+\\|clock\\|tid\\|ntid\\|laneid\\|warpid\\|ctaid\\|nctaid\\|smid\\|nsmid\\|gridid\\)\\>"
+             ("\\(\\%\\|\\$\\)\\(tex[0-9]+\\|ofs[0-3]\\|p[0-9]+\\|fd?[0-9]+\\|pm[0-3]\\|r[lchd]?[0-9]+\\|a[0-9]+\\|clock\\|tid\\|ntid\\|laneid\\|warpid\\|ctaid\\|nctaid\\|smid\\|nsmid\\|gridid\\)\\>"
               (1 font-lock-string-face)
               (2 font-lock-variable-name-face) )
 
+             ;; Registers
+             ("\\(\\$\\)\\(r[0-9]+\\)\\([lhg]\\)\\>"
+              (1 font-lock-string-face)
+              (2 font-lock-variable-name-face)
+              (3 font-lock-string-face)
+              )
              ))))
 
    ((save-excursion
       ;; SPARC
       (goto-char (point-min))
       (or
+       (re-search-forward "^!" 100 t)
        (re-search-forward "\\<save[ \t]+%sp\\>" 50000 t)))
     (setq asm-comment-char ?!
           asm-font-lock-keywords
@@ -410,6 +746,62 @@ Called before asm-mode initializes."
               (1 (list 'asm-directive-face 'bold)))
 
              ("\\(\\%\\)\\([ioglf][12]?[0-9]\\|[iogl]3[01]\\|f[3-6][0-9]\\|[sf]p\\|[fi]cc\\)\\>"
+              (1 font-lock-string-face)
+              (2 font-lock-variable-name-face) )
+
+             ))))
+
+   ((save-excursion
+      ;; IA-32, 64
+      (goto-char (point-min))
+      (or
+       (re-search-forward "x86_64" 100 t)))
+    (setq asm-comment-char ?#
+          asm-font-lock-keywords
+          (append
+           asm-markup-extra-font-lock-keywords
+           (list
+            (cons ia32-all-instr-regexp font-lock-keyword-face))
+           '(
+             ("^[ \t]*\\.section.*" . font-lock-heading-face)
+             ("^\\(\\(\\sw\\|\\s_\\)+\\)\\>:?[\t]*\\(\\sw+\\)?"
+              (1 font-lock-function-name-face)
+              (3 font-lock-keyword-face nil t))
+             ("^\\s *\.L[A-Z0-9a-z]*:" . font-lock-function-name-face)
+             ;; ("^\\s +\\(\\(\\sw\\|\\s_\\)+\\)" 1 font-lock-keyword-face)
+
+             ;; Comment used as a heading.
+             ("^## \\(.*\\)"
+              (1 'asm-comment-heading-face t t))
+
+             ;; Comment used as a sub heading.
+             ("^\\s-+## \\(.*\\)"
+              (1 'asm-comment-sub-heading-face t t))
+
+             ;; Literal Directives
+             ("\\.\\(string\\|byte\\|double\\|float\\|quad\\|size\\||half\\|word\\)\\>"
+              (1 (list font-lock-type-face 'italic)))
+
+             ;; Assembler Directives
+             ("\\.\\(loc\\|align\\|file\\)\\>"
+              (1 'asm-directive-face))
+
+             ;; Other Assembler Directives
+             ("\\.\\(extern\\|global\\)\\>\\s +\\(\\(\\sw\\|\\s_\\)+\\)"
+              (1 'asm-directive-face)
+              (2 font-lock-function-name-face)
+              )
+
+             ;; Immediate Values
+             ("\\(\\$\\)[0-9]+"
+              (1 font-lock-string-face))              
+
+             ;; Segment Directives
+             ("\\.\\([rk]?o?data\\|[rk]?text\\|section\\)\\>"
+              (1 (list 'asm-directive-face 'bold)))
+
+             ;; Registers
+             ("\\(\\%\\)\\(r[0-9]+d?\\|rs[ip]\\|r[a-d][ipx]\\|rip\\|e[a-ds][ix]\\|[xy]mm[0-9]+\\)\\>"
               (1 font-lock-string-face)
               (2 font-lock-variable-name-face) )
 
@@ -512,9 +904,11 @@ With a prefix argument prompt for options."
   "Assemble MIPS file into Verilog."
   (interactive)
   (save-some-buffers)
-  (compile (concat "asv " (file-name-nondirectory (buffer-file-name)))))
+  (compile (concat 
+            asv-program " " (file-name-nondirectory (buffer-file-name)))))
 
 
 (add-hook 'asm-mode-set-comment-hook 'asm-mode-prefs)
 (add-hook 'asm-mode-hook 'asm-mode-prefs-2)
 
+(provide 'asm-class)
