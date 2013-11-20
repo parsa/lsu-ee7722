@@ -4,9 +4,9 @@
  /// CUDA Demo 04
  //
  //  This code demonstrates different methods of all-to-all access in
- //  CUDA. such as the accesses to array in the code below:
+ //  CUDA, such as the accesses to array in the code below:
  //
- //  for ( int i=0; i<n; i++ ) for ( j=0; j<n; j++ ) sum ++ array[i] * array[j];
+ //  for ( int i=0; i<n; i++ ) for ( j=0; j<n; j++ ) sum += array[i] * array[j];
  //
  ///  See routines time_step_intersect_1 and time_step_intersect_2 in
  //  demo-cuda-04-acc-pat-cuda.cu. Instead of array, this code
