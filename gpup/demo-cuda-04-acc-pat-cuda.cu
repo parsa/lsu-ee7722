@@ -8,7 +8,7 @@
  //
  //  for ( int i=0; i<n; i++ ) for ( j=0; j<n; j++ ) sum ++ array[i] * array[j];
  //
- //  See routines time_step_intersect_1 and time_step_intersect_2 in
+ ///  See routines time_step_intersect_1 and time_step_intersect_2 in
  //  demo-cuda-04-acc-pat-cuda.cu. Instead of array, this code
  //  accesses helix_position.
 
@@ -19,17 +19,279 @@
 
 // Physical State Variables
 //
-typedef float4 Pos_Type;
-
-__constant__ Pos_Type *helix_position;
-__constant__ float3 *helix_velocity;
+__constant__ float4 *helix_position;
+__constant__ float3 *helix_velocity;     // Note: float4 would be faster.
 __constant__ float4 *helix_orientation;
-__constant__ float3 *helix_omega;
+__constant__ float3 *helix_omega;        // Note: float4 would be faster.
 
-__device__ Timing_Data timing_data;
-// Scalar Constants (Placed in a struct for convenience.)
-//
-__constant__ Helix_Info hi;
+__device__ Timing_Data timing_data;   // Measure execution time of intersect.
+__constant__ Helix_Info hi;  // Scalar Constants
+
+__global__ void
+time_step_intersect_1()
+{
+  // Find intersections of one helix segment with some other
+  // segments. Each block handles several "a" segments, the threads in
+  // the block check for intersection with other segments, called "b"
+  // segments.
+
+  __shared__ clock_t time_start;
+  if ( !threadIdx.x ) time_start = clock64();
+
+
+  // Note: The size of the helix_position array is hi.phys_helix_segments.
+
+  // Compute how many "a" elements will be handled by each block.
+  //
+  const int a_per_block = hi.phys_helix_segments / gridDim.x;
+
+  // Compute how many threads handle each "a" element.
+  //
+  const int thd_per_a = blockDim.x / a_per_block;
+
+  // Compute the smallest "a" element index that this block will handle.
+  //
+  const int a_idx_block = blockIdx.x * a_per_block;
+
+  /// Assignment of "a" and "b" Values to Threads
+  //
+  //  The table below is an example of how this routine
+  //  assigns "a" and "b" elements to threads.  The table
+  //  is based upon the following values:
+  //
+  //    blockDim = 8,     blockIdx = 4,   hi.phys_helix_segments = 1024
+  //    a_per_block = 4,  thd_per_a = 2,  a_idx_block = 16
+  //
+  // tIx     al   a      b ---> 
+  //   0     0    16     0  2  4 ... 1022
+  //   1     1    17     0  2  4 ... 1022
+  //   2     2    18     0  2  4 ... 1022
+  //   3     3    19     0  2  4 ... 1022
+  //   4     0    16     1  3  5 ... 1023
+  //   5     1    17     1  3  5 ... 1023
+  //   6     2    18     1  3  5 ... 1023
+  //   7     3    19     1  3  5 ... 1023
+  //   |     |     |     |
+  //   |     |     |     |
+  //   |     |     |     |--------> b_idx_start
+  //   |     |     |--------------> a_idx
+  //   |     |--------------------> a_local_idx
+  //   |--------------------------> threadIdx.x
+
+  // Compute a_idx and b_idx_start to realize ordering above.
+  //
+  const int a_local_idx = threadIdx.x % a_per_block;
+  const int a_idx = a_idx_block + a_local_idx;
+  const int b_idx_start = threadIdx.x / a_per_block;
+
+
+  const float3 a_position = m3(helix_position[a_idx]);
+  const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
+  const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
+
+  __shared__ pVect force[256];
+  if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
+
+  __syncthreads();
+
+  __shared__ float3 pos_cache[256];
+
+  for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
+    {
+      if ( hi.opt_use_shared )
+        {
+          if ( threadIdx.x < thd_per_a )
+            pos_cache[threadIdx.x] =
+              m3(helix_position[ j - b_idx_start + threadIdx.x ] );
+          __syncthreads();
+        }
+
+      float3 b_position = 
+        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
+
+      pVect ab = mv(a_position,b_position);
+
+      // Skip if segment is too close.
+      if ( abs(a_idx-j) < min_idx_dist ) continue;
+
+      // Skip if no chance of intersection.
+      if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
+
+      // Compute intersection force based on bounding sphere, an
+      // admittedly crude approximation.
+      //
+      pNorm dist = mn(ab);
+      const float pen = 2 * hi.wire_radius - dist.magnitude;
+      float3 f = pen * hi.opt_spring_constant * dist;
+
+      // Add force to shared variable. This is time consuming but
+      // done infrequently. (A segment can normally only intersect a
+      // a few other segments.)
+      //
+      atomicAdd(&force[a_local_idx].x,f.x);
+      atomicAdd(&force[a_local_idx].y,f.y);
+      atomicAdd(&force[a_local_idx].z,f.z);
+      //
+      // Optimization Note: Could acquire a lock and then update
+      // all three components.
+    }
+
+  // Wait for all threads to finish.
+  __syncthreads();
+
+  // Leave it to thread 0 to update velocity.
+  if ( threadIdx.x >= a_per_block ) return;
+
+  // Update velocity and write it.
+  //
+  float3 velocity = helix_velocity[a_idx];
+  velocity -= hi.delta_t_mass_inv * force[a_local_idx];
+  if ( hi.opt_end_fixed && a_idx + 1 == hi.phys_helix_segments )
+    velocity = mv(0,0,0);
+  helix_velocity[a_idx] = velocity;
+
+  if ( !threadIdx.x && !blockIdx.x )
+    {
+      timing_data.inter_time += clock64() - time_start;
+      timing_data.inter_count++;
+    }
+}
+
+__global__ void
+time_step_intersect_2()
+{
+  // Find intersections of one helix segment with some other
+  // segments. Each block handles several "a" segments, the threads in the
+  // block check for intersection with other segments, called "b"
+  // segments.
+
+  __shared__ clock_t time_start;
+  if ( !threadIdx.x ) time_start = clock64();
+
+  // Note: The size of the helix_position array is hi.phys_helix_segments.
+
+  // Compute how many "a" elements will be handled by each block.
+  //
+  const int a_per_block = hi.phys_helix_segments / gridDim.x;
+
+  // Compute how many threads handle each "a" element.
+  //
+  const int thd_per_a = blockDim.x / a_per_block;
+
+  // Compute the smallest "a" element index that this block will handle.
+  //
+  const int a_idx_block = blockIdx.x * a_per_block;
+
+  /// Assignment of "a" and "b" Values to Threads
+  //
+  //  The table below is an example of how this routine
+  //  assigns "a" and "b" elements to threads.  The table
+  //  is based upon the following values:
+  //
+  //    blockDim = 8,     blockIdx = 4,   hi.phys_helix_segments = 1024
+  //    a_per_block = 4,  thd_per_a = 2,  a_idx_block = 16
+  //
+  // tIx     al   a      b ---> 
+  //   0     0    16     0  2  4 ...
+  //   1     0    16     1  3  5
+  //   2     1    17     0  2  4
+  //   3     1    17     1  3  5
+  //   4     2    18     0  2  4
+  //   5     2    18     1  3  5
+  //   6     3    19     0  2  4
+  //   7     3    19     1  3  5 
+  //   |     |     |     |
+  //   |     |     |     |
+  //   |     |     |     |--------> b_idx_start
+  //   |     |     |--------------> a_idx
+  //   |     |--------------------> a_local_idx
+  //   |--------------------------> threadIdx.x
+
+  // Compute a_idx and b_idx_start to realize ordering above.
+  //
+  const int a_local_idx = threadIdx.x / thd_per_a;
+  const int a_idx = a_idx_block + a_local_idx;
+  const int b_idx_start = threadIdx.x % thd_per_a;
+
+  const float3 a_position = m3(helix_position[a_idx]);
+  const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
+  const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
+
+  __shared__ pVect force[256];
+  if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
+
+  // Wait for thread 0 to initialize force.
+  __syncthreads();
+
+  __shared__ float3 pos_cache[256];
+
+  for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
+    {
+      if ( hi.opt_use_shared )
+        {
+          if ( threadIdx.x < thd_per_a )
+            pos_cache[threadIdx.x] = m3(helix_position[j]);
+          __syncthreads();
+        }
+      float3 b_position = 
+        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
+
+      pVect ab = mv(a_position,b_position);
+
+      // Skip if segment is too close.
+      if ( abs(a_idx-j) < min_idx_dist ) continue;
+
+      // Skip if no chance of intersection.
+      if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
+
+      // Compute intersection force based on bounding sphere, an
+      // admittedly crude approximation.
+      //
+      pNorm dist = mn(ab);
+      const float pen = 2 * hi.wire_radius - dist.magnitude;
+      float3 f = pen * hi.opt_spring_constant * dist;
+
+      // Add force to shared variable. This is time consuming but
+      // done infrequently. (A segment can normally only intersect a
+      // a few other segments.)
+      //
+      atomicAdd(&force[a_local_idx].x,f.x);
+      atomicAdd(&force[a_local_idx].y,f.y);
+      atomicAdd(&force[a_local_idx].z,f.z);
+      //
+      // Optimization Note: Could acquire a lock and then update
+      // all three components.
+    }
+
+  // Wait for all threads to finish.
+  __syncthreads();
+
+  // Leave it to thread 0 to update velocity.
+  if ( threadIdx.x >= a_per_block ) return;
+
+  {
+    // Re-compute a_idx so that first a_per_block threads can write
+    // velocities.
+
+    const int a_local_idx = threadIdx.x % a_per_block;
+    const int a_idx = a_idx_block + a_local_idx;
+
+    // Update velocity and write it.
+    //
+    float3 velocity = helix_velocity[a_idx];
+    velocity -= hi.delta_t_mass_inv * force[a_local_idx];
+    if ( hi.opt_end_fixed && a_idx + 1 == hi.phys_helix_segments )
+      velocity = mv(0,0,0);
+    helix_velocity[a_idx] = velocity;
+
+    if ( !threadIdx.x && !blockIdx.x )
+      {
+        timing_data.inter_time += clock64() - time_start;
+        timing_data.inter_count++;
+      }
+  }
+}
+
 
 __global__ void time_step();
 __global__ void time_step_intersect_1();
@@ -214,235 +476,6 @@ helix_apply_force_at
   torque += amt;
 }
 
-__global__ void
-time_step_intersect_1()
-{
-  // Find intersections of one helix segment with some other
-  // segments. Each block handles several "a" segments, the threads in the
-  // block check for intersection with other segments, called "b"
-  // segments.
-
-  __shared__ clock_t time_start;
-  if ( !threadIdx.x ) time_start = clock64();
-
-  const int a_per_block = hi.phys_helix_segments / gridDim.x;
-  const int thd_per_a = blockDim.x / a_per_block;
-
-  // Numbering for blockDim = 8,   a_per_block = 4,  thd_per_a = 2
-  //               blockIdx = 4
-  // tIx     al   a      b ---> 
-  //   0     0    16     0  2  4 ...
-  //   1     1    17     0  2  4
-  //   2     2    18     0  2  4
-  //   3     3    19     0  2  4
-  //   4     0    16     1  3  5
-  //   5     1    17     1  3  5
-  //   6     2    18     1  3  5
-  //   7     3    19     1  3  5 
-  //   |     |     |     |
-  //   |     |     |     |
-  //   |     |     |     |--------> b_idx_start
-  //   |     |     |--------------> a_idx
-  //   |     |--------------------> a_local_idx
-  //   |--------------------------> threadIdx.x
-
-  // Value of a_idx for thread with threadIdx.x = 0;
-  //
-  const int a_idx_block = blockIdx.x * a_per_block;
-  const int a_local_idx = threadIdx.x % a_per_block;
-  const int a_idx = a_idx_block + a_local_idx;
-  const int b_idx_start = threadIdx.x / a_per_block;
-
-
-  const float3 a_position = m3(helix_position[a_idx]);
-  const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
-  const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
-
-  __shared__ pVect force[256];
-  if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
-
-  __syncthreads();
-
-  __shared__ float3 pos_cache[256];
-
-  for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
-    {
-      if ( hi.opt_use_shared )
-        {
-          if ( threadIdx.x < thd_per_a )
-            pos_cache[threadIdx.x] =
-              m3(helix_position[ j - b_idx_start + threadIdx.x ] );
-          __syncthreads();
-        }
-
-      float3 b_position = 
-        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
-
-      pVect ab = mv(a_position,b_position);
-
-      // Skip if segment is too close.
-      if ( abs(a_idx-j) < min_idx_dist ) continue;
-
-      // Skip if no chance of intersection.
-      if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
-
-      // Compute intersection force based on bounding sphere, an
-      // admittedly crude approximation.
-      //
-      pNorm dist = mn(ab);
-      const float pen = 2 * hi.wire_radius - dist.magnitude;
-      float3 f = pen * hi.opt_spring_constant * dist;
-
-      // Add force to shared variable. This is time consuming but
-      // done infrequently. (A segment can normally only intersect a
-      // a few other segments.)
-      //
-      atomicAdd(&force[a_local_idx].x,f.x);
-      atomicAdd(&force[a_local_idx].y,f.y);
-      atomicAdd(&force[a_local_idx].z,f.z);
-      //
-      // Optimization Note: Could acquire a lock and then update
-      // all three components.
-    }
-
-  // Wait for all threads to finish.
-  __syncthreads();
-
-  // Leave it to thread 0 to update velocity.
-  if ( threadIdx.x >= a_per_block ) return;
-
-  // Update velocity and write it.
-  //
-  float3 velocity = helix_velocity[a_idx];
-  velocity -= hi.delta_t_mass_inv * force[a_local_idx];
-  if ( hi.opt_end_fixed && a_idx + 1 == hi.phys_helix_segments )
-    velocity = mv(0,0,0);
-  helix_velocity[a_idx] = velocity;
-
-  if ( !threadIdx.x && !blockIdx.x )
-    {
-      timing_data.inter_time += clock64() - time_start;
-      timing_data.inter_count++;
-    }
-}
-
-__global__ void
-time_step_intersect_2()
-{
-  // Find intersections of one helix segment with some other
-  // segments. Each block handles several "a" segments, the threads in the
-  // block check for intersection with other segments, called "b"
-  // segments.
-
-  __shared__ clock_t time_start;
-  if ( !threadIdx.x ) time_start = clock64();
-
-  const int a_per_block = hi.phys_helix_segments / gridDim.x;
-  const int thd_per_a = blockDim.x / a_per_block;
-  const int a_idx_block = blockIdx.x * a_per_block;
-
-  // Numbering for blockDim = 8,   a_per_block = 4,  thd_per_a = 2
-  //               blockIdx = 4
-  // tIx     al   a      b ---> 
-  //   0     0    16     0  2  4 ...
-  //   1     0    16     1  3  5
-  //   2     1    17     0  2  4
-  //   3     1    17     1  3  5
-  //   4     2    18     0  2  4
-  //   5     2    18     1  3  5
-  //   6     3    19     0  2  4
-  //   7     3    19     1  3  5 
-  //   |     |     |     |
-  //   |     |     |     |
-  //   |     |     |     |--------> b_idx_start
-  //   |     |     |--------------> a_idx
-  //   |     |--------------------> a_local_idx
-  //   |--------------------------> threadIdx.x
-
-  const int a_local_idx = threadIdx.x / thd_per_a;
-  const int a_idx = a_idx_block + a_local_idx;
-
-  const int b_idx_start = threadIdx.x % thd_per_a;
-
-  const float3 a_position = m3(helix_position[a_idx]);
-
-  const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
-  const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
-
-  __shared__ pVect force[256];
-  if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
-
-  // Wait for thread 0 to initialize force.
-  __syncthreads();
-
-  __shared__ float3 pos_cache[256];
-
-  for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
-    {
-      if ( hi.opt_use_shared )
-        {
-          if ( threadIdx.x < thd_per_a )
-            pos_cache[threadIdx.x] = m3(helix_position[j]);
-          __syncthreads();
-        }
-      float3 b_position = 
-        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
-
-      pVect ab = mv(a_position,b_position);
-
-      // Skip if segment is too close.
-      if ( abs(a_idx-j) < min_idx_dist ) continue;
-
-      // Skip if no chance of intersection.
-      if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
-
-      // Compute intersection force based on bounding sphere, an
-      // admittedly crude approximation.
-      //
-      pNorm dist = mn(ab);
-      const float pen = 2 * hi.wire_radius - dist.magnitude;
-      float3 f = pen * hi.opt_spring_constant * dist;
-
-      // Add force to shared variable. This is time consuming but
-      // done infrequently. (A segment can normally only intersect a
-      // a few other segments.)
-      //
-      atomicAdd(&force[a_local_idx].x,f.x);
-      atomicAdd(&force[a_local_idx].y,f.y);
-      atomicAdd(&force[a_local_idx].z,f.z);
-      //
-      // Optimization Note: Could acquire a lock and then update
-      // all three components.
-    }
-
-  // Wait for all threads to finish.
-  __syncthreads();
-
-  // Leave it to thread 0 to update velocity.
-  if ( threadIdx.x >= a_per_block ) return;
-
-  {
-    // Re-compute a_idx so that first a_per_block threads can write
-    // velocities.
-
-    const int a_local_idx = threadIdx.x % a_per_block;
-    const int a_idx = a_idx_block + a_local_idx;
-
-    // Update velocity and write it.
-    //
-    float3 velocity = helix_velocity[a_idx];
-    velocity -= hi.delta_t_mass_inv * force[a_local_idx];
-    if ( hi.opt_end_fixed && a_idx + 1 == hi.phys_helix_segments )
-      velocity = mv(0,0,0);
-    helix_velocity[a_idx] = velocity;
-
-    if ( !threadIdx.x && !blockIdx.x )
-      {
-        timing_data.inter_time += clock64() - time_start;
-        timing_data.inter_count++;
-      }
-  }
-}
 
 
 __host__ void
