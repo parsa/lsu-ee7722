@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Textures, Blending, and the Alpha Test
 
@@ -83,8 +83,8 @@ pEnum_Label texture_env_modes[] = {
   { "Texturing Off", 0 },
   ENUM_LABEL(GL_REPLACE),
   ENUM_LABEL(GL_MODULATE),
-  ENUM_LABEL(GL_DECAL),   // Blend using alpha value of texture.
-  ENUM_LABEL(GL_BLEND),   // Blend using separate alpha.
+  ENUM_LABEL(GL_DECAL),   // Use alpha channel of tex to select.
+  ENUM_LABEL(GL_BLEND),   // Blend in a constant color using separate alpha.
   ENUM_LABEL(GL_ADD),     // Sum of colors, product of alphas.
   ENUM_LABEL(GL_COMBINE), // Use separate combine function.
   {NULL,0}
@@ -120,19 +120,25 @@ rpBuild_Texture_File
   //
   if ( invert ) image.color_invert();
 
-  GLuint tid;
+  GLuint tid;  // A texture ID.
+
+  // Generate a new texture ID.
   glGenTextures(1,&tid);
+
+  // Tell OpenGL that subsequent 2D texture commands refer to texture TID.
   glBindTexture(GL_TEXTURE_2D,tid);
+
+  // Tell OpenGL to automatically generate the MIPMAP levels for this texture.
   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 
   // Load data into the texture object.
   //
   glTexImage2D
     (GL_TEXTURE_2D,
-     0,                // Level of Detail (0 is base).
+     0,                // Level of Detail (a.k.a. mipmap level, 0 is base).
      GL_RGBA,          // Internal format to be used for texture.
      image.width, image.height,
-     0,                // Border
+     0,                // Border Width
      image.gl_fmt,     // GL_BGRA: Format of data read by this call.
      image.gl_type,    // GL_UNSIGNED_BYTE: Size of component.
      (void*)image.data);
@@ -256,7 +262,7 @@ World::render()
 
   glClearColor(0,0,0,0);
   glClearDepth(1.0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
@@ -291,7 +297,7 @@ World::render()
 		      texture_min_filters[opt_texture_min_filter].label);
   ogl_helper.fbprintf("Mag Filter: %s  (a to change)\n",
 		      texture_mag_filters[opt_texture_mag_filter].label);
-  ogl_helper.fbprintf("Blending %s  Alpha Test %s\n",
+  ogl_helper.fbprintf("Blending %s ('b')  Alpha Test %s ('p')\n",
                       opt_blend ? "ON" : "OFF",
                       opt_alpha ? "ON" : "OFF"
                       );
