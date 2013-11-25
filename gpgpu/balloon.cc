@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
  /// Balloon Simulation
 
@@ -1304,13 +1304,13 @@ Balloon::time_step_cpu_once()
   for ( int feedback_tries = 0; ; feedback_tries++ )                          \
     {                                                                         \
       bool check = false;                                                     \
-      glBeginTransformFeedbackNV(GL_POINTS); pError_Check();                  \
+      glBeginTransformFeedback(GL_POINTS); pError_Check();                    \
       if ( check )                                                            \
         glBeginQuery                                                          \
           (GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN_NV,                       \
            query_transform_feedback_id );                                     \
       routine;                                                                \
-      glEndTransformFeedbackNV();  pError_Check();                            \
+      glEndTransformFeedback();  pError_Check();                              \
       if ( !check ) break;                                                    \
       glEndQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN_NV);                \
       int done_points = -1;                                                   \
@@ -1421,10 +1421,11 @@ Balloon::time_step_glp(int steps)
      world.platform_xmin, world.platform_xmax,
      world.platform_zmin, world.platform_zmax);
 
-  const GLint svl_p1[] =
-    { svl_surface_normal, svl_force_or_v, svl_pos, svl_force_r };
-  glTransformFeedbackVaryingsNV
-    (vs_plan_c.pobject, 4, &svl_p1[0], GL_INTERLEAVED_ATTRIBS_NV);
+  const GLchar* svl_p1[] =
+    { "out_surface_normal", "out_force_or_v", "out_pos", "out_force_r" };
+
+  glTransformFeedbackVaryings
+    (vs_plan_c.pobject, 4, svl_p1, GL_INTERLEAVED_ATTRIBS);
   pError_Check();
 
   GLP_Vtx_Data before = glp_vtx_data.data[0];
@@ -1452,7 +1453,7 @@ Balloon::time_step_glp(int steps)
       //
 
       glActiveTexture(GL_TEXTURE0);
-      glTexBufferEXT // Attaches to the active buffer texture.
+      glTexBufferARB // Attaches to the active buffer texture.
         (GL_TEXTURE_BUFFER_EXT, GL_RGBA32F_ARB, glp_vtx_data.bid_read());
 
       glActiveTexture(GL_TEXTURE1);
@@ -1466,8 +1467,8 @@ Balloon::time_step_glp(int steps)
       glVertexPointer(4, GL_FLOAT, sizeof(glp_tri_strc[0]), 0);
       glBindBuffer(GL_ARRAY_BUFFER,0);
 
-      glBindBufferBaseNV
-        (GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, glp_tri_data.bid_fresh());
+      glBindBufferBase
+        (GL_TRANSFORM_FEEDBACK_BUFFER, 0, glp_tri_data.bid_fresh());
       pError_Check();
 
       if ( skip_volume )
@@ -1510,8 +1511,8 @@ Balloon::time_step_glp(int steps)
 
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_BUFFER_EXT,glp_tri_data_tid);  pError_Check();
-      glTexBufferEXT
-        (GL_TEXTURE_BUFFER_EXT, GL_RGBA32F_ARB, glp_tri_data.bid);
+      glTexBufferARB
+        (GL_TEXTURE_BUFFER_ARB, GL_RGBA32F_ARB, glp_tri_data.bid);
       pError_Check();
 
       glp_vtx_strc.bind();
@@ -1529,8 +1530,8 @@ Balloon::time_step_glp(int steps)
       glEnableVertexAttribArray(sat_vel);
 
       glBindBuffer(GL_ARRAY_BUFFER,0);
-      glBindBufferBaseNV
-        (GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, glp_vtx_data.bid_write());
+      glBindBufferBase
+        (GL_TRANSFORM_FEEDBACK_BUFFER, 0, glp_vtx_data.bid_write());
       pError_Check();
 
       TRY_XF_FEEDBACK( glDrawArrays(GL_POINTS,0,point_count), point_count);
@@ -2596,6 +2597,7 @@ World::cb_keyboard()
     break;
   case 'a':
     opt_physics_method++;
+    if ( opt_physics_method == GP_glp ) opt_physics_method = GP_cuda_1_pass;
     if ( opt_physics_method == GP_ENUM_SIZE ) opt_physics_method = 0;
     break;
   case 'b': opt_move_item = MI_Balloon; break;
