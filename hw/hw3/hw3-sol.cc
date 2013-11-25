@@ -1,9 +1,7 @@
 /// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
- /// Homework 3
+ /// Homework 3 -- SOLUTION
  //
-
- /// Solution will require some changes in this file.
 
  /// Instructions
  //
@@ -183,13 +181,27 @@ World::init()
   // These are used for all kernels, but the solution may use
   // different configurations for different kernels.
   //
-  opt_grid_size = 13;
-  opt_block_size = 256;
+
+  /// SOLUTION
+
+  // Set the grid size to the number of multiprocessors.
+  //
+  opt_grid_size = number_of_multiprocessors;
+
+  // Set the block size to the maximum number of threads possible for
+  // the part_1 kernel.
+  //
+  opt_block_size = max_threads_part_1;
 
   /// Put Solution Here.
   //
 
 
+  /// SOLUTION
+
+  // Allocate storage for the "flat" position array.
+  //
+  CE( cudaMalloc( &c.d_pos, c.chain_length*sizeof(c.d_pos[0])) );
 
   variable_control.insert(opt_grid_size,"Grid Size",1,1);
   variable_control.insert_power_of_2
@@ -302,7 +314,7 @@ World::ball_setup_3()
 void
 World::ball_setup_4()
 {
-  // Set up balls to from a knot.
+  // Set up balls to from a knot.  Coming soon.
   //
 
   const float ball_radius = c.distance_relaxed * .75;
@@ -380,6 +392,7 @@ World::ball_setup_4()
 
   c.opt_tail_lock = true;
 }
+
 
 void
 World::ball_setup_5()

@@ -55,7 +55,11 @@ cuda_setup(GPU_Info *gpu_info)
   return e1;
 }
 
+#ifdef HW_SOL
+#include "hw3-sol-cuda-sol.cu"
+#else
 #include "hw3-sol-cuda.cu"
+#endif
 
 __host__ void
 launch_time_step_gpu_base_part_1

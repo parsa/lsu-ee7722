@@ -30,12 +30,16 @@ CUXX = $(CUDAPATH)/bin/nvcc
 CXX = $(CUXX)
 
 HW3_CC_SRC = hw3.cc
+HW3_CC_SRC_SOL = hw3-sol.cc
 HW3_CU_SRC = hw3-kernel.cu
+HW3_CU_SRC_SOL = hw3-kernel-sol.cu
 
 SRC_FILES = $(HW3_CC_SRC)
 CU_SRC_FILES = $(HW3_CU_SRC)
-
 OBJ_FILES = $(SRC_FILES:.cc=.o) $(CU_SRC_FILES:.cu=.o)
+
+SRC_FILES_SOL = $(HW3_CC_SRC_SOL)
+OBJ_FILES_SOL = $(SRC_FILES_SOL:.cc=.o) $(HW3_CU_SRC_SOL:.cu=.o)
 
 .SUFFIXES: .cu .cuh
 
@@ -54,7 +58,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw3
+default: hw3 hw3-sol
 
 
 INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
@@ -67,6 +71,7 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 #
 ifneq ($(MAKECMDGOALS),clean)
 -include $(SRC_FILES:.cc=.d) $(CU_SRC_FILES:.cu=.d)
+-include $(SRC_FILES_SOL:.cc=.d) $(HW3_CU_SRC_SOL:.cu=.d)
 endif
 
 # Prepare file holding dependencies, to be included in this file.
@@ -97,7 +102,11 @@ hw3: $(OBJ_FILES)
 	$(CUXX) $(CUFLAGS) $(OBJ_FILES)  $(LINKFLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES) 
 
+hw3-sol: $(OBJ_FILES_SOL)
+	$(CUXX) $(CUFLAGS) $(OBJ_FILES_SOL)  $(LINKFLAGS) \
+	-o $@ $(LIBDIR)  $(LIBRARIES) 
+
 
 clean:
-	/bin/rm -f hw3 hw3-debug *.d *.o *~ hw3-sol hw3-sol-debug *.sass *.ptx *.cubin
+	/bin/rm -f hw3 hw3-debug *.d *.o *~ hw3-sol hw3-sol-debug *.sass *.ptx *.cubin hw3-sol
 
