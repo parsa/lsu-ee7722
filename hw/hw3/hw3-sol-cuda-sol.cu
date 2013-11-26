@@ -79,8 +79,10 @@ time_step_gpu_sol_part_1(float delta_t)
   const int balls_per_block = ( gridDim.x - 1 + dc.chain_length ) / gridDim.x;
   const int thds_per_ball = blockDim.x / balls_per_block;
 
+  const int bi_block = blockIdx.x * balls_per_block;
+
   const int b_local = threadIdx.x % balls_per_block;
-  const int bi = blockIdx.x * balls_per_block + b_local;
+  const int bi = bi_block + b_local;
   const int ai_first = threadIdx.x / balls_per_block;
 
   if ( ai_first >= thds_per_ball ) return;
