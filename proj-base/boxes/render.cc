@@ -559,6 +559,7 @@ World::render_shadow_volumes(pCoor light_pos)
       // Make shadow volumes visible.
 
       glColorMask(true,true,true,true);
+      glDepthMask(true);
       glColor3f(0.8,0,0);
     }
 
