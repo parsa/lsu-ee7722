@@ -226,23 +226,38 @@ World::render()
       // Render ball reflection.  (Will be blended with dark tiles.)
       //
 
-      // Write stencil at location of dark (mirrored) tiles.
+      /// Write stencil at location of dark (mirrored) tiles.
       //
+
+      // Turn off lighting to avoid wasting time computing lighted colors, etc.
       glDisable(GL_LIGHTING);
+
       glEnable(GL_STENCIL_TEST);
-      glStencilFunc(GL_NEVER,4,-1);
-      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+
+      // Force stencil test to fail (so that value is written), and
+      // indicate that a 4 should be written.
+      //
+      //             test      val   mask
+      glStencilFunc( GL_NEVER, 4,    -1);
+      //          s-fail      d-fail,  d-pass        <- Situation
+      glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP ); // <- Corresponding action.
+      // Above: If stencil test fails, replace existing stencil value
+      //        with value indicated by last glStencilFunc call.
+
       platform_tile_coords.bind();
       glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
       glEnableClientState(GL_VERTEX_ARRAY);
+
+      // Render tiles that we want to be mirrored.
       glDrawArrays(GL_QUADS,platform_even_vtx_cnt,platform_odd_vtx_cnt);
 
       glEnable(GL_LIGHTING);
       glDisableClientState(GL_VERTEX_ARRAY);
       glBindBuffer(GL_ARRAY_BUFFER,0);
 
-      // Prepare to write only stenciled locations.
+      /// Prepare to write only stenciled locations.
       //
+
       glStencilFunc(GL_EQUAL,4,4);
       glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
 
