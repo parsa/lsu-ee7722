@@ -3986,8 +3986,8 @@ World::render()
       //
       glDisable(GL_LIGHTING);
       glEnable(GL_STENCIL_TEST);
-      glStencilFunc(GL_NEVER,4,-1);
-      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+      glStencilFunc(GL_NEVER,4,-1);  // Set stencil test to never pass.
+      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP); // If test fails, write "4".
       platform_tile_coords.bind();
       glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
       glEnableClientState(GL_VERTEX_ARRAY);
