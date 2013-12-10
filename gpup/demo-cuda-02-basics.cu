@@ -197,6 +197,7 @@ cuda_init()
   if ( idx < gpu_info.num_kernels_max ) {                                     \
     gpu_info.ki[idx].name = #proc_name;                                       \
     gpu_info.ki[idx].func_ptr = (void(*)())proc_name;                         \
+    CE(cudaFuncGetAttributes(&gpu_info.ki[idx].cfa,proc_name));               \
   }}
 
   GET_INFO(cuda_thread_start_simple);
