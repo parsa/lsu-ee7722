@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2013), GPU Programming
 //
 
 // $Id:$
@@ -123,7 +123,7 @@ vs_main_helix()
   //
   float radius = wire_radius * ( hidx == int(bulge_loc) ? 1.2f : 1.0f );
 
-  // Compute wire surface location by adding normal to helix coordinate.
+  /// Compute wire surface location by adding normal to helix coordinate.
   //
   vec4 vertex_o;
   vertex_o.xyz = helix_coord[hidx].xyz + radius * gl_Normal;
@@ -138,12 +138,11 @@ vs_main_helix()
   var_vertex_e = gl_ModelViewMatrix * vertex_o;
   var_normal_e = normalize(gl_NormalMatrix * gl_Normal);
 
-  // Call our lighting routine to compute the lighted color of this
-  // vertex.
+  // Pass color along to next stage in pipeline.
   //
   gl_BackColor = gl_FrontColor = gl_Color;
 
-  // Copy texture coordinate to output (no need to modify it).
+  // Pass texture coordinate to next stage in pipeline.
   // Only copy x and y components since it's a 2D texture.
   //
   gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
@@ -155,6 +154,14 @@ vs_main_helix()
 void
 gs_main_helix()
 {
+  /// Geometry Shader
+  //
+  // Pre-defined input: gl_PositionIn[] (array of vec4, size determined by prim)
+  // Pre-defined output: gl_Position (vec4, read when EmitVertex called).
+  //
+  // Most other inputs and outputs should be declared by programmer,
+  // but for compatibility gl_FrontColor, etc., available.
+
   // Adjust color of certain triangles.
 
   const bool type_a = In[0].hidx < In[2].hidx;
