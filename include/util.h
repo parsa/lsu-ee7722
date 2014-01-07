@@ -299,7 +299,7 @@ pFrame_Timer::frame_end()
     {
       struct { double mult; const char* lab; } fmt;
       if ( ti->last >= 0.001 ) { fmt.mult = 1000; fmt.lab = "ms"; } 
-      else { fmt.mult =1e6; fmt.lab= "µs"; }
+      else { fmt.mult =1e6; fmt.lab= "us"; }
       frame_rate_text.sprintf
         ("  %s %7.3f %s (%4.1f%%)", ti->label.s,
          fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
