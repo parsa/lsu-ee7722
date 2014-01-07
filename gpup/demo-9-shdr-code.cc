@@ -23,6 +23,22 @@ uniform vec4 material_color;
 /// Vertex-Shader Only Code -- "Lighting" Program
 ///
 
+
+// Declare variables for communication between vertex shader
+// and fragment shader.
+//
+#ifdef _VERTEX_SHADER_
+out vec3 var_normal_e;
+out vec4 var_vertex_e;
+out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
+#endif
+#ifdef _FRAGMENT_SHADER_
+in vec3 var_normal_e;
+in vec4 var_vertex_e;
+in vec2 gl_TexCoord[]; // We can change its interpolation, say to noperspective.
+uniform sampler2D tex_unit_0;
+#endif
+
  // Entry Point for Vertex Shader Code
 //
 #ifdef _VERTEX_SHADER_
@@ -111,20 +127,6 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 
 
 
-// Declare variables for communication between vertex shader
-// and fragment shader.
-//
-#ifdef _VERTEX_SHADER_
-out vec3 var_normal_e;
-out vec4 var_vertex_e;
-out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
-#endif
-#ifdef _FRAGMENT_SHADER_
-in vec3 var_normal_e;
-in vec4 var_vertex_e;
-in vec2 gl_TexCoord[]; // We can change its interpolation, say to noperspective.
-uniform sampler2D tex_unit_0;
-#endif
 
 #ifdef _VERTEX_SHADER_
 void
