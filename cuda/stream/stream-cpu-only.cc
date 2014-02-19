@@ -21,6 +21,7 @@ main(int argc, char **argv)
 
   double* const ax = new double[size];
   double* const ay = new double[size];
+  double* const b = new double[size];
   double xi = drand48();
   double yi = drand48();
   for ( int i=0; i<size; i++ )
