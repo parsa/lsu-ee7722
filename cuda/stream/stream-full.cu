@@ -1,5 +1,12 @@
-
 // Simple CUDA Example, without LSU ECE helper classes.
+
+// Command Lines to Compile
+//
+//   Simplest
+//     nvcc stream-full.cu
+//
+//   Reasonable
+//     nvcc -o stream-full stream-full.cu  -O3 -g -Xcompiler -Wall
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,8 +106,10 @@ main(int argc, char** argv)
   db.x = 64;          // Number of threads per block.
   db.y = db.z = 1;
 
-  dg.x =              // Number of blocks.
-    int(ceil(double(host_array_size) / db.x));
+  // Number of blocks.
+  //
+  dg.x = (host_array_size + db.x - 1 ) / db.x;
+
   dg.y = dg.z = 1;
 
   // Launch Kernel
