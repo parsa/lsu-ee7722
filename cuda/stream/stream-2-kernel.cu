@@ -54,11 +54,14 @@ dots()
 // This routine executes on the CPU.
 //
 __host__ void
-dots_iterate_launch(dim3 dg, dim3 db)
+dots_iterate_launch(dim3 dg, dim3 db, int kernel)
 {
   // Launch the kernel, using the provided configuration (block size, etc).
   //
-  dots_iterate1<<<dg,db>>>();
+  if ( kernel == 0 )
+    dots_iterate1<<<dg,db>>>();
+  else
+    dots_iterate2<<<dg,db>>>();
 }
 
 // This routine also executes on the GPU.

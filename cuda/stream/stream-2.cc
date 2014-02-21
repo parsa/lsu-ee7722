@@ -116,6 +116,7 @@ public:
   pCUDA_Memory<float> b;
   float *b_check;
   int array_size;
+  bool printed_header;
 
   void init(int argc, char **argv)
   {
@@ -170,6 +171,8 @@ public:
     printf("Array size %d elements,  data size (in and out) %.3f MB.\n",
            array_size,
            array_size * ( sizeof(a[0]) + sizeof(b[0]) ) * 1e-6);
+
+    printed_header = false;
   }
 
   void check()
@@ -195,20 +198,22 @@ public:
 
     // Vary number of blocks per multiprocessor.
     //
-    int bl_per_mp[] = {1,2,4,8,0};
+    int bl_per_mp[] = {1,2,4,8};
     int cnt = sizeof(bl_per_mp) / sizeof(bl_per_mp[0]);
 
+    for ( int k=0; k<2; k++ )
     for ( int i=0; i<cnt; i++ )
       {
-        run(32,bl_per_mp[i]);
-        run(64,bl_per_mp[i]);
-        run(max_block_size>>1,bl_per_mp[i]);
-        run(max_block_size,bl_per_mp[i]);
+        run(16,bl_per_mp[i]);
+        for ( int j=0; j<6; j++ )
+          {
+            run(32<<j,bl_per_mp[i],k);
+          }
       }
 
   }
 
-  void run(int block_size, int bl_per_mp = 1)
+  void run(int block_size, int bl_per_mp = 1, int kernel = 0)
   {
     const int cpu_rounds = 5;
     const int gpu_rounds = 5;
@@ -230,13 +235,6 @@ public:
       dg.x = int(ceil(double(array_size) / db.x));
     dg.y = dg.z = 1;
 
-    printf("\nGPU Rounds %d,  Grid Dim %6d,  Block Dim %4d,  BL/MP %7.1f,  "
-           "TH/MP %7.0f\n",
-           gpu_rounds, dg.x, db.x,
-           double(dg.x)/cuda_prop->multiProcessorCount,
-           double(dg.x)/cuda_prop->multiProcessorCount * db.x
-           );
-
     if ( int(dg.x) > cuda_prop->maxGridSize[0] )
       {
         printf("*** Maximum grid size exceeded, doing nothing. Sorry.\n");
@@ -252,7 +250,9 @@ public:
         // Launch Kernel  (Actually, call code in stream-kernel.cu to launch).
         //
         CE(cudaEventRecord(cuda_start_ce));
-        for ( int i=0; i<gpu_rounds; i++ ) dots_iterate_launch(dg,db);
+        for ( int i=0; i<gpu_rounds; i++ )
+          dots_iterate_launch(dg,db,kernel);
+
         CE(cudaEventRecord(cuda_stop_ce));
 
         // When execution reaches this point kernel has completed.
@@ -271,12 +271,17 @@ public:
         const size_t data_size =
           gpu_rounds * array_size * ( sizeof(a[0]) + sizeof(b[0]) );
 
-        printf("CUDA Time %6.3f ms  Throughput %11.3f MB/s\n",
+        if ( !printed_header )
+          printf
+            ("-Grid-Sz---  -Block-Sz-------               -Time----   -Data Thpt--\n");
+        printed_header = true;
+
+     //  "Array13 bl    32 th    1 wp     1.0 bl/mp   31.472 ms      7996 GB/s"
+        printf(" %6d bl  %4d th  %3d wp  %6.1f bl/mp  %7.3f ms  %8.0f GB/s\n",
+               dg.x, db.x, db.x + 31 >> 5,
+               double(dg.x)/cuda_prop->multiProcessorCount,
                cuda_time_ms,
                data_size / ( cuda_time_ms * 1000 ));
-        printf("Wall Time %6.3f ms  Throughput %11.3f MB/s\n",
-               wall_all * 1000,
-               data_size / ( wall_all * 1e6 ));
         check();
       }
   }
