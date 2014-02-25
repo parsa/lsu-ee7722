@@ -29,7 +29,15 @@ __constant__ float v0, v1, v2;
 __constant__ int array_size;
 __constant__ float *ax, *ay, *b;
 
+ /// Declaration of Kernel (Entry point for code running on GPU.)
+//
 __global__ void dots();
+//
+// Note: the attribute __global__ indicates that the procedure is
+// started by a kernel launch. A GPU-only procedure would use the
+// attribute __device__ and a CPU-only procedure would use the
+// attribute __host__.
+
 
  /// CUDA API Error-Checking Wrapper
 ///
