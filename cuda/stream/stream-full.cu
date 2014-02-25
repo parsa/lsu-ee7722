@@ -56,11 +56,17 @@ main(int argc, char** argv)
 
   // Allocate storage for CPU copy of data.
   //
+  // The returned addresses are in the CPU process' memory space,
+  // they are not valid on the GPU.
+  //
   float *host_ax = (float*) malloc( host_array_size * sizeof(host_ax[0]) );
   float *host_ay = (float*) malloc( host_array_size * sizeof(host_ay[0]) );
   float *host_b = (float*) malloc( host_array_size * sizeof(host_b[0]) );
 
   // Allocate storage for GPU copy of data.
+  //
+  // The returned addresses are in GPU global space. They are not
+  // valid addresses on the CPU.
   //
   void *ax_dev, *ay_dev, *b_dev;
   CE(cudaMalloc(&ax_dev, host_array_size * sizeof(host_ax[0]) ));
