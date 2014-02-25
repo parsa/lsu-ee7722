@@ -1,6 +1,12 @@
-// Simple CUDA Example, without LSU ECE helper classes.
+/// LSU EE 7722 GPU Microarchitecture
+//
+ /// Simple CUDA Example, without LSU ECE helper classes.
 
-// Command Lines to Compile
+// How to Compile From Emacs
+//
+//  Within Emacs, as set up for class, compile by pressing [F9].
+//
+// How to Compile from the Command Line
 //
 //   Simplest
 //     nvcc stream-full.cu
@@ -14,36 +20,30 @@
 #include <cuda_runtime.h>
 
 
-// Constants holding array sizes and pointers and coefficients.
+ /// Constants holding array sizes, pointers, and coefficients.
 //
 // Values are set by cuda calls, they don't automatically take values
 // of variables in the C program with the same name.
 //
 __constant__ float v0, v1, v2;
 __constant__ int array_size;
-__constant__ float *ax, *ay;
-__constant__ float* b;
+__constant__ float *ax, *ay, *b;
 
 __global__ void dots();
 
  /// CUDA API Error-Checking Wrapper
 ///
-#define CE(call)                                                              \
- {                                                                            \
+#define CE(call) {                                                            \
    const cudaError_t rv = call;                                               \
-   if ( rv != cudaSuccess )                                                   \
-     {                                                                        \
-       printf("CUDA error %d, %s\n",rv,cudaGetErrorString(rv));               \
-       exit(1);                                                               \
-     }                                                                        \
- }
+   if ( rv != cudaSuccess ) {                                                 \
+     printf("CUDA error %d, %s\n",rv,cudaGetErrorString(rv));  exit(1);}}
 
 
 __host__ int
 main(int argc, char** argv)
 {
   srand48(1);                   // Seed random number generator.
-  const int size_lg = argc > 1 ? atoi(argv[1]) : 10;
+  const int size_lg = argc > 1 ? atoi(argv[1]) : 10;  // Arg 1: size of array.
   const int host_array_size = 1 << size_lg;
 
   // Allocate storage for CPU copy of data.
@@ -103,13 +103,13 @@ main(int argc, char** argv)
   // Specify Launch Configuration
   //
   dim3 db, dg;
-  db.x = 64;          // Number of threads per block.
-  db.y = db.z = 1;
+  db.x = 64;          // Number of threads per block in x dimension.
+  db.y = db.z = 1;    // Number of threads per block in y and z dimensions.
 
-  // Number of blocks.
+  // Choose grid size so that there is at least one thread per array
+  // element.
   //
   dg.x = (host_array_size + db.x - 1 ) / db.x;
-
   dg.y = dg.z = 1;
 
   // Launch Kernel
@@ -130,7 +130,7 @@ main(int argc, char** argv)
 __global__ void
 dots()
 {
-  // Variable threadIdx, blockIdx, and blockDim pre-set.
+  // Variables threadIdx, blockIdx, and blockDim are pre-set.
   //
 
   // Compute a unique index (number) for this thread.
@@ -148,32 +148,7 @@ dots()
   //
   if ( idx >= array_size ) return;
 
-  // Note: this will be improved.
-  //
-  b[idx] = v0 + v1 * ax[idx] + v2 * ay[idx];
-}
-
-
-
-__global__ void
-dots2()
-{
-  // Compute a unique index (number) for this thread.
-  // This will be used as an array index.
-  //
-  int idx = 
-    threadIdx.x
-    + threadIdx.y * blockDim.x
-    + threadIdx.z * blockDim.x * blockDim.y
-    + blockIdx.x * blockDim.x * blockDim.y * blockDim.z
-    + blockIdx.y * blockDim.x * blockDim.y * blockDim.z * gridDim.x
-    + blockIdx.z * blockDim.x * blockDim.y * blockDim.z * gridDim.x * gridDim.y;
-
-  // Array size might not be a multiple of block size.
-  //
-  if ( idx >= array_size ) return;
-
-  // Note: this will be improved.
+  // Perform Computation
   //
   b[idx] = v0 + v1 * ax[idx] + v2 * ay[idx];
 }
