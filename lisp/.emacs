@@ -1,6 +1,4 @@
-;;; Emacs initialization file for use in LSU EE 7700-X (Graphics Processors)
-
-;; $Id:$
+;;; Emacs initialization file for use in LSU EE GPU classes 47XX & 7722.
 
 (when (< emacs-major-version 21)
   (error "Initialization file intended for Emacs 21.0 and higher"))
