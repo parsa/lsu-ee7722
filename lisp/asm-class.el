@@ -623,7 +623,7 @@ Called before asm-mode initializes."
       ;; PTX (NVIDIA CUDA)
       (goto-char (point-min))
       (or
-       (string-match "\\.ptx$" (buffer-file-name))
+       (string-match "\\.ptx$" (or (buffer-file-name) ""))
        (re-search-forward "NVIDIA NVVM" 1000 t)))
     (setq asm-font-lock-keywords
           (append
@@ -745,7 +745,7 @@ Called before asm-mode initializes."
              ("\\.\\([rk]?o?data\\|[rk]?text\\)\\>"
               (1 (list 'asm-directive-face 'bold)))
 
-             ("\\(\\%\\)\\([ioglf][12]?[0-9]\\|[iogl]3[01]\\|f[3-6][0-9]\\|[sf]p\\|[fi]cc\\)\\>"
+             ("\\(\\%\\)\\([ioglf][12]?[0-9]\\|[iogl]3[01]\\|f[3-6][0-9]\\|[sf]p\\|[fix]cc[0-3]\\)\\>"
               (1 font-lock-string-face)
               (2 font-lock-variable-name-face) )
 
@@ -755,7 +755,8 @@ Called before asm-mode initializes."
       ;; IA-32, 64
       (goto-char (point-min))
       (or
-       (re-search-forward "x86_64" 100 t)))
+       (re-search-forward "x86_64" 100 t)
+       (re-search-forward "%eax" 5000 t)))
     (setq asm-comment-char ?#
           asm-font-lock-keywords
           (append
