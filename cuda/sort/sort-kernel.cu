@@ -254,8 +254,6 @@ sort_block_1_bit_split(int bit_low, int bit_count)
           if ( key & bit_mask ) my_ones_write++;
         }
 
-      // Store prefix vector for our for elements into shared memory.
-      //
       s[ pfi_base_rd + threadIdx.x ] = my_ones_write;
       if ( threadIdx.x == 0 ) s[ pfe_base_rd ] = 0;
 
@@ -277,29 +275,22 @@ sort_block_1_bit_split(int bit_low, int bit_count)
 
       // At this point my_prefix contains exclusive prefix of each group.
 
-#if 0
-      if ( threadIdx.x == 0 && blockIdx.x == 0 )
-        {
-          for ( int i=0; i<5; i++ )
-            scan_out[(bit_pos-bit_low)*16+i] = col_total[ct_base + 2*i];
-        }
-#endif
-
       __syncthreads();
 
-      const int total_ones = s[ pfe_base_rd + blockDim.x ];
-      const int idx_first_one = elt_per_block - total_ones;
-      int count = s[ pfe_base_rd + threadIdx.x ];
+      const int all_threads_num_ones = s[ pfe_base_rd + blockDim.x ];
+      const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
+      const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
+
+      int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
+      int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;
 
       for ( int i = 0;  i < elt_per_thread;  i++ )
         {
-          //  const int sidx = threadIdx.x + i * blockDim.x;
-          const int sidx = threadIdx.x * elt_per_thread + i;
-          int key = keys[i];
-          int new_idx = key & bit_mask ? idx_first_one + count : sidx - count;
+          const int key = keys[i];
+          const int new_idx = key & bit_mask ? idx_one_me++ : idx_zero_me++;
           s[ new_idx ] = key;
-          if ( key & bit_mask ) count++;
         }
+
     }
   __syncthreads();
 }
