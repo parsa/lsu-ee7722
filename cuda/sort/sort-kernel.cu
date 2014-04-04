@@ -444,6 +444,9 @@ template <int BLOCK_LG, int BIN_LG>
 __device__ void radix_sort_1_pass_1_tile
 (int bin_idx, int tile_idx, bool first_iter);
 
+#define SH_GLOBAL_HISTO(elt) s[ ghisto_sbase + (elt) ]
+#define SH_TILE_HISTO(idx) s[ thisto_sbase + (idx) ]
+
 template <int BLOCK_LG, int BIN_LG> __global__ void
 radix_sort_1_pass_1(int bin_idx, bool first_iter)
 {
@@ -458,14 +461,14 @@ radix_sort_1_pass_1(int bin_idx, bool first_iter)
   int sbase_1_bit_split_end = elt_per_tile + block_size + 1;
   int ghisto_sbase = sbase_1_bit_split_end;
 
-  if ( threadIdx.x < bin_size ) s[ ghisto_sbase + threadIdx.x ] = 0;
+  if ( threadIdx.x < bin_size ) SH_GLOBAL_HISTO( threadIdx.x ) = 0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
     radix_sort_1_pass_1_tile<BLOCK_LG,BIN_LG>(bin_idx,tile_idx,first_iter);
 
   if ( threadIdx.x >= bin_size ) return;
   int histo_idx = blockIdx.x * bin_size + threadIdx.x;
-  sort_histo[ histo_idx ] = s[ ghisto_sbase + threadIdx.x ];
+  sort_histo[ histo_idx ] = SH_GLOBAL_HISTO( threadIdx.x );
 }
 
 template <int BLOCK_LG, int BIN_LG> __device__ void
@@ -515,8 +518,10 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 
   if ( threadIdx.x == 0 ) s[elt_per_tile] = bin_size;
 
+  // Initialize histogram for this tile to zero.
+  //
   if ( threadIdx.x < bin_size )
-    s[ thisto_sbase + threadIdx.x ] = 0;
+    SH_TILE_HISTO( threadIdx.x ) = 0;
 
   __syncthreads();
 
@@ -548,8 +553,8 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
         {
           int run_end_sidx = s[ runend_sbase + digit ];
           int count = run_end_sidx - sidx + 1;
-          s[ ghisto_sbase + digit ] += count;     // Histogram for block.
-          s[ thisto_sbase + digit ] = count;      // Histogram for tile.
+          SH_GLOBAL_HISTO( digit ) += count;     // Histogram for block.
+          SH_TILE_HISTO( digit ) = count;      // Histogram for tile.
         }
     }
 
@@ -560,7 +565,7 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
   // Write out tile histogram.
   //
   int thisto_idx = tile_idx * bin_size + threadIdx.x;
-  sort_tile_histo[ thisto_idx ] = s[ thisto_sbase + threadIdx.x ];
+  sort_tile_histo[ thisto_idx ] = SH_TILE_HISTO( threadIdx.x );
 }
 
 __device__ void radix_sort_1_pass_2_tile
