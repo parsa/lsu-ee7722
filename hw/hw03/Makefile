@@ -36,7 +36,7 @@ LIBRARIES = -lrt -lpthread
 
 default: all
 
-all: hw03
+all: hw03 hw03_sol
 
 %.o: %.cc Makefile
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -52,6 +52,9 @@ all: hw03
 hw03: hw03.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
+hw03_sol: hw03_sol.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin hw03 *~
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw03 hw03_sol *~
 
