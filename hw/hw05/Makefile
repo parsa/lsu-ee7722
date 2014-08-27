@@ -18,4 +18,4 @@ hw05: $(OBJ_FILES)
 	$(LD) $(CXXFLAGS) $(LINKFLAGS) $(OBJ_FILES) -o $@
 
 clean:
-	rm -fr *~ *.o *MIC.o hw05 *.s *MIC.s
+	rm -f *~ *.o *MIC.o hw05 *.s *MIC.s
