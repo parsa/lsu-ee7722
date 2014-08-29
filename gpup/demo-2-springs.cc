@@ -2,7 +2,6 @@
 //
  /// Simple Demo of Point Masses and Springs
 
-// $Id:$
 
 /// Purpose
 //
@@ -11,7 +10,7 @@
 
 /// What Code Does
 
-// Simulates a string bouncing over a platform. The string is modeled
+// Simulates a string of beads over a platform. The string is modeled
 // as point masses connected by springs with a long relaxed
 // length. The platform consists of tiles, some are purple-tinted
 // mirrors (showing a reflection of the ball), the others show the
@@ -44,10 +43,9 @@
  //  'p'    Pause simulation. (Press again to resume.)
  //  ' '    (Space bar.) Advance simulation by 1/30 second.
  //  'S- '  (Shift-space bar.) Advance simulation by one time step.
- //  'k'    Freeze position of first ball. (Press again to release.)
- //  't'    Freeze position of last ball. (Press again to release.)
- //  's'    Stop ball.
- //  'S'    Freeze ball. (Set velocity of all vertices to zero.)
+ //  'h'    Freeze position of first (head) ball. (Press again to release.)
+ //  't'    Freeze position of last (tail) ball. (Press again to release.)
+ //  's'    Stop balls.
  //  'g'    Turn gravity on and off.
  //  'F12'  Write screenshot to file.
 
@@ -106,9 +104,12 @@ class Ball {
 public:
   pCoor position;
   pVect velocity;
-  float mass, mass_inv;
+
+  float mass;
   float radius;
-  bool contact;
+
+  bool contact;                 // Can be used for special effects.
+
   void push(pVect amt);
   void translate(pVect amt);
   void stop();
@@ -121,10 +122,10 @@ public:
 void
 World::init()
 {
-  chain_length = 10;
+  chain_length = 20;
   balls = new Ball[chain_length];
  
-  distance_relaxed = 25 / chain_length;
+  distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 1000;
   variable_control.insert(opt_spring_constant,"Spring Constant");
 
@@ -143,7 +144,7 @@ World::init()
 
   init_graphics();
 
-  ball_setup_1();
+  ball_setup_2();
 }
 
 ///
@@ -155,9 +156,11 @@ World::init()
 void
 World::ball_setup_1()
 {
+  const float radius = 0.3 * distance_relaxed;
+
   // Set initial position to a visibly interesting point.
   //
-  pCoor next_pos(12.5,0.1,-13.7);
+  pCoor next_pos(12.5,2*radius,-13.7);
 
   for ( int i=0; i<chain_length; i++ )
     {
@@ -166,11 +169,13 @@ World::ball_setup_1()
       Ball* const ball = &balls[chain_length-i-1];
       ball->position = next_pos;
       ball->velocity = pVect(0,0,0);
-      ball->radius = 0.5;
+      ball->radius = radius;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
-      next_pos += pVect(0.1,distance_relaxed,0);
+      next_pos += pVect(0.0, distance_relaxed, 0);
     }
+
+  opt_head_lock = true;
 }
 
 void
@@ -178,7 +183,7 @@ World::ball_setup_2()
 {
   // Arrange and size balls to form a pendulum.
   //
-  pCoor next_pos(13.4,21.8,-9.2);
+  pCoor next_pos(13.4,17.8,-9.2);
 
   for ( int i=0; i<chain_length; i++ )
     {
@@ -187,7 +192,7 @@ World::ball_setup_2()
       Ball* const ball = &balls[i];
       ball->position = next_pos;
       ball->velocity = pVect(0,0,0);
-      ball->radius = i == chain_length - 1 ? 1 : 0.5;
+      ball->radius = ( i == chain_length - 1 ? 0.6 : 0.3 ) * distance_relaxed;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
       next_pos += pVect(distance_relaxed,0,0);
@@ -242,8 +247,9 @@ World::time_step_cpu(double delta_t)
 
       // Spring Force from Neighbor Balls
       //
-      for ( int n_idx = i-1; n_idx <= i+1; n_idx += 2 )
+      for ( int direction = -1; direction <= +1; direction += 2 )
         {
+          const int n_idx = i + direction;  // Compute neighbor index.
           if ( n_idx < 0 ) continue;
           if ( n_idx == chain_length ) break;
 
@@ -252,6 +258,8 @@ World::time_step_cpu(double delta_t)
           // Construct a normalized (Unit) Vector from ball to neighbor.
           //
           pNorm ball_to_neighbor(ball->position,neighbor_ball->position);
+
+          const float distance_between_balls = ball_to_neighbor.magnitude;
 
           // Compute the speed of ball towards neighbor_ball.
           //
@@ -262,7 +270,7 @@ World::time_step_cpu(double delta_t)
           // or compressed (negative value).
           //
           const float spring_stretch =
-            ball_to_neighbor.magnitude - distance_relaxed;
+            distance_between_balls - distance_relaxed;
 
           // Determine whether spring is gaining energy (whether its length
           // is getting further from its relaxed length).
