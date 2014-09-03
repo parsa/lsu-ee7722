@@ -32,8 +32,6 @@ sample_code()
   c3 = c2;
   c2.x = c1.y;
 
-  pCoor c3(5,1,8);
-
   /// Vector Class
   //
 
@@ -69,7 +67,8 @@ sample_code()
 
   /// Automatically Constructing a Vector from Coordinates.
 
-  pVect vec_12(c1,c2);    // Const. using two coords, result is c2 - c1.
+  // Construct vector vec_12 using two coords, result is c2 - c1.
+  pVect vec_12(c1,c2);    
   vec_12 = c2 - c1;  // No change to vec_12, the constructor already subtr.
 
   pVect vec_xa(v1,v2);    // Cross product: v1 x v2
@@ -79,7 +78,7 @@ sample_code()
   /// Coordinate and Vector Operators
   //
   pVect vec_12b = c2 - c1;   // Subtraction of coords yields vector.
-  pVect vec_12c = v2 - v1;   // Coordinate operators work on vertices too.
+  pVect vec_12c = v2 - v1;   // Vector subtraction.
   pCoor c2c = c1 + vec_12b;  // Coord + vec yields a coordinate.
   pVect vscaled = 5 * vec_12b;  // Multiply each element.
 
@@ -93,6 +92,25 @@ sample_code()
   //
   float length_12b = vec_12b.mag();  // Length of vector.
   float length_12c = vec_12c.normalize();  // Return length, then normalize.
+
+
+  /// Normalized Vector --- Very Useful
+  //
+  {
+    pCoor c1(1,2,3);
+    pCoor c2(4,5,6);
+
+    pNorm nvec(c1,c2);  // Normalized vector from c1 to c2.
+
+    // Get the distance from c1 to c2.
+    //
+    float distance_c1_c2 = nvec.magnitude;
+
+    pVect c1_velocity(7,8,9);
+
+    float speed_c1_to_c2 = dot( c1_velocity, nvec );
+
+  }
 
 
 }
