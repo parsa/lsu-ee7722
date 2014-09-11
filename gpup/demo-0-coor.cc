@@ -55,6 +55,31 @@ sample_code()
   pVect v6 = v5 + v4;   // Vector addition.
   float l1 = v6.mag();  // Magnitude (length) of v6.
 
+
+  // Sample Problem
+  //
+  // Johnny at p1 throws a ball towards Sally at p2, but only
+  // throws the ball 2 units of distance. Assign the location to p4.
+
+  pCoor p1(1,2,3);     // Johnny's location.
+  pCoor p2(10,11,12);  // Sally's location.
+  pNorm j_to_s(p1,p2);
+  pCoor p4 = p1 + 2 * j_to_s;
+
+  // Sample Problem
+  //
+  // What is the ball's velocity towards the wall?
+
+  float ball_velocity = 10;
+  pCoor closest_point_on_wall = p3(20,30,40);
+
+  pNorm to_wall(p1,closest_point_on_wall);
+
+  float speed_towards_wall = dot( j_to_s, to_wall ) * ball_velocity;
+  
+
+
+
   float l2 = dot(v5,v6);   // Dot product.
 
   pVect v7 = cross(v5,v6); // Cross product.
