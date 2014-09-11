@@ -18,7 +18,7 @@ CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/cuobjdump
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  --gpu-architecture=sm_20  -g  -Xptxas -dlcm=cg
+ --ptxas-options=-v  --gpu-architecture=sm_35  -g  -Xptxas -dlcm=cg
 
 #  -Xptxas -dlcm=cg
 
@@ -35,7 +35,7 @@ LIBRARIES = -lrt -lpthread
 
 default: all
 
-all: hw01
+all: hw01 hw02_sol
 
 %.o: %.cc Makefile
 	$(CXX) $(CFLAGS) -c $*.cc
@@ -51,6 +51,9 @@ all: hw01
 hw01: hw01.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
+hw02_sol: hw02_sol.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin hw01 *~
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw01 hw02_sol *~
 
