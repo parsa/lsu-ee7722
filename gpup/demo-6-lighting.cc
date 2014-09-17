@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Lighting
 
@@ -203,13 +203,42 @@ World::render()
   const float aspect = float(win_width) / win_height;
 
   glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
   glLoadTransposeMatrixf(modelview);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   // Frustum: left, right, bottom, top, near, far
   glFrustum(-.8,.8,-.8/aspect,.8/aspect,1,5000);
+
+
+  /// Lighting Computation
+  //
+  //  Three Sets of Settings:
+  //
+  //  - Light Source Parameters
+  //  - Material Parameters
+  //  - Lighting Model Parameters
+  //
+  ///  Light Source Parameters
+  //
+  //   Set using glLightX(LIGHT_NUMBER, PARAMETER_NAME, PARAMETER_VALUE)
+  //   Some Parameters:
+  //      GL_POSITION
+  //      GL_DIFFUSE: Color of diffuse component of light.
+  //      GL_CONSTANT_ATTENUATION: k_0 in formula.
+  //      GL_LINEAR_ATTENUATION: k_1 in formula.
+  //      GL_QUADRATIC_ATTENUATION: k_2 in formula.
+  //
+  ///  Material Parameters
+  //
+  //   Set using glMaterialf
+  //   Some Parameters:
+  //      GL_DIFFUSE: Diffuse color.
+  //
+  ///  Lighting Model Parameters
+  //
+  //   Set using glLightModelX
+
 
   glEnable(GL_LIGHTING);
 

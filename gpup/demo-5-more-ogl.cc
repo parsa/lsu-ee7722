@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Simple Demo of OpenGL
 
@@ -12,6 +12,120 @@
 /// What Code Does
 
 // Shows a sphere and a triangle.
+
+#if 0
+/// Background
+//
+
+ /// References
+//
+// :ogl45: OpenGL Specification Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+ /// Coordinate Spaces
+//
+//  :ogl45: Section 12.1 - Coordinate space descriptions.
+//
+//  :Def: Object Space
+//        Coordinate space of user's choosing.
+//        E.g., Flight Simulator: y is feet, x and z are nautical miles.
+//              
+//  :Def: Eye Space
+//        User's eye at origin, monitor facing -z.
+//
+//  :Def: Clip Space
+//        Visible space inside a cube with corners (-1,-1,-1) and (1,1,1)
+
+
+ /// Transformation Matrices
+//
+//   :ogl45: Section 12.1.1
+//
+//   Some Important Transformations:
+//
+//     :Def: Model View
+//           Transform from object to eye space.
+//
+//     :Def: Projection
+//           Transform from eye to clip.
+
+//   Setting Matrices
+//
+//  -- First, specify which matrix:
+//
+        glMatrixMode( matrix-name );
+//
+//       where matrix-name can be
+//
+       glMatrixMode( GL_MODELVIEW );
+       glMatrixMode( GL_PROJECTION );
+//
+//      See Section 12.1.1 for the full list.
+
+//  -- Second, modify the matrix using a variety of commands.
+//     See Section 12.1.1 for the full list.
+//
+       // Load the entire matrix
+       //
+       glLoadMatrixf( my_matrix_a );
+       //
+       // Before: transform = some_matrix_x.
+       // After:  transform = my_matrix_a.
+
+       // Load an identity matrix.
+       //
+       glLoadIdentity();
+       //
+       // Before: transform = some_matrix_x.
+       // After:  transform = Identity.
+
+       // Multiply the current transform by a new matrix.
+       //
+       glMultMatrixf( my_matrix_b );
+       //
+       // Before: transform = my_matrix_a.
+       // After: transform = my_matrix_a * my_matrix_b.
+
+       // Multiply current transform by a right-hand rotation.
+       //
+       glRotatef( angle_deg, axis_x, axis_y, axis_z );
+
+       // Multiply current transform by a translation.
+       //
+       glTranslatef( tran_x, tran_y, tran_z );
+
+       // Multiply current transform by a translation.
+       //
+       glScalef( s_x, s_y, s_z );
+
+       // Multiply current transform by a perspective (frustum) projection.
+       //
+       glFrustum( left, right, bottom, top, near, far );
+
+//  -- Third, leave things the way they were.
+//
+//       Often a transformation change is temporary, and after you're
+//       done you'd like to put things back the way they were.
+//
+//       In such cases use push and pop:
+//
+       // Make a copy of the current matrix and push it on the stack.
+       //
+       glPushMatrix();
+
+       // Replace the current matrix with the top of stack, and pop stack.
+       //
+       glPopMatrix();
+
+
+ /// Depth Test (z-Buffering)
+//
+//   :ogl45: Section 17.3.6
+//
+
+
+
+#endif
 
 
 ///  Keyboard Commands
@@ -161,48 +275,29 @@ World::render()
   // Use current clear settings to rest frame buffer.
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-  // Turn on z-test.
+  // Turn on Depth Test ( z-buffer test ).
   //
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);     // FB written if z value to write < current z.
 
   glShadeModel(GL_SMOOTH);
 
-  /// Lighting Computation
+  /// Lighting Setup
   //
-  //  Three Sets of Settings:
+  //  Covered in detail in demo-6.
   //
-  //  - Light Source Parameters
-  //  - Material Parameters
-  //  - Lighting Model Parameters
-  //
-  ///  Light Source Parameters
-  //
-  //   Set using glLightX(LIGHT_NUMBER, PARAMETER_NAME, PARAMETER_VALUE)
-  //   Some Parameters:
-  //      GL_POSITION
-  //      GL_DIFFUSE: Color of diffuse component of light.
-  //      GL_CONSTANT_ATTENUATION: k_0 in formula.
-  //      GL_LINEAR_ATTENUATION: k_1 in formula.
-  //      GL_QUADRATIC_ATTENUATION: k_2 in formula.
-  //
-  ///  Material Parameters
-  //
-  //   Set using Umm.
-  //   Some Parameters:
-  //      GL_DIFFUSE: Diffuse color.
-  //
-  ///  Lighting Model Parameters
-  //
-  //   Set using glLightModelX
+  //  Here, just pay attention to light_location.
 
-  glEnable(GL_LIGHTING);
-  glEnable(GL_LIGHT0);
+  
+  glEnable(GL_LIGHTING);        // Turn on lighting.
+  glEnable(GL_LIGHT0);          // Turn on light number one.
 
   glEnable(GL_COLOR_MATERIAL);
   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
-
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
+
+  // Specify location of light number one.
+  //
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
 
