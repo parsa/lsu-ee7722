@@ -9,6 +9,68 @@
 //   Demonstrate Lighting and use of Triangle Strips
 
 
+#if 0
+///
+/// Background
+///
+
+ /// References
+//
+// :ogl45: OpenGL Specification Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+
+/// Lighting
+ //
+ // :ogl45: Section 12.2
+
+ // :Def: Lighted Color
+ //       The color to be written to the frame buffer.
+ //       Models the light that would reach our eyes.
+
+ /// Types of Color
+ //
+ //  OpenGL defines four types of "color":
+ //     Emissive, Ambient, Diffuse, Specular.
+ //
+ //  The difference between them is how they interact with the light source.
+ //
+ //  :Def: Emissive
+ //        Lighted color not affected by lights.
+ //
+ //  :Def: Ambient
+ //        Lighted color affected by distance to light.
+ //
+ //  :Def: Diffuse
+ //        Lighted color affected by distance and normal to light.
+ //
+ //  :Def: Specular
+ //        Lighted color affected by distance and normal to light and to viewer.
+ //
+ //  OGL Section 12.2.1.1 precisely defines "affected by."
+
+ /// Lighting in OGL
+ //
+ //    Each vertex is assigned a material property.
+            glMaterial( ... )
+ //
+ //    Each light is assigned source parameters.
+            glLight( ... )
+ //
+ //    Non-vertex and non-light specific parameters also set.
+            glLightModel( ... )
+
+ /// Typical Lighting Procedure
+
+ // Turn Lighting On
+
+ //  For Each Light
+   // Enable it.
+   // Specify position, direction, etc.
+   // Specify colors.
+
+
+#endif
 
 ///  Keyboard Commands
  //
