@@ -70,6 +70,13 @@
    // Specify colors.
 
 
+/// Primitive Types
+//
+//  :ogl45: Section 10.1
+
+
+
+
 #endif
 
 ///  Keyboard Commands
@@ -180,7 +187,7 @@ World::init()
   eye_location = pCoor(2.6,0.5,9);
   eye_direction = pVect(0,0,-1);
 
-  opt_light_intensity = 7.2;
+  opt_light_intensity = 25;
   light_location = pCoor(7,4.0,-0.3);
 
   sphere_location = pCoor(0,0,-5);
@@ -302,13 +309,11 @@ World::render()
   //   Set using glLightModelX
 
 
-  glEnable(GL_LIGHTING);
-
   pColor white(1,1,1);
   pColor red(1,0,0);
   pColor gray(0x303030);
   pColor dark(0);
-  pColor ambient_color(0x555555);
+  pColor ambient_color(0x151515);
   const pColor lsu_spirit_purple(0x580da6);
   const pColor lsu_spirit_gold(0xf9b237);
 
@@ -316,14 +321,12 @@ World::render()
   /// Lighting Setup
   ///
 
-  // Specify the ambient lighting that's not connected with any light,
-  // called scene lighting.
+  /// Lighting "Master Switch"
   //
-  if ( opt_scene )
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
-  else
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark );
+  glEnable(GL_LIGHTING);
 
+  /// Setup For Light 0
+  //
   // Turn on light 0 and set its position.
   //
   glEnable(GL_LIGHT0);
@@ -352,7 +355,19 @@ World::render()
   glLightf(GL_LIGHT0,GL_LINEAR_ATTENUATION,1);
   glLightf(GL_LIGHT0,GL_QUADRATIC_ATTENUATION,0);
 
+  /// Ambient Light of Entire Scene
+  //
+  // Specify the ambient lighting that's not connected with any light,
+  // called scene lighting.
+  //
+  if ( opt_scene )
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
+  else
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark );
+
   pError_Check();
+
+  const float emissive_inten = 0.3;
 
 #if 0
   // Specify that calls to glColor will set both ambient and diffuse
@@ -441,7 +456,7 @@ World::render()
       // Emissive is set to dark because there is no emissive "light"
       // to turn off other than the material property.
       if ( opt_emissive )
-        glMaterialfv(GL_FRONT,GL_EMISSION, lsu_spirit_gold);
+        glMaterialfv(GL_FRONT,GL_EMISSION, lsu_spirit_gold * emissive_inten );
       else
         glMaterialfv(GL_FRONT,GL_EMISSION, dark);
 
@@ -480,7 +495,7 @@ World::render()
       glEnd();
 
       if ( opt_emissive )
-        glMaterialfv(GL_FRONT,GL_EMISSION, red);
+        glMaterialfv(GL_FRONT,GL_EMISSION, red * emissive_inten );
       else
         glMaterialfv(GL_FRONT,GL_EMISSION, dark);
 
@@ -494,7 +509,7 @@ World::render()
       for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
         {
           // Unlike the sphere, the cones here are drawn in the sphere's
-          // coordinate space.
+          // coordinate space, not the cone's own coordinate space.
 
           // Construct a normal to sphere surface at this
           // point. (Equivalent to point coordinate because center of
@@ -506,7 +521,7 @@ World::render()
           // The center of the base of the cone.
           pCoor surf = norm;
 
-          // The top of the cone.  Note the vector/scalar multiplicatoin.
+          // The top of the cone.  Note the vector/scalar multiplication.
           pCoor apex = 1.2 * norm;
           double delta_a = 2 * M_PI / 10;
 
