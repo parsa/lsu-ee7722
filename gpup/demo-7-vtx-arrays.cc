@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -11,6 +11,22 @@
 /// References
 //
 //  OpenGL 3.0 Specification Section 2.8 and 2.9 (Vertex Arrays, Buffer Obj)
+
+#if 0
+///
+/// Background
+///
+
+ /// References
+//
+// :ogl45: OpenGL Specification Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+/// Vertex Arrays
+//
+// :ogl45: Section 10.3, 10.4
+
+#endif
 
 ///  Keyboard Commands
  //
@@ -242,8 +258,6 @@ World::render()
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
   glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
-
-  //  glLightfv(GL_LIGHT0, GL_AMBIENT, white * opt_light_intensity);
 
   pError_Check();
 
