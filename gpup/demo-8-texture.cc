@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Textures, Blending, and the Alpha Test
 
@@ -10,7 +10,19 @@
 
 /// References
 //
-//  OpenGL 3.0 Specification 
+// :ogl45: OpenGL Specification Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+
+/// Background
+//
+
+// :ogl45: Chapter 8
+
+//  :Def: Texture
+//        An image applied to a primitive, like wallpaper.
+
+//  Textures use lots of time, resources.
 
 ///  Keyboard Commands
  //
@@ -30,7 +42,7 @@
  /// Simulation Options
  //  (Also see variables below.)
  //
- //  'm'    Change method used to specify vertices.
+ //  'm'    Change method used to apply textures.
  //  'r'    Toggle vertex re-computation on and off.
  //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
@@ -307,7 +319,6 @@ World::render()
   const float aspect = float(win_width) / win_height;
 
   glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
   glLoadTransposeMatrixf(modelview);
 
   glMatrixMode(GL_PROJECTION);
@@ -370,6 +381,13 @@ World::render()
   glColor3fv( color_tri );
 
   glEnable(GL_TEXTURE_2D);
+
+  // Make Texture Unit 0 the current texture unit.
+  //
+  glActiveTexture(GL_TEXTURE0);
+
+  // Attach texture object texture_id_image to current texture unit (0).
+  //
   glBindTexture(GL_TEXTURE_2D,texture_id_syllabus);
 
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
@@ -382,7 +400,7 @@ World::render()
   glTexParameteri
     (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  // Set parameter for texture unit.
+  // Set parameter for the active texture unit.
   //
   glTexEnvi
     (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,
