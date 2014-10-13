@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Fragment Shader / Phong Shading Demonstration
-
-// $Id:$
 
  /// See demo-9-shader.cc for details.
 

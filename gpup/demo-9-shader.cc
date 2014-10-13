@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Shaders
 
@@ -267,7 +267,6 @@ World::render()
   glEnable(GL_NORMALIZE);
 
   glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
   glLoadTransposeMatrixf(modelview);
 
   glMatrixMode(GL_PROJECTION);
