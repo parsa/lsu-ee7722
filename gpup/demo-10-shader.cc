@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
 
  /// More Shaders
@@ -61,13 +61,9 @@
 #define GL_GLEXT_LEGACY
 #include <GL/gl.h>
 #include <GL/glx.h>
-#include <GL/glext.h>
+#include <gl-local/glext.h>
 #include <GL/glxext.h>
 
-// NVIDIA has not yet updated their include files. :-(
-#ifndef GL_ARB_shader_storage_buffer_object
-#define GL_SHADER_STORAGE_BUFFER          0x90D2
-#endif
 
 #include <GL/glu.h>
 #include <GL/freeglut.h>
@@ -83,6 +79,16 @@
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
 #include "shapes.h"
+
+
+void
+debug_msg_callback
+(uint source, uint tp, uint id, uint severity, int length,
+ const char* message, const void *user_data)
+{
+  printf("--- DBG MSG severity %d\n%s\n",severity,message);
+}
+
 
 // Define storage buffer binding indices and attribute locations.
 //
@@ -184,6 +190,9 @@ public:
 void
 World::init()
 {
+  glEnable(GL_DEBUG_OUTPUT);
+  glDebugMessageCallbackARB(debug_msg_callback,(void*)this);
+
   opt_sim_paused = false;
   sim_time = 0;
   last_evolve_time = time_wall_fp();
@@ -651,7 +660,9 @@ World::render()
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, wire_surface_indices_bo);
 
+  pError_Check();
   glDrawElements(GL_TRIANGLE_STRIP,wire_surface_indices_size,GL_UNSIGNED_INT,0);
+  pError_Check();
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
