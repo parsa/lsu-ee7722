@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
  /// Demonstration of Geometry Shader
 
@@ -69,6 +69,11 @@ out vec2 gl_TexCoord[];
 
 #ifdef _GEOMETRY_SHADER_
 
+// Indicate type of input primitive expected by geometry shader.
+//
+layout ( triangles ) in;
+layout ( triangle_strip, max_vertices = 53 ) out;
+
 in Data
 {
   int hidx;
@@ -114,16 +119,6 @@ vs_main_helix()
 #endif
 
 #ifdef _GEOMETRY_SHADER_
-
-// Indicate type of input primitive expected by geometry shader.
-//
-layout ( triangles ) in;
-layout ( triangle_strip ) out;
-
-// Indicate the maximum number of vertices that the geometry shader
-// can write.
-//
-layout ( max_vertices = 53 ) out;
 
 void
 gs_main_helix()

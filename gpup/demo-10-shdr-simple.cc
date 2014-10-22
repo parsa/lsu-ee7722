@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
 //
 
 // $Id:$
@@ -48,6 +48,9 @@ out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
 #endif
 
 #ifdef _GEOMETRY_SHADER_
+
+layout ( triangles ) in;
+layout ( triangle_strip, max_vertices = 4 ) out;
 
 in Data
 {
