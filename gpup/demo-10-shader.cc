@@ -3,8 +3,6 @@
 
  /// More Shaders
 
-// $Id:$
-
 /// Purpose
 //
 //   Demonstrate use of Geometry Shaders
@@ -13,6 +11,95 @@
 //     program source code.
 
  ///  Note: Requires OpenGL 4.3
+
+/// References
+//
+// :ogl45: OpenGL Specification Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+//
+// :sl45:  The OpenGL Shading Language - Language Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+#if 0
+/// Background
+
+ /// New Material in Demo 10
+ //
+
+ /// glDrawElements
+//   :ogl45: Section 10.4
+//
+//   Like glDrawArray, except that an index array is used.
+
+
+ /// Vertex Attribute Arrays
+ //
+ //  :ogl45: Section 10.2.1
+//
+//   User-defined attributes.
+
+
+ /// Accessing Buffer Objects in Shader Programs
+ //
+ //  :ogl45: Section 6.1.1
+ //  :sl45:  Section 4.3.7
+
+//   Within shader code, buffer objects accessed using same syntax
+//   as arrays in the language C.
+//
+     vertex_o.xyz = helix_coord[hidx].xyz + radius * gl_Normal;
+
+
+//   The declaration of buffer objects in shader code is much different
+//   than C.
+//
+     layout ( binding = 1 ) buffer Helix_Coord  { vec4  helix_coord[];  };
+
+//   One also has to tell the host code which shader variable to bind
+//   to which buffer object.
+//
+     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_COORD,helix_coords_bo);
+
+
+ /// Geometry Shader Coding
+//
+//   Shader Input
+//     Usually triangles.
+//     DOES NOT have to match input primitive to current vertex shader.
+//
+//     Input is a single primitive, declared as an array. Array size
+//     is number of elements in the primitive.
+
+layout ( triangles ) in;
+
+in Data
+{
+  vec3 var_normal_e;
+  vec4 var_vertex_e;
+  int hidx;
+} In[3];
+
+
+//   Shader Output
+//     Usually triangles or triangle strips.
+//     DOES NOT have to match input primitive to current vertex shader.
+//
+//     Output is a single vertex, declared of course as scalars.
+
+layout ( triangle_strip, max_vertices = 4 ) out;
+
+
+out Data
+{
+  vec3 var_normal_e;
+  vec4 var_vertex_e;
+  int hidx;
+};
+
+
+
+
+#endif
 
 ///  Keyboard Commands
  //
