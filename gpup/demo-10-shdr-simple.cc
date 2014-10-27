@@ -63,7 +63,7 @@ out Data
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
-  int hidx;
+  flat int hidx;
 };
 
 #endif
@@ -73,6 +73,7 @@ in Data
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
+
   flat int hidx;
 };
 

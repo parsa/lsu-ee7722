@@ -61,6 +61,32 @@
      glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_COORD,helix_coords_bo);
 
 
+ /// Interpolation Qualifiers
+ //
+ //  :sl45: Section 4.5
+ //
+ //  Used on fragment shader inputs and vertex or geometry shader outputs.
+ //
+ //  They specify how variables written by vertex or geometry shader ..
+ //  .. should be interpolated to obtain values at input to fragment shader.
+ //
+ //  Options:
+ //
+ //    smooth:
+ //       Linearly interpolate based on object-space coordinates.
+ //       The default, produces best looking results.
+ //
+ //    noperspective:
+ //       Linearly interpolate based on window-space coordinates.
+ //       Won't look as good, but computationally less demanding.
+ //
+ //    flat:
+ //       Don't interpolate, instead use value of provoking (last)
+ //       vertex.
+ //
+ //  For an example, see demo-10-shdr-simple.cc.
+
+
  /// Geometry Shader Coding
 //
 //   Shader Input
