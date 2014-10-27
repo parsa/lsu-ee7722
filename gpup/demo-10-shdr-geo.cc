@@ -85,6 +85,7 @@ out Data_GF
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
+  flat vec4 color;
 };
 
 #endif
@@ -94,6 +95,7 @@ in Data_GF
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
+  flat vec4 color;
 };
 
 in vec2 gl_TexCoord[];
@@ -129,6 +131,10 @@ gs_main_helix()
 
   float bulge_dist_0 = abs( bulge_loc - In[0].hidx );
 
+  const bool type_a = In[0].hidx < In[2].hidx;
+
+  const vec4 base_shade = type_a ? vec4(1,1,1,1) : vec4(0.625,1,1,1);
+
   if ( bulge_dist_0 > bulge_dist_thresh )
     {
       /// Bulge is far away, just emit one triangle.
@@ -138,9 +144,7 @@ gs_main_helix()
           // Lighten the color to distinguish this area of helix from
           // the part with the bulge.
           //
-          vec4 shade = vec4(0.8,0.8,0.8,1);
-          gl_FrontColor = In[i].color * shade;
-          gl_BackColor = In[i].color * shade;
+          color = In[i].color * vec4(0.8,0.8,0.8,1) * base_shade;
 
           // Compute the vertex coordinate.
           //
@@ -193,9 +197,6 @@ gs_main_helix()
   vec3 delta_n10 = n0 - n10;
   vec3 delta_n11 = n0 - n11;
 
-  gl_FrontColor = In[0].color;
-  gl_BackColor = gl_FrontColor;
-
   // Number of times to split triangle.
   int slices = 7;
   float bulge_rad = 1;
@@ -220,11 +221,13 @@ gs_main_helix()
       vec4 pos0 = vec4( c + rx * nx0, 1);
       vec4 pos1 = vec4( c + rx * nx1, 1);
 
+      color = In[0].color * base_shade;
       gl_Position = gl_ModelViewProjectionMatrix * pos0;
       var_vertex_e = gl_ModelViewMatrix * pos0;
       var_normal_e = gl_NormalMatrix * nx0; // Not quite correct.
       EmitVertex();
 
+      color = In[0].color * vec4(1,0.8,1,1) * base_shade;
       gl_Position = gl_ModelViewProjectionMatrix * pos1;
       var_vertex_e = gl_ModelViewMatrix * pos1;
       var_normal_e = gl_NormalMatrix * nx1;  // Not quite correct.
@@ -251,7 +254,7 @@ fs_main_phong()
   // Multiply filtered texel color with lighted color of fragment.
   //
   gl_FragColor =
-    texel * generic_lighting(var_vertex_e,gl_Color,normalize(var_normal_e));
+    texel * generic_lighting(var_vertex_e, color, normalize(var_normal_e));
 
   // Copy fragment depth unmodified.
   //
