@@ -12,12 +12,13 @@ static uint pobject_in_use = 0;
 
 class pShader {
 public:
+  pShader(const char *path){ init_vgf_or_c(path,NULL); }
   pShader(const char *path, const char *main_body_vs,
           const char *main_body_fs = NULL)
   {init(path,main_body_vs,main_body_fs);}
   pShader(const char *path, const char *main_body_vs,
           const char *main_body_gs, const char *main_body_fs)
-  {init_vgf(path,main_body_vs,main_body_gs,main_body_fs);}
+  {init_vgf_or_c(path,main_body_vs,main_body_gs,main_body_fs);}
   pShader()
   {
     validated = true;
@@ -46,7 +47,7 @@ private:
     if ( !sobject )
       {
         // Could not create shader, perhaps feature not supported.
-        return 0;
+        return -1;
       }
 
     FILE* const shader_h = fopen(source_path,"r");
@@ -54,18 +55,21 @@ private:
       {
         fprintf(stderr,"Shader source file %s could not be open.\n",
                 source_path);
-        return 0;
+        return -1;
       }
     std::string shader_text;
-    const char* const stype_str =
-      shader_type == GL_VERTEX_SHADER ? "VERTEX_SHADER" :
-      shader_type == GL_FRAGMENT_SHADER ? "FRAGMENT_SHADER" :
-      shader_type == GL_GEOMETRY_SHADER_ARB
-      || shader_type == GL_GEOMETRY_SHADER_EXT ? "GEOMETRY_SHADER" :
-      "unknown_shader";
-    shader_text += "#define _";
-    shader_text += stype_str;
-    shader_text += "_\n";
+
+    if ( main_body )
+      {
+        const char* const stype_str =
+          shader_type == GL_VERTEX_SHADER ? "VERTEX_SHADER" :
+          shader_type == GL_FRAGMENT_SHADER ? "FRAGMENT_SHADER" :
+          shader_type == GL_GEOMETRY_SHADER ? "GEOMETRY_SHADER" :
+          "unknown_shader";
+        shader_text += "#define _";
+        shader_text += stype_str;
+        shader_text += "_\n";
+      }
 
     while ( !feof(shader_h) )
       {
@@ -74,9 +78,14 @@ private:
         shader_text += c;
       }
     fclose(shader_h);
-    shader_text += "void main() {\n";
-    shader_text += main_body;
-    shader_text += "}\n";
+
+    if ( main_body )
+      {
+        shader_text += "void main() {\n";
+        shader_text += main_body;
+        shader_text += "}\n";
+      }
+
     const char *shader_text_lines = shader_text.c_str();
     glShaderSource(sobject,1,&shader_text_lines,NULL);
     glCompileShader(sobject);
@@ -90,8 +99,11 @@ private:
         char* const info_log = (char*) alloca(info_log_length+1);
         glGetShaderInfoLog(sobject,info_log_length+1,NULL,info_log);
         printf(" Info log:\n%s\n",info_log);
+        return -1;
       }
 
+    glAttachShader(pobject,sobject);
+    pError_Check();
     return sobject;
   }
 
@@ -100,10 +112,10 @@ public:
   (const char *source_pathp,
    const char *main_body_vs, const char *main_body_fs = NULL)
   {
-    return init_vgf(source_pathp,main_body_vs,NULL,main_body_fs);
+    return init_vgf_or_c(source_pathp,main_body_vs,NULL,main_body_fs);
   }
 
-  GLuint init_vgf
+  GLuint init_vgf_or_c
   (const char *source_pathp,
    const char *main_body_vs,
    const char *main_body_gs = NULL,
@@ -113,36 +125,27 @@ public:
     validated = false;
     source_path = source_pathp;
 
+    const bool compute_shader = !main_body_vs && !main_body_gs && !main_body_fs;
+
     pobject = glCreateProgram();
     if ( pobject == 0 ) return 0;
 
-    vs_object = shader_load(GL_VERTEX_SHADER,source_path,main_body_vs);
-    pError_Check();
-    if ( vs_object == 0 ) return 0;
-    glAttachShader(pobject,vs_object);
+    cs_object = compute_shader 
+      ? shader_load(GL_COMPUTE_SHADER,source_path,NULL) : 0;
+    if ( cs_object < 0 ) return 0;
 
-    if ( main_body_gs )
-      {
-        gs_object =
-          shader_load(GL_GEOMETRY_SHADER_EXT,source_path,main_body_gs);
-        if ( gs_object == 0 ) return 0;
-        glAttachShader(pobject,gs_object);
-      }
-    else
-      {
-        gs_object = 0;
-      }
+    vs_object = main_body_vs 
+      ? shader_load(GL_VERTEX_SHADER,source_path,main_body_vs) : 0;
+    if ( vs_object < 0 ) return 0;
 
-    if ( main_body_fs )
-      {
-        fs_object = shader_load(GL_FRAGMENT_SHADER,source_path,main_body_fs);
-        if ( fs_object == 0 ) return 0;
-        glAttachShader(pobject,fs_object);
-      }
-    else
-      {
-        fs_object = 0;
-      }
+    gs_object = main_body_gs 
+      ? shader_load(GL_GEOMETRY_SHADER,source_path,main_body_gs) : 0;
+    if ( gs_object < 0 ) return 0;
+
+
+    fs_object = main_body_fs
+      ? shader_load(GL_FRAGMENT_SHADER,source_path,main_body_fs) : 0;
+    if ( fs_object < 0 ) return 0;
 
     pError_Check();
     glLinkProgram(pobject);
@@ -152,8 +155,8 @@ public:
     glGetProgramiv(pobject,GL_LINK_STATUS,&link_status);
     if ( !link_status )
       {
-        printf(" Link status for %s:%s %d\n",
-               source_path.s,main_body_vs, link_status);
+        printf(" Link status for %s %d\n",
+               source_path.s, link_status);
         GLint info_log_length;
         glGetProgramiv(pobject,GL_INFO_LOG_LENGTH,&info_log_length);
         char* const prog_info_log = (char*) alloca(info_log_length+1);
@@ -242,6 +245,7 @@ public:
   bool use()
   {
     if ( pobject_in_use == pobject ) return false;
+    pError_Check();
     glUseProgram(pobject);
     pError_Check();
     pobject_in_use = pobject;
@@ -275,7 +279,7 @@ public:
 
   pString source_path;
   GLuint pobject;
-  GLuint vs_object, gs_object, fs_object;
+  GLuint vs_object, gs_object, fs_object, cs_object;
   bool validated;
 private:
   bool ready;
