@@ -42,6 +42,7 @@
 /// Compute Shader Background
 
  /// Compute Shaders
+//   :ogl45: Chapter 19
 //
 //   A compute shader is a user-written routine that runs on the
 //   GPU (typically, whether it actually does depends on the OpenGL
