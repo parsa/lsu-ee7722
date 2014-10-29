@@ -177,11 +177,6 @@ out Data
 #include <GL/glext.h>
 #include <GL/glxext.h>
 
-// NVIDIA has not yet updated their include files. :-(
-#ifndef GL_ARB_shader_storage_buffer_object
-#define GL_SHADER_STORAGE_BUFFER          0x90D2
-#endif
-
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
