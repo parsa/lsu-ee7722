@@ -34,10 +34,10 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 LIBDIR  =
 
 default: all
-#default: demo-cuda-01-simple
+#default: demo-11-a-comp-shader
 all:demo-1c-coord demo-2-springs demo-1-simple demo-3-balls demo-4-simple-ogl \
 	demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays demo-8-texture \
-	demo-9-shader demo-1d-objects demo-10-shader \
+	demo-9-shader demo-1d-objects demo-10-shader demo-11-a-comp-shader \
 	demo-cuda-01-simple demo-cuda-02-basics demo-cuda-03-shared-mem \
         demo-cuda-04-acc-pat
 
@@ -114,6 +114,14 @@ demo-9-shader: demo-9-shader.o
 
 demo-10-shader.o: $(INCLUDES)
 demo-10-shader: demo-10-shader.o
+	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-11-a-comp-shader.o: $(INCLUDES)
+demo-11-a-comp-shader: demo-11-a-comp-shader.o
+	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+
+demo-11-comp-shader.o: $(INCLUDES)
+demo-11-comp-shader: demo-11-comp-shader.o
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 demo-cuda-01-simple: demo-cuda-01-simple.o
