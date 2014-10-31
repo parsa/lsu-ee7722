@@ -1,4 +1,11 @@
-// -*- c++ -*-
+/// LSU EE 4702-X / EE 7722   -*- c++ -*-
+//
+ ///  CUDA Utility Classes and Macros
+
+ /// Purpose
+//
+//   A set of classes and macros for using OpenGL. Intended to support
+//   classroom work, not tested for production use.
 
 #ifndef UTIL_H
 #define UTIL_H
@@ -462,7 +469,9 @@ public:
     frame_period = -1; // No timer callback.
     next_frame_time = 0;
     cb_keyboard();
+    ogl_debug = false;
     init_gl(argc, argv);
+    glDebugMessageCallback(debug_msg_callback,(void*)this);
   }
   ~pOpenGL_Helper(){}
 
@@ -471,6 +480,12 @@ public:
     frame_period = 1.0 / frames_per_second;
     animation_frame_rate = int(0.5 + frames_per_second);
   }
+
+  static void
+  debug_msg_callback
+  (uint source, uint tp, uint id, uint severity, int length,
+   const char* message, const void *user_data)
+  { printf("--- DBG MSG severity %d\n%s\n",severity,message); }
 
   double next_frame_time, frame_period;
   static void cb_timer_w(int data){ opengl_helper_self_->cbTimer(data); }
@@ -529,6 +544,16 @@ public:
 # endif
   }
 
+  bool ogl_debug_set(bool setting)
+  {
+    const bool rv = ogl_debug;
+    ogl_debug = setting;
+    if ( rv != setting ) {
+      if ( setting ) glEnable(GL_DEBUG_OUTPUT);
+      else           glDisable(GL_DEBUG_OUTPUT);
+    }
+    return rv;
+  }
 
   // Return width and height of frame buffer.
   //
@@ -748,6 +773,7 @@ private:
 
 private:
   const char* exe_file_name;
+  bool ogl_debug;
   double render_start;
   int width;
   int height;
