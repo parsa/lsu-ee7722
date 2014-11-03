@@ -9,10 +9,8 @@
  //  Homework 2 Problem 3 was not graded. Instead, it was
  //  reassigned as the sole problem in Homework 3.
 
-
- /// Instructions
- //
- //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2014/hw02.pdf
+ //  Assignment: http://www.ece.lsu.edu/koppel/gpup/2014/hw02.pdf
+ //  Solution: http://www.ece.lsu.edu/koppel/gpup/2014/hw02_sol.pdf
 
 
 /// What Code Does
@@ -518,12 +516,17 @@ World::render_spiral1()
 
       const float v12_dist = v12.magnitude;
 
-      // SOLUTION: The prev variables below are not needed for the
-      // triangle strip and so have been removed.
-      //  pCoor p_prev, p_outer_prev, p_inner_prev;
-      //  pVect norm_prev, norm_inner_prev;
+      /// SOLUTION 
+      //
+      //  The prev variables below are not needed for the
+      //  triangle strip and so have been removed.
+      //    pCoor p_prev, p_outer_prev, p_inner_prev;
+      //    pVect norm_prev, norm_inner_prev;
 
       const float delta_t = 1.0 / opt_segments;
+
+      /// SOLUTION
+      //  Start triangle strip here.
 
       glBegin(GL_TRIANGLE_STRIP);
 
@@ -550,6 +553,10 @@ World::render_spiral1()
           const float du = 1.0 / chain_length;
           const float u = float(i) * du;
 
+          /// SOLUTION
+          //
+          //  Just send the two "new" vertices to the GPU.
+
           glTexCoord2f(t,u+du);
           glNormal3fv(norm_inner);
           glVertex3fv(p_inner);
@@ -569,7 +576,7 @@ World::render_spiral1()
 void
 World::render_spiral2()
 {
-  /// Modify for Problem 3.
+  /// Modify for Homework 3  (Neé Homework 2 Problem 3)
 
   /// SOLUTION
 
@@ -596,6 +603,17 @@ World::render_spiral2()
       const float omega = 10;
 
       pNorm v12(pos1,pos2);
+
+      /// SOLUTION
+      //
+      //  Store information for just 1 spiral segment in a set of
+      //  buffer objects (one buffer object for the vertices and one
+      //  for the normals).
+      //
+      //  This set of buffer objects describes a segment in one particular
+      //  orientation (the values of pos1 and pos2 when they were loaded),
+      //  but by using a transformation we can use it to render a
+      //  segment in any position.
 
       bo_stale = bo_segments != opt_segments;
 
