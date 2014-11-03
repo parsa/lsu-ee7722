@@ -1,6 +1,6 @@
-### LSU EE 4702-1 (Fall 2013), GPU Programming
+### LSU EE 4702-1 (Fall 2014), GPU Programming
 ##
-##  Makefile for Homework 1
+##  Makefile for Homework 4
 ##
 ## $Id:$
 
