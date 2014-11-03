@@ -12,7 +12,7 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 440 compatibility
+#version 430 compatibility
 
 // Number of triangle pairs between balls.
 //
