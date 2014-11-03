@@ -1,8 +1,7 @@
-### LSU EE 4702-1 (Fall 2013), GPU Programming
+### LSU EE 4702-1 (Fall 2014), GPU Programming
 ##
-##  Makefile for Homework 1
+##  Makefile for Homework 2/3
 ##
-## $Id:$
 
 
 COURSE_INCLUDE_DIR_POSSIBILITIES = ../include ../../include ../../../include
@@ -30,7 +29,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw02
+default: hw02 hw02-sol
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
