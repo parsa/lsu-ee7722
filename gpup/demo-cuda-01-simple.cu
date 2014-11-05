@@ -1,4 +1,53 @@
-// Simple CUDA Example, without LSU ECE helper classes.
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
+//
+
+ /// Simple CUDA Example, without LSU ECE helper classes.
+
+/// References
+//
+//
+
+#if 0
+/// Background
+
+ /// CUDA
+ //
+ //  NVIDIA's system for programming NVIDIA GPUs.
+ //
+ //  Intended for non-graphical computation, widely used for
+ //  scientific computation.
+
+ /// CUDA C
+ //
+ //  Language used for programming on GPU.
+ //  In this file see routine: cuda_thread_start()
+ //
+ //  Syntactically similar to C++.
+ //
+ //  Major Differences
+ //
+ //    Executes as a hierarchy of threads.
+ //
+ //    Specialized address spaces.
+
+ /// CUDA C Runtime API
+ //
+ //  Library calls used on CPU side to manage execution on GPU.
+
+ /// CUDA Address Spaces
+ //
+
+ /// Global
+ //
+ //  Works like "regular" memory on CPU, but it's usually separated.
+
+ /// Constant
+ //
+ //  Limited amount of storage, read-only on GPU.
+
+
+#endif
+
 
 #include <pthread.h>
 #include <string.h>
@@ -32,18 +81,13 @@ time_fp()
   return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
 }
 
-struct Vertex
-{
-  float a[4];
-};
-
 struct App
 {
   int num_threads;
   int array_size;
-  Vertex *v_in;
+  float *v_in;
   float *m_out;
-  Vertex *d_v_in;
+  float *d_v_in;
   float *d_m_out;
 };
 
@@ -68,14 +112,8 @@ cuda_thread_start()
   const int stop = start + elt_per_thread;
 
   for ( int h=start; h<stop; h++ )
-    {
-      Vertex p = d_app.d_v_in[h];
-      float sos = 0;
+    d_app.d_m_out[h] = d_app.d_v_in[h] + 1;
 
-      for ( int i=0; i<4; i++ ) sos += p.a[i] * p.a[i];
-
-      d_app.d_m_out[h] = sqrtf( sos );
-    }
 }
 
 int
@@ -90,7 +128,7 @@ main(int argc, char **argv)
 
   // Allocate storage for CPU copy of data.
   //
-  app.v_in = new Vertex[app.array_size];
+  app.v_in = new float[app.array_size];
   app.m_out = new float[app.array_size];
 
   // Allocate storage for GPU copy of data.
@@ -103,8 +141,7 @@ main(int argc, char **argv)
 
   // Initialize input array.
   //
-  for ( int i=0; i<app.array_size; i++ )
-    for ( int j=0; j<4; j++ ) app.v_in[i].a[j] = drand48();
+  for ( int i=0; i<app.array_size; i++ ) app.v_in[i] = drand48();
 
   const double time_start = time_fp();
 
@@ -129,7 +166,8 @@ main(int argc, char **argv)
   CE( cudaMemcpy
       ( app.m_out, app.d_m_out, out_array_size_bytes, cudaMemcpyDeviceToHost) );
 
-  const double data_size = app.array_size * ( sizeof(Vertex) + sizeof(float) );
+  const double data_size = 
+    app.array_size * ( sizeof(app.v_in[0]) + sizeof(app.m_out[0]) );
   const double fp_op_count = app.array_size * 5;
   const double elapsed_time = time_fp() - time_start;
 
