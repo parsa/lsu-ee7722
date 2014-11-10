@@ -125,8 +125,9 @@ enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
-  void init();
+  World(pOpenGL_Helper &fb, int argc, char **argv):ogl_helper(fb)
+  {init(argc,argv);}
+  void init(int argc, char **argv);
   void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
   void frame_callback();
@@ -213,7 +214,7 @@ public:
 #include "hw04-graphics.cc"
 
 void
-World::init()
+World::init(int argc, char **argv)
 {
   indices_segments = -1;
   balls_bo = 0;
@@ -255,13 +256,20 @@ World::init()
   opt_debug_float = 1.0;
   variable_control.insert(opt_debug_float,"Debug Float");
 
+
+  PSplit exe_pieces(argv[0],'/');
+  pString this_exe_name(exe_pieces.pop());
+  
+  const char* const shader_code_file =
+    this_exe_name == "hw04sol" ? "hw04-shdr-sol.cc" : "hw04-shdr.cc";
+
   vs_geo_simple = 
     new pShader
-    ("hw04-shdr.cc", 
+    (shader_code_file,
      "vs_main();", "gs_main_simple();", "fs_main();");
   vs_geo_sol = 
     new pShader
-    ("hw04-shdr.cc", 
+    (shader_code_file,
      "vs_main();", "gs_main_solution();", "fs_main();");
   vs_fixed = new pShader();
 }
@@ -685,10 +693,10 @@ World::frame_callback()
 }
 
 int
-main(int argv, char **argc)
+main(int argc, char **argv)
 {
-  pOpenGL_Helper popengl_helper(argv,argc);
-  World world(popengl_helper);
+  pOpenGL_Helper popengl_helper(argc,argv);
+  World world(popengl_helper,argc,argv);
 
   popengl_helper.ogl_debug_set(false);
   popengl_helper.rate_set(30);

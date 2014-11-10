@@ -30,7 +30,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw04
+default: hw04 hw04sol
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -47,11 +47,9 @@ hw04: hw04.cc $(INCLUDES) hw04-graphics.cc
 	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
 	-o $@-debug $(LIBDIR) $(LIBRARIES) 
 
-hw04-sol: hw04-sol.cc $(INCLUDES) hw04-graphics.cc
-	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
-	-o $@ $(LIBDIR)  $(LIBRARIES) 
-	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
-	-o $@-debug $(LIBDIR) $(LIBRARIES) 
+hw04sol: hw04
+	/bin/rm -f hw04sol
+	ln hw04 hw04sol
 
 
 clean:
