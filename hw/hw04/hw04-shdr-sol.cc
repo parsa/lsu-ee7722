@@ -2,12 +2,12 @@
 //
  /// Homework 4
  //
- //  SOLUTION
+ ///  SOLUTION
 
  /// Instructions
  //
  //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2014/hw04.pdf
-
+ //  Solution discussion: http://www.ece.lsu.edu/koppel/gpup/2014/hw04_sol.pdf
 
 
 // Specify version of OpenGL Shading Language.
@@ -58,7 +58,7 @@ out Data_to_GS
 
   // Any changes here must also be made to the fragment shader input.
 
-  /// SOLUTION
+  /// SOLUTION - Problem 2
   //
   vec4 vertex_e_upper;
   vec4 Position_upper;
@@ -150,10 +150,11 @@ vs_main()
   color = gl_Color;
 
 
-  /// SOLUTION
+  /// SOLUTION - Problem 2
   //
   //  Compute the position and radial of a point on the
   //  second spiral and write them to new vertex shader outputs.
+  //  The radial is used as the surface normal for the edge triangles.
 
   vec3 v12n = normalize(v12);
   vec3 depth_vector = 0.1f * v12n;
@@ -178,7 +179,8 @@ in Data_to_GS
   vec2 gl_TexCoord[1];
   vec4 gl_Position;
 
-  /// SOLUTION
+  /// SOLUTION - Problem 2
+  //
   vec4 vertex_e_upper;
   vec4 Position_upper;
   vec3 radial_e;
@@ -193,13 +195,14 @@ out Data_to_FS
   vec2 gl_TexCoord[1];
   flat vec4 color;
 
-  // SOLUTION
-  flat bool is_edge;
+  /// SOLUTION  - Problem 2
+  //
+  flat bool is_edge;  // True if primitive an inner or outer edge.
 };
 
 layout ( triangles ) in;
 
- /// SOLUTION
+ /// SOLUTION - Problem 2
 // layout ( triangle_strip, max_vertices = 3 ) out;
 layout ( triangle_strip, max_vertices = 12 ) out;
 
@@ -230,7 +233,7 @@ gs_main_solution()
 {
   // PROBLEM 2 Solution Goes Here
 
-  /// SOLUTION
+  /// SOLUTION - Problem 2
 
 
   // Emit the triangles on the upper and lower spirals.
@@ -265,7 +268,7 @@ gs_main_solution()
 
   bool is_inner = In[idx[0]].indices.z == 1;
 
-  // Emit the triangles.
+  // Emit the edge triangles.
   //
   for ( int i=0; i<2; i++ )
     {
@@ -273,7 +276,7 @@ gs_main_solution()
       vertex_e = In[v].vertex_e;
       gl_Position = In[v].gl_Position;
       normal_e = is_inner ? -In[v].radial_e : In[v].radial_e;
-      is_edge = true;  // Identify these as edge primitives for coloring.
+      is_edge = true;
       EmitVertex();
       vertex_e = In[v].vertex_e_upper;
       gl_Position = In[v].Position_upper;
@@ -296,7 +299,8 @@ in Data_to_FS
   vec2 gl_TexCoord[];
   flat vec4 color;
 
-  // SOLUTION
+  /// SOLUTION - Problem 2
+  //
   flat bool is_edge;
 };
 
@@ -307,8 +311,15 @@ vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 void
 fs_main()
 {
-  /// SOLUTION
+  /// SOLUTION - Problem 1 (mostly).
 
+
+  /// SOLUTION
+  //
+  //  Declare color as a local variable (hiding the shader input),
+  //  and set its value based on the visible side of the primitive and
+  //  whether it is an edge.
+  //
   vec4 color =
     is_edge ? gl_FrontMaterial.ambient :
     gl_FrontFacing ? gl_FrontMaterial.diffuse : gl_BackMaterial.diffuse;
@@ -319,10 +330,12 @@ fs_main()
   // Note that in the fixed-function pipeline lighting would be performed
   // in the vertex shader.
 
-  // Get filtered texel.
+  // Get filtered texel, unless the fragment belongs to an edge primitive.
   //
   vec4 texel = is_edge ? vec4(1,1,1,1) : texture(tex_unit_0,gl_TexCoord[0].xy);
 
+  // If texel is too dark don't write fragment.
+  //
   bool hole = texel.r + texel.g + texel.b < 0.05;
   if ( hole ) discard;
 
