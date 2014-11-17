@@ -1,4 +1,82 @@
-// Simple CUDA Example, without LSU ECE helper classes.
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
+//
+
+ /// Simple CUDA Example, without LSU ECE helper classes.
+
+/// References
+//
+//
+
+#if 0
+/// Background
+
+//  The following background describes the view of NVIDIA GPUs
+//  provided by the CUDA system.  "View" means how the hardware
+//  appears to the application programmer.  For CUDA, this should
+//  be very close to the actual hardware.
+
+ /// Compute Capability (CC)
+//
+//   An NVIDIA numbering system that identifies the approximate
+//   capabilities of the hardware.
+//
+//   Compute Capabilities
+//
+//   -- CC 1.0, 1.1, 1.2, 1.3
+//      Tesla. (Not to be confused with the Tesla board.)
+//      Now considered obsolete.
+//
+//   -- CC 2.0, 2.1
+//      Fermi
+//
+//   -- CC 3.0, 3.5
+//      Kepler
+//      Product cycle ending. (17 November 2014,  9:24:12 CST)
+//      Currently the highest performance for scientific computation.
+//
+//   -- CC 5.2
+//      Maxwell
+//      Product cycle beginning. (17 November 2014,  9:24:16 CST)
+//      Currently the highest performance for single-precision computation.
+
+
+ /// Hardware Organization
+//
+//   Streaming Multiprocessor (SM, SMX)
+//
+//   Functional Unit
+//     A piece of hardware that can perform a particular set of operations.
+//     Examples:
+//
+//        CUDA Core:  Can perform most single-precision non-divide FP.
+
+
+ /// Thread Organization
+//
+//
+//   Thread
+//     Has one PC.
+//      Sort of a brain, or maybe just a body that can be in one place
+//      at one time.
+//
+//   Warp
+//     A collection of 32 threads.
+//     One day the size of warp may change but it's been 32 through CC 5.2.
+//     Threads in a warp travel together.
+//
+//   Block
+//     A collection of threads, number determined by user.
+//     All threads in a block execute on the same multiprocessor.
+//     Threads within a block share shared memory.
+//
+//   Grid
+//     A collection of blocks.
+
+
+
+ /// 
+
+#endif
 
 #include <pthread.h>
 #include <string.h>
@@ -52,6 +130,7 @@ App app;
 
 // In device constant address space.
 __constant__ App d_app;
+
 
 ///
 /// GPU Code (Kernels)
