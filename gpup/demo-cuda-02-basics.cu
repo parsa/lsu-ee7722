@@ -72,6 +72,20 @@
 //   Grid
 //     A collection of blocks.
 
+ /// Kernel Launch
+//
+//   :Def: Kernel Launch
+//         The initiation of execution of CUDA code.
+//         Done by a CUDA API call.
+//         Specify:
+//           The name of the CUDA C procedure to start. (E.g., my_kernel();)
+//           The grid size. (The number of blocks.)
+//           The block size.
+//
+ ///  Launch Configuration Criteria
+//
+//    Number of blocks is a multiple of number of SMs.
+//    Number of threads per block is a multiple of 32.
 
 
  /// 
@@ -356,10 +370,16 @@ main(int argc, char **argv)
   const int blocks_per_grid =
     ( app.num_threads + threads_per_block-1 ) / threads_per_block;
 
+
+  /// Launch Kernel
+  //
   if ( simple )
-    cuda_thread_start_simple<<<blocks_per_grid,threads_per_block>>>();
+
+    cuda_thread_start_simple<<< blocks_per_grid, threads_per_block >>>();
+
   else
-    cuda_thread_start_efficient<<<blocks_per_grid,threads_per_block>>>();
+
+    cuda_thread_start_efficient<<< blocks_per_grid, threads_per_block >>>();
 
   // Copy output array from GPU to CPU.
   //
