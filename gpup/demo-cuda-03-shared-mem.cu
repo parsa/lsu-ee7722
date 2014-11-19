@@ -1,4 +1,17 @@
-// Shared memory CUDA Example, without LSU ECE helper classes.
+/// LSU EE 4702-1 (Fall 2014), GPU Programming
+//
+
+ /// Shared memory CUDA Example, without LSU ECE helper classes.
+
+/// References
+//
+//
+
+#if 0
+/// Background
+
+#endif
+
 
 #include <pthread.h>
 #include <string.h>
