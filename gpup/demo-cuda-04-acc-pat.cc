@@ -1,4 +1,4 @@
-/// LSU EE [47]7XX
+/// LSU EE 4702
 //
  /// CUDA Demo 04
  //
@@ -991,12 +991,14 @@ World::time_step_cpu()
           Wire_Segment* const bseg = &wire_segments[j];
           pNorm dist(aseg->position,bseg->position);
 
-          // Use bounding sphere to quickly rule out contact.
+          // Use a bounding sphere to quickly rule out contact.
           //
           if ( dist.mag_sq > four_wire_radius_sq ) continue;
 
           // As a crude approximation, compute depth of
-          // interpenetration using bounding sphere.
+          // interpenetration using bounding sphere.  Better results
+          // would be obtained with a cylinder/cylinder intersection
+          // computation.
           //
           const float pen_depth = 2 * wire_radius - dist.magnitude;
           pVect sep_force = pen_depth * opt_spring_constant * dist;
