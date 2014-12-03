@@ -54,7 +54,7 @@ out Data_to_GS
 {
   /// SOLUTION
   //
-  //  Change vertex_e from a vec4 to a 2-D array of vec 4s.  The
+  //  Change vertex_e from a vec4 to a 2-D array of vec4's.  The
   //    four values are for inner/outer, and upper/lower vertices.
   //    Indexing:  [level (upper/lower)] [ radius (inner/outer) ]
   //
@@ -215,12 +215,10 @@ gs_main_lines()
 {
   /// SOLUTION
   //
-  // Use the two sets of four vertices to construct the upper and lower
-  // spiral and edges.  The vertices were organized into a two-dimensional
-  // array in such a way that the spiral triangles could be rendered
-  // with a single loop nest.
-
-  // In[theta].position[level][radius]
+  // Use the two sets of four vertices to construct the upper and
+  // lower spiral and edges. The vertices were organized into a
+  // two-dimensional array in such a way that the spiral and edge
+  // triangles could each be rendered with a single loop nest.
 
   /// Emit the spiral triangles.
   //
@@ -230,9 +228,9 @@ gs_main_lines()
         {
           for ( int r=0; r<2; r++ )             // Inner / outer
             {
-              normal_e = In[theta].normal_e[r];
-              vertex_e = In[theta].vertex_e[level][r];
-              gl_Position = In[theta].position[level][r];
+              normal_e       = In[theta].normal_e[r];
+              vertex_e       = In[theta].vertex_e[level][r];
+              gl_Position    = In[theta].position[level][r];
               gl_TexCoord[0] = In[theta].texCoord[r];
               is_edge = false;
               EmitVertex();
@@ -244,17 +242,17 @@ gs_main_lines()
   /// Emit the edge (wall) triangles.
   //
   // Because we know that In[0] is in back of In[1] there is no need
-  // for the vertex ordering code used in the Homework 4 solution. Just
-  // one neat loop nest.
+  // for the vertex sorting code used in the Homework 4 solution. Just
+  // one simple loop nest.
   //
-  for ( int r=0; r<2; r++ )
+  for ( int r=0; r<2; r++ )                     // Inner / outer  
     {
       for ( int theta=0; theta<2; theta++ )
         {
-          for ( int level=0; level<2; level++ )
+          for ( int level=0; level<2; level++ ) // Upper / Lower
             {
-              normal_e = In[theta].radial_e;
-              vertex_e = In[theta].vertex_e[level][r];
+              normal_e    = In[theta].radial_e;
+              vertex_e    = In[theta].vertex_e[level][r];
               gl_Position = In[theta].position[level][r];
               is_edge = true;
               EmitVertex();
