@@ -41,7 +41,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags)
 LIBDIR  =
 
-default: hw06
+default: hw06 hw06sol
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
@@ -53,6 +53,12 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 	 shapes.h Makefile
 
 hw06: hw06.cc $(INCLUDES) hw06-graphics.cc
+	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
+	-o $@ $(LIBDIR)  $(LIBRARIES)
+	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
+	-o $@-debug $(LIBDIR) $(LIBRARIES)
+
+hw06sol: hw06sol.cc $(INCLUDES) hw06-graphics.cc
 	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES)
 	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \

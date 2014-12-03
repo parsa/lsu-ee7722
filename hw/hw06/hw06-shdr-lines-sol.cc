@@ -2,13 +2,10 @@
 //
  /// Homework 6
  //
+ /// SOLUTION
 
- /// Part of the solution goes in this file.
-
- /// Instructions
- //
- //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2014/hw06.pdf
-
+ //  Assignment: http://www.ece.lsu.edu/koppel/gpup/2014/hw06.pdf
+ //  Solution Discussion: http://www.ece.lsu.edu/koppel/gpup/2014/hw06_sol.pdf
 
 // Specify version of OpenGL Shading Language.
 //
@@ -43,24 +40,39 @@ layout ( binding = 1 ) buffer Balls_Pos { vec4 balls_pos[]; };
 
 // Redefine this vertex shader input to be an integer vector.
 //
-in ivec3 gl_Vertex;
+ /// SOLUTION
+//
+//   Reduce gl_Vertex from three to two components since the third
+//   component was used to indicate whether to compute an inner or outer
+//   vertex, and now we always do both.
+in ivec2 gl_Vertex;
 
 
 // Interface block for vertex shader output / geometry shader input.
 //
 out Data_to_GS
 {
-  vec3 normal_e;
-  vec4 vertex_e;
-  vec2 gl_TexCoord[1];
-  vec4 gl_Position;
+  /// SOLUTION
+  //
+  //  Change vertex_e from a vec4 to a 2-D array of vec 4s.  The
+  //    four values are for inner/outer, and upper/lower vertices.
+  //    Indexing:  [level (upper/lower)] [ radius (inner/outer) ]
+  //
+  //  Also declare four position vectors (and don't bother using gl_Position).
+  //
+  //
+  vec4 vertex_e[2][2];  // Vertex coordinates in eye space.
+  vec4 position[2][2];  // Vertex coordinates in clip space.
 
-  // Any changes here must also be made to the fragment shader input.
+  //  Only two texCoord and normal_e vectors are declared because the
+  //  upper and lower spirals have the same texture coordinates and normals.
+  //
+  vec2 texCoord[2];
+  vec3 normal_e[2];
 
-  vec4 vertex_e_upper;
-  vec4 Position_upper;
-  vec3 radial_e;
-  ivec3 indices;
+  //  All for vertices have the same radial vector.
+  //
+  vec3 radial_e;  // Normal for edge primitives.
 };
 
 
@@ -72,7 +84,6 @@ vs_main_lines()
 
   const int bidx = gl_Vertex.x;
   const int ti = gl_Vertex.y;
-  const bool inner = gl_Vertex.z == 1;
 
   const int radial_idx = bidx * opt_segments + ti;
   const float delta_t = 1.0 / opt_segments;
@@ -116,18 +127,35 @@ vs_main_lines()
   vec3 norm = normalize(cross(radial,tang));
   vec3 norm_inner = normalize(cross(radial,tang_inner));
 
-  // The code above computed both the inner and outer spiral
-  // points. But, we only need one of them. Tsk, tsk, that's wasteful!
+  /// SOLUTION
   //
-  vec4 position = vec4( inner ? p_inner : p_outer, 1 );
-  vec3 normal_o = inner ? norm_inner : norm;
+  //  Compute information for the four vertices.
+  //
+  //  Indexing:  [level (upper/lower)] [ radius (inner/outer) ]
 
-  // Write position and normal to shader output variables. Position
-  // is written in both eye and clip space.
+  vec3 v12n = normalize(v12);
+  vec3 depth_vector = 0.1f * v12n;
+
+  // Compute the four vertex coordinates in object space.
   //
-  gl_Position = gl_ModelViewProjectionMatrix * position;
-  normal_e = gl_NormalMatrix * normal_o;
-  vertex_e = gl_ModelViewMatrix * position;
+  vec3 pos_o[2][2];
+  pos_o[0][0] = p_inner;
+  pos_o[0][1] = p_outer;
+  pos_o[1][0] = p_inner + depth_vector;
+  pos_o[1][1] = p_outer + depth_vector;
+
+  // Transform the object-space coordinates to clip and eye space.
+  //
+  for ( int l=0; l<2; l++ )
+    for ( int r=0; r<2; r++ )
+      {
+        vec4 position_o = vec4( pos_o[l][r], 1 );
+        position[l][r] = gl_ModelViewProjectionMatrix * position_o;
+        vertex_e[l][r] = gl_ModelViewMatrix * position_o;
+      }
+
+  normal_e[0] = gl_NormalMatrix * norm_inner;
+  normal_e[1] = gl_NormalMatrix * norm;
 
   // Amount by which to zoom the texture.
   //
@@ -139,19 +167,10 @@ vs_main_lines()
   const float du = 0.5 * tex_zoom / chain_length;
   const float u = float(bidx) * du;
 
-  gl_TexCoord[0].x = tex_zoom * t;
-  gl_TexCoord[0].y = 0.18 + u + (inner ? du : 0 );
+  texCoord[0].x = texCoord[1].x = tex_zoom * t;
+  texCoord[0].y = 0.18 + u;
+  texCoord[1].y = 0.18 + u + du;
 
-  //  Compute the position and radial of a point on the
-  //  second spiral and write them to new vertex shader outputs.
-  //  The radial is used as the surface normal for the edge triangles.
-
-  vec3 v12n = normalize(v12);
-  vec3 depth_vector = 0.1f * v12n;
-  vec4 position_upper = position + vec4(depth_vector,0);
-  Position_upper = gl_ModelViewProjectionMatrix * position_upper;
-  vertex_e_upper = gl_ModelViewMatrix * position_upper;
-  indices = gl_Vertex;
   radial_e = gl_NormalMatrix * radial;
 }
 
@@ -163,15 +182,15 @@ vs_main_lines()
 
 in Data_to_GS
 {
-  vec3 normal_e;
-  vec4 vertex_e;
-  vec2 gl_TexCoord[1];
-  vec4 gl_Position;
-  vec4 vertex_e_upper;
-  vec4 Position_upper;
-  vec3 radial_e;
-  ivec3 indices;
+  //  Indexing:  [level (upper/lower)] [ radius (inner/outer) ]
+  vec4 vertex_e[2][2];  // Vertex coordinates in eye space.
+  vec4 position[2][2];  // Vertex coordinates in clip space.
+  vec2 texCoord[2];
 
+  // Normal in eye space. Note: inner and outer normals are the same.
+  vec3 normal_e[2];
+
+  vec3 radial_e;  // Normal for edge primitives.
 } In[];
 
 out Data_to_FS
@@ -182,61 +201,67 @@ out Data_to_FS
   flat bool is_edge;  // True if primitive an inner or outer edge.
 };
 
-layout ( triangles ) in;
-layout ( triangle_strip, max_vertices = 12 ) out;
+ /// SOLUTION
+//
+//   Change input primitive type to lines.  The reason for using lines,
+//   remember, is because that's the most convenient way of passing
+//   the needed vertices to the geometry shader.
+
+layout ( lines ) in;
+layout ( triangle_strip, max_vertices = 16 ) out;
 
 void
 gs_main_lines()
 {
-  // Emit the triangles on the upper and lower spirals.
+  /// SOLUTION
   //
-  for ( int level=0; level<2; level++ )
-    {
-      const bool upper = level == 1;
+  // Use the two sets of four vertices to construct the upper and lower
+  // spiral and edges.  The vertices were organized into a two-dimensional
+  // array in such a way that the spiral triangles could be rendered
+  // with a single loop nest.
 
-      for ( int i=0; i<3; i++ )
+  // In[theta].position[level][radius]
+
+  /// Emit the spiral triangles.
+  //
+  for ( int level=0; level<2; level++ )         // Upper / Lower
+    {
+      for ( int theta=0; theta<2; theta++ )
         {
-          normal_e = In[i].normal_e;
-          vertex_e = upper ? In[i].vertex_e_upper : In[i].vertex_e;
-          gl_Position = upper ? In[i].Position_upper : In[i].gl_Position;
-          gl_TexCoord[0] = In[i].gl_TexCoord[0];
-          is_edge = false;
-          EmitVertex();
+          for ( int r=0; r<2; r++ )             // Inner / outer
+            {
+              normal_e = In[theta].normal_e[r];
+              vertex_e = In[theta].vertex_e[level][r];
+              gl_Position = In[theta].position[level][r];
+              gl_TexCoord[0] = In[theta].texCoord[r];
+              is_edge = false;
+              EmitVertex();
+            }
         }
       EndPrimitive();
     }
 
+  /// Emit the edge (wall) triangles.
   //
-  // Emit the triangles on the edge.
+  // Because we know that In[0] is in back of In[1] there is no need
+  // for the vertex ordering code used in the Homework 4 solution. Just
+  // one neat loop nest.
   //
-
-  // First, find two vertices that are both on the outer edge or both
-  // on the inner edge.
-  //
-  int idx[2];
-  if ( In[0].indices.z == In[1].indices.z )       { idx[0] = 0;  idx[1] = 1; }
-  else if ( In[0].indices.z == In[2].indices.z )  { idx[0] = 0;  idx[1] = 2; }
-  else                                            { idx[0] = 1;  idx[1] = 2; }
-
-  bool is_inner = In[idx[0]].indices.z == 1;
-
-  // Emit the edge triangles.
-  //
-  for ( int i=0; i<2; i++ )
+  for ( int r=0; r<2; r++ )
     {
-      const int v = idx[i];
-      vertex_e = In[v].vertex_e;
-      gl_Position = In[v].gl_Position;
-      normal_e = is_inner ? -In[v].radial_e : In[v].radial_e;
-      is_edge = true;
-      EmitVertex();
-      vertex_e = In[v].vertex_e_upper;
-      gl_Position = In[v].Position_upper;
-      normal_e = is_inner ? -In[v].radial_e : In[v].radial_e;
-      is_edge = true;
-      EmitVertex();
+      for ( int theta=0; theta<2; theta++ )
+        {
+          for ( int level=0; level<2; level++ )
+            {
+              normal_e = In[theta].radial_e;
+              vertex_e = In[theta].vertex_e[level][r];
+              gl_Position = In[theta].position[level][r];
+              is_edge = true;
+              EmitVertex();
+            }
+        }
+      EndPrimitive();
     }
-  EndPrimitive();
 }
 
 #endif
