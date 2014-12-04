@@ -60,7 +60,6 @@ out Data_to_GS
   //
   //  Also declare four position vectors (and don't bother using gl_Position).
   //
-  //
   vec4 vertex_e[2][2];  // Vertex coordinates in eye space.
   vec4 position[2][2];  // Vertex coordinates in clip space.
 
@@ -70,7 +69,7 @@ out Data_to_GS
   vec2 texCoord[2];
   vec3 normal_e[2];
 
-  //  All for vertices have the same radial vector.
+  //  All four vertices have the same radial vector.
   //
   vec3 radial_e;  // Normal for edge primitives.
 };
@@ -182,12 +181,14 @@ vs_main_lines()
 
 in Data_to_GS
 {
-  //  Indexing:  [level (upper/lower)] [ radius (inner/outer) ]
+  /// SOLUTION
+  //
+  //  See "out Data_to_GS" for a detailed discussion.
+
   vec4 vertex_e[2][2];  // Vertex coordinates in eye space.
   vec4 position[2][2];  // Vertex coordinates in clip space.
   vec2 texCoord[2];
 
-  // Normal in eye space. Note: inner and outer normals are the same.
   vec3 normal_e[2];
 
   vec3 radial_e;  // Normal for edge primitives.
@@ -204,10 +205,14 @@ out Data_to_FS
  /// SOLUTION
 //
 //   Change input primitive type to lines.  The reason for using lines,
-//   remember, is because that's the most convenient way of passing
+//   remember, is because that's the most efficient way of passing
 //   the needed vertices to the geometry shader.
-
+//
 layout ( lines ) in;
+
+ /// SOLUTION
+//
+//   Set max_vertices.
 layout ( triangle_strip, max_vertices = 16 ) out;
 
 void
@@ -216,7 +221,7 @@ gs_main_lines()
   /// SOLUTION
   //
   // Use the two sets of four vertices to construct the upper and
-  // lower spiral and edges. The vertices were organized into a
+  // lower spiral and edges. The vertices are organized into a
   // two-dimensional array in such a way that the spiral and edge
   // triangles could each be rendered with a single loop nest.
 
@@ -236,7 +241,7 @@ gs_main_lines()
               EmitVertex();
             }
         }
-      EndPrimitive();
+      EndPrimitive();           // This completes a strip of two triangles.
     }
 
   /// Emit the edge (wall) triangles.
@@ -251,14 +256,14 @@ gs_main_lines()
         {
           for ( int level=0; level<2; level++ ) // Upper / Lower
             {
-              normal_e    = In[theta].radial_e;
+              normal_e    = r==0 ? -In[theta].radial_e : In[theta].radial_e;
               vertex_e    = In[theta].vertex_e[level][r];
               gl_Position = In[theta].position[level][r];
               is_edge = true;
               EmitVertex();
             }
         }
-      EndPrimitive();
+      EndPrimitive();           // This completes a strip of two triangles.
     }
 }
 
