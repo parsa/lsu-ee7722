@@ -27,6 +27,8 @@ LIBRARIES = -lrt -lpthread
 default: hw01
 
 
+hw01.o: util.h
+
 %.o: %.cc Makefile
 	$(CXX) $(CFLAGS) -c $*.cc
 
@@ -41,4 +43,4 @@ hw01: hw01.o
 
 
 clean:
-	/bin/rm *.o *.ptx *.sass *.cubin hw01 *~
+	/bin/rm *.o *.ptx *.sass *.cubin hw01

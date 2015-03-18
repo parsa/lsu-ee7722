@@ -102,6 +102,8 @@ print_gpu_info()
        dev, cuda_prop.name, cuda_prop.clockRate/1e6,
        int(cuda_prop.totalGlobalMem >> 20));
 
+    const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
+
     const int cc_per_mp =
       cuda_prop.major == 1 ? 8 :
       cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
@@ -111,7 +113,7 @@ print_gpu_info()
     const int dp_per_mp =
       cuda_prop.major == 1 ? 1 :
       cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
-      cuda_prop.major == 3 ? ( cuda_prop.minor < 3 ? 8 : 64 ) :
+      cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
       cuda_prop.major == 5 ? 1 : 0;
 
     const double mem_l2_gbs =
@@ -126,10 +128,10 @@ print_gpu_info()
        mem_l2_gbs);
 
     const double sp_gflops = 
-      cc_per_mp * cuda_prop.multiProcessorCount * cuda_prop.clockRate/1e6;
+      cc_per_mp * cuda_prop.multiProcessorCount * (cuda_prop.clockRate/1e6);
 
     const double dp_gflops = 
-      dp_per_mp * cuda_prop.multiProcessorCount * cuda_prop.clockRate/1e6;
+      dp_per_mp * cuda_prop.multiProcessorCount * (cuda_prop.clockRate/1e6);
 
     printf
       ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  DP/MP: %2d  TH/BL: %4d\n",
