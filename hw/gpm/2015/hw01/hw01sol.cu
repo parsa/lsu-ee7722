@@ -1,6 +1,6 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 1 - Spring 2015
+ ///  Homework 1 - SOLUTION Spring 2015
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2015/hw01.pdf
 
@@ -94,7 +94,6 @@ mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
   for ( int h=start; h<stop; h += inc )
 
     // Operate on vector number h.
-#pragma unroll
     for ( int r=0; r<M; r++ )
       {
         Elt_Type elt = 0;
@@ -299,17 +298,23 @@ mxv_sh()
 }
 
 
-
 extern "C" __global__ void
 mxv_sh_ochunk()
 {
-  // Compute element number to start at.
-  //
+  /// SOLUTION
+
+  // Assign each vector to CS (set of 8) threads.  
+  // Use local memory for output elements.
+  // Each set of CS threads reads its own input elements and uses
+  // shared memory to redistribute them.
 
   const int CS = 8;  // Chunk Size: Number of input vector elts to read.
   const int num_threads = blockDim.x * gridDim.x;
 
-  // First element used by this block.
+  //  Previously each block would handle blockDim.x vectors per iteration.
+  //  Now, each block handles blockDim.x/CS threads per iteration. Update
+  //  the bl_start (block start) and inc (increment) variables accordingly.
+  //
   const int bl_start = blockIdx.x * blockDim.x / CS;
   const int stop = d_app.num_vecs;
   const int inc = num_threads / CS;
@@ -321,36 +326,63 @@ mxv_sh_ochunk()
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
+  // Number of output vector components assigned to each thread.
+  //
   const int ML = ( M + CS - 1 ) / CS;
 
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
+      // Vector number assigned to this thread and its CS-1 partners.
+      const int vec_num = hb + thd_v_offset;
+
+      // Initialize storage for output vector components.
+      //
       Elt_Type vout[ML];
       for ( int rl=0; rl<ML; rl++ ) vout[rl] = 0;
 
-#pragma unroll
+      /// Compute Output Vector
+      //
+      // Each iteration of the c loop uses CS input vector components
+      // to update ML output vector components (per thread).
+      //
       for ( int c=0; c<N; c += CS )
         {
+          // Read in 1 component of input vector and place in shared memory ..
+          // .. or if component number is >= N, write 0 to shared memory.
+          //
           vxfer[threadIdx.x] =
-            d_app.d_in[ ( hb + thd_v_offset ) * N + c + thd_c_offset ];
+            c + CS < N || c + thd_c_offset < N 
+            ? d_app.d_in[ vec_num * N + c + thd_c_offset ]
+            : 0;
 
+          // Note: __syncthreads() not needed because shared memory readers
+          // and writers are on the same warp.
+
+          // Transfer the CS (8) components just read to local memory.
+          //
           Elt_Type vin[CS];
           for ( int cc=0; cc<CS; cc++ )
             vin[cc] = vxfer[ thd_v_offset * CS + cc ];
 
+          // Using the 8 components just read, update our ML output
+          // vector components.
+          //
           for ( int rr=0; rr<ML; rr++ )
             {
               const int r = rr * CS + thd_r_offset;
+              // Note: r >= M is possible when M is not a multiple of CS.
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < N )
-                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
+
+      /// Write Output Vector
+      //
       for ( int rr=0; rr<ML; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
           if ( r < M )
-            d_app.d_out[ hb * M + ( threadIdx.x / CS ) * M + r ] = vout[rr];
+            d_app.d_out[ vec_num * M + r ] = vout[rr];
         }
 
     }
