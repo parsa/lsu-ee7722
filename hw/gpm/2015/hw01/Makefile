@@ -24,21 +24,25 @@ CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)
 LIBRARIES = -lrt -lpthread 
 
-default: hw01
+default: hw01 hw01sol
 
 
 hw01.o: util.h
+hw01sol.o: util.h
 
 %.o: %.cc Makefile
 	$(CXX) $(CFLAGS) -c $*.cc
 
 %.o: %.cu Makefile
 	$(CXX) $(CFLAGS) -c $*.cu
-	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx
+	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx &
 	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 hw01: hw01.o
+	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+
+hw01sol: hw01sol.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 
