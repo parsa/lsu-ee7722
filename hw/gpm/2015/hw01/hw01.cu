@@ -109,7 +109,7 @@ mxv_i_lbuf()
   // Local memory for input vector.
   //
   // Use local memory to buffer entire input vector, and write
-  // each output vector element as soon as its computed.
+  // each output vector element as soon as it is computed.
 
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
