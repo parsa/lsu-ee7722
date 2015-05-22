@@ -53,5 +53,5 @@ hw04sol: hw04
 
 
 clean:
-	/bin/rm -f hw04 hw04-debug hw04-sol hw04-sol-debug *.o *~
+	/bin/rm -f hw04 hw04-debug hw04sol hw04-sol-debug *.o *~
 
