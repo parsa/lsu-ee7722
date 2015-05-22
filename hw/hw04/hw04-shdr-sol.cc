@@ -197,7 +197,7 @@ out Data_to_FS
 
   /// SOLUTION  - Problem 2
   //
-  flat bool is_edge;  // True if primitive an inner or outer edge.
+  flat bool is_edge;  // True if primitive is an inner or outer edge.
 };
 
 layout ( triangles ) in;
