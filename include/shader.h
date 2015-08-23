@@ -57,7 +57,7 @@ private:
                 source_path);
         return -1;
       }
-    std::string shader_text;
+    std::string shader_define;
 
     if ( main_body )
       {
@@ -66,18 +66,35 @@ private:
           shader_type == GL_FRAGMENT_SHADER ? "FRAGMENT_SHADER" :
           shader_type == GL_GEOMETRY_SHADER ? "GEOMETRY_SHADER" :
           "unknown_shader";
-        shader_text += "#define _";
-        shader_text += stype_str;
-        shader_text += "_\n";
+        shader_define += "#define _";
+        shader_define += stype_str;
+        shader_define += "_\n";
       }
 
+    std::string file_text;
     while ( !feof(shader_h) )
       {
         const int c = getc(shader_h);
         if ( c == EOF ) break;
-        shader_text += c;
+        file_text += c;
       }
     fclose(shader_h);
+
+    std::string shader_text;
+
+    // Move the #version directive to the first line.
+    //
+    const size_t v_start = file_text.find("#version");
+    if ( v_start != std::string::npos )
+      {
+        const size_t v_end = file_text.find("\n",v_start) + 1;
+        shader_text = file_text.substr(v_start,v_end-v_start)
+          + shader_define
+          + file_text.substr(0,v_start)
+          + file_text.substr(v_end);
+      }
+    else
+      shader_text = shader_define + file_text;
 
     if ( main_body )
       {
@@ -87,6 +104,9 @@ private:
       }
 
     const char *shader_text_lines = shader_text.c_str();
+    if ( 0 )
+      printf("\nThe re-arranged shader code:\n%s\n", shader_text_lines);
+
     glShaderSource(sobject,1,&shader_text_lines,NULL);
     glCompileShader(sobject);
     int rv;
