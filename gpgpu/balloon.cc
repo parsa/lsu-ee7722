@@ -846,9 +846,9 @@ Balloon::init(pCoor center, double r)
           const int ri = p->edge_out[e+1];
           Balloon_Vertex* const r = &points[ri];
           for ( int qe=0; qe < q->edge_out_count-1; qe++ )
-            { ASSERTS( q->edge_out[qe] != ri ); }
+            { ASSERTS( qe < 7 && q->edge_out[qe] != ri ); }
           for ( int re=0; re < r->edge_out_count-1; re++ )
-            { ASSERTS( r->edge_out[re] != idx ); }
+            { ASSERTS( re < 7 && r->edge_out[re] != idx ); }
           const int tri_idx = triangles.occ();
           Balloon_Triangle* const tri = triangles.pushi();
           tri->pi = idx;  tri->qi = qi;  tri->ri = ri;
@@ -1047,7 +1047,7 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
   //
   pCoor test_pt(1.1,0,2.2);
   pCoor test_pt2(1.1,1,2.2);
-  pCoor test_pt_a = step1 * test_pt;
+  pCoor __attribute__((unused)) test_pt_a = step1 * test_pt;
   pCoor test_pt_b = to_platform * test_pt;  test_pt_b.homogenize();
   pCoor test_pt_pr = project * test_pt;  test_pt_pr.homogenize();
   pCoor test_pt2_pr = project * test_pt2;  test_pt2_pr.homogenize();
@@ -1428,7 +1428,7 @@ Balloon::time_step_glp(int steps)
     (vs_plan_c.pobject, 4, svl_p1, GL_INTERLEAVED_ATTRIBS);
   pError_Check();
 
-  GLP_Vtx_Data before = glp_vtx_data.data[0];
+  GLP_Vtx_Data __attribute__((unused)) before = glp_vtx_data.data[0];
 
   if ( steps ) data_location = DL_GLP;
 
@@ -1495,7 +1495,7 @@ Balloon::time_step_glp(int steps)
       if ( false )
         {
           glp_tri_data.from_gpu();
-          GLP_Tri_Data after_sf = glp_tri_data.data[0];
+          GLP_Tri_Data __attribute__((unused)) after_sf = glp_tri_data.data[0];
           pError_Msg("Check.");
         }
 
@@ -1545,7 +1545,7 @@ Balloon::time_step_glp(int steps)
   if ( steps && false )
     {
       glp_vtx_data.from_gpu();
-      GLP_Vtx_Data after = glp_vtx_data.data[0];
+      GLP_Vtx_Data __attribute__((unused)) after = glp_vtx_data.data[0];
       pError_Msg("Check.");
     }
 
@@ -1857,7 +1857,7 @@ Balloon::time_step_cuda(int steps)
       cuda_tower_volumes.set_primary();
     }
 
-  const CUDA_Vtx_Data vtest = cuda_vtx_data[42];
+  const CUDA_Vtx_Data __attribute__((unused)) vtest = cuda_vtx_data[42];
   const int pos_array_chars =
     point_count * sizeof(cuda_vtx_data.sample_soa.pos[0]);
 
@@ -1919,7 +1919,7 @@ Balloon::time_step_cuda(int steps)
   CE(cudaEventElapsedTime(&cuda_time,world.frame_start_ce,world.frame_stop_ce));
   world.frame_timer.cuda_frame_time_set(cuda_time);
 
-  CUDA_Vtx_Data vtest_aftera = cuda_vtx_data[42];
+  CUDA_Vtx_Data __attribute__((unused)) vtest_aftera = cuda_vtx_data[42];
 
   if ( !opt_cpu_interleave )
     {
