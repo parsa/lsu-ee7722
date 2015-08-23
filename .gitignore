@@ -1,0 +1,6 @@
+*.o
+*.ptx
+*.d
+*.cubin
+*.sass
+*.mp4
