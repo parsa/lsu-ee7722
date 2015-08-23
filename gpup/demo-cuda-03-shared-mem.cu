@@ -144,7 +144,7 @@ cuda_thread_start()
 //
 struct Kernel_Info {
   void (*func_ptr)();           // Pointer to kernel function.
-  char *name;                   // ASCII version of kernel name.
+  const char *name;             // ASCII version of kernel name.
   cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
 };
 
