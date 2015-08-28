@@ -55,30 +55,58 @@ sample_code()
   pVect v6 = v5 + v4;   // Vector addition.
   float l1 = v6.mag();  // Magnitude (length) of v6.
 
-
-  // Sample Problem
+  /// Normalized Vector
   //
-  // Johnny at p1 throws a ball towards Sally at p2, but only
+  {
+    pVect some_random_vector(5,6,7);
+
+    // Construct a normalized version of some_random_vector the hard way.
+    //
+    float srv_mag = some_random_vector.mag();
+    pVect srv_n_h = some_random_vector / srv_mag;
+
+    // Construct a normalized version of some_random_vector the easy way.
+    //
+    pNorm srv_n(some_random_vector);
+
+    // Construct a unit vector between two coordinates.
+    //
+    pCoor c1(1,2,3);
+    pCoor c2(4,5,6);
+    pNorm nvec(c1,c2);  // Unit (normalized) vector from c1 to c2.
+
+    // Get the distance from c1 to c2.
+    //
+    float distance_c1_c2 = nvec.magnitude;
+
+    pVect c1_velocity(7,8,9);
+    float speed_c1_to_c2 = dot( c1_velocity, nvec );
+
+  }
+
+
+  /// :Sample Problem:
+  //
+  // Johnny at p_jo throws a ball towards Sally at p_sa, but only
   // throws the ball 2 units of distance. Assign the location to p4.
 
-  pCoor p1(1,2,3);     // Johnny's location.
-  pCoor p2(10,11,12);  // Sally's location.
-  pNorm j_to_s(p1,p2);
-  pCoor p4 = p1 + 2 * j_to_s;
-
-  // Sample Problem
+  // Step 1 - Define Johnny and Sally's coordinates.
   //
-  // What is the ball's velocity towards the wall?
+  pCoor p_jo(1,2,3);      // Johnny's location.
+  pCoor p_sa(10,11,12);  // Sally's location.
 
-  float ball_velocity = 10;
-  pCoor closest_point_on_wall = p3(20,30,40);
+  // Step 2 - Compute unit vector from Johnny to Sally.
+  //
+  pNorm jo_to_sa(p_jo,p_sa);
 
-  pNorm to_wall(p1,closest_point_on_wall);
+  // Step 3 - Use unit vector to find point two units from Johnny in
+  // the direction of Sally.
+  //
+  pCoor p4 = p_jo + 2 * jo_to_sa;
 
-  float speed_towards_wall = dot( j_to_s, to_wall ) * ball_velocity;
-  
 
 
+  /// Computing Dot Products, Cross Products, and Angles
 
   float l2 = dot(v5,v6);   // Dot product.
 
@@ -119,23 +147,6 @@ sample_code()
   float length_12c = vec_12c.normalize();  // Return length, then normalize.
 
 
-  /// Normalized Vector --- Very Useful
-  //
-  {
-    pCoor c1(1,2,3);
-    pCoor c2(4,5,6);
-
-    pNorm nvec(c1,c2);  // Normalized vector from c1 to c2.
-
-    // Get the distance from c1 to c2.
-    //
-    float distance_c1_c2 = nvec.magnitude;
-
-    pVect c1_velocity(7,8,9);
-
-    float speed_c1_to_c2 = dot( c1_velocity, nvec );
-
-  }
 
 
 }
