@@ -10,14 +10,13 @@
 #include <Magick++.h>
 
 
-using namespace Magick;
-
 class P_Image_Read
 {
 public:
   P_Image_Read(const char *path, int transp):
     image(path),image_loaded(false),data(NULL)
   {
+    using namespace Magick;
     width = image.columns();
     height = image.rows();
     size = width * height;
@@ -55,8 +54,8 @@ public:
       }
   }
 
-  Image image;
-  PixelPacket *pp;
+  Magick::Image image;
+  Magick::PixelPacket *pp;
   bool image_loaded;
   int width, height, maxval, size;
   unsigned char *data;

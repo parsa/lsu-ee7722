@@ -3382,7 +3382,7 @@ Sphere*
 World::sphere_get(Ball *ball)
 {
   const float dist =
-    ball->radius_inv * ( distance(ball->position,eye_location) - 1 );
+    ball->radius_inv * ( pDistance(ball->position,eye_location) - 1 );
   const int lod_raw =
     int( 0.99 + sphere_lod_factor / dist - sphere_lod_offset );
   const int lod = max(min(lod_raw,sphere_count-1),0);

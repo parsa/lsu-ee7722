@@ -451,8 +451,6 @@ const void* const glut_fonts[] =
     GLUT_BITMAP_TIMES_ROMAN_24
  };
 
-using namespace Magick;
-
 class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
@@ -688,8 +686,9 @@ private:
     glutPostRedisplay();
   }
 
-  Image* image_new(int format)
+  Magick::Image* image_new(int format)
   {
+    using namespace Magick;
     glReadBuffer(GL_FRONT_LEFT);
     const int size = width * height;
     int bsize;
@@ -711,6 +710,7 @@ private:
 public:
   void write_img(const char* file_name = NULL)
   {
+    using namespace Magick;
     pStringF file_name_default("%s.png",exe_file_name);
     Image* const image = image_new(GL_RGBA);
     image->write(file_name ? file_name : file_name_default.s);
@@ -726,6 +726,7 @@ private:
 
   void animation_grab_frame()
   {
+    using namespace Magick;
     if ( animation_frame_count > 6000 ) animation_record = false;
     const char* const ifmt = "tiff";
     if ( !animation_record )

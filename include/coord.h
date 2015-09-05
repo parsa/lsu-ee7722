@@ -624,12 +624,12 @@ pMatrix::local_rotation(pVect u, float theta)
   local(mt);
 }
 
-inline float distance(pCoor a, pCoor b)
+inline float pDistance(pCoor a, pCoor b)
 {
   pVect diff(a,b); return diff.mag();
 }
 
-inline float distance_sq(pCoor a, pCoor b)
+inline float pDistance_sq(pCoor a, pCoor b)
 {
   pVect diff(a,b); return dot(diff,diff);
 }
