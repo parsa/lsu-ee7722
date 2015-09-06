@@ -2,7 +2,6 @@
 ##
 ##  Makefile for Homework 1
 ##
-## $Id:$
 
 
 COURSE_INCLUDE_DIR_POSSIBILITIES = \
@@ -32,7 +31,6 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
 LIBDIR  =
 
 default: hw01
-#default: show_stuff
 
 
 .cc.o:
@@ -43,11 +41,6 @@ INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
 
 INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 	 shapes.h Makefile
-
-show_stuff:
-	echo found $(FOUND)
-	echo Includes: $(INCLUDES)
-
 
 hw01: hw01.cc $(INCLUDES) hw01-graphics.cc
 	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
