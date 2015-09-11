@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Simple Demo of OpenGL
-
-// $Id:$
 
 /// Purpose
 //
@@ -53,7 +51,7 @@
 //
 //  -- First, specify which matrix:
 //
-        glMatrixMode( matrix-name );
+        glMatrixMode( matrix_name );
 //
 //       where matrix-name can be
 //
