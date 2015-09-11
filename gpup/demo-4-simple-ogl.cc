@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Minimal OpenGL Program
-
-// $Id:$
 
  /// Purpose
 //
@@ -94,6 +92,10 @@ render()
   /// Emit One Purple Triangle
   ///
 
+  //  Indicate type of primitive.
+  //
+  glBegin(GL_TRIANGLES);
+
   //  Specify color attribute.
   //
   //  This will be used for all vertices specified after this point.
@@ -101,12 +103,6 @@ render()
   glColor3ub( 0x58, 0x0d, 0xa6); // Red, Green, Blue
   //
   // Note: "3ub" indicates 3 arguments of type unsigned byte.
-
-
-  //  Indicate type of primitive.
-  //
-  glBegin(GL_TRIANGLES);
-
 
   // Specify vertices for a triangle.
   //
