@@ -140,6 +140,8 @@ public:
     return pCoor(row[0],row[1],row[2],row[3]);
   }
 
+  void set_row(int r,pVect v);
+
   // Return first three elements of column as a vector.
   pVect cv(int col);
 
@@ -425,6 +427,16 @@ pangle(pCoor a, pCoor b, pCoor c)
 inline pVect pMatrix::cv(int col)
 { return pVect(rc_get(0,col),rc_get(1,col),rc_get(2,col)); }
 
+inline void
+pMatrix::set_row(int r,pVect v)
+{
+  float* const a = row_get(r);
+  for ( int c=0; c<3; c++ ) a[c] = v[c];
+  a[3] = 0;
+}
+
+
+
 pCoor mult_MC(pMatrix& m, pCoor c)
 {
   return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
@@ -684,6 +696,20 @@ public:
     rc(2,0) = h * v.x * v.z - v.y;
     rc(2,1) = h * v.y * v.z + v.x;
     rc(2,2) = e + h * v.z * v.z;
+  }
+};
+
+class pMatrix_Rotation_yz : public pMatrix {
+public:
+  pMatrix_Rotation_yz(pVect y, pVect z)
+  {
+    pNorm yn(y);
+    pNorm zn(z);
+    pNorm xn = cross(y,z);
+    set_row(0,xn);
+    set_row(1,yn);
+    set_row(2,zn);
+    set_row(3,pCoor(0,0,0,1));
   }
 };
 
