@@ -191,7 +191,6 @@ public:
   static void render_w(void *moi){ ((World*)moi)->render(); }
   void render();
   void cb_keyboard();
-  void modelview_update();
 
   // Class providing utilities, such as showing text.
   //
@@ -240,18 +239,7 @@ World::init()
   variable_control.insert(sphere_size,"Sphere Size");
 
   opt_move_item = MI_Eye;
-
-  modelview_update();
 }
-
-void
-World::modelview_update()
-{
-  pMatrix_Translate center_eye(-eye_location);
-  pMatrix_Rotation rotate_eye(eye_direction,pVect(0,0,-1));
-  modelview = rotate_eye * center_eye;
-}
-
 
 void
 World::render()
@@ -266,7 +254,7 @@ World::render()
   //
   frame_timer.frame_start();
 
-  // Reset Frame Buffer
+  /// Reset Frame Buffer
   //
   glClearColor(0,0,0,0);  // Set clear color to black.
   glClearDepth(1.0);      // Set clear distance to all-the-way-back.
@@ -299,6 +287,11 @@ World::render()
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
 
+  /// Frame Buffer Informational Messages
+  //
+  //  Print messages using utility functions provided for this course.
+  //
+
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
@@ -316,20 +309,37 @@ World::render()
                       cvar->name,cvar->get_val());
 
 
-  const int win_width = ogl_helper.get_width();
-  const int win_height = ogl_helper.get_height();
-  const float aspect = float(win_width) / win_height;
+  // -------------------------------------------------------------------------
+  ///
+  /// Specification of Transformation Matrices
+  ///
 
+  /// Setup Modelview Transformation:  Object Space -> Eye Space
+  //
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   // Note: This code does not account for eye direction.
   glTranslatef(-eye_location.x,-eye_location.y,-eye_location.z);
 
+  /// Setup Projection Transformation:  Eye Space -> Clip Space
+  //
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
+
+  const int win_width = ogl_helper.get_width();
+  const int win_height = ogl_helper.get_height();
+  const float aspect = float(win_width) / win_height;
+
   // Frustum: left, right, bottom, top, near, far
   glFrustum(-.8,.8,-.8/aspect,.8/aspect,1,5000);
 
+  /// Viewport Transformation
+  //
+  //  This is not set explicitly under ordinary circumstances.
+  //  The transformation is automatically set based on the window size.
+
+  //
+  // -------------------------------------------------------------------------
 
 
   ///
@@ -493,6 +503,7 @@ World::render()
 }
 
 
+
 void
 World::cb_keyboard()
 {
@@ -529,7 +540,6 @@ World::cb_keyboard()
       pMatrix_Rotation rotall(eye_direction,pVect(0,0,-1));
       user_rot_axis *= invert(rotall);
       eye_direction *= pMatrix_Rotation(user_rot_axis, M_PI * 0.03);
-      modelview_update();
     }
 
   // Update eye_location based on keyboard command.
@@ -548,7 +558,6 @@ World::cb_keyboard()
       case MI_Ball: sphere_location += adjustment; break;
       default: break;
       }
-      modelview_update();
     }
 }
 
