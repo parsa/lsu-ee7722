@@ -10,8 +10,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
+#include <algorithm>
 
 #include "pstring.h"
+
+using namespace std;
 
 inline double
 time_wall_fp()
@@ -62,9 +65,6 @@ pError_Msg(const char *fmt, ...)
   pError_Exit();
 }
 
-
-template<typename T> T min(T a, T b){ return a < b ? a : b; }
-template<typename T> T max(T a, T b){ return a > b ? a : b; }
 template<typename T> T set_max(T& a, T b){ if ( b > a ) a = b;  return a; }
 template<typename T> T set_min(T& a, T b){ if ( b < a ) a = b;  return a; }
 
