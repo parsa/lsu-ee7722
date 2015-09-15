@@ -383,10 +383,18 @@ inline pColor operator * (pColor c, float scale)
 {
   return pColor(c.r*scale, c.g*scale, c.b*scale, c.a);
 }
-
+inline pColor operator * (float scale, pColor c)
+{
+  return pColor(c.r*scale, c.g*scale, c.b*scale, c.a);
+}
 inline pColor operator * (pColor c, pColor d)
 {
   return pColor(c.r*d.r, c.g*d.g, c.b*d.b, c.a);
+}
+
+inline pColor operator + (pColor c, pColor d)
+{
+  return pColor(c.r+d.r, c.g+d.g, c.b+d.b, c.a);
 }
 
 inline float dot(pVect a, pVect b){return a.x * b.x + a.y * b.y + a.z * b.z;}
