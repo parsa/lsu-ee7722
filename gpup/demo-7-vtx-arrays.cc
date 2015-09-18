@@ -1,8 +1,7 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
-// $Id:$
 
 /// Purpose
 //
@@ -21,6 +20,45 @@
 //
 // :ogl45: OpenGL Specification Version 4.5
 //         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+
+ /// The Vertex Specification Related Issues
+ //
+ //  A scene to be rendered has many vertices ..
+ //  .. and so the overhead of handling those vertices must be kept small.
+ //
+
+ //  -- Vertex Processing
+ //  -- Vertex Specification: Telling OpenGL about the vertices.
+ //  -- Moving the vertex from the CPU to the GPU.
+
+ /// Vertex Processing
+ //
+ //  Each vertex handled by a routine called a /vertex shader/.
+ //
+ //  Would like to avoid redundancy when multiple primitives share
+ //    a vertex.
+
+ /// Vertex Specification
+ //
+ //  Goal is to minimize function-call and data movement overhead.
+ //
+ //  Handling is most efficient when vertex data in dense arrays.
+
+ /// Vertex Staging
+ //
+ //  Goal is to minimize CPU -> GPU copying, since that's slow.
+
+
+ /// Techniques
+ //
+
+ //  -- Shared-Vertex Primitives
+ //  -- Client Arrays (VERTEX_ARRAY, etc.)
+ //  -- Strided and indirect vertex arrays.
+ //  -- Buffer Objects.
+
+
 
 /// Vertex Arrays
 //
