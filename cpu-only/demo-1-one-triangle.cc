@@ -1,8 +1,6 @@
-/// LSU EE 7700-2 (Sp 2011), GPU Microarchitecture
+/// LSU EE 47XX (Sp 2015), GPU Programming
 //
  /// CPU-Only Demo 1: One Triangle
-
- // $Id:$
 
  /// Purpose
 //
@@ -103,7 +101,7 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
 
   //
   // Apply transformation to transform triangle coordinates from
-  // object space to clip space.
+  // object space to window space.
   //
   pCoor c0w = transform * c0;  c0w.homogenize();
   pCoor c1w = transform * c1;  c1w.homogenize();
