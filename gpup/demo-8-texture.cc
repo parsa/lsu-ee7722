@@ -1,12 +1,10 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Textures, Blending, and the Alpha Test
 
-// $Id:$
-
 /// Purpose
 //
-//   Demonstrate use of Textures
+//   Demonstrate use of Textures and Frame Buffer Update Operations
 
 /// References
 //
@@ -23,6 +21,37 @@
 //        An image applied to a primitive, like wallpaper.
 
 //  Textures use lots of time, resources.
+
+ // Chapter 14: Fixed-Function Primitive Assembly and Rasterization
+ // Chapter 17: Writing fragments and samples to the framebuffer.
+
+ /// Major Steps
+ //
+ //  -- Early per-fragment tests.
+ //  -- Fragment Processing: User-provided shader or compatibility.
+ //  -- Late per-fragment tests.
+
+ //  Early Per-Fragment Tests
+ //
+ //    -- Pixel Ownership Test
+ //       Is it in window-manager assigned area?
+
+ //    -- Scissoring.
+ //       Is it in the view volume?
+ //       Is it within an additional user-defined area?
+
+ //  Late Per-Fragment Tests
+ //
+ //    Tests are performed in the order below.
+ //    Not every test is listed.
+ //    A fragment that fails a test is not processed further.
+ //
+ //    -- Alpha Test
+ //    -- Stencil Test
+ //    -- Depth Buffer (z) Test
+ //    -- Occlusion
+ //    -- Blending
+
 
 ///  Keyboard Commands
  //
