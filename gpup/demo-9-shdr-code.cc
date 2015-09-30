@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Fragment Shader / Phong Shading Demonstration
 
@@ -28,7 +28,7 @@ uniform vec4 material_color;
 #ifdef _VERTEX_SHADER_
 out vec3 var_normal_e;
 out vec4 var_vertex_e;
-out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
+Vertout vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
 #endif
 #ifdef _FRAGMENT_SHADER_
 in vec3 var_normal_e;
@@ -96,6 +96,8 @@ vs_main_lighting()
 vec4
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 {
+  // See OpenGL 4.5 Section 12.2.1.1 for a lighting formula.
+  //
   // Return lighted color of vertex_e.
   //
   vec4 light_pos = gl_LightSource[0].position;
@@ -121,9 +123,6 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 ///
 /// Vertex & Fragment Shader Code
 ///
-
-
-
 
 
 #ifdef _VERTEX_SHADER_

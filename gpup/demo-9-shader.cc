@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Shaders
-
-// $Id:$
 
 /// Purpose
 //
@@ -11,7 +9,7 @@
 
 /// References
 //
-//  OpenGL 4.3 Specification
+//  OpenGL 4.5 Specification
 
 ///  Keyboard Commands
  //
