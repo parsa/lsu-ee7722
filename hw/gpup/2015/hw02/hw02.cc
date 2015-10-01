@@ -6,7 +6,7 @@
 
  /// Instructions
  //
- //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2015/hw01.pdf
+ //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2015/hw02.pdf
 
 
 /// Purpose
