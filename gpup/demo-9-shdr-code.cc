@@ -28,7 +28,7 @@ uniform vec4 material_color;
 #ifdef _VERTEX_SHADER_
 out vec3 var_normal_e;
 out vec4 var_vertex_e;
-Vertout vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
+out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
 #endif
 #ifdef _FRAGMENT_SHADER_
 in vec3 var_normal_e;
