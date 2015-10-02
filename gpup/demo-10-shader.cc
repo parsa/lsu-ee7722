@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
 
  /// More Shaders
@@ -74,7 +74,7 @@
  //
  //    smooth:
  //       Linearly interpolate based on object-space coordinates.
- //       The default, produces best looking results.
+ //       The default for FP types, produces best looking results.
  //
  //    noperspective:
  //       Linearly interpolate based on window-space coordinates.
@@ -82,7 +82,7 @@
  //
  //    flat:
  //       Don't interpolate, instead use value of provoking (last)
- //       vertex.
+ //       vertex. The default for integer types.
  //
  //  For an example, see demo-10-shdr-simple.cc.
 

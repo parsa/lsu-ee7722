@@ -1,15 +1,13 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Demonstration of Geometry Shader
-
-// $Id:$
 
  /// See demo-10-shader.cc for details.
 
 
 // Specify version of OpenGL Shading Language.
 //
-#version 430 compatibility
+#version 450 compatibility
 
 // Define storage buffer binding indices and attribute locations.
 //
