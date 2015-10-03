@@ -175,8 +175,13 @@ public:
     glGetProgramiv(pobject,GL_LINK_STATUS,&link_status);
     if ( !link_status )
       {
-        printf(" Link status for %s %d\n",
-               source_path.s, link_status);
+        printf(" Link status for %s %c%c%c%c: %d\n",
+               source_path.s,
+               compute_shader ? 'C' : '_',
+               main_body_vs   ? 'V' : '_',
+               main_body_gs   ? 'G' : '_',
+               main_body_fs   ? 'F' : '_',
+               link_status);
         GLint info_log_length;
         glGetProgramiv(pobject,GL_INFO_LOG_LENGTH,&info_log_length);
         char* const prog_info_log = (char*) alloca(info_log_length+1);

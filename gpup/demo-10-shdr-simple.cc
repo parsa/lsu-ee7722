@@ -1,15 +1,24 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
-
-// $Id:$
 
  /// See demo-10-shader.cc for details.
 
 
 // Specify version of OpenGL Shading Language.
 //
-#version 430 compatibility
-#extension GL_EXT_geometry_shader4 : enable
+#version 450 compatibility
+
+// The extension below defines useful--though deprecated--shader input
+// and output variables. The code in this file lazily makes use of
+// them, the code in file demo-10-shdr-geo.cc defines its own shader
+// input and output variables and so does not need the extension
+// below. The purpose of GL_EXT_geometry_shader was to provide
+// geometry shader functionality at a time when OpenGL lacked
+// it. Current versions of OpenGL support geometry shaders, and so the
+// extension is only needed in old code (or for those who like their
+// variables predefined).
+//
+#extension GL_EXT_geometry_shader : enable
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
@@ -63,7 +72,7 @@ out Data
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
-  flat int hidx;
+  int hidx;
 };
 
 #endif
@@ -73,8 +82,7 @@ in Data
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
-
-  flat int hidx;
+  int hidx;
 };
 
 in vec2 gl_TexCoord[];
