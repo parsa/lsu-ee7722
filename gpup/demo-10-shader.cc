@@ -89,9 +89,26 @@
 
  /// Geometry Shader Coding
 //
-//   Shader Input
+//   Overview
+//
+//     The geometry shader reads in one primitive ...
+//     ... and writes zero or more primitives.
+//
+//     One possible application:
+//       Split input triangle into many smaller triangles so that
+//       object appears smoother, *if necessary*.  "If necessary"
+//       means that such a geometry shader will use window-space
+//       coordinates to decide whether the input triangle needs to
+//       be split.  For example, if the maximum distance between
+//       the primitive's vertices is less than 10 pixels than don't
+//       split.
+//
+
+
+//   Geometry Shader Input
+//
 //     Usually triangles.
-//     DOES NOT have to match input primitive to current vertex shader.
+//     DOES NOT have to match input primitive of current vertex shader.
 //
 //     Input is a single primitive, declared as an array. Array size
 //     is number of elements in the primitive.
