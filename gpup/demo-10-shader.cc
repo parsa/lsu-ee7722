@@ -104,26 +104,64 @@
 //       split.
 //
 
+//   Major Steps to use a Geometry Shader
+
+//     -- Declare type of input primitive.
 
 //   Geometry Shader Input
 //
-//     Usually triangles.
-//     DOES NOT have to match input primitive of current vertex shader.
+//     Geometry Shader Input Type.  (OGL 4.5 Section 4.4)
 //
-//     Input is a single primitive, declared as an array. Array size
-//     is number of elements in the primitive.
+//       Declared in shader code using layout qualifier
+
+layout ( TYPE_OF_PRIMITIVE ) in;
+
+//       where TYPE_OF_PRIMITIVE can be:
+//         points, lines, lines_adjacency, triangles, triangles_adjacency.
+//
+//       Adjacency indicates that nearby vertices are also included.
+//
+//       Common use:
 
 layout ( triangles ) in;
 
-in Data
+//     Geometry Shader Input Size
+//
+//      The inputs to the geometry shader are all arrays ..
+//      .. the array size is determined by the primitive type:
+//
+//         Layout               Array Size
+//         points               1
+//         lines                2
+//         lines_adjacency      4
+//         triangles            3
+//         triangles_adjacency  6
+
+//      Geometry Shader Input Declaration
+//
+//        The geometry shader inputs ..
+//        .. MUST match the vertex shader outputs ..
+//        .. plus an array dimension.
+
+//        Example:
+
+
+out Data  // Vertex shader output
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
   int hidx;
-} In[3];
+  vec3 normal_o;
+  vec4 color;
+};
+
+in Data  // Geometry shader input.
+{
+  int hidx;
+  vec3 normal_o;
+  vec4 color;
+} In[];
 
 
-//   Shader Output
+//   Geometry Shader Output
 //     Usually triangles or triangle strips.
 //     DOES NOT have to match input primitive to current vertex shader.
 //
@@ -131,12 +169,14 @@ in Data
 
 layout ( triangle_strip, max_vertices = 4 ) out;
 
+//     Other output types: points, line_strip.
 
-out Data
+
+out Data_GF
 {
   vec3 var_normal_e;
   vec4 var_vertex_e;
-  int hidx;
+  flat vec4 color;
 };
 
 
