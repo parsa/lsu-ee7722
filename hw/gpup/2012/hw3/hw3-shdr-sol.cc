@@ -61,6 +61,11 @@ out vec2 gl_TexCoord[];  // Redeclaration, to limit size to two elements.
 
 #ifdef _GEOMETRY_SHADER_
 
+// Indicate type of input primitive expected by geometry shader.
+//
+layout ( triangles ) in;
+layout ( triangle_strip, max_vertices = 9 ) out;
+
 in Data
 {
   vec3 normal_e;
