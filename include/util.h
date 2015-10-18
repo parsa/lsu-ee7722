@@ -14,6 +14,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <Magick++.h>
+#include <assert.h>
 
 #define ALSO_GL
 
@@ -111,11 +112,13 @@ class pFrame_Timer {
 public:
   pFrame_Timer():inited(false),work_description(NULL)
   {
-    query_timer_id = 0;
+    query_timer_id[0] = 0;
+    query_pending = false;
     frame_group_size = 5;
     frame_rate = 0;
     cpu_frac = 0;
     cuda_in_use = false;
+    phys_timed = false;
   }
   void work_unit_set(const char *description, double multiplier = 1)
   {
@@ -130,6 +133,8 @@ public:
   void user_timer_start(int timer_id);
   void user_timer_end(int timer_id);
   void init();
+  void phys_start();
+  void phys_end();
   void frame_start();
   void frame_end();
   const char* frame_rate_text_get() const { return frame_rate_text.s; }
@@ -137,18 +142,23 @@ public:
   void cuda_frame_time_set(float time_ms)
   { cuda_tsum_ms += time_ms; cuda_in_use = true; }
 private:
+  void frame_rate_group_start_check();
   void frame_rate_group_start();
   void var_reset()
   {
     frame_group_count = 0;
-    cpu_tsum = gpu_tsum_ns = cuda_tsum_ms = 0;
+    phys_tsum = cpu_tsum = gpu_tsum_ns = cuda_tsum_ms = 0;
     work_accum = 0;
   }
   bool inited;
   bool cuda_in_use;
+  bool frame_inside;
+  bool phys_inside;
+  bool phys_timed;
   double frame_group_start_time;
   int frame_group_count;
   double gpu_tsum_ns, gpu_tlast, cpu_tsum, cpu_tlast, cuda_tsum_ms, cuda_tlast;
+  double phys_tsum, phys_tlast;
   double work_accum;
   double work_multiplier;
   int work_count_last;
@@ -156,9 +166,12 @@ private:
   double work_rate;
 
   double frame_rate;
-  double cpu_frac, gpu_frac, cuda_frac;
+  double cpu_frac, gpu_frac, cuda_frac, phys_frac;
   double time_render_start;
-  GLuint query_timer_id;
+  double time_phys_start;
+  GLuint query_timer_id[2];
+  int query_timer_idx;
+  bool query_pending;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
 
@@ -171,8 +184,9 @@ void
 pFrame_Timer::init()
 {
   inited = true;
-  if ( glutExtensionSupported("GL_EXT_timer_query") )
-    glGenQueries(1,&query_timer_id);
+  frame_inside = false;
+  glGenQueries(2,query_timer_id);
+  query_timer_idx = 0;
   frame_group_start_time = time_wall_fp();
   var_reset();
   frame_rate_group_start();
@@ -215,6 +229,11 @@ pFrame_Timer::user_timer_end(int timer_id)
   ti->duration += time_wall_fp() - ti->start;
 }
 
+void
+pFrame_Timer::frame_rate_group_start_check()
+{
+  if ( frame_group_count++ >= frame_group_size ) frame_rate_group_start();
+}
 
 void
 pFrame_Timer::frame_rate_group_start()
@@ -237,9 +256,11 @@ pFrame_Timer::frame_rate_group_start()
 
   gpu_tlast = 1e-9 * gpu_tsum_ns * last_frame_count_inv;
   cpu_tlast = cpu_tsum * last_frame_count_inv;
+  phys_tlast = phys_tsum * last_frame_count_inv;
   cuda_tlast = 1e-3 * cuda_tsum_ms * last_frame_count_inv;
   frame_rate = last_frame_count / group_duration;
   cpu_frac = cpu_tsum / group_duration;
+  phys_frac = phys_tsum / group_duration;
   gpu_frac = 1e-9 * gpu_tsum_ns / group_duration;
   cuda_frac = 1e-3 * cuda_tsum_ms / group_duration;
   if ( work_description )
@@ -250,27 +271,58 @@ pFrame_Timer::frame_rate_group_start()
 }
 
 void
+pFrame_Timer::phys_start()
+{
+  if ( !inited ) init();
+  phys_timed = true;
+  frame_rate_group_start_check();
+  assert( !phys_inside );
+  phys_inside = true;
+  time_phys_start = time_wall_fp();
+}
+
+void
+pFrame_Timer::phys_end()
+{
+  const double time_phys_elapsed = time_wall_fp() - time_phys_start;
+  phys_tsum += time_phys_elapsed;
+  phys_inside = false;
+}
+
+void
 pFrame_Timer::frame_start()
 {
   if ( !inited ) init();
+  if ( phys_inside ) phys_end();
+  assert( !frame_inside );
+  frame_inside = true;
   pError_Check();
-  if ( query_timer_id ) glBeginQuery(GL_TIME_ELAPSED_EXT,query_timer_id);
+  if ( query_timer_id[0] )
+    glBeginQuery(GL_TIME_ELAPSED,query_timer_id[query_timer_idx]);
   pError_Check();
   time_render_start = time_wall_fp();
-  if ( frame_group_count++ >= frame_group_size ) frame_rate_group_start();
+  if ( !phys_timed ) frame_rate_group_start_check();
 }
 
 void
 pFrame_Timer::frame_end()
 {
   const double time_render_elapsed = time_wall_fp() - time_render_start;
-  if ( query_timer_id )
+  if ( query_timer_id[0] )
     {
-      glEndQuery(GL_TIME_ELAPSED_EXT);
-      int timer_val = 0;
-      glGetQueryObjectiv(query_timer_id,GL_QUERY_RESULT,&timer_val);
-      gpu_tsum_ns += timer_val;
+      glEndQuery(GL_TIME_ELAPSED);
+      query_timer_idx = 1 - query_timer_idx;
+      if ( query_pending )
+        {
+          int timer_val = 0;
+          glGetQueryObjectiv
+            (query_timer_id[query_timer_idx],GL_QUERY_RESULT,&timer_val);
+          gpu_tsum_ns += timer_val;
+        }
+      query_pending = true;
     }
+  assert( frame_inside );
+  frame_inside = false;
   cpu_tsum += time_render_elapsed;
   const uint xfcount_prev = xfcount;
   if ( ptr_glXGetVideoSyncSGI ) ptr_glXGetVideoSyncSGI(&xfcount);
@@ -297,7 +349,11 @@ pFrame_Timer::frame_end()
     frame_rate_text += "---";
 
   frame_rate_text.sprintf
-    ("  CPU %6.2f ms (%4.1f%%)", 1000 * cpu_tlast, 100 * cpu_frac);
+    ("  CPU GR %6.2f ms (%4.1f%%)", 1000 * cpu_tlast, 100 * cpu_frac);
+
+  if ( phys_timed )
+    frame_rate_text.sprintf
+      ("  CPU PH %6.2f ms (%4.1f%%)", 1000 * phys_tlast, 100 * phys_frac);
 
   if ( work_description )
     frame_rate_text.sprintf("  %s %7.1f", work_description, work_rate);
