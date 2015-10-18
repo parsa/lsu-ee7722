@@ -2,8 +2,6 @@
 //
  ///  Geometry Classes and Functions
 
- // $Id:$
-
  /// Purpose
 //
 //   A set of classes and functions for storing and manipulating
@@ -141,6 +139,8 @@ public:
   }
 
   void set_row(int r,pVect v);
+  void set_col(int c, pVect v);
+  void set_col(int c, pCoor v);
 
   // Return first three elements of column as a vector.
   pVect cv(int col);
@@ -443,7 +443,16 @@ pMatrix::set_row(int r,pVect v)
   a[3] = 0;
 }
 
-
+inline void
+pMatrix::set_col(int c, pVect v)
+{
+  for ( int r=0; r<3; r++ ) rc(r,c) = v[r];
+}
+inline void
+pMatrix::set_col(int c, pCoor v)
+{
+  for ( int r=0; r<4; r++ ) rc(r,c) = v[r];
+}
 
 pCoor mult_MC(pMatrix& m, pCoor c)
 {
