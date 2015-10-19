@@ -720,7 +720,8 @@ World::time_step_cpu(double delta_t)
     {
       /// Problem 1 and 3 solutions go here, and other places.
 
-      /// SOLUTION
+      /// SOLUTION -- Problem 1
+      //
       if ( link->snapped ) continue;
 
       // Spring Force from Neighbor Balls
@@ -745,14 +746,24 @@ World::time_step_cpu(double delta_t)
       const float spring_stretch =
         distance_between_balls - link->distance_relaxed;
 
-      /// SOLUTION
-      if ( link->distance_relaxed > 0.001
+      /// SOLUTION -- Problem 1
+      //
+
+      // First, check if link is at least stressed.
+      //
+      if ( link->distance_relaxed > 0.001 // Don't bother with very short links.
            && distance_between_balls
            > link->distance_relaxed * mp.link_stressed_thd )
         {
+          // Take appropriate action if snap threshold exceeded.
+          //
           if ( distance_between_balls
                > link->distance_relaxed * mp.link_snap_thd )
             link->snapped = true;
+
+          // Find an amount by which to blend link's original color
+          // and stressed color.
+          //
           const float factor =
             ( distance_between_balls / link->distance_relaxed
               - mp.link_stressed_thd )
