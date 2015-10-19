@@ -5,7 +5,7 @@
 
 
 COURSE_INCLUDE_DIR_POSSIBILITIES = \
- ../include ../../include ../../../include ../../../../include
+ ../include ../../include
 
 FOUND := $(foreach dir, $(COURSE_INCLUDE_DIR_POSSIBILITIES), \
            $(shell test -e $(dir) && echo $(dir)))
@@ -30,7 +30,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw01
+default: hw01 hw01-sol
 
 
 .cc.o:
@@ -43,6 +43,12 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 	 shapes.h Makefile
 
 hw01: hw01.cc $(INCLUDES) hw01-graphics.cc
+	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
+	-o $@ $(LIBDIR)  $(LIBRARIES) 
+	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
+	-o $@-debug $(LIBDIR) $(LIBRARIES) 
+
+hw01-sol: hw01-sol.cc $(INCLUDES) hw01-graphics.cc
 	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES) 
 	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
