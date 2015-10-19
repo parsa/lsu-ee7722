@@ -431,7 +431,6 @@ World::time_step_cpu_ball(double delta_t, Ball* ball)
 
   const float dist_to_platform = platform_rad - axis_to_ball.magnitude;
 
-  const bool contact_prev = ball->contact;
   const bool true_contact = dist_to_platform <= 0.01;
   ball->contact = dist_to_platform <= 0.5;
   if ( !ball->contact ) return;
