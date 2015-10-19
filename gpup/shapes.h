@@ -1,15 +1,14 @@
-/// LSU EE X70X-X (Fall 2011), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Fall 2015), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
-// $Id:$
 
 #ifndef SHAPES_H
 #define SHAPES_H
 
 class Sphere {
 public:
-  Sphere(){};
+  Sphere(){ opt_texture = true; };
   void init(int slices);
   void shadow_volume_init(int slices);
   void render();
@@ -54,6 +53,7 @@ public:
   pMatrix rotation_matrix;
   bool default_orientation;
   bool opt_render_flat;
+  bool opt_texture;
   int* tri_count; // Cumulative count of triangles rendered. 
 };
 
@@ -147,8 +147,11 @@ Sphere::render()
   glNormalPointer(GL_FLOAT,0,0);
   glEnableClientState(GL_NORMAL_ARRAY);
   tex_coord_bo.bind();
-  glTexCoordPointer(2,GL_FLOAT,0,0);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  if ( opt_texture )
+    {
+      glTexCoordPointer(2,GL_FLOAT,0,0);
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
   glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_NORMAL_ARRAY);
@@ -385,6 +388,182 @@ public:
   pCoor light_pos;
   double apex_radius;
 };
+
+class Cylinder {
+public:
+  Cylinder(){ dont_set_color = true; inited = false; };
+
+  void init()
+  {
+    PStack<pVect> points;
+    PStack<pVect> normals;
+    const int sides = 10;
+    const double delta_theta = 2 * M_PI / sides;
+
+    for ( int i=0; i<=sides; i++ )
+      {
+        const double theta = delta_theta * i;
+        const double cos_t = cos(theta);
+        const double sin_t = sin(theta);
+        normals += pVect( cos_t, sin_t, 0 );
+        normals += pVect( cos_t, sin_t, 0 );
+        points += pVect( cos_t, sin_t, 1 );
+        points += pVect( cos_t, sin_t, 0 );
+      }
+    points_bo.take(points,GL_STATIC_DRAW);
+    points_bo.to_gpu();
+    normals_bo.take(points,GL_STATIC_DRAW);
+    normals_bo.to_gpu();
+    inited = true;
+  }
+
+  void render_shadow_volume_exact(pCoor base, float radius, pVect to_apex)
+  {
+    const int sides = 10;
+    const double delta_theta = 2 * M_PI / sides;
+    const double base_radius = 1;
+    const double apex_height = 1;
+    const float to_height = to_apex.mag();
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    pVect from_apex(0,0,1);
+    pNorm rn(from_apex,to_apex);
+    const float rot_angle = pangle(from_apex,to_apex);
+
+    pMatrix_Translate trans_transl(base);
+    pMatrix_Rotation trans_rot(rn,rot_angle);
+    pMatrix_Scale trans_scale(radius); trans_scale.rc(2,2) = to_height;
+    pMatrix xform = trans_transl * trans_rot * trans_scale;
+
+    glMultTransposeMatrixf(xform.a);
+
+    pMatrix inv = invert(xform);
+    pCoor light_local = inv * light_pos;
+
+    pCoor ptop(0,0,apex_height);
+    pCoor pbottom(0,0,0);
+    pCoor p00, p01;
+    const float height = 1000;
+
+    for ( int i=0; i<=sides; i++ )
+      {
+        const double theta = delta_theta * i;
+        const double cos_t = cos(theta);
+        const double sin_t = sin(theta);
+        pCoor p10( base_radius * cos_t, base_radius * sin_t, apex_height);
+        pCoor p11( base_radius * cos_t, base_radius * sin_t, 0);
+        if ( i )
+          {
+            pNorm l_to_00(light_local,p00);
+            pCoor p00_2 = p00 + height * l_to_00;
+            pCoor p01_2 = p01 + height * pNorm(light_local,p01);
+            pCoor p10_2 = p10 + height * pNorm(light_local,p10);
+            pCoor p11_2 = p11 + height * pNorm(light_local,p11);
+            pVect quad_normal = cross(p00,p01,p11);
+            const bool facing_light = dot(quad_normal,l_to_00) > 0;
+            glFrontFace(facing_light ? GL_CCW : GL_CW );
+
+            glBegin(GL_QUAD_STRIP);
+            glVertex3fv(p00);
+            glVertex3fv(p00_2);
+            glVertex3fv(p01);
+            glVertex3fv(p01_2);
+            glVertex3fv(p11);
+            glVertex3fv(p11_2);
+            glVertex3fv(p10);
+            glVertex3fv(p10_2);
+            glVertex3fv(p00);
+            glVertex3fv(p00_2);
+            glEnd();
+          }
+        p00 = p10;
+        p01 = p11;
+      }
+
+    glPopMatrix();
+    glFrontFace(GL_CCW);
+  }
+
+  void render_shadow_volume(pCoor base, float radius, pVect to_apex)
+  {
+    pNorm l_to_base(light_pos,base);
+    pNorm u(l_to_base,to_apex);
+
+    const float l_to_base_len = l_to_base.magnitude;
+    if ( l_to_base_len <= radius ) return;
+
+    const float r_limb =
+      sqrtf( 1.0f - radius * radius / ( l_to_base_len * l_to_base_len ) )
+      * radius;
+
+    pCoor cor_nn = base - u * r_limb;
+    pCoor cor_pn = base + u * r_limb;
+    pCoor cor_np = cor_nn + to_apex;
+    pCoor cor_pp = cor_pn + to_apex;
+
+    pVect l_to_nn(light_pos,cor_nn);
+    pVect l_to_np(light_pos,cor_np);
+    pVect l_to_pn(light_pos,cor_pn);
+    pVect l_to_pp(light_pos,cor_pp);
+
+    glBegin(GL_QUAD_STRIP);
+
+    glVertex3fv(cor_nn); glVertex3fv(cor_nn + 1000 * l_to_nn );
+    glVertex3fv(cor_np); glVertex3fv(cor_np + 1000 * l_to_np );
+    glVertex3fv(cor_pp); glVertex3fv(cor_pp + 1000 * l_to_pp );
+    glVertex3fv(cor_pn); glVertex3fv(cor_pn + 1000 * l_to_pn );
+    glVertex3fv(cor_nn); glVertex3fv(cor_nn + 1000 * l_to_nn );
+
+    glEnd();
+  }
+
+  void render(pCoor base, float radius, pVect to_apex)
+  {
+    if ( !inited ) init();
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    pNorm van =
+      to_apex.x == 0
+      ? pVect(0,-to_apex.z,to_apex.y) : pVect(-to_apex.y, to_apex.x, 0);
+    pNorm vbn = cross(to_apex,van);
+    pMatrix trans_rot; trans_rot.set_identity();
+    trans_rot.set_col(0,radius*van);
+    trans_rot.set_col(1,radius*vbn);
+    trans_rot.set_col(2,to_apex);
+    trans_rot.set_col(3,base);
+
+    glMultTransposeMatrixf(trans_rot.a);
+
+    if ( !dont_set_color ) glColor3fv(color);
+
+    points_bo.bind();
+    glVertexPointer(3,GL_FLOAT,0,0);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    normals_bo.bind();
+    glNormalPointer(GL_FLOAT,0,0);
+    glEnableClientState(GL_NORMAL_ARRAY);
+
+    glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+
+    glPopMatrix();
+  }
+
+  pBuffer_Object<pVect> points_bo;
+  pBuffer_Object<pVect> normals_bo;
+  bool inited;
+  void set_color(const pColor &c) { color = c;  dont_set_color = false; }
+
+  bool dont_set_color;
+  pColor color;
+  pCoor light_pos;
+};
+
 
 // Display a tetrahedron, used to indicate light position.
 //
