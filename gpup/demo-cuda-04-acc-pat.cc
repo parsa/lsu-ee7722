@@ -363,7 +363,7 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
-  ogl_helper.fbprintf("Interp routine: %d cyc\n",
+  ogl_helper.fbprintf("Interp routine: %ld cyc\n",
                       time_inter_cyc);
 
   ogl_helper.fbprintf

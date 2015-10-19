@@ -260,7 +260,6 @@ World::render()
   ogl_helper.fbprintf
     ("Light location: [%5.1f, %5.1f, %5.1f]  "
      "Sphere Location[%5.1f, %5.1f, %5.1f]\n",
-     opt_method,
      light_location.x, light_location.y, light_location.z,
      sphere_location.x, sphere_location.y, sphere_location.z
      );
