@@ -27,7 +27,7 @@ COMPILERFLAGS = -Wall
 CC = gcc
 CXX = g++
 CXXFLAGS = $(CFLAGS)
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt $(LDFLAGSMAGIK)
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt $(LDFLAGSMAGIK)
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
 

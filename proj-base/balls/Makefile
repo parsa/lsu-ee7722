@@ -25,7 +25,7 @@ MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 CXXFLAGS = $(CFLAGS)  $(MAGICKCXX)
 
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
 

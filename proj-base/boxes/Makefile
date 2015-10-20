@@ -27,7 +27,7 @@ MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS) $(MAGICKCXX)
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
 SRC_FILES = boxes.cc cuda-data.cc cuda-sched.cc \

@@ -25,7 +25,7 @@ COMPILERFLAGS = -Wall
 CC = gcc
 CXX = g++
 CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
 OBJ_NAMES = $(PROG_NAMES:=.o)

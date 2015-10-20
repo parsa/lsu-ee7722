@@ -26,7 +26,7 @@ CXX = g++
 
 .SUFFIXES: .cu .cuh
 
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 
 
