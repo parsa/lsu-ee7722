@@ -125,10 +125,8 @@ public:
   pColor *data;
   GLuint txid;
 
-
-  /// SOLUTION
-  bool modified;
-  bool texture_initialized;
+  bool texture_modified;
+  bool texture_object_initialized;
 
   pCoor vertices[4];
 
@@ -143,23 +141,48 @@ class My_Piece_Of_The_World {
 public:
   My_Piece_Of_The_World(World& wp):w(wp){};
   World& w;
-  Platform_Overlay* platform_overlays;
+  Platform_Overlay* platform_overlays;  // Array of overlays.
   Platform_Overlay sample_overlay;
+  int nx, nz;          // Number of overlays along each dimension.
   int num_overlays;
-  int nx, nz;
-  int twid_x, twid_z, num_texels;
-  float wid_x, wid_z;
-  float wid_x_inv, wid_z_inv;
-  float wid_x_inv_twid, wid_z_inv_twid;
+  int twid_x, twid_z;  // Dimensions of each texture in texels.
+  int num_texels;
+  float wid_x, wid_z;  // Width of each overlay in object space units.
+  float wid_x_inv, wid_z_inv;  // Their inverses.
+
+  /// SOLUTION
+  float wid_x_inv_twid;
+  float wid_z_inv_twid;
+
+  // Minimum x- and z- object space coordinate for most recent overlay.
   float to_tx_x, to_tx_z;
   float overlay_xmin, overlay_zmin;
 
   void init();
   void sample_tex_make();
+
+  // Return the platform overlay that includes pos, or NULL if pos is
+  // not on platform.
+  //
   Platform_Overlay* po_get(pCoor pos);
-  pCoor po_get_lcoor(pCoor pos);
-  int po_get_tidx(pCoor lpos);
+
+  //
+  // Homework 3: These are suggested functions.
+  //
+
+  // Convert object space coordinate to texel coordinate relative
+  // to overlay po.
+  pCoor po_get_lcoor(Platform_Overlay *po, pCoor pos);
+
+  // Return the texel at lpos in po.
   pColor* po_get_texel(Platform_Overlay *po, pCoor lpos);
+
+  /// SOLUTION
+  int po_get_tidx(pCoor lpos);
+
+  //
+  // Homework 3: These functions must be implemented.
+  //
   void render();
   void clean();
 };
@@ -257,30 +280,61 @@ My_Piece_Of_The_World::init()
 void
 My_Piece_Of_The_World::sample_tex_make()
 {
+  /// Homework 3 -- Sample Code
+
+  // Code in this routine creates a texture with a big red X, and
+  // loads it into a texture object.  The texture object can
+  // be used as a substitute for the "scuffed" texture before
+  // the scuffed texture part of this assignment is finished.
+
   Platform_Overlay* const po = &sample_overlay;
-  if ( !po->data )
-    {
-      po->data = new pColor[ num_texels ];
-    }
+
+  // Allocate storage for the array of texels.
+  //
+  if ( !po->data ) po->data = new pColor[ num_texels ];
+
+  // Initialize the texels to black and transparent. (Alpha = 0)
+  //
   memset(po->data,0,num_texels*sizeof(po->data[0]));
-  const int thickness = 5;
-  for ( int ii=0; ii<twid_x-thickness; ii++ )
+
+  // Thickness of the strokes making up the letter ex.
+  //
+  const int thickness = max(2, twid_x/10);
+
+  // Write the letter ex, a big one, in the texture.
+  //
+  for ( int tx=0; tx<twid_x-thickness; tx++ )
     {
-      for ( int i=ii; i<ii+thickness; i++ )
+      // Note: Compute tz without assuming twid_x == twid_z.
+      int tz_raw = float(tx)/twid_x * twid_z;
+      int tz = min(tz_raw,twid_z-1);
+
+      // Array index of texel at (tx,tz).
+      //
+      int idx = tx + tz * twid_x;
+      int idx2 = twid_x - 1 - tx + tz * twid_x;
+
+      // Write colors to texels.
+      //
+      for ( int i=0; i<thickness; i++ )
         {
-          int tz_raw = float(i)/twid_x * twid_z;
-          int tz = min(tz_raw,twid_z-1);
-          int idx = ii + tz * twid_x;
-          int idx2 = twid_x - 1 - ii + tz * twid_x;
-          po->data[idx] = color_red;
-          po->data[idx].a = 1;
-          po->data[idx2] = color_red;
-          po->data[idx2].a = 1;
+          po->data[idx+i] = color_red;
+          po->data[idx+i].a = 1;
+          po->data[idx2-i] = color_red;
+          po->data[idx2-i].a = 1;
         }
     }
 
+  // Create a new texture object.
+  //
   glGenTextures(1,&po->txid);
+
+  // Load our texture into the texture object.
+  //
   glBindTexture(GL_TEXTURE_2D,po->txid);
+
+  // Tell OpenGL to generate MIPMAP levels for us.
+  //
   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 
   glTexImage2D
@@ -304,15 +358,17 @@ My_Piece_Of_The_World::po_get_tidx(pCoor lpos)
 pColor*
 My_Piece_Of_The_World::po_get_texel(Platform_Overlay *po, pCoor lpos)
 {
+  // SOLUTION
   const int idx = po_get_tidx(lpos);
   if ( idx < 0 || idx >= num_texels ) return NULL;
   return &po->data[ idx ];
 }
 
 pCoor
-My_Piece_Of_The_World::po_get_lcoor(pCoor pos)
+My_Piece_Of_The_World::po_get_lcoor(Platform_Overlay *po, pCoor pos)
 {
   pCoor lc;
+  // SOLUTION
   lc.x = ( pos.x - overlay_xmin ) * wid_x_inv_twid;
   lc.z = ( pos.z - overlay_zmin ) * wid_z_inv_twid;
   lc.y = 0;
@@ -334,16 +390,17 @@ My_Piece_Of_The_World::po_get(pCoor pos)
 
   if ( !po->data )
     {
+      // This overlay has never been visited, initialize texel array.
       po->data = new pColor[num_texels];
       memset(po->data,0,num_texels*sizeof(po->data[0]));
-      po->texture_initialized = false;
+      po->texture_object_initialized = false;
       pCoor* const vertices = po->vertices;
       vertices[0] =
         pCoor( w.platform_xmin + x * wid_x, 0.01, w.platform_zmin + z * wid_z );
       vertices[1] = vertices[0] + pVect(wid_x,0,0);
       vertices[2] = vertices[1] + pVect(0,0,wid_z);
       vertices[3] = vertices[0] + pVect(0,0,wid_z);
-      po->modified = true;
+      po->texture_modified = true;
     }
 
   return po;
@@ -352,6 +409,16 @@ My_Piece_Of_The_World::po_get(pCoor pos)
 void
 My_Piece_Of_The_World::render()
 {
+  /// Homework 3 -- Lots of stuff in this routine.
+
+  // [ ] Enable at least some of the following:
+  //     -- Texturing.
+  //     -- Texture application mode.
+  //     -- The Alpha Test
+  //     -- Blending.
+  //
+  // See demo-8-texture.cc for examples.
+
   glEnable(GL_TEXTURE_2D);
   if ( w.opt_tryout1 ) glEnable(GL_ALPHA_TEST);
   glEnable(GL_BLEND);
@@ -367,9 +434,13 @@ My_Piece_Of_The_World::render()
     {
       Platform_Overlay* const po = &platform_overlays[i];
       if ( !po->data ) continue;
-      if ( !po->texture_initialized )
+
+      if ( !po->texture_object_initialized )
         {
-          po->texture_initialized = true;
+          po->texture_object_initialized = true;
+
+          // [ ] Do something here.
+          // SOLUTION
           glGenTextures(1,&po->txid);
           glBindTexture(GL_TEXTURE_2D,po->txid);
           glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
@@ -377,10 +448,15 @@ My_Piece_Of_The_World::render()
                           GL_LINEAR_MIPMAP_LINEAR);
           glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
         }
+
       glBindTexture(GL_TEXTURE_2D,po->txid);
-      if ( po->modified )
+
+      if ( po->texture_modified )
         {
-          po->modified = false;
+          po->texture_modified = false;
+
+          // [ ] Send texel array (po->data) to OpenGL.
+
           glTexImage2D
             (GL_TEXTURE_2D,
              0,                // Level of Detail (0 is base).
@@ -392,6 +468,8 @@ My_Piece_Of_The_World::render()
              (void*)po->data);
           pError_Check();
         }
+
+      // [ ] Render primitive(s) matching shape of overlay.
 
       if ( w.opt_tryout2 ) glBindTexture(GL_TEXTURE_2D, sample_overlay.txid);
       glBegin(GL_QUADS);
@@ -407,6 +485,9 @@ My_Piece_Of_The_World::render()
       glVertex3fv(po->vertices[3]);
       glEnd();
     }
+
+  // [ ] Disable anything turned on at the start.
+
   glDisable(GL_ALPHA_TEST);
   glDisable(GL_BLEND);
   glDisable(GL_TEXTURE_2D);
@@ -415,11 +496,13 @@ My_Piece_Of_The_World::render()
 void
 My_Piece_Of_The_World::clean()
 {
+  /// Homework 3:  [ ] Remove scuffs from dirty textures.
+
   for ( int i=0; i<num_overlays; i++ )
     {
       Platform_Overlay* const po = &platform_overlays[i];
       if ( !po->data ) continue;
-      po->modified = true;
+      po->texture_modified = true;
       memset(po->data,0,num_texels*sizeof(po->data[0]));
     }
 }
@@ -1000,12 +1083,20 @@ World::time_step_cpu(double delta_t)
 
       if ( !collision ) continue;
 
+      /// Homework 3
+      //
+      //  [x] Retrieve the correct overlay.
+      //  [ ] Determine area of platform that ball is touching.
+      //  [ ] Convert to texel coordinate units.
+      //  [ ] Modify texels in array.
+      //  [ ] Set po->texture_modified iff any texels change.
+
       Platform_Overlay* const po = mp.po_get(ball->position);
-      pCoor ball_lcor = mp.po_get_lcoor(ball->position);
 
       if ( !po ) continue;
 
-      pCoor prev_lcor = mp.po_get_lcoor(pos_prev);
+      pCoor ball_lcor = mp.po_get_lcoor(po,ball->position);
+      pCoor prev_lcor = mp.po_get_lcoor(po,pos_prev);
       float width = mp.to_tx_x *
         sqrt( ball->radius * ball->radius - pos_prev.y * pos_prev.y );
 
@@ -1018,7 +1109,7 @@ World::time_step_cpu(double delta_t)
           pColor* const texel = mp.po_get_texel(po,tex_pos);
           if ( !texel ) continue;
           if ( texel->a ) continue;
-          po->modified = true;
+          po->texture_modified = true;
           *texel = ball->color;
           texel->a = 0.8;
         }
@@ -1067,15 +1158,7 @@ void World::balls_push(pVect amt)
 void World::balls_stop()
 { for ( BIter ball(balls); ball; ) ball->stop(); }
 void World::balls_freeze(){balls_stop();}
-
-
-void
-World::render_my_piece()
-{
-
-  mp.render();
-
-}
+void World::render_my_piece() {mp.render();}
 
 
 void
@@ -1145,4 +1228,3 @@ main(int argv, char **argc)
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.frame_callback_w,&world);
 }
-
