@@ -249,15 +249,15 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   const float center1_distance = limb_distance_sq / l_to_c_dir.magnitude;
   const float r1 = limb_distance * radius_loose/l_to_c_dir.magnitude;
 
-  pMatrix scale1;
-  scale1.set_identity();
-  scale1.rc(0,0) = r1;
-  scale1.rc(1,1) = r1;
-  scale1.rc(2,2) = center1_distance;
-  pMatrix_Rotation_Shortest rot(pVect(0,0,1),l_to_c_dir);
-  pMatrix_Translate tr(light_pos);
-
-  pMatrix transform = tr * rot * scale1;
+  pNorm na = l_to_c_dir.x == 0 ? pVect(0,-l_to_c_dir.z,l_to_c_dir.y)
+    : pVect(-l_to_c_dir.y,l_to_c_dir.x,0);
+  pVect va = r1 * na;
+  pVect vb = cross(l_to_c_dir,va);
+  pMatrix transform; transform.set_identity();
+  transform.set_col(0,va);
+  transform.set_col(1,vb);
+  transform.set_col(2,center1_distance * l_to_c_dir);
+  transform.set_col(3,light_pos);
 
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
