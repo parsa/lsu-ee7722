@@ -959,7 +959,7 @@ World::render_my_piece()
   //
   for ( SIter strip(mp.strips); strip; )
     {
-      const int elts = strip->balls;
+      const int elts = strip->balls.size();
 
       // If arrays are not large enough for this truss allocate more
       // storage.
