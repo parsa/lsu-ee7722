@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
- /// Homework 3 -- SOLUTION (Preliminary)
+ /// Homework 3 -- SOLUTION
  //
  /// Your Name:  SOLUTION
 
