@@ -151,11 +151,10 @@ public:
   float wid_x_inv, wid_z_inv;  // Their inverses.
 
   /// SOLUTION
-  float wid_x_inv_twid;
-  float wid_z_inv_twid;
+  float scale_x_obj_to_texel;
+  float scale_z_obj_to_texel;
 
   // Minimum x- and z- object space coordinate for most recent overlay.
-  float to_tx_x, to_tx_z;
   float overlay_xmin, overlay_zmin;
 
   void init();
@@ -177,7 +176,7 @@ public:
   // Return the texel at lpos in po.
   pColor* po_get_texel(Platform_Overlay *po, pCoor lpos);
 
-  /// SOLUTION
+  /// SOLUTION -- Problem 1(a)
   int po_get_tidx(pCoor lpos);
 
   //
@@ -270,11 +269,13 @@ My_Piece_Of_The_World::init()
   wid_x_inv = 1.0 / wid_x;
   wid_z_inv = 1.0 / wid_z;
 
-  /// SOLUTION
-  wid_x_inv_twid = wid_x_inv * twid_x;
-  wid_z_inv_twid = wid_z_inv * twid_z;
-  to_tx_x = (nx*twid_x) / ( w.platform_xmax - w.platform_xmin );
-  to_tx_z = (nz*twid_z) / ( w.platform_zmax - w.platform_zmin );
+  /// SOLUTION -- Problem 1a
+  //
+  //  Compute variables that will come in handy when converting
+  //  from object space coordinates to texel coordinates (for our overlay).
+  //
+  scale_x_obj_to_texel = wid_x_inv * twid_x;
+  scale_z_obj_to_texel = wid_z_inv * twid_z;
 }
 
 void
@@ -348,9 +349,11 @@ My_Piece_Of_The_World::sample_tex_make()
      (void*)po->data);
 }
 
+ /// SOLUTION -- Problem 1a
 int
 My_Piece_Of_The_World::po_get_tidx(pCoor lpos)
 {
+  // Return an index for the texel array corresponding to texel coord lpos.
   const int idx = int(lpos.x) + twid_x * int(lpos.z);
   return idx;
 }
@@ -358,9 +361,14 @@ My_Piece_Of_The_World::po_get_tidx(pCoor lpos)
 pColor*
 My_Piece_Of_The_World::po_get_texel(Platform_Overlay *po, pCoor lpos)
 {
-  // SOLUTION
+  /// SOLUTION -- Problem 1a
+
+  // Use our function to get the array index corresponding to lpos.
   const int idx = po_get_tidx(lpos);
+
+  // If it's out of range return null ..
   if ( idx < 0 || idx >= num_texels ) return NULL;
+  // .. otherwise return the texel.
   return &po->data[ idx ];
 }
 
@@ -368,9 +376,14 @@ pCoor
 My_Piece_Of_The_World::po_get_lcoor(Platform_Overlay *po, pCoor pos)
 {
   pCoor lc;
-  // SOLUTION
-  lc.x = ( pos.x - overlay_xmin ) * wid_x_inv_twid;
-  lc.z = ( pos.z - overlay_zmin ) * wid_z_inv_twid;
+  /// SOLUTION -- Problem 1a.
+
+  // Convert object space coordinates to texel coordinates.
+  // Variables overlay_xmin and overlay_zmin were set when the overlay
+  // was retrieved.
+  //
+  lc.x = ( pos.x - overlay_xmin ) * scale_x_obj_to_texel;
+  lc.z = ( pos.z - overlay_zmin ) * scale_z_obj_to_texel;
   lc.y = 0;
   lc.w = 0;
   return lc;
@@ -390,10 +403,21 @@ My_Piece_Of_The_World::po_get(pCoor pos)
 
   if ( !po->data )
     {
+      /// SOLUTION -- Problem 1a
       // This overlay has never been visited, initialize texel array.
+
+      // Allocate the color array.
       po->data = new pColor[num_texels];
+
+      // Initialize it. Note that this makes the colors transparent.
       memset(po->data,0,num_texels*sizeof(po->data[0]));
+
       po->texture_object_initialized = false;
+
+      // Pre-compute the object-space coordinates of the corners of
+      // the overlay. These will be used when constructing the primitive
+      // on which the texture will be applied.
+      //
       pCoor* const vertices = po->vertices;
       vertices[0] =
         pCoor( w.platform_xmin + x * wid_x, 0.01, w.platform_zmin + z * wid_z );
@@ -419,15 +443,28 @@ My_Piece_Of_The_World::render()
   //
   // See demo-8-texture.cc for examples.
 
+  /// SOLUTION -- Problem 1b
+
+  // Turn on texturing.
   glEnable(GL_TEXTURE_2D);
+
+  // Turn on the alpha test. This is not needed if blending is in use.
   if ( w.opt_tryout1 ) glEnable(GL_ALPHA_TEST);
-  glEnable(GL_BLEND);
+
+  // Only write fragments corresponding to scuffed parts of the texture.
   glAlphaFunc(GL_GREATER,0.4);
-  // src, dst
+
+  // Turn on blending so that scuffs are combined with what's already there.
+  glEnable(GL_BLEND);
+
+  // Set the blend equation to blend colors, but to write the alpha value
+  // carried by the fragment (from our texture).
   glBlendFuncSeparate
     (GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
 
   glActiveTexture(GL_TEXTURE0);
+
+  // Use modulation, so that scuffs are affected by lighting.
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
   for ( int i=0; i<num_overlays; i++ )
@@ -439,8 +476,13 @@ My_Piece_Of_The_World::render()
         {
           po->texture_object_initialized = true;
 
-          // [ ] Do something here.
-          // SOLUTION
+          // [x] Do something here.
+          /// SOLUTION -- Problem 1b.
+
+          //  This is the first time we've used this particular overlay,
+          //  so we need to create a texture object for it and set its
+          //  parameters.
+          //
           glGenTextures(1,&po->txid);
           glBindTexture(GL_TEXTURE_2D,po->txid);
           glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
@@ -453,9 +495,13 @@ My_Piece_Of_The_World::render()
 
       if ( po->texture_modified )
         {
+          /// SOLUTION -- Problem 1a.
+          // We've modified the texture since the last render, so
+          // we need to update OpenGL's copy.
+
           po->texture_modified = false;
 
-          // [ ] Send texel array (po->data) to OpenGL.
+          // [x] Send texel array (po->data) to OpenGL.
 
           glTexImage2D
             (GL_TEXTURE_2D,
@@ -469,9 +515,21 @@ My_Piece_Of_The_World::render()
           pError_Check();
         }
 
-      // [ ] Render primitive(s) matching shape of overlay.
 
+      /// SOLUTION -- 1a
+      //
+      //  If tryout2 is active (press 'Y' to toggle) show the red x texture
+      //  instead of our own.
+      //
       if ( w.opt_tryout2 ) glBindTexture(GL_TEXTURE_2D, sample_overlay.txid);
+
+      // [x] Render primitive(s) matching shape of overlay.
+
+      /// SOLUTION -- 1a
+      //
+      //  Apply the texture to a quad. Note that we are using
+      //  our pre-computed vertices.
+      //
       glBegin(GL_QUADS);
       glNormal3f(0,-1,0);
       glColor3fv(color_white);
@@ -486,7 +544,7 @@ My_Piece_Of_The_World::render()
       glEnd();
     }
 
-  // [ ] Disable anything turned on at the start.
+  // [x] Disable anything turned on at the start.
 
   glDisable(GL_ALPHA_TEST);
   glDisable(GL_BLEND);
@@ -498,12 +556,29 @@ My_Piece_Of_The_World::clean()
 {
   /// Homework 3:  [ ] Remove scuffs from dirty textures.
 
+  /// SOLUTION -- Problem 1.
+  //
+  //  Free any textures that are present.
+
   for ( int i=0; i<num_overlays; i++ )
     {
       Platform_Overlay* const po = &platform_overlays[i];
       if ( !po->data ) continue;
-      po->texture_modified = true;
-      memset(po->data,0,num_texels*sizeof(po->data[0]));
+
+      // Tell OpenGL to free the texture object, including the
+      // texture data that it has copied from us.
+      //
+      glDeleteTextures(1,&po->txid);
+
+      // Free our own texel array.
+      //
+      free( po->data );
+
+      // Update variables to reflect clean state.
+      //
+      po->data = NULL;
+      po->texture_modified = false;
+      po->texture_object_initialized = false;
     }
 }
 
@@ -1077,6 +1152,10 @@ World::time_step_cpu(double delta_t)
       // Assume that velocity is constant.
       //
 
+      /// SOLUTION -- Problem 1a
+      //
+      //  Remember previous ball position, used for scuff mark.
+      //
       pCoor pos_prev = ball->position;
 
       ball->position += ball->velocity * delta_t;
@@ -1095,20 +1174,51 @@ World::time_step_cpu(double delta_t)
 
       if ( !po ) continue;
 
+      /// SOLUTION -- Problem 1a.
+      //
+      //  Find the location of all of the texels scuffed
+      //  by this ball during this timestep. The length
+      //  of the scuff mark is based on the old and new positions,
+      //  the width of the scuff mark is based on the intersection
+      //  of the ball with the platform.
+
+      // Current ball location in texel coordinates.
+      //
       pCoor ball_lcor = mp.po_get_lcoor(po,ball->position);
+
+      // Previous location of ball in texel coordinates.
+      //
       pCoor prev_lcor = mp.po_get_lcoor(po,pos_prev);
-      float width = mp.to_tx_x *
+
+      float width = mp.scale_x_obj_to_texel *
         sqrt( ball->radius * ball->radius - pos_prev.y * pos_prev.y );
 
+      // Direction along scuff mark (based on sliding motion).
+      //
       pNorm skid(prev_lcor,ball_lcor);
+
+      // Find direction along width of scuff mark.
+      //
       pNorm nskid = cross( skid, pVect(0,1,0) );
+
+      // Iterate over texel locations scuffed by ball.
+      //
       for ( float t = -width; t <= skid.magnitude+width; t++ )
         for ( float u = -width; u < max(width,1.0f); u++ )
         {
           pCoor tex_pos = prev_lcor + t * skid + u * nskid;
           pColor* const texel = mp.po_get_texel(po,tex_pos);
+
+          // If texel is not on overlay po then just skip it.
+          //
           if ( !texel ) continue;
+
+          // Don't bother if already scuffed. If we wanted to be
+          // fancy we could add this balls color onto what is already
+          // there. But we don't want to be fancy.
+          //
           if ( texel->a ) continue;
+
           po->texture_modified = true;
           *texel = ball->color;
           texel->a = 0.8;
