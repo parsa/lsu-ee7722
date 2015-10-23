@@ -2,7 +2,6 @@
 //
  /// Homework 2 -- SOLUTION
  //
- /// Your Name:
 
  /// Instructions
  //
@@ -48,7 +47,7 @@
  //  (Also see variables below.)
  //
  //  'v'    Cycle through display of links/balls (SKEL) and triangles (SKIN).
- //  'w'    Twirl balls around axis formed by head and tail. (Prob 2 soln).
+ //  'w'    Twirl balls around axis formed by head and tail.
  //  '1'    Set up scene 1.
  //  '2'    Set up scene 2.
  //  '3'    Set up scene 3.
@@ -224,8 +223,12 @@ struct Truss_Info {
 void
 World::init()
 {
-  /// Problem 1 SOLUTION
   mp.color_stressed = pColor(1,0,0); // Red, what else?
+
+  /// SOLUTION -- Problem 1
+  //
+  // Define thresholds at which a link will be considered stressed and
+  // will snap.
   mp.link_stressed_thd = 1.001;
   mp.link_snap_thd = 1.01;
 
@@ -288,7 +291,7 @@ World::lock_update()
 
   // Re-compute minimum mass needed for stability.
   //
-  for ( BIter ball(balls); ball; ) ball->spring_constant_sum = 0; 
+  for ( BIter ball(balls); ball; ) ball->spring_constant_sum = 0;
   const double dtis = pow( opt_time_step_duration, 2 );
   for ( LIter link(links); link; )
     {
@@ -326,6 +329,8 @@ World::objects_erase()
   ball_eye = NULL;
   balls.erase();
   links.erase();
+
+  /// SOLUTION -- Problem 2
   mp.strips.clear();
 }
 
@@ -387,14 +392,14 @@ World::make_truss(Truss_Info *truss_info)
   //
 
   //            <---- num_units (=9) ----------->
-  //  j          
+  //  j
   //  0         O---O---O---O---O---O---O---O---O     ^
   //            |   |   |   |   |   |   |   |   |     |
   //  1         O---O---O---O---O---O---O---O---O   num_sides (=3)
   //            |   |   |   |   |   |   |   |   |     |
   //  2         O---O---O---O---O---O---O---O---O     v
-  //            
-  //      i ->  0   1   2   3   4   5   6   7   8          
+  //
+  //      i ->  0   1   2   3   4   5   6   7   8
   //
   //  Note: Not all links are shown in the diagram above.
 
@@ -567,6 +572,8 @@ World::ball_setup_2()
 
   balls += truss_info.balls;
   links += truss_info.links;
+
+  /// SOLUTION -- Problem 2
   mp.strips += truss_info.strips;
 
   opt_tail_lock = false;
@@ -634,6 +641,8 @@ World::ball_setup_3()
       links += new Link(b3,ti.balls[3],color_red);
       links += ti.links;
       balls += ti.balls;
+
+      /// SOLUTION -- Problem 2
       mp.strips += ti.strips;
 
       int tsz = ti.balls.size();
@@ -818,34 +827,63 @@ World::time_step_cpu(double delta_t)
 
       pVect delta_v = ( ball->force / mass ) * delta_t;
 
-      /// SOLUTION
-
       if ( platform_collision_possible(ball->position) && ball->position.y < 0 )
         {
+
+          // Use a high spring constant for the platform. To damp energy
+          // use a smaller constant when ball is moving away from the
+          // platform.
+          //
           const float spring_constant_plat =
             ball->velocity.y < 0 ? 100000 : 50000;
-          const float fric_coefficient = 0.1;
+
           const float force_up = -ball->position.y * spring_constant_plat;
           const float delta_v_up = force_up / mass * delta_t;
+
+          /// SOLUTION -- Problem 3
+          //
+          // Use delta_v_op to compute a frictional force, and from
+          // that a delta_v_surf. If delta_v_surf is so large that it
+          // would reverse the direction of the ball then just stop
+          // the ball.
+
+          const float fric_coefficient = 0.1;
+
+          // The amount of lateral frictional force is based on the
+          // separation force (the force pushing the ball up).
+          //
           const float fric_force_mag = fric_coefficient * force_up;
+
+          // Compute the velocity of the ball along the surface.
+          //
           pNorm surface_v(ball->velocity.x,0,ball->velocity.z);
+
+          // Compute the change in velocity due to the frictional force.
+          //
           const float delta_v_surf = fric_force_mag / mass * delta_t;
-          if ( true || opt_tryout1 )
+
+          // Check whether the change in velocity would reverse the direction.
+          //
+          if ( delta_v_surf > surface_v.magnitude )
             {
-              if ( delta_v_surf > surface_v.magnitude )
-                {
-                  // Ignoring other forces?
-                  delta_v =
-                    pVect(-ball->velocity.x,delta_v.y,-ball->velocity.z);
-                }
-              else
-                {
-                  delta_v -= delta_v_surf * surface_v;
-                }
+              // Here the frictional change in velocity that was
+              // computed would reverse the direction of the
+              // ball. That really can't happen, the ball would just
+              // stop (in the x and z directions). So set delta_v so
+              // that it stops the ball.
+              //
+              delta_v =
+                pVect(-ball->velocity.x,delta_v.y,-ball->velocity.z);
+            }
+          else
+            {
+              // The change in velocity will slow the ball down, so
+              // apply it.
+              //
+              delta_v -= delta_v_surf * surface_v;
             }
           delta_v.y += delta_v_up;
         }
-
 
       ball->velocity += delta_v;
 
@@ -860,26 +898,6 @@ World::time_step_cpu(double delta_t)
       //
       ball->position += ball->velocity * delta_t;
 
-      /// SOLUTION
-      continue;
-
-      // Possible Collision with Platform
-      //
-
-      // Skip if collision impossible.
-      //
-      if ( !platform_collision_possible(ball->position) ) continue;
-      if ( ball->position.y >= 0 ) continue;
-
-      // Snap ball position to surface.
-      //
-      ball->position.y = 0;
-
-      // Reflect y (vertical) component of velocity, with a reduction
-      // due to energy lost in the collision.
-      //
-      if ( ball->velocity.y < 0 )
-        ball->velocity.y = - 0.9 * ball->velocity.y;
     }
 }
 
@@ -931,12 +949,21 @@ World::render_my_piece()
 {
   /// SOLUTION -- Problem 2.
 
+  // Declare arrays used to hold vertex coordinates and normals.
+  //
   pCoor *coord_buffer = NULL;
   pVect *norm_buffer = NULL;
-  int buffer_elts = 0;
+  int buffer_elts = 0;  // Number of elements in currently allocated array.
+
+  // Iterate over each strip (truss side).
+  //
   for ( SIter strip(mp.strips); strip; )
     {
       const int elts = strip->balls;
+
+      // If arrays are not large enough for this truss allocate more
+      // storage.
+      //
       if ( elts > buffer_elts )
         {
           buffer_elts = elts;
@@ -945,10 +972,22 @@ World::render_my_piece()
           norm_buffer =
             (pVect*) realloc(norm_buffer,elts*sizeof(norm_buffer[0]));
         }
+
+      // Copy ball positions into vertex coordinate array.
+      //
       for ( int i=0; i<elts; i++ )
         coord_buffer[i] = strip->balls[i]->position;
+
+
+      // Compute normals and copy them into normal array.
+      //
       for ( int i=0; i<elts-2; i+=2 )
         {
+          // Consider coordinates i to i+3. For each one construct a
+          // normal based on its two neighbors and add the normal to
+          // norm_buffer. When the loop finishes an element of
+          // norm_buffer will be the sum of two normals.
+          //
           pVect vlateral0(coord_buffer[i],coord_buffer[i+1]);
           pVect vlateral1(coord_buffer[i+2],coord_buffer[i+3]);
           pVect vleft(coord_buffer[i],coord_buffer[i+2]);
@@ -972,6 +1011,9 @@ World::render_my_piece()
               norm_buffer[i+3] += nright1;
             }
         }
+
+      // Render the strip.
+      //
       glEnableClientState(GL_VERTEX_ARRAY);
       glVertexPointer(3, GL_FLOAT, sizeof(pCoor), coord_buffer);
       glEnableClientState(GL_NORMAL_ARRAY);
