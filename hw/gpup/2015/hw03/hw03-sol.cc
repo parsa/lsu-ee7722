@@ -7,6 +7,7 @@
  /// Instructions
  //
  //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2015/hw03.pdf
+ //  Solution discussion: http://www.ece.lsu.edu/koppel/gpup/2015/hw03_sol.pdf
 
 
 /// Purpose
@@ -448,6 +449,14 @@ My_Piece_Of_The_World::render()
   // Turn on texturing.
   glEnable(GL_TEXTURE_2D);
 
+  // Specify which texture unit to use.
+  glActiveTexture(GL_TEXTURE0);
+
+  // Specify how texel and the primitive's lighted color should be
+  // combined. Use modulation, so that scuffs are affected by
+  // lighting.
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
   // Turn on the alpha test. This is not needed if blending is in use.
   if ( w.opt_tryout1 ) glEnable(GL_ALPHA_TEST);
 
@@ -461,11 +470,6 @@ My_Piece_Of_The_World::render()
   // carried by the fragment (from our texture).
   glBlendFuncSeparate
     (GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
-
-  glActiveTexture(GL_TEXTURE0);
-
-  // Use modulation, so that scuffs are affected by lighting.
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
   for ( int i=0; i<num_overlays; i++ )
     {
