@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
  /// Homework 4
  //
@@ -103,13 +103,15 @@ layout ( triangle_strip, max_vertices = 3 ) out;
 void
 gs_main_simple()
 {
-  /// Problem 1 Solution Here.
+  /// Problem 1 and 3 Solution Here.
   //
   //  Behavior:
   //    When try_cull = 0, emit all triangles.
   //    When try_cull = 1, only emit triangles facing user.
   //    When try_cull = 2, only emit triangles not facing user.
 
+  if ( tri_cull == 1 ) return;
+
   for ( int i=0; i<3; i++ )
     {
       normal_e = In[i].normal_e;
@@ -121,19 +123,6 @@ gs_main_simple()
   EndPrimitive();
 }
 
-void
-gs_peel()
-{
-  for ( int i=0; i<3; i++ )
-    {
-      normal_e = In[i].normal_e;
-      vertex_e = In[i].vertex_e;
-      color = In[i].color;
-      gl_Position = In[i].gl_Position;
-      EmitVertex();
-    }
-  EndPrimitive();
-}
 
 
 #endif

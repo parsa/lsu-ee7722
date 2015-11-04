@@ -228,8 +228,9 @@ public:
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
   bool opt_ride; // When true, move eye to ball_eye.
-  int opt_view;  // View options.
+  int opt_tri_cull;  // =0, don't cull; =1, cull back, =2, cull front.
   bool opt_tryout1, opt_tryout2;  // For ad-hoc experiments.
+  int opt_sides;  // Number of arms on thing in scene 3.
 
   bool opt_ball_texture;
 
@@ -279,6 +280,8 @@ public:
   ivec2 *links_indices;
   size_t balls_size;
   size_t links_size;
+  int last_setup; // Last scene set up.
+  bool link_change;
 
   void ball_setup_1();
   void ball_setup_2();
@@ -327,12 +330,14 @@ World::init_graphics()
   links_size = 0;
   links_indices = NULL;
   links_indices_bo = 0;
+  link_change = true;
 
   opt_platform_texture = true;
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_ball_texture = false;
   opt_tryout1 = opt_tryout2 = false;
+  opt_sides = 8;
 
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
@@ -484,6 +489,13 @@ World::render_objects(Render_Option option)
             sp_phong->use();
           else if ( opt_shader == SO_Fixed )
             sp_fixed->use();
+
+          if ( opt_shader != SO_Fixed )
+            {
+              glUniform1i(2, opt_tri_cull);
+              glUniform2i(3, opt_tryout1, opt_tryout2);
+            }
+
           for ( BIter ball(balls); ball; )
             {
               if ( ball->contact )
@@ -512,7 +524,6 @@ World::render_objects(Render_Option option)
         {
           sp_instances->use();
 
-          // Lazy, lazy.
           if ( balls_pos_rad_bo == 0 )
             {
               glGenBuffers(1,&balls_pos_rad_bo);
@@ -556,11 +567,12 @@ World::render_objects(Render_Option option)
               pos_rad.w = ball->radius;
               balls_pos_rad[ball->idx] = pos_rad;
             }
-          for ( LIter link(links); link; )
-            {
-              links_indices[link].x = link->ball1->idx;
-              links_indices[link].y = link->ball2->idx;
-            }
+          if ( link_change )
+            for ( LIter link(links); link; )
+              {
+                links_indices[link].x = link->ball1->idx;
+                links_indices[link].y = link->ball2->idx;
+              }
 
           GE();
           glBindBuffer(GL_SHADER_STORAGE_BUFFER,balls_pos_rad_bo);
@@ -570,7 +582,7 @@ World::render_objects(Render_Option option)
              balls.size() * sizeof(balls_pos_rad[0]),
              balls_pos_rad,
              GL_DYNAMIC_DRAW); // Hint about who, when, how accessed.
-          const bool link_change = true;
+
           if ( link_change )
             {
               glBindBuffer(GL_ARRAY_BUFFER,links_indices_bo);
@@ -593,6 +605,7 @@ World::render_objects(Render_Option option)
             }
           GE();
 
+          glUniform1i(2, opt_tri_cull);
           glUniform2i(3, opt_tryout1, opt_tryout2);
 
           glBindBufferBase(GL_SHADER_STORAGE_BUFFER,1,balls_pos_rad_bo);
@@ -612,6 +625,7 @@ World::render_objects(Render_Option option)
 
           /// Homework 4 Problem 2 Solution Here (and other places).
           sp_links->use();
+          link_change = false;
 
           glBindBuffer(GL_ARRAY_BUFFER,links_indices_bo);
           glVertexPointer(2,GL_INT,0,0);
@@ -755,6 +769,19 @@ World::render()
 #endif
      );
 
+  const int cyl_sides = 20;
+  const int cyl_vtx = cyl_sides * 2 + 2;
+  const int cyl_vtx_tot = cyl_vtx * links.size();
+  const int ball_vtx_tot = sphere.points_bo.elements * balls.size();
+  const int vtx_total = cyl_vtx_tot + ball_vtx_tot;
+
+  ogl_helper.fbprintf
+    ("Balls: %3d   Links: %3d  Vtx/Ball: %3d  Vtx/Link: %2d  Total: %d\n",
+     balls.size(), links.size(),
+     sphere.points_bo.elements,
+     cyl_vtx,
+     vtx_total);
+
   ogl_helper.fbprintf
     ("Time Step: %8d  World Time: %11.6f  %s\n",
      time_step_count, world_time,
@@ -770,6 +797,7 @@ World::render()
 
   Ball& ball = *balls[0];
 
+  if ( 0 )
   ogl_helper.fbprintf
     ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      ball.position.x,ball.position.y,ball.position.z,
@@ -785,12 +813,16 @@ World::render()
      opt_tryout2 ? BLINK("ON","  ") : "OFF");
 
   ogl_helper.fbprintf
-    ("Shadows: %s ('o' to change)\n",
+    ("Cull %d-%s ('c' to change)  "
+     "Shadows: %s ('o' to change)\n",
+     opt_tri_cull,
+     opt_tri_cull == 0 ? "OFF  " : opt_tri_cull == 1 ? "BACK " :
+     opt_tri_cull == 2 ? "FRONT" : "???",
      opt_shadows ? "ON" : "OFF" );
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
-                      cvar->name,cvar->var[0]);
+                      cvar->name,cvar->get_val());
 
   const int half_elements = platform_tile_coords.elements >> 3 << 2;
 
@@ -998,6 +1030,7 @@ World::cb_keyboard()
   pVect user_rot_axis(0,0,0);
   const bool shift = ogl_helper.keyboard_shift;
   const float move_amt = shift ? 2.0 : 0.4;
+  const int opt_sides_before = opt_sides;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -1017,6 +1050,9 @@ World::cb_keyboard()
   case '5': ball_setup_5(); break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
+  case 'c': case 'C':
+    opt_tri_cull++; if ( opt_tri_cull == 3 ) opt_tri_cull = 0;
+    break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H': opt_head_lock = !opt_head_lock; break;
@@ -1041,6 +1077,9 @@ World::cb_keyboard()
   case '+':case '=': variable_control.adjust_higher(); break;
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
+
+  if ( opt_sides_before != opt_sides && last_setup == 3 )
+    ball_setup_3();
 
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
 
@@ -1095,6 +1134,9 @@ World::init()
 
   chain_length = 14;
 
+  opt_sides = 8;
+  variable_control.insert(opt_sides,"Scene 3 Object Number of Sides",1,3);
+
   opt_time_step_duration = 0.0003;
   variable_control.insert(opt_time_step_duration,"Time Step Duration");
 
@@ -1119,8 +1161,9 @@ World::init()
   opt_shader = SO_Fixed;
 
   ball_eye = NULL;
-  opt_view = 3;
   opt_ride = false;
+
+  opt_tri_cull = 0;
 
   init_graphics();
 
@@ -1215,6 +1258,7 @@ void
 World::objects_erase()
 {
   ball_eye = NULL;
+  link_change = true;
   balls.erase();
   links.erase();
 }
@@ -1230,6 +1274,7 @@ void
 World::ball_setup_1()
 {
   // Arrange and size balls to form a pendulum.
+  last_setup = 1;
 
   pCoor first_pos(13.4,17.8,-9.2);
   pVect delta_pos = pVect(distance_relaxed,0,0);
@@ -1375,6 +1420,8 @@ World::make_truss(Truss_Info *truss_info)
 void
 World::ball_setup_2()
 {
+  last_setup = 2;
+
   pCoor first_pos(13.4,17.8,-9.2);
   const float spacing = distance_relaxed;
   pVect delta_pos = pVect(spacing*0.05,-spacing,0);
@@ -1441,6 +1488,8 @@ World::ball_setup_2()
 void
 World::ball_setup_3()
 {
+  last_setup = 3;
+
   pCoor first_pos(13.4,17.8,-9.2);
   const int factor = 2;
   const float spacing = distance_relaxed / factor;
@@ -1460,7 +1509,7 @@ World::ball_setup_3()
   truss_info.num_units = length;
   truss_info.unit_length = delta_pos;
 
-  const int sides = 8;
+  const int sides = opt_sides;
 
   for ( int j=0; j<sides; j++ )
     {
@@ -1553,11 +1602,13 @@ World::ball_setup_3()
 void
 World::ball_setup_4()
 {
+  //  last_setup = 4;
 }
 
 void
 World::ball_setup_5()
 {
+  //  last_setup = 5;
 }
 
 
@@ -1780,11 +1831,14 @@ World::frame_callback()
         wall_delta_t;
 
       const double world_time_target = world_time + duration;
+      const double wall_time_limit = time_now + 0.05;
 
       while ( world_time < world_time_target )
         {
           time_step_cpu(opt_time_step_duration);
           world_time += opt_time_step_duration;
+          const double time_right_now = time_wall_fp();
+          if ( time_right_now > wall_time_limit ) break;
         }
 
       // Reset these, just in case they were set.
@@ -1821,7 +1875,7 @@ main(int argv, char **argc)
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
 
-  glEnable(GL_DEBUG_OUTPUT);
+  glDisable(GL_DEBUG_OUTPUT);
   glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
                         GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
 
