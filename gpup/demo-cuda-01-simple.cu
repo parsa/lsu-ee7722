@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
@@ -16,11 +16,31 @@
  //
  //  Intended for non-graphical computation, widely used for
  //  scientific computation.
+ //
+
+ /// CUDA Components.
+ //
+ //  - CUDA C
+ //    Language used for writing code that runs on the GPU.
+ //
+ //  - CUDA Runtime API
+ //    Library used for managing the execution of code on the GPU.
+ //
+ //  - CUDA Compiler Toolchain
+ //    The "compiler" nvcc, and related tools.
+ //
+ //  - CUDA Compatible GPU
+ //    Probably just NVIDIA GPUs.
+
 
  /// CUDA C
  //
- //  Language used for programming on GPU.
- //  In this file see routine: cuda_thread_start()
+ //  Language used for writing code that runs on the GPU.
+ //
+ //  A file can contain both CUDA C and C for the host compiler ...
+ //  ... that is the case for this file.
+ //
+ //  In this file CUDA C is in routine: cuda_thread_start()
  //
  //  Syntactically similar to C++.
  //
@@ -30,9 +50,17 @@
  //
  //    Specialized address spaces.
 
+
  /// CUDA C Runtime API
  //
  //  Library calls used on CPU side to manage execution on GPU.
+ //
+ //  Activities Performed with API
+ //
+ //    o Send data from CPU to GPU.
+ //    o Start execution of GPU code.
+ //    o Send data from GPU to CPU.
+
 
  /// CUDA Address Spaces
  //
