@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
@@ -135,7 +135,7 @@ struct App
   int array_size;
   Vertex *v_in;
   float *m_out;
-  Vertex *d_v_in;
+  float4 *d_v_in;
   float *d_m_out;
 };
 
@@ -164,10 +164,10 @@ cuda_thread_start_simple()
 
   for ( int h=start; h<stop; h++ )
     {
-      Vertex p = d_app.d_v_in[h];
+      float4 p = d_app.d_v_in[h];
       float sos = 0;
 
-      for ( int i=0; i<4; i++ ) sos += p.a[i] * p.a[i];
+      sos = p.x * p.x + p.y * p.y + p.z + p.z + p.w * p.w;
 
       d_app.d_m_out[h] = sqrtf( sos );
     }
@@ -182,10 +182,9 @@ cuda_thread_start_efficient()
 
   for ( int h=tid; h<d_app.array_size; h += d_app.num_threads )
     {
-      Vertex p = d_app.d_v_in[h];
-      float sos = 0;
+      float4 p = d_app.d_v_in[h];
 
-      for ( int i=0; i<4; i++ ) sos += p.a[i] * p.a[i];
+      float sos = p.x * p.x + p.y * p.y + p.z + p.z + p.w * p.w;
 
       d_app.d_m_out[h] = sqrtf( sos );
     }
@@ -335,6 +334,10 @@ main(int argc, char **argv)
 
   if ( argc < 2 ) cuda_init();
 
+  const int threads_per_block = 256;
+  const int blocks_per_grid =
+    ( app.num_threads + threads_per_block-1 ) / threads_per_block;
+
   // Allocate storage for CPU copy of data.
   //
   app.v_in = new Vertex[app.array_size];
@@ -345,8 +348,8 @@ main(int argc, char **argv)
   CE( cudaMalloc( &app.d_v_in,  array_size_bytes     ) );
   CE( cudaMalloc( &app.d_m_out, out_array_size_bytes ) );
 
-  printf("Preparing for %d threads %d elements using %s kernel.\n",
-         app.num_threads, app.array_size,
+  printf("Launching %d blocks * %d threads for %d elts using %s kernel.\n",
+         blocks_per_grid, threads_per_block, app.array_size,
          simple ? "simple" : "efficient" );
 
   // Initialize input array.
@@ -366,9 +369,6 @@ main(int argc, char **argv)
   CE( cudaMemcpyToSymbol
       ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
-  const int threads_per_block = 256;
-  const int blocks_per_grid =
-    ( app.num_threads + threads_per_block-1 ) / threads_per_block;
 
 
   /// Launch Kernel
