@@ -146,7 +146,7 @@ public:
         if( size == 0 ) init_space(64);
         else
           {
-            size = size <<= 1;
+            size <<= 1;
             s = (char*)realloc(s,size+1);
           }
       }
