@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
 
  /// Shared memory CUDA Example, without LSU ECE helper classes.
@@ -9,6 +9,37 @@
 
 #if 0
 /// Background
+
+ /// Shared Memory
+ //
+ //  An address space that's shared amongst threads in a block.
+ //    Members of a block can load values that other block members wrote.
+ //
+ //  The maximum amount of shared memory is 48 kiB per block in Kepler
+ //  and Maxwell devices.
+ //
+ //  A variable is assigned to shared memory if it is declared using
+ //  the __shared__ qualifier.
+ //
+ //  :Example: Declaration examples.
+
+__shared__ int amount;
+__shared__ float4 forces[12];
+
+ /// Shared Memory Uses
+ //
+ //  Communication between threads.
+ //  Caching of global memory. 
+ //    (Copying to a place where it can be accessed quickly.)
+
+ /// Other Stuff
+ //
+ //  Need to coordinate readers and writers.
+
+
+ __syncthreads();
+
+ atomicAdd(POINTER, AMT);
 
 #endif
 
