@@ -76,6 +76,58 @@ time_fp()
   return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
 }
 
+#if 0
+
+__global__ void
+cuda_thread_super_simple(int *output_data, int *input_data)
+{
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int my_element = input_data[tid];
+
+  /// Reasonable use of shared memory.
+  //
+  //  Make thread 12's element available to all threads in the block.
+
+  __shared__ int a;
+
+  if ( threadIdx.x == 12 ) a = my_element;
+
+  __syncthreads();
+
+  output_data[tid] = my_element + a;
+
+
+  /// Bad use of shared memory.
+  //
+  //  Everyone writes trouble.
+
+  __shared__ int trouble;
+
+  trouble = my_element;
+
+  __syncthreads();
+
+  // All threads read the same value, whoever got there last.
+
+  output_data[tid] = my_element + trouble;
+
+
+  /// Reasonable use of shared memory.
+  //
+  //  Share your array element with our neighbor.
+
+  __shared__ int our_data[1024];
+
+  our_data[threadIdx.x] = my_element;
+
+  __syncthreads();
+
+  output_data[tid] = my_element + our_data[threadIdx ^ 1];
+
+}
+#endif
+
+
 struct Vector
 {
   float a[4];
@@ -102,7 +154,6 @@ __constant__ App d_app;
 ///
 /// GPU Code (Kernel)
 ///
-
 
 __global__ void
 cuda_thread_start()
