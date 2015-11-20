@@ -32,6 +32,35 @@ __shared__ float4 forces[12];
  //  Caching of global memory. 
  //    (Copying to a place where it can be accessed quickly.)
 
+
+  /// Atomic Operations
+  //
+  //  :Def: Atomic Operation
+  //        An operation that appears to be either ..
+  //        .. completely finished or ..
+  //        .. not yet started.
+  //        An atomic operation NEVER appears to be partially done.
+
+  //  :Example:
+  //
+  //  A the following "+=" operation is NOT atomic.
+  //
+  __shared__ int sum;
+
+  if ( threadIdx.x == 0 )  sum = 0;
+  if ( threadIdx.x == 40 ) sum += 40;
+  if ( threadIdx.x == 70 ) sum += 70;
+  //
+  //  An we need an atomic operation to perform the additions above.
+
+  /// CUDA C Atomic Operations
+  //
+  //  Reference: CUDA C Programming Guide B.12
+  //
+  /// oldval = atomicAdd( valAddress, amount )
+  //  Atomically add amount to *valAddress, return old value.
+
+
  /// Other Stuff
  //
  //  Need to coordinate readers and writers.
@@ -123,6 +152,7 @@ cuda_thread_super_simple(int *output_data, int *input_data)
   __syncthreads();
 
   output_data[tid] = my_element + our_data[threadIdx ^ 1];
+
 
 }
 #endif
