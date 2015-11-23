@@ -50,7 +50,11 @@ MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 CUFLAGS = -g -Xcompiler -Wall -Xcompiler -Wno-unused-function \
   $(INCLUDE) $(MAGICKCXX) $(OPT_FLAGS) \
  -Xcompiler -Wno-parentheses \
- --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_20
+ -use_fast_math --gpu-architecture=sm_20
+
+PTXASFLAGS = -Xptxas --warn-on-local-memory-usage \
+ -Xptxas --warn-on-spills  \
+  --verbose 
 
 LINKFLAGS =
 
@@ -93,8 +97,8 @@ endif
 
 %.o: %.cu Makefile
 	$(CUXX) $(CUFLAGS) -c $*.cu
-	$(CUXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
+	$(CUXX) $(CUFLAGS) --source-in-ptx -ptx $*.cu -o $*.ptx
+	$(CUXX) $(CUFLAGS) $(PTXASFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) -sass $*.cubin > $*.sass
 
 
