@@ -9,7 +9,6 @@
 
 // Image: http://www.ece.lsu.edu/koppel/gpup/code/gpup/balls.png
 
-
 /// What Code Does
 
 //  Simulates balls bouncing on a half-cylinder platform with
@@ -36,8 +35,53 @@
 
 //    Two-color specular lighting used for balls.
 
+#if 0
+/// Stencil Background
+//
+//  ogl 4.5 17.3.3
+
+ /// Frame Buffer Layers
+//
+//   Color
+//   Depth
+//   Stencil
+//     Integer
+
+ /// Typical Stencil Use
+//
+//   Write stencil buffer in one rendering pass. (Usually w/o touching fb.)
+//   Write fb in subsequent pass, but with using stencil test.
+
+ /// Operations:
+//
+//  Setup: (Not OpenGL)
+//  Clear
+//   Two steps: Set value, clear buffer.
+//  Specify the test.
+//  Specify how stencil buffer updated.
+
+ /// Specify the Test
+//
+//   glStencilFunc
+//    ref rel val
+
+//   Simple case: stencil is 0 or 1. Test passes if s = 1.
+
+   glStencilFunc(GL_EQUAL, 1,  1);
+   //            FUNC      REF MASK
 
 
+ /// Specify how Stencil Buffer Updated
+//
+
+glStencilOp(SFAIL,DFAIL,DPASS);
+
+ // keep, zero, replace, incr, decr, invert, incr_wrap, decr_wrap.
+
+
+
+
+#endif
 
 ///  Keyboard Commands
  //
