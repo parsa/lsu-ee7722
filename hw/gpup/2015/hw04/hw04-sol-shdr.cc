@@ -265,12 +265,12 @@ gs_main_simple()
   //
   vec3 gnorm_e = cross
     ( In[1].vertex_e.xyz - In[0].vertex_e.xyz,
-      In[2].vertex_e.xyz - In[0].vertex_e.xyz );
+      In[2].vertex_e.xyz - In[1].vertex_e.xyz );
 
   // Compute the vector to the user. This is easy in eye space because
   // the user is at the origin.
   //
-  vec3 to_user = In[0].vertex_e.xyz;
+  vec3 to_user = -In[0].vertex_e.xyz;
 
   // Determine if the triangle is facing the user.
   float visibility = dot( gnorm_e, to_user );
