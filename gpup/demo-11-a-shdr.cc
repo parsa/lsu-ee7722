@@ -1,9 +1,9 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2015), GPU Programming
 //
 
  /// Compute Shader -- Simple Example
 //
-//   This file contains code that will run on the GPU as a compute shader.   
+//   This file contains code that will run on the GPU as a compute shader.
 
 
 // Specify version of compute shader language being used.
