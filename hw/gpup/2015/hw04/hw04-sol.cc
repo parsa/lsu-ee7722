@@ -558,7 +558,6 @@ World::render_objects(Render_Option option)
               delete balls_color;
               balls_pos_rad = new pCoor[balls.size()];
 
-              /// SOLUTION -- Problem 2
               balls_color = new pColor[balls.size()];
 
               /// SOLUTION -- Problem 3
@@ -576,6 +575,7 @@ World::render_objects(Render_Option option)
               links_indices = new ivec2[links_size];
 
               /// SOLUTION -- Problem 2
+              delete links_color;
               links_color = new pColor[links_size];
             }
 
