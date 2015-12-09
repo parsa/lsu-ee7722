@@ -65,7 +65,7 @@ vs_main()
 
   /// SOLUTION -- Problem 3
   //
-  //  Set instance ID to -1, indicating that this is not a sphere.
+  //  Set instance ID to -1, indicating that this may not be a sphere.
   inst_id = -1;
 }
 
@@ -179,14 +179,6 @@ peeled(vec3 gnorm_e)
   vec3 axis = p_1 - p_0;
   vec3 axis_n = normalize(axis);
 
-  // Find the velocity component that's not along the axis, vel_rad.
-  // It is vel_rad that will cause the triangle to swing along axis.
-  //
-  float vel_axis = dot(vel_e,axis_n);
-  vec3 vel_rad = vel_e - vel_axis * axis_n;
-  float vel_rad_mag = length(vel_rad);
-  vec3 vel_rad_n = vel_rad/vel_rad_mag;
-
   // If axis is fixed and the triangle can't change its shape,
   // the free vertex will move in a circle. Find two vectors
   // orthogonal to axis, v_cf and v_up, that can be used to find
@@ -198,6 +190,14 @@ peeled(vec3 gnorm_e)
   float len_cf_sq = dot(v_cf,v_cf);
   float len_cf = sqrt(len_cf_sq);
   vec3 v_up = cross(axis_n,v_cf);
+
+  // Find the velocity component that's not along the axis, vel_rad.
+  // It is vel_rad that will cause the triangle to swing along axis.
+  //
+  float vel_axis = dot(vel_e,axis_n);
+  vec3 vel_rad = vel_e - vel_axis * axis_n;
+  float vel_rad_mag = length(vel_rad);
+  vec3 vel_rad_n = vel_rad/vel_rad_mag;
 
   // Compute the position of the free vertex that aligns the triangle
   // with the direction of motion (as though it were pushed by the
