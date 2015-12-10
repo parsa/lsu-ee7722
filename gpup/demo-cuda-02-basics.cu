@@ -165,9 +165,8 @@ cuda_thread_start_simple()
   for ( int h=start; h<stop; h++ )
     {
       float4 p = d_app.d_v_in[h];
-      float sos = 0;
 
-      sos = p.x * p.x + p.y * p.y + p.z + p.z + p.w * p.w;
+      float sos = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
 
       d_app.d_m_out[h] = sqrtf( sos );
     }
