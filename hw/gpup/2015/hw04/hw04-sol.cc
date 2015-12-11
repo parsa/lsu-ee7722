@@ -346,6 +346,9 @@ World::init_graphics()
   links_indices_bo = 0;
   link_change = true;
 
+  /// SOLUTION -- Problem 2
+  links_color = NULL;
+
   opt_platform_texture = true;
   opt_head_lock = false;
   opt_tail_lock = false;
