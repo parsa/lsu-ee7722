@@ -4,7 +4,6 @@
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2016/hw01.pdf
 
-#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,10 +22,6 @@
 //
 typedef float Elt_Type;
 
-// Number of iterations used in scheduler_bm.
-//
-const int iters = 2;
-
 struct App
 {
   int array_size;
@@ -37,6 +32,7 @@ struct App
   Elt_Type *h_in, *h_out, *h_out_check;
   Elt_Type *h_out_sc_check;
 
+  /// Problem 3 -- This might come in handy.
   int mask;
 
   // GPU pointers to the input and output arrays.
@@ -54,21 +50,38 @@ __constant__ App d_app;
 extern "C" __global__ void
 lane_aligned()
 {
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  /// Problem 1 -- Put solution in this routine.
 
   const int num_threads = blockDim.x * gridDim.x;
 
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int lane = threadIdx.x & 0x1f;
+
   const int start = tid;
   const int stop = d_app.array_size;
-  const int inc = num_threads;
 
-  const int lane = threadIdx.x & 0x1f;
+  // Encode lane number so that it can be written to output array
+  // elements. The CPU code will use this to check whether any
+  // partial warps executed. Please don't change the line below,
+  // that would be lying to the CPU code.
+  //
   const Elt_Type lane_label = 1e-5 * lane;
 
-  for ( int i = start; i < stop; i += inc )
+  for ( int i = start; i < stop; i += num_threads )
     d_app.d_out[i] = d_app.d_in[i] + lane_label;
 
 }
+
+
+
+ /// Problem 3 -- Put solution below, and in main routine.
+
+// Number of iterations used in scheduler_bm.
+//
+const int iters = 2;
+//
+// It is important that this value is a compile-time constant.
+
 
 extern "C" __global__ void
 scheduler_bm()
@@ -85,13 +98,10 @@ scheduler_bm()
       Elt_Type accum = d_app.d_in[i];
 
       for ( int j=0; j<iters; j++ ) accum = __sinf(accum);
+
       d_app.d_out[i] = accum;
     }
 }
-
-
-typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
-
 
 
 GPU_Info
@@ -139,7 +149,7 @@ main(int argc, char **argv)
 
   const int num_mp = info.cuda_prop.multiProcessorCount;
 
-  // Examine argument 1, block count, default is number of MPs.
+  // Examine argument 1, block count. Default is number of MPs.
   //
   const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
   const int num_blocks =
@@ -161,19 +171,17 @@ main(int argc, char **argv)
 
   if ( num_threads <= 0 || app.array_size <= 0 )
     {
-      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK] "
+      printf("Usage: %s [ NUM_CUDA_BLOCKS | -BLOCKS_PER_MP ] [THD_PER_BLOCK] "
              "[DATA_SIZE_MiB]\n",
              argv[0]);
       exit(1);
     }
 
+  /// PROBLEM 3 -- This may come in handy.
   app.mask = 0x0;
 
   const int in_size_bytes = app.array_size * sizeof( app.h_in[0] );
   const int out_size_bytes = app.array_size * sizeof( app.h_out[0] );
-
-  const int overrun_size_elts = thd_per_block_goal;
-  const int overrun_size_bytes = overrun_size_elts * sizeof( app.h_out[0] );
 
   // Allocate storage for CPU copy of data.
   //
@@ -184,10 +192,10 @@ main(int argc, char **argv)
 
   // Allocate storage for GPU copy of data.
   //
-  CE( cudaMalloc( &app.d_in,  in_size_bytes + overrun_size_bytes ) );
-  CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
+  CE( cudaMalloc( &app.d_in,  in_size_bytes ) );
+  CE( cudaMalloc( &app.d_out, out_size_bytes ) );
 
-  // Initialize input array and correct answer.
+  // Initialize input array and arrays holding correct answers.
   //
   for ( int i=0; i<app.array_size; i++ )
     {
@@ -196,7 +204,12 @@ main(int argc, char **argv)
       app.h_out_check[i] = app.h_in[i] + 0.00001 * ( i & 0x1f );
       Elt_Type accum = app.h_in[i];
       for ( int j=0; j<iters; j++ ) accum = sin(accum);
-      app.h_out_sc_check[i] = i < 100000 ? accum : -1;
+
+      // The NVIDIA hardware sin is not accurate for larger values,
+      // so use a -2 to indicate that GPU output should not be checked
+      // at this element.
+      //
+      app.h_out_sc_check[i] = i < 100000 ? accum : -2;
     }
 
   // Amount of data in and out of GPU chip.
@@ -222,8 +235,8 @@ main(int argc, char **argv)
         ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
     // Launch kernel multiple times and keep track of the best time.
-    printf("Launching with %d blocks of up to %d threads. \n",
-           num_blocks, thd_per_block_goal);
+    printf("\nLaunching with %d blocks of up to %d threads for %d elements.\n",
+           num_blocks, thd_per_block_goal, app.array_size);
 
     for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
       {
@@ -244,7 +257,7 @@ main(int argc, char **argv)
 
             // Zero the output array.
             //
-            CE(cudaMemset(app.d_out,0,out_size_bytes));
+            CE( cudaMemset(app.d_out,0,out_size_bytes) );
 
             // Measure execution time starting "now", which is after data
             // set to GPU.
@@ -253,8 +266,12 @@ main(int argc, char **argv)
 
             // Launch Kernel
             //
-            KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
-              (app.d_out,app.d_in);
+            info.ki[kernel].func_ptr <<< num_blocks, thd_per_block >>>();
+            //
+            // Confused?
+            //
+            //  info.ki[kernel].func_ptr holds a pointer to the kernel
+            //    routine.
 
             // Stop measuring execution time now, which is before is data
             // returned from GPU.
@@ -277,13 +294,17 @@ main(int argc, char **argv)
                   1e9 * thpt_data_gbps / info.chip_bw_Bps;
                 const int max_st_len = 52;  // Maximum stars length.
 
+                // Number of warps, rounded up.
+                //
+                const int wps = ( thd_per_block + 31 ) >> 5;
+
+                /// Problem 2 Solution Goes Around Here
+
                 // The maximum number of active blocks per MP for this
                 // kernel when launched with a block size of thd_per_block.
                 //
                 const int max_bl_per_mp =
                   info.get_max_active_blocks_per_mp(kernel,thd_per_block);
-
-                const int wps = ( thd_per_block + 31 ) >> 5;
 
                 /// Problem 2: Assign appropriate value.
                 const int act_wps = 0;
@@ -321,9 +342,9 @@ main(int argc, char **argv)
             const double tolerance = kernel == 0 ? 1e-5 : 1e-2;
             for ( int i=0; i<app.array_size; i++ )
               {
-                if ( out_check[i] < 0 ) continue; // Don't check.
+                if ( out_check[i] == -2 ) continue; // Don't check.
 
-                /// Problem 3:
+                /// Problem 3 Solution Goes Here and other places.
                 //
                 // Skip correctness check if thread was not supposed
                 // to compute.
