@@ -3,7 +3,13 @@ INCLUDE =  -I../../include
 LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
-CUDUMP = $(CUDAPATH)/bin/cuobjdump
+
+CUDUMP = $(CUDAPATH)/bin/nvdisasm
+CUDUMPFLAGS = --print-code 
+# --print-line-info 
+# --print-instruction-encoding
+# --print-life-ranges --life-range-mode wide
+
 
 # -Xnvopencc -LIST:source=on
 
@@ -36,7 +42,7 @@ all: stream stream-full stream-2
 	$(CXX) $(CFLAGS) -c $*.cu
 	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx
 	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
-	$(CUDUMP) -sass $*.cubin > $*.sass
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 
 stream-full: stream-full.cu
