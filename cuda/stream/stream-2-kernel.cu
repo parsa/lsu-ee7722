@@ -11,10 +11,10 @@ __constant__ int array_size;
 __constant__ Vector2* a;
 __constant__ float* b;
 
-__global__ void dots();
-__global__ void dots_iterate1();
-__global__ void dots_iterate2();
-__global__ void dots_iterate3();
+extern "C" __global__ void dots();
+extern "C" __global__ void dots_iterate1();
+extern "C" __global__ void dots_iterate2();
+extern "C" __global__ void dots_iterate3();
 
 // This routine executes on the CPU.
 //
@@ -28,7 +28,7 @@ dots_launch(dim3 dg, dim3 db)
 
 // This routine executes on the GPU.
 //
-__global__ void
+extern "C" __global__ void
 dots()
 {
   // Variable threadIdx, blockIdx, and blockDim pre-set.
@@ -68,7 +68,7 @@ dots_iterate_launch(dim3 dg, dim3 db, int kernel)
 
 // This routine also executes on the GPU.
 //
-__global__ void
+extern "C" __global__ void
 dots_iterate1()
 {
   // This is the preferred way of iterating over array elements
@@ -81,7 +81,7 @@ dots_iterate1()
     b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
 }
 
-__global__ void
+extern "C" __global__ void
 dots_iterate2()
 {
   // This method is less efficient.
@@ -99,7 +99,7 @@ dots_iterate2()
 
 // This routine also executes on the GPU.
 //
-__global__ void
+extern "C" __global__ void
 dots_iterate3()
 {
 #define chunk 32

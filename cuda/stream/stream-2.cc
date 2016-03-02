@@ -261,8 +261,6 @@ public:
         //
         b.from_cuda();
 
-        const double wall_all = time_wall_fp() - wall_all_start;
-
         float cuda_time_ms;
         CE(cudaEventElapsedTime(&cuda_time_ms,cuda_start_ce,cuda_stop_ce));
 
