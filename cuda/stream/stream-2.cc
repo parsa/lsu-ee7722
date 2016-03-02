@@ -201,7 +201,7 @@ public:
     int bl_per_mp[] = {1,2,4,8};
     int cnt = sizeof(bl_per_mp) / sizeof(bl_per_mp[0]);
 
-    for ( int k=0; k<2; k++ )
+    for ( int k=0; k<3; k++ )
     for ( int i=0; i<cnt; i++ )
       {
         run(16,bl_per_mp[i]);

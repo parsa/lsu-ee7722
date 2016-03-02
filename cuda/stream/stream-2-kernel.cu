@@ -14,6 +14,7 @@ __constant__ float* b;
 __global__ void dots();
 __global__ void dots_iterate1();
 __global__ void dots_iterate2();
+__global__ void dots_iterate3();
 
 // This routine executes on the CPU.
 //
@@ -58,10 +59,11 @@ dots_iterate_launch(dim3 dg, dim3 db, int kernel)
 {
   // Launch the kernel, using the provided configuration (block size, etc).
   //
-  if ( kernel == 0 )
-    dots_iterate1<<<dg,db>>>();
-  else
-    dots_iterate2<<<dg,db>>>();
+  switch ( kernel ) {
+  case 0: dots_iterate1<<<dg,db>>>(); break;
+  case 1: dots_iterate2<<<dg,db>>>(); break;
+  case 2: dots_iterate3<<<dg,db>>>(); break;
+  }
 }
 
 // This routine also executes on the GPU.
@@ -94,6 +96,26 @@ dots_iterate2()
 
 }
 
+
+// This routine also executes on the GPU.
+//
+__global__ void
+dots_iterate3()
+{
+#define chunk 32
+#define degree 4
+
+  const int thread_count = blockDim.x * gridDim.x;
+  int idx_start = threadIdx.x + degree * blockIdx.x * blockDim.x;
+
+  for ( int idx = idx_start; idx < array_size; idx += degree * thread_count )
+    {
+      for ( int i=0; i<degree; i++ )
+        b[idx+i*chunk] = v0 + v1 * a[idx+i*chunk].x + v2 * a[idx+i*chunk].y;
+    }
+}
+
+
 //
 // Code for collecting information about kernels (routines above).
 //
@@ -114,6 +136,7 @@ kernels_get_attr(struct cudaFuncAttributes *attr, char **names, int max_count)
   GETATTR(dots);
   GETATTR(dots_iterate1);
   GETATTR(dots_iterate2);
+  GETATTR(dots_iterate3);
   *names = NULL;
   return er;
 #undef GETATTR
