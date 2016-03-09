@@ -356,10 +356,11 @@ main(int argc, char **argv)
                 if ( wp_cnt == wp_start )
                   printf("Kernel %s:\n", info.ki[kernel].name);
 
-                printf("%2d wp  %2d acwp  %6.0f µs  %5.0f GB/s %s\n",
+                printf("%2d wp  %2d acwp  %3.0f µs %#4x  %5.0f GB/s %s\n",
                        (thd_per_block + 31 ) >> 5,
                        act_wps,
                        this_elapsed_time_s * 1e6,
+                       app.mask,
                        thpt_data_gbps,
                        &stars[stars_len-int(bw_frac*max_st_len)]
                        );
