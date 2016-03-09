@@ -24,7 +24,7 @@ CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)
 LIBRARIES = -lrt -lpthread 
 
-default: hw01
+default: hw01 hw01sol
 
 
 hw01.o: util.h
