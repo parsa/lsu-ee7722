@@ -47,14 +47,6 @@ struct App
   //
   Elt_Type *d_in, *d_out;
 
-  // GPU pointers to the input and output arrays, cast to float4s.
-  //
-  float4 *d_in_f4, *d_out_f4;
-  //
-  // The compiler can emit more efficient load and store instructions
-  // to float4 elements than to four consecutive floats.
-  //
-  // Note: These "_f4" pointers only work when Elt_Type is a float.
 };
 
 // In host address space.
@@ -137,7 +129,7 @@ mxv_g_only_s(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 
 
 extern "C" __global__ void
-mxv_g_only_prob2
+mxv_g_only_interleave
 (Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 {
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -176,7 +168,7 @@ print_gpu_and_kernel_info()
   info.GET_INFO(mxv_g_only);
   info.GET_INFO(mxv_g_only_g);
   info.GET_INFO(mxv_g_only_s);
-  info.GET_INFO(mxv_g_only_prob2);
+  info.GET_INFO(mxv_g_only_interleave);
 
   // Print information about kernel.
   //
@@ -251,9 +243,7 @@ main(int argc, char **argv)
   // Allocate storage for GPU copy of data.
   //
   CE( cudaMalloc( &app.d_in,  in_size_bytes + overrun_size_bytes ) );
-  app.d_in_f4 = (float4*) app.d_in;
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
-  app.d_out_f4 = (float4*) app.d_out;
 
   printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
          N, M, app.num_vecs, num_blocks, thd_per_block_goal);
