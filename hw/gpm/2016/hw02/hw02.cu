@@ -20,6 +20,8 @@
 #define N 16
 #define M 16
 
+#define IF 4
+
 
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
@@ -85,6 +87,8 @@ mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 extern "C" __global__ void
 mxv_g_only_g(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 {
+  /// Problem 1 Solution here, and other places.
+
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
 
@@ -107,6 +111,7 @@ mxv_g_only_g(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 extern "C" __global__ void
 mxv_g_only_s(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 {
+  /// Problem 2 Solution here, and other places.
 
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
@@ -132,6 +137,8 @@ extern "C" __global__ void
 mxv_g_only_interleave
 (Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 {
+  /// Problem 3 Solution here, and other places.
+
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
 
@@ -194,16 +201,18 @@ main(int argc, char **argv)
 {
   const bool debug = false;
 
-  // Get info about GPU and each kernel.
+    // Get info about GPU and each kernel.
   //
   GPU_Info info = print_gpu_and_kernel_info();
 
+  const int num_mp = info.cuda_prop.multiProcessorCount;
+
   // Examine argument 1, block count, default is number of MPs.
   //
-  const int arg1_int =
-    argc < 2 ? info.cuda_prop.multiProcessorCount : atoi(argv[1]);
+  const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
   const int num_blocks =
-           arg1_int == 0 ? info.cuda_prop.multiProcessorCount : abs(arg1_int);
+     arg1_int == 0 ? num_mp :
+     arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
 
   // Examine argument 2, number of threads per block.
   //
@@ -351,13 +360,40 @@ main(int argc, char **argv)
                 const int stars_len = 80;
                 const double comp_frac =
                   4e9 * thpt_compute_gflops / info.chip_sp_flops;
-                const int max_st_len = 52;
+                const int max_st_len = 50;
+
+                // Number of warps, rounded up.
+                //
+                const int num_wps = ( thd_per_block + 31 ) >> 5;
+
+                // The maximum number of active blocks per MP for this
+                // kernel when launched with a block size of thd_per_block.
+                //
+                const int max_bl_per_mp =
+                  info.get_max_active_blocks_per_mp(kernel,thd_per_block);
+
+                // Compute number of blocks available per MP based only on
+                // the number of blocks.  This may be larger than the
+                // number of blocks that can run.
+                //
+                const int bl_per_mp_available =
+                  0.999 + double(num_blocks) / num_mp;
+
+                // The number of active blocks is the minimum of what
+                // can fit and how many are available.
+                //
+                const int bl_per_mp =
+                  min( bl_per_mp_available, max_bl_per_mp );
+
+                // Based on the number of blocks, compute the num ber of warps.
+                //
+                const int act_wps = num_wps * bl_per_mp;
 
                 if ( wp_cnt == wp_start )
                   printf("Kernel %s:\n", info.ki[kernel].name);
 
-                printf("%2d wp  %6.0f µs  %5.0f GF  %5.0f GB/s %s\n",
-                       (thd_per_block + 31 ) >> 5,
+                printf("%2d %2d wp  %6.0f µs  %4.0f GF  %4.0f GB/s %s\n",
+                       num_wps, act_wps,
                        this_elapsed_time_s * 1e6,
                        thpt_compute_gflops, thpt_data_gbps,
                        &stars[stars_len-int(comp_frac*max_st_len)]
