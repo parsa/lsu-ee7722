@@ -3,6 +3,7 @@
  ///  Homework 1 SOLUTION - Spring 2016
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2016/hw01.pdf
+//  Solution :  http://www.ece.lsu.edu/koppel/gp/2016/hw01_sol.pdf
 
 #include <string.h>
 #include <stdio.h>
