@@ -65,6 +65,14 @@ public:
         * cuda_prop.multiProcessorCount;
     }
 
+  int get_max_active_blocks_per_mp(int knum, int block_size)
+    {
+      int num_blocks = -1;
+      CE( cudaOccupancyMaxActiveBlocksPerMultiprocessor
+          (&num_blocks, ki[knum].func_ptr, block_size, 0) );
+      return num_blocks;
+    }
+
   double chip_bw_Bps, chip_sp_flops;
   int cc_per_mp;
   static const int max_kernels = 10;
