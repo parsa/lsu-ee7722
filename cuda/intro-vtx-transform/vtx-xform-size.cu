@@ -253,12 +253,10 @@ mxv_sh()
           // elements from BLOCK_SIZE / CS vectors.
           //
           __syncthreads();
-          for ( int g=0; g<CS; g++ )
-            {
-              const int idx = g * BLOCK_SIZE / CS + thd_x_idx_st;
-              vxfer[idx][thd_x_offset] =
-                d_app.d_in[ hb * N + idx * N + c + thd_x_offset ];
-            }
+
+          for ( int v=thd_x_idx_st;  v<BLOCK_SIZE; v += BLOCK_SIZE/CS )
+            vxfer[v][thd_x_offset] =
+              d_app.d_in[ hb * N + v * N + c + thd_x_offset ];
 
           // Copy the portion of the input vector just read to local
           // memory (the vin array). We expect that the compiler will
@@ -287,19 +285,19 @@ mxv_sh()
           __syncthreads();
           for ( int g=0; g<CS; g++ )
             {
-              const int idx = g * BLOCK_SIZE / CS + thd_x_idx_st;
+              const int v = g * BLOCK_SIZE / CS + thd_x_idx_st;
 
               // The if statement is needed of M is not a multiple of CS.
               if ( thd_x_offset + r < M )
-                d_app.d_out[ hb * M + idx * M + r + thd_x_offset ] =
-                  vxfer[idx][thd_x_offset];
+                d_app.d_out[ hb * M + v * M + r + thd_x_offset ] =
+                  vxfer[v][thd_x_offset];
             }
         }
     }
 }
 
 extern "C" __global__ void
-mxv_sh_ochunk1()
+mxv_sh_ochunk()
 {
   // Compute element number to start at.
   //
@@ -354,67 +352,6 @@ mxv_sh_ochunk1()
 
     }
 }
-
-extern "C" __global__ void
-mxv_sh_ochunk()
-{
-  // Compute element number to start at.
-  //
-
-  const int64_t CS = 8;  // Chunk Size: Number of input vector elts to read.
-  const int num_threads = blockDim.x * gridDim.x;
-
-  // First element used by this block.
-  const int bl_start = blockIdx.x * blockDim.x / CS;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads / CS;
-
-  const int64_t thd_c_offset = threadIdx.x % CS;
-  const int64_t thd_r_offset = threadIdx.x % CS;
-  const int64_t thd_v_offset = threadIdx.x / CS;
-
-  const int64_t MAX_BLOCK_SIZE = 1024;
-  __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
-
-  const int64_t ML = ( M + CS - 1 ) / CS;
-
-  for ( int hb = bl_start; hb<stop; hb += inc )
-    {
-      __syncthreads();
-
-      Elt_Type vout[ML];
-      for ( int rl=0; rl<ML; rl++ ) vout[rl] = 0;
-
-#pragma unroll
-      for ( int64_t c=0; c<N; c += CS )
-        {
-          vxfer[threadIdx.x] =
-            d_app.d_in[ ( hb + thd_v_offset ) * N + c + thd_c_offset ];
-
-          Elt_Type vin[CS];
-          for ( int64_t cc=0; cc<CS; cc++ )
-            vin[cc] = vxfer[ thd_v_offset * CS + cc ];
-
-          for ( int64_t rr=0; rr<ML; rr++ )
-            {
-              const int64_t r = rr * CS + thd_r_offset;
-              for ( int64_t cc=0; cc<CS; cc++ )
-                if ( c+cc < N )
-                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
-            }
-        }
-#pragma unroll
-      for ( int64_t rr=0; rr<ML; rr++ )
-        {
-          const int64_t r = rr * CS + thd_r_offset;
-          if ( r < M )
-            d_app.d_out[ hb * M + ( threadIdx.x / CS ) * M + r ] = vout[rr];
-        }
-
-    }
-}
-
-
 
 extern "C" __global__ void
 mxv_1()
@@ -672,7 +609,6 @@ print_gpu_and_kernel_info()
   info.GET_INFO(mxv_vls);
 #endif
   info.GET_INFO(mxv_sh);
-  info.GET_INFO(mxv_sh_ochunk1);
   info.GET_INFO(mxv_sh_ochunk);
 
 #ifdef SMALL
