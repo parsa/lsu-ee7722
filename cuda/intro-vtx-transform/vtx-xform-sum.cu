@@ -145,6 +145,36 @@ reduce_method_1()
 }
 
 extern "C" __global__ void
+reduce_atomic_sum_block()
+{
+  // Use an atomic add operating on a shared variable.
+
+  const Elt_Type thd_sum = cuda_vtx_xform();
+  __shared__ Elt_Type our_sum;
+
+  if ( threadIdx.x == 0 ) our_sum = 0;
+
+  __syncthreads();
+
+  atomicAdd( &our_sum, thd_sum );
+
+  __syncthreads();
+
+  if ( threadIdx.x == 0 ) d_app.d_thd_sum[blockIdx.x] = our_sum;
+}
+
+extern "C" __global__ void
+reduce_atomic_sum_grid()
+{
+  // Use an atomic add operating on a global variable.
+
+  const Elt_Type thd_sum = cuda_vtx_xform();
+
+  atomicAdd( &d_app.d_thd_sum[0], thd_sum );
+
+}
+
+extern "C" __global__ void
 reduce_method_2()
 {
   // Use a reduction tree.
@@ -350,6 +380,8 @@ print_gpu_and_kernel_info()
 
   info.GET_INFO(reduce_method_0);
   info.GET_INFO(reduce_method_1);
+  info.GET_INFO(reduce_atomic_sum_block);
+  info.GET_INFO(reduce_atomic_sum_grid);
   info.GET_INFO(reduce_method_2);
   info.GET_INFO(reduce_method_3);
   info.GET_INFO(reduce_method_4);
@@ -482,10 +514,10 @@ main(int argc, char **argv)
           double elapsed_time_s = 86400; // Reassigned to minimum run time.
           double elapsed_time_sum = 0;
 
-          CE( cudaMemset( app.d_thd_sum, 0, sizeof(Elt_Type)*sum_array_size ) );
-
           for ( int s=0; s<samples; s++ )
             {
+
+              CE(cudaMemset(app.d_thd_sum,0,sizeof(Elt_Type)*sum_array_size));
 
               // Measure execution time starting "now", which is after data
               // set to GPU.
@@ -509,7 +541,8 @@ main(int argc, char **argv)
               elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);
             }
 
-          printf("K %2d   %11.3f µs min, %11.3f µs avg.\n", kernel, 
+          printf("%-26s   %11.3f µs min, %11.3f µs avg.\n",
+                 info.ki[kernel].name,
                  elapsed_time_s * 1e6,
                  elapsed_time_sum * 1e6 / (samples-1));
 
