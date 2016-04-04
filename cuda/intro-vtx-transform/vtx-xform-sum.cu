@@ -75,10 +75,6 @@ cuda_vtx_xform()
 
   Elt_Type sum_sum_of_sq = 0;
 
-  __shared__ Elt_Type block_sum;
-  if ( threadIdx.x == 0 ) block_sum = 0;
-  __syncthreads();
-
   for ( int h=start; h<stop; h += inc )
     {
       V4 p2 = d_app.d_v4_in[h];
@@ -96,10 +92,6 @@ cuda_vtx_xform()
       //
       Elt_Type sum_of_sq = 0;
       for ( int i=0; i<N; i++ ) sum_of_sq += q.a[i] * q.a[i];
-      
-
-      //  block_sum += sum_of_sq;
-      atomicAdd(&block_sum,sum_of_sq);
 
       sum_sum_of_sq += sum_of_sq;
     }
