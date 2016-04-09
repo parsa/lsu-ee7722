@@ -13,7 +13,7 @@ CUDUMPFLAGS = --print-line-info --print-code
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
  --ptxas-options=-v  --gpu-architecture=sm_30  -g  \
-	-Xcompiler -fopenmp -O3
+	-Xcompiler -fopenmp 
 
 CC = gcc
 CXX = $(CUDAPATH)/bin/nvcc
@@ -24,7 +24,7 @@ CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)
 LIBRARIES = -lrt -lpthread 
 
-default: hw02
+default: hw02 hw02sol
 
 
 hw02.o: util.h
@@ -47,4 +47,4 @@ hw02sol: hw02sol.o
 
 
 clean:
-	/bin/rm *.o *.ptx *.sass *.cubin hw02
+	/bin/rm *.o *.ptx *.sass *.cubin hw02 hw02sol
