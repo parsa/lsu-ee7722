@@ -1,8 +1,9 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 2 - Spring 2016
+ ///  Homework 2 - Spring 2016 -- SOLUTION
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2016/hw02.pdf
+//  Solution writeup: http://www.ece.lsu.edu/koppel/gp/2016/hw02_sol.pdf
 //
 
 #include <string.h>
@@ -119,16 +120,6 @@ mxv_g_only_g(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
   const int stop = d_app.num_vecs;
   const int inc = num_threads;
 
-  /// SOLUTION -- Problem 1
-  //
-  //  Copy matrix to local memory because compiler can't rule out the
-  //  possibility that the writes to dout change d_app_g.matrix.
-  //
-  Elt_Type matrix[M][N];
-  for ( int r=0; r<M; r++ )
-    for ( int c=0; c<N; c++ )
-      matrix[r][c] = d_app_g.matrix[r][c];
-
   for ( int h=start; h<stop; h += inc )
 
     // Operate on vector number h.
@@ -136,14 +127,13 @@ mxv_g_only_g(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
     for ( int r=0; r<M; r++ )
       {
         Elt_Type elt = 0;
+
         /// SOLUTION -- Problem 1
         //
-        //  Read our local copy of matrix. It would also be possible
-        //  to directly read d_app_g.matrix, but the compiler would reload
-        //  elements each h iteration rather than leaving the value
-        //  in a register.
+        //  Read the matrix that was placed in the global address space.
         //
-        for ( int c=0; c<N; c++ ) elt += matrix[r][c] * din[ h * N + c ];
+        for ( int c=0; c<N; c++ )
+          elt += d_app_g.matrix[r][c] * din[ h * N + c ];
         dout[ h * M + r ] = elt;
       }
 }
