@@ -212,13 +212,14 @@ mxv_g_only_interleave
       // emit load instructions with constant offsets. Consider "h0*M
       // + r * IF + hh". If the compiler evaluates that using 32-bit
       // arithmetic then there might be 32-bit overflow, which
-      // according to the C language must be discarded. Since the
-      // compiler doesn't know whether there would be overflow (there
-      // won't unless the array has more than 2^31 elements) it must
-      // recompute the expression for each r iteration. By setting h0
-      // to a 64-bit type there can't be overflow so the compiler can
-      // put "h0*M" in a register and use "r*IF+hh" as a constant
-      // offset (after adjusting for data type size).
+      // according to the C language must be ignored (the result will
+      // be the low 32 bits of the sum). Since the compiler doesn't
+      // know whether there will be overflow (there won't unless the
+      // array has more than 2^31 elements) it must recompute the
+      // expression for each r iteration. By setting h0 to a 64-bit
+      // type there can't be overflow so the compiler can put
+      // "h0*M+hh" in a register and use "r*IF" as a constant offset
+      // (after adjusting for data type size).
 
       for ( int r=0; r<M; r++ )
         {
