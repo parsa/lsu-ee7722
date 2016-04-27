@@ -11,7 +11,7 @@ CUDUMPFLAGS = --print-code
 # --print-life-ranges --life-range-mode wide
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  --gpu-architecture=sm_52  -g  \
+ --ptxas-options=-v  --gpu-architecture=sm_30  -g  \
 	-Xcompiler -fopenmp -Xcompiler -O3 -lineinfo
 
 
