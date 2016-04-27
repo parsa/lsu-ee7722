@@ -55,7 +55,8 @@ public:
       cc_per_mp =
         cuda_prop.major == 1 ? 8 :
         cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-        cuda_prop.major == 3 ? 192 : 0;
+        cuda_prop.major == 3 ? 192 :
+        cuda_prop.major == 5 ? 128 : 0;
 
       chip_bw_Bps =
         2 * cuda_prop.memoryClockRate * 1000.0
@@ -122,7 +123,7 @@ print_gpu_info()
       cuda_prop.major == 1 ? 1 :
       cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
       cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
-      cuda_prop.major == 5 ? 1 : 0;
+      cuda_prop.major == 5 ? 4 : 0;
 
     const double mem_l2_gbs =
       2 * cuda_prop.memoryClockRate * 1000.0
