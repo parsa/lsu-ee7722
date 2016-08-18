@@ -187,7 +187,8 @@ main(int argc, char **argv)
   const int blocks_per_grid =
     ( app.num_threads + threads_per_block-1 ) / threads_per_block;
 
-  cuda_thread_start<<<blocks_per_grid,threads_per_block>>>();
+  /// KERNEL LAUNCH
+  cuda_thread_start<<< blocks_per_grid, threads_per_block >>>();
 
   // Copy output array from GPU to CPU.
   //
