@@ -39,7 +39,7 @@ all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 	$(CXX) $(CFLAGS) -s $*.cc
 	$(CXX) $(CFLAGS) -c $*.s
 
-%.o: %.cu Makefile
+%.o: %.cu Makefile util.h
 	$(CXX) $(CFLAGS) -c $*.cu
 	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx &
 	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
