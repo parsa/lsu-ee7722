@@ -810,7 +810,8 @@ World::time_step_cpu()
           pball->velocity = pVect(0,0,0);
           pVect vbefore = ball->velocity;
           penetration_balls_resolve(ball,pball,false);
-          pVect delta_mo = ball->mass * ( ball->velocity - vbefore );
+          pVect __attribute__((unused))
+            delta_mo = ball->mass * ( ball->velocity - vbefore );
         }
     }
 
@@ -1120,7 +1121,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
   if ( !pt_sched_data_pending && cuda_schedule_stale > 0 )
     pt_sched_start();
 
-  bool fresh = false;
+  bool __attribute__ ((unused)) fresh = false;
 
   // If a freshly computed schedule is waiting, send it to CUDA.
   //

@@ -26,7 +26,8 @@ MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
 MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS) $(MAGICKCXX)
+CXXFLAGS = $(CFLAGS) $(MAGICKCXX) --std=c++11
+CUFLAGS = $(CFLAGS) -Xcompiler --std=gnu++98
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
@@ -67,10 +68,10 @@ endif
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
 %.o: %.cu Makefile
-	$(CXX) $(CFLAGS) --ptx $*.cu -o $*.ptx && \
-	$(CXX) $(CFLAGS) --cubin $*.ptx -o $*.cubin && \
+	$(CXX) $(CUFLAGS) --ptx $*.cu -o $*.ptx && \
+	$(CXX) $(CUFLAGS) --cubin $*.ptx -o $*.cubin && \
 	$(CUDUMP) -sass $*.cubin > $*.sass &
-	$(CXX) $(CFLAGS) --compile $*.cu
+	$(CXX) $(CUFLAGS) --compile $*.cu
 
 
 boxes: $(OBJ_FILES)
