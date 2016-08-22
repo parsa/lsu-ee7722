@@ -23,7 +23,7 @@ CXX = g++
 
 PACKAGE_CXXFLAGS = $(shell Magick++-config --cppflags --cxxflags)
 
-CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) \
+CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) --std=c++11 \
 	 -g -Wall -Wno-strict-aliasing
 
 LINKFLAGS = $(OPTFLAGS)

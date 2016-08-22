@@ -34,7 +34,8 @@ MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
 MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS) $(MAGICKCXX)
+CUFLAGS = $(CFLAGS) -Xcompiler --std=gnu++98
+CXXFLAGS = $(CFLAGS) $(MAGICKCXX) -Xcompiler --std=c++11
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
@@ -61,10 +62,10 @@ default: hw5 hw5-sol
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
 %.o: %.cu Makefile
-	$(CXX) $(CFLAGS) --ptx $*.cu -o $*.ptx && \
-	$(CXX) $(CFLAGS) --cubin $*.ptx -o $*.cubin && \
+	$(CXX) $(CUFLAGS) --ptx $*.cu -o $*.ptx && \
+	$(CXX) $(CUFLAGS) --cubin $*.ptx -o $*.cubin && \
 	$(CUDUMP) -sass $*.cubin > $*.sass &
-	$(CXX) $(CFLAGS) --compile $*.cu
+	$(CXX) $(CUFLAGS) --compile $*.cu
 
 hw5-cuda.o: hw5.cuh
 hw5-sol-cuda.o: hw5-sol.cuh

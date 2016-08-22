@@ -47,10 +47,15 @@ MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
 # Remove openmp, which doesn't play well with nvcc.
 MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
-CUFLAGS = -g -Xcompiler -Wall -Xcompiler -Wno-unused-function \
+COMMONFLAGS = -g -Xcompiler -Wall -Xcompiler -Wno-unused-function \
   $(INCLUDE) $(MAGICKCXX) $(OPT_FLAGS) \
- -Xcompiler -Wno-parentheses \
+ -Xcompiler -Wno-parentheses
+
+
+CUFLAGS = $(COMMONFLAGS) -Xcompiler --std=gnu++98 \
  -use_fast_math --gpu-architecture=sm_20
+
+CXXFLAGS = $(COMMONFLAGS) -Xcompiler --std=c++11
 
 PTXASFLAGS = -Xptxas --warn-on-local-memory-usage \
  -Xptxas --warn-on-spills  \
@@ -93,7 +98,7 @@ endif
          rm -f $@.$$$$
 
 %.o: %.cc Makefile $(INCLUDES)
-	$(CXX) $(CUFLAGS) -c $*.cc
+	$(CXX) $(CXXFLAGS) -c $*.cc
 
 %.o: %.cu Makefile
 	$(CUXX) $(CUFLAGS) -c $*.cu

@@ -31,7 +31,7 @@ MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 PACKAGE_CXXFLAGS = $(MAGICKCXX)
 
-CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) \
+CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) --std=c++11 \
 	 -g -Xcompiler -Wall -Xcompiler -Wno-strict-aliasing \
 	-Xcompiler -Wno-parentheses
 
