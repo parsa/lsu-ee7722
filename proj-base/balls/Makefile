@@ -6,7 +6,6 @@ CUDAPATH = /usr/local/cuda
 
 # -Xnvopencc -LIST:source=on
 
-COMPILERFLAGS = -deviceemu -Xcompiler -Wall -G -Xcompiler -g  --ptxas-options=-v
 COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v \
    -Xcompiler -Wno-unused-function -use_fast_math
 OPTFLAGS = -O3
@@ -23,7 +22,8 @@ MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
 # Remove openmp, which doesn't play well with nvcc.
 MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
-CXXFLAGS = $(CFLAGS)  $(MAGICKCXX)
+CXXFLAGS = $(CFLAGS)  $(MAGICKCXX) -std=c++11
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
@@ -35,7 +35,7 @@ default: balls
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
 .cu.o:
-	$(CXX) $(CFLAGS) -c $*.cu
+	$(CXX) $(CUFLAGS) -c $*.cu
 
 # balls.o: demo-x-kernel.cu demo-x.cuh
 balls-kernel.o: Makefile balls.cuh balls-kernel.cu

@@ -9,7 +9,7 @@ GPINCLUDE = -I../include
 
 # Flags for c++ compiler only.
 #
-CCFLAGS =  $(shell Magick++-config --cxxflags) -Wall \
+CCFLAGS =  $(shell Magick++-config --cxxflags) -Wall -std=gnu++11 \
 	-Wno-strict-aliasing -Wno-parentheses \
 	-I $(CUDAPATH)/include
 
@@ -19,7 +19,7 @@ NVCCCCFLAGS = -O3 -g  $(GPINCLUDE)
 
 # Flags recognized only by nvcc.
 #
-NVCCFLAGS =  --ptxas-options=-v
+NVCCFLAGS =  --ptxas-options=-v -Xcompiler -std=gnu++98
 
 NVCC = $(CUDAPATH)/bin/nvcc
 CXX = g++

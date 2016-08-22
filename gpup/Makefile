@@ -1,8 +1,7 @@
-### LSU EE 4702-1 (Fall 2013), GPU Programming
+### LSU EE 4702-1 (Fall 2016), GPU Programming
 ##
 ##  Makefile for Classroom Demos
 ##
-## $Id:$
 
 
 COURSE_INCLUDE_DIR = ../include
@@ -23,7 +22,8 @@ INCLUDE = -I$(COURSE_INCLUDE_DIR)
 
 PACKAGE_CXXFLAGS = $(shell Magick++-config --cppflags --cxxflags)
 
-CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) \
+CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) -std=gnu++11 \
+         -Wno-parentheses \
 	 -I$(CUDAPATH)/include \
 	 -g -Wall -Wno-strict-aliasing
 
@@ -49,7 +49,7 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 
 
 CUFLAGS = -g -O3 -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- -Xcompiler -Wno-parentheses \
+ -Xcompiler -Wno-parentheses -Xcompiler -std=gnu++98 \
  --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_20 \
  $(INCLUDE)
 

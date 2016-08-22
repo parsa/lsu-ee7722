@@ -49,7 +49,7 @@ public:
       {
         PixelPacket& p = pp[i];
         const int sum = p.red + p.blue + p.green;
-        p.opacity = (typeof p.opacity)( MaxRGB - sum * 0.3333333 );
+        p.opacity = decltype(p.opacity)( MaxRGB - sum * 0.3333333 );
         p.red = p.blue = p.green = 0;
       }
   }

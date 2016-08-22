@@ -1829,7 +1829,7 @@ float
 Ball::max_z_get(double lifetime_delta_t)
 {
   const float max_z =
-    position.z + max(0.0,fabs(velocity.z)) * lifetime_delta_t + radius;
+    position.z + max(0.0f,fabs(velocity.z)) * lifetime_delta_t + radius;
   return max_z;
 }
 
@@ -1837,7 +1837,7 @@ float
 Ball::min_z_get(double lifetime_delta_t)
 {
   const float z_min =
-    position.z + min(0.0,-fabs(velocity.z)) * lifetime_delta_t - radius;
+    position.z + min(0.0f,-fabs(velocity.z)) * lifetime_delta_t - radius;
   return z_min;
 }
 
