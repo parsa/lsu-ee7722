@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
-
-// $Id:$
 
 /// Purpose
 //
@@ -68,10 +66,12 @@
 class Ball {
 public:
 
+  /// Ball Position and Velocity
+  //
+  pCoor position;
+  pVect velocity;
+  //
   // Note: pCoor is a coordinate, pVect is a vector.
-
-  pCoor position;  // Ball Position.
-  pVect velocity;  // Ball Velocity.
 
   // Member functions to manipulate state of ball.
   //
@@ -171,10 +171,6 @@ World::time_step_cpu_v0(double delta_t)
   // for the exact time of collision. (In this particular case the
   // exact time of collision could have been easily found.)
 
-  // Return quickly if collision impossible.
-  //
-  if ( !platform_collision_possible(ball.position) ) return;
-
   if ( ball.position.y < 0 )
     {
       // Reflect y (vertical) component of velocity, with a reduction
@@ -187,15 +183,6 @@ World::time_step_cpu_v0(double delta_t)
       // add energy to the system.
       //   ball.position.y = 0;  // Bad.
     }
-}
-
-bool
-World::platform_collision_possible(pCoor pos)
-{
-  // Assuming no motion in x or z axes.
-  //
-  return pos.x >= platform_xmin && pos.x <= platform_xmax
-    && pos.z >= platform_zmin && pos.z <= platform_zmax;
 }
 
  /// External Modifications to State
