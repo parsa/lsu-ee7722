@@ -1,11 +1,9 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation, Graphics Code
 
  // This file includes graphics code needed by the main file. The code
  // in this file does not need to be understood early in the semester.
-
-// $Id:$
 
 #undef DB_SV
 
@@ -73,7 +71,7 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
-  bool opt_time_step_alt;
+  bool opt_time_step_easy;
 
   // Tiled platform for ball.
   //
@@ -106,7 +104,8 @@ public:
   void ball_setup_3();
   void ball_setup_4();
   void ball_setup_5();
-  void time_step_cpu(double);
+  void time_step_cpu_easy(double);
+  void time_step_cpu_full(double);
   void balls_stop();
   void balls_freeze();
   void balls_translate(pVect amt, int idx);
@@ -408,7 +407,8 @@ World::render()
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
-    ("Time Step: %8d  World Time: %11.6f  %s\n",
+    ("Physics: %s ('v')  Time Step: %8d  World Time: %11.6f  %s\n",
+     opt_time_step_easy ? "EASY" : "FULL",
      time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
      "Press 'p' to pause."
@@ -654,7 +654,7 @@ World::cb_keyboard()
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': case 'S': balls_stop(); break;
-  case 'v': case 'V': opt_time_step_alt = !opt_time_step_alt; break;
+  case 'v': case 'V': opt_time_step_easy = !opt_time_step_easy; break;
   case ' ': 
     if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true; 
