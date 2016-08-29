@@ -12,12 +12,18 @@ sample_code()
   // For more details on these classes read the code in coord.h.
 
 
-  /// Coordinate Construction
+  /// Coordinate Class: pCoor
   //
+  //  Used to represent homogeneous coordinates.
+  //
+  //  Data Members: float x, y, z, w;
 
+
+  // :Example: Examples
+  //
   // Construct a coordinate with default w value.
   //
-  pCoor c1(11,22,33);  // w is 1 by default.
+  pCoor c1(11,22,33);  // Constructor sets w to 1 by default.
   printf("x component of c1 is %.1f\n",c1.x);
 
   // Change c1 to (4,7,0)
@@ -32,8 +38,44 @@ sample_code()
   c3 = c2;
   c2.x = c1.y;
 
-  /// Vector Class
+  float *c3v = c3;  // Return a pointer x. Treat x,y,z,w as a 4-elt array.
+
+  // The two lines below are equivalent:
+  c3v[0] = 1.1;   c3v[1] = 2.2;
+  c3.x = 1.1;     c3.y = 2.2;
+
+
+  /// Vector Class: pVect
   //
+  //  Used to represent a 3-element vector.
+  //
+  //  Data Members: float x, y, z;
+  //
+  /// Constructors
+  //
+  //   pVect(float x, float y, float z):  Obvious
+  //   pVect(pCoor a, pCoor b) :  pVect = b - a;
+  //   pVect(pCoor a, pCoor b, pCoor c) :  pVect = cross( a-b, c-b )
+  //   pVect(pVect a, pVect b) :  pVect = cross(a,b);
+  //
+  /// Operators:
+  //
+  //    Returning a pVect:
+  //       pVect + pVect
+  //       pVect - pVect
+  //       float * pVect
+  //       pCoor - pCoor
+  //
+  //    Returning a pCoor:
+  //       pCoor + pVect
+  //       pCoor - pVect
+  //
+  /// Member Functions
+  //
+  //   float pVect::mag:    Return magnitude of vector.
+  //   float pVect::mag_sq: Return magnitude of vector squared.
+  //   float* () [Cast to float *].  Return pointer to x.
+
 
   // Construct using x, y, and z components.
   //
@@ -55,8 +97,17 @@ sample_code()
   pVect v6 = v5 + v4;   // Vector addition.
   float l1 = v6.mag();  // Magnitude (length) of v6.
 
-  /// Normalized Vector
+
+  /// Normalized Vector Class: pNorm:pVect
   //
+  //  Used to represent a 3-element unit vector and information about
+  //  the non-unit vector from which it was constructed.
+  //
+  //
+  /// Data Members
+  //
+  //  Data Members: float x, y, z, magnitude, mag_sq
+
   {
     pVect some_random_vector(5,6,7);
 
@@ -84,28 +135,31 @@ sample_code()
 
   }
 
+  {
+    /// :Sample Problem:
+    //
+    // Johnny at p_jo throws a ball towards Sally at p_sa, but only
+    // throws the ball 2 units of distance. Assign the location of the
+    // ball to p4.
 
-  /// :Sample Problem:
-  //
-  // Johnny at p_jo throws a ball towards Sally at p_sa, but only
-  // throws the ball 2 units of distance. Assign the location to p4.
+    // Step 1 - Define Johnny and Sally's coordinates.
+    //
+    pCoor p_jo(1,2,3);      // Johnny's location.
+    pCoor p_sa(10,11,12);   // Sally's location.
+    float throw_distance = 2;
 
-  // Step 1 - Define Johnny and Sally's coordinates.
-  //
-  pCoor p_jo(1,2,3);      // Johnny's location.
-  pCoor p_sa(10,11,12);  // Sally's location.
+    // Step 2 - Compute unit vector from Johnny to Sally.
+    //
+    pNorm jo_to_sa( p_jo, p_sa );
 
-  // Step 2 - Compute unit vector from Johnny to Sally.
-  //
-  pNorm jo_to_sa(p_jo,p_sa);
-
-  // Step 3 - Use unit vector to find point two units from Johnny in
-  // the direction of Sally.
-  //
-  pCoor p4 = p_jo + 2 * jo_to_sa;
+    // Step 3 - Use unit vector to find the point two units
+    // (throw_distance) from Johnny in the direction of Sally.
+    //
+    pCoor p4 = p_jo + throw_distance * jo_to_sa;
+  }
 
 
-
+  
   /// Computing Dot Products, Cross Products, and Angles
 
   float l2 = dot(v5,v6);   // Dot product.
@@ -121,7 +175,7 @@ sample_code()
   /// Automatically Constructing a Vector from Coordinates.
 
   // Construct vector vec_12 using two coords, result is c2 - c1.
-  pVect vec_12(c1,c2);    
+  pVect vec_12(c1,c2);
   vec_12 = c2 - c1;  // No change to vec_12, the constructor already subtr.
 
   pVect vec_xa(v1,v2);    // Cross product: v1 x v2
