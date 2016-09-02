@@ -110,9 +110,6 @@
       "Helv"))
 
 
-(when (fboundp 'set-face-attribute)
-  (set-face-attribute 'modeline nil :weight 'bold :family "helv"))
-
 (set-face-attribute
  'font-lock-function-name-face nil
  :family p-ss-family-name :weight 'bold :height 1.4 :foreground "black")
