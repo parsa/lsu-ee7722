@@ -79,7 +79,7 @@ sample_code()
 
   // Construct using x, y, and z components.
   //
-  pVect vec(1,2,3);
+  pVect v1(1,2,3);
 
   // A slightly tedious way of initializing a vector.
   //
@@ -168,7 +168,7 @@ sample_code()
 
   pVect c1223b = cross(c1,c2,c3);       // Cross product (c1-c2) x (c3-c2).
 
-  float a1223a = pangle(vec_21,vec_23); // Angle between vectors, in [0,pi].
+  float a1223a = pangle(v2,v3);         // Angle between vectors, in [0,pi].
   float a1223b = pangle(c1,c2,c3);      // Angle between c1 c2 c3, in [0,pi].
 
 
@@ -192,16 +192,32 @@ sample_code()
 
   /// Coordinate Member Functions
   //
-  cx1.homogenize();         // Divide all elements by w
-  cx1.homogenize_keep_w();  // Divide x, y, and z by w. (Be careful.)
+  c1.homogenize();         // Divide all elements by w
 
   /// Vector Member Functions
   //
   float length_12b = vec_12b.mag();  // Length of vector.
   float length_12c = vec_12c.normalize();  // Return length, then normalize.
 
+}
 
+void
+sample_code_transforms()
+{
+  float a=1, b=2, c=3;
+  float s=7, t=8, u=9;
 
+  {
+    pCoor P(1,2,3);
+    pMatrix_Scale S(5);
+    pCoor Q = S * P;
+  }
+
+  {
+    pCoor P(a,b,c);
+    pMatrix_Translate T(s,t,u);
+    pCoor Q = T * P;
+  }
 
 }
 
