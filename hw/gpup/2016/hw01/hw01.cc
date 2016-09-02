@@ -1,6 +1,32 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Simple Demo of Point Masses and Springs
+ /// Homework 1
+ //
+ ///
+ /// Instructions
+ //
+ //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2016/hw01.pdf
+ //
+ //  Edit this file only. Contact the instructor if you believe that
+ //  code in other files, such as hw01-graphics.cc needs to be edited.
+ //
+ //  Answers to questions that don't require writing code (for
+ //  example, a question like "Explain why...") can be put in this
+ //  file as comments or can be submitted separately (on paper or view
+ //  E-mail).
+ //
+ //  Only add comments where necessary, for example, to explain code
+ //  that's not obvious or to describe what the code is based on (if
+ //  it's not yours).
+ //
+ //  There is no need to use comments to mark your code.
+ //
+ //  Try to clean up your code by removing any commented-out
+ //  variations.
+ //
+ //  Your assignment will automatically be copied by the TA-Bot. There
+ //  is no need to put your name in this file.
+
 
 
 /// Purpose
@@ -69,6 +95,7 @@
 #define GL_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
 
+#include <math.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GL/glx.h>
@@ -124,7 +151,13 @@ World::init()
 {
   chain_length = 20;
   balls = new Ball[chain_length];
- 
+
+  opt_globe = true;
+  globe.radius = 0.5;
+  globe.position = pCoor(15.2,12,-18.5);
+  opt_globe_charge = 250;
+  variable_control.insert(opt_globe_charge,"Globe's Electric Charge");
+
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 1000;
   variable_control.insert(opt_spring_constant,"Spring Constant");
@@ -137,7 +170,7 @@ World::init()
   opt_time_step_easy = false;
 
   opt_air_resistance = 0.001;
-  variable_control.insert(opt_air_resistance,"Air Resistance");  
+  variable_control.insert(opt_air_resistance,"Air Resistance");
 
   world_time = 0;
   time_step_count = 0;
@@ -158,20 +191,20 @@ World::init()
 void
 World::ball_setup_1()
 {
-  /// Arrange balls vertically.
+  /// Arrange balls horizontally
 
-  // Desired position of bottom ball.
+  // Desired position of top ball.
   //
-  pCoor bottom_pos(12.5,distance_relaxed,-13.7);
+  pCoor top_pos(15.2, distance_relaxed * ( chain_length + 1 ), -18.5);
 
   // Desired distance between adjacent balls.
   //
-  pVect ball_separation(0, distance_relaxed, 0);  // Points up.
+  pVect ball_separation(distance_relaxed, 0, 0);
 
   for ( int i=0; i<chain_length; i++ )
     {
-      Ball* const ball = &balls[chain_length-i-1];
-      ball->position = bottom_pos + i * ball_separation;
+      Ball* const ball = &balls[i];
+      ball->position = top_pos - i * ball_separation;
 
       ball->velocity = pVect(0,0,0);
       ball->radius = 0.3 * distance_relaxed;
@@ -180,25 +213,71 @@ World::ball_setup_1()
     }
 
   opt_head_lock = true;
+
 }
 
 void
 World::ball_setup_2()
 {
-  /// Arrange and size balls to form a pendulum.
+  /// Arrange balls in direction dir.
 
-  // Desired position of first ball.
-  //
-  pCoor first_ball_pos(13.4,17.8,-9.2);
+  /// HOMEWORK 1: Solutions to Problems 1 and 2 here.
 
-  // Desired distance between adjacent balls.
+  // Desired position of top ball.
   //
-  pVect ball_separation(distance_relaxed, 0, 0);  // Points in +x direction.
+  pCoor top_pos(15.2, distance_relaxed * ( chain_length + 1 ), -18.5);
+
+  // Randomly chosen normal vector.
+  //
+  pNorm dir( drand48() - 0.5, -drand48() * 0.5, drand48() - 0.5 );
 
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
-      ball->position = first_ball_pos + i * ball_separation;
+
+      ball->position = top_pos + i * pVect(distance_relaxed,0,0);
+
+      ball->velocity = pVect(0, 0, 0);
+
+      ball->radius = 0.3 * distance_relaxed;
+      ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
+      ball->contact = false;
+    }
+
+  opt_head_lock = true;
+
+}
+
+void
+World::ball_setup_3()
+{
+  float delta_theta = 2 * M_PI / chain_length;
+
+  const float circum = chain_length * distance_relaxed;
+  const float circ_radius = circum / ( 2 * M_PI );
+
+  // Given:
+  pNorm n(0,1,1);
+  pCoor C(15.2,17.8,-18.5);
+  pCoor P(C.x + circ_radius,17.8,C.z);
+
+  // Compute:
+  pNorm ax(C,P);  // ax is a normal vector from C to P.
+  pNorm ay = cross(ax,n);
+  float r = ax.magnitude;
+
+  // Construct points on circle:
+  //  for ( float theta = 0; theta < 2 * M_PI; theta += delta_theta )
+  for ( int i=0; i<chain_length; i++ )
+    {
+      const float theta = i * delta_theta;
+
+      pCoor pos = C + r * cos(theta) * ax + r * sin(theta) * ay;
+      // Do something with pos..
+
+
+      Ball* const ball = &balls[i];
+      ball->position = pos;
 
       ball->velocity = pVect(0,0,0);
       ball->radius = ( i == chain_length - 1 ? 0.6 : 0.3 ) * distance_relaxed;
@@ -207,11 +286,7 @@ World::ball_setup_2()
     }
 
   opt_head_lock = true;
-}
 
-void
-World::ball_setup_3()
-{
 }
 
 void
@@ -228,124 +303,12 @@ World::ball_setup_5()
  /// Advance Simulation State by delta_t Seconds
 //
 void
-World::time_step_cpu_easy(double delta_t)
-{
-  time_step_count++;
-
-  //
-  /// Compute force and update velocity of each ball.
-  //
-  for ( int i=0; i<chain_length; i++ )
-    {
-      Ball* const ball = &balls[i];
-
-      // Skip locked balls.
-      //
-      if ( opt_head_lock && i == 0 || opt_tail_lock && i == chain_length - 1 )
-        {
-          ball->velocity = pVect(0,0,0);
-          continue;
-        }
-
-      pVect force(0,0,0);
-
-      // Gravitational Force
-      //
-      force += ball->mass * gravity_accel;
-      //
-      // Newton's most famous equation.
-
-      // Spring Force from Neighbor Balls
-      //
-      for ( int direction: { -1, +1 } )
-        {
-          const int n_idx = i + direction;  // Compute neighbor index.
-
-          // Skip this neighbor if neighbor doesn't exit.
-          //
-          if ( n_idx < 0 ) continue;
-          if ( n_idx == chain_length ) continue;
-
-          Ball* const neighbor_ball = &balls[n_idx];
-
-          // Construct a normalized (Unit) Vector from ball to neighbor.
-          //
-          pNorm ball_to_neighbor( ball->position, neighbor_ball->position );
-
-          // Get distance between balls using pNorm member magnitude.
-          //
-          const float distance_between_balls = ball_to_neighbor.magnitude;
-
-          // Compute by how much the spring is stretched (positive value)
-          // or compressed (negative value).
-          //
-          const float spring_stretch =
-            distance_between_balls - distance_relaxed;
-
-          // Add on the force due to the neighbor_ball.
-          //
-          force += opt_spring_constant * spring_stretch * ball_to_neighbor;
-          //              h               ( l - l_r )         u_12
-          //
-          // Comments above show symbols used in notes.
-        }
-
-      // Update Velocity
-      //
-      // This code assumes that force on ball is constant over time
-      // step. This is clearly wrong when balls are moving with
-      // respect to each other because the springs are changing
-      // length. This inaccuracy will make the simulation unstable
-      // when spring constant is large for the time step.
-      //
-      ball->velocity += ( force / ball->mass ) * delta_t;
-
-      // Air Resistance
-      //
-      const double fs = pow(1+opt_air_resistance,-delta_t);
-      ball->velocity *= fs;
-    }
-
-  ///
-  /// Update Position of Each Ball
-  ///
-
-  for ( int i=0; i<chain_length; i++ )
-    {
-      Ball* const ball = &balls[i];
-
-      // Update Position
-      //
-      // Assume that velocity is constant.
-      //
-      ball->position += ball->velocity * delta_t;
-
-      // Possible Collision with Platform
-      //
-
-      // Skip if collision impossible.
-      //
-      if ( !platform_collision_possible(ball->position) ) continue;
-      if ( ball->position.y >= 0 ) continue;
-
-      // Snap ball position to surface.
-      //
-      ball->position.y = 0;
-
-      // Reflect y (vertical) component of velocity, with a reduction
-      // due to energy lost in the collision.
-      //
-      if ( ball->velocity.y < 0 )
-        ball->velocity.y = - 0.9 * ball->velocity.y;
-    }
-}
-
-
-void
 World::time_step_cpu_full(double delta_t)
 {
   time_step_count++;
 
+  /// HOMEWORK 1: Solution to Problem 3 in this routine.
+
   //
   /// Compute force and update velocity of each ball.
   //
@@ -369,10 +332,8 @@ World::time_step_cpu_full(double delta_t)
 
       // Spring Force from Neighbor Balls
       //
-      for ( int direction: { -1, +1 } )
+      for ( int n_idx: { i-1, i+1 } )
         {
-          const int n_idx = i + direction;  // Compute neighbor index.
-
           if ( n_idx < 0 ) continue;
           if ( n_idx == chain_length ) break;
 
@@ -534,10 +495,7 @@ World::frame_callback()
 
       while ( world_time < world_time_target )
         {
-          if ( opt_time_step_easy )
-            time_step_cpu_easy(time_step_duration);
-          else
-            time_step_cpu_full(time_step_duration);
+          time_step_cpu_full(time_step_duration);
           world_time += time_step_duration;
         }
 

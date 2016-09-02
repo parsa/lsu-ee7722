@@ -119,6 +119,11 @@ public:
   int chain_length;
   Ball *balls;
   Sphere sphere;
+
+  Ball globe;
+  bool opt_globe;
+  float opt_globe_charge;
+
 };
 
 
@@ -251,6 +256,8 @@ World::render_objects(Render_Option option)
       cone.light_pos = light_location;
       sphere.light_pos = light_location;
 
+      sphere.render_shadow_volume(globe.radius,globe.position);
+
       for ( int i=0; i<chain_length; i++ )
         sphere.render_shadow_volume(balls[i].radius,balls[i].position);
       for ( int i=1; i<chain_length; i++ )
@@ -264,6 +271,20 @@ World::render_objects(Render_Option option)
     }
   else
     {
+        {
+          if ( opt_globe )
+            {
+              glDisable(GL_TEXTURE_2D);
+              sphere.color = color_white;
+            }
+          else
+            {
+              sphere.color = color_gray;
+            }
+          sphere.render(globe.radius,globe.position);
+          glEnable(GL_TEXTURE_2D);
+        }
+
       for ( int i=0; i<chain_length; i++ )
         {
           if ( balls[i].contact )
@@ -652,6 +673,7 @@ World::cb_keyboard()
   case 't': case 'T': opt_tail_lock = !opt_tail_lock; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
+  case 'o': case 'O': opt_globe = !opt_globe; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': case 'S': balls_stop(); break;
   case 'v': case 'V': opt_time_step_easy = !opt_time_step_easy; break;
