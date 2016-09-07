@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Minimal OpenGL Program
 
@@ -13,6 +13,43 @@
 //
 //     make
 //     demo-4-simple-ogl
+
+#if 0
+/// Background
+//
+
+ /// References
+//
+// :ogl45: OpenGL Specification Version 4.5
+//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+
+/// Software Used in This Demo
+//
+
+ /// OpenGL (NVidia's Implementation)
+ //
+ //  A library for using GPUs.
+ //
+ //  In this demo, it's used to draw a triangle on the frame buffer.
+
+ /// Glut
+ //
+ //  A library for initializing OpenGL.
+
+
+/// Organization of This Demo
+//
+
+ /// The main routine
+ //
+ //  Use glut to set up window (and associated frame buffer).
+ //
+ //  Tell glut to run our render routine when needed.
+ //
+ /// The render routine
+ //
+ //  Paint the frame buffer with a triangle using OpenGL.
+#endif
 
 
 // C Standard IO (part of C library) header.
