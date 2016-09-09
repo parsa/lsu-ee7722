@@ -49,6 +49,91 @@
  /// The render routine
  //
  //  Paint the frame buffer with a triangle using OpenGL.
+
+
+/// OpenGL Primitives
+//
+
+ // :Def: OpenGL Primitive
+ // A shape (or collection of shapes) that OpenGL can render on to the
+ // frame buffer.
+ //
+ // - There are a small number of primitives.
+ // - More complex objects are constructed from primitives by non OpenGL code.
+ //
+ // In most cases, primitives are some form of triangle.
+ //
+ /// Each type of primitive:
+ //
+ //  - Defines a shape. (Triangle, line, etc.)
+ //  - Vertices shared with neighbors. (See GL_TRIANGLE_STRIP)
+
+ // :Def: Rendering Pass
+ // A place in the execution of an OpenGL program in which OpenGL
+ // is rendering (writing the frame buffer with) primitives.
+ //
+ // - A rendering pass renders multiple instances of the same primitive,
+ //     for example, 200 triangles.
+ //
+ /// Performing a Rendering Pass
+ //
+ //  Simple method: glBegin / glEnd
+ //  - The rendering pass starts at glBegin and ends at glEnd.
+ //  - This method is considered inefficient, but used in this set.
+ //
+ //  Efficient method: glDraw. (Or similar)
+ //  - The entire rendering pass is performed during the call go glDraw.
+ //  - This method will be used in later sets.
+
+
+ /// Some Commands
+ //
+     glBegin(PRIMITIVE);
+ //  Start a rendering pass to render PRIMITIVE.
+ //  Subsequent vertices used to form PRIMITIVE.
+ //
+ //  - PRIMITIVE can be GL_TRIANGLES, GL_LINE_STRIP, etc. (See below)
+ //
+ //
+      glVertex3f(x,y,z);
+ //  "Send" vertex coordinate x,y,z to OpenGL.
+ //
+ //  - Interpretation of that vertex depends on the current primitive.
+ //  - Normally a large number of vertices sent to OpenGL.
+ //
+ //
+      glEnd();
+ //   Tell OpenGL that we are no longer rendering PRIMITIVE.
+ //
+
+ /// GL_TRIANGLES
+ //
+ //  Isolated triangles.
+ //
+ //  Let v1, v2, v3, v4, ... be the vertices sent.
+ //
+ //  Triangle 1: (v1,v2,v3)
+ //  Triangle 2: (v4,v5,v6)
+ //
+ //  To render T triangles need 3T vertices.
+
+ /// GL_TRIANGLE_STRIP
+ //
+ //  Triangles sharing an edge with neighbors.
+ //
+ //  Let v1, v2, v3, v4, ... be the vertices sent.
+ //
+ //  Triangle 1: (v1,v2,v3)
+ //  Triangle 2: (v4,v3,v2)  // Note backward order.
+ //  Triangle 3: (v3,v4,v5)
+ //
+ //  To render T triangles need T+2 vertices.
+
+
+ /// GL_LINES
+
+ /// GL_POINTS
+
 #endif
 
 
