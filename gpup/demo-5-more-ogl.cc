@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Simple Demo of OpenGL
 
@@ -63,12 +63,13 @@
 //  -- Second, modify the matrix using a variety of commands.
 //     See Section 12.1.1 for the full list.
 //
-       // Load the entire matrix
+       // Set current matrix to argument, which is in column-major order.
        //
        glLoadMatrixf( my_matrix_a );
        //
        // Before: transform = some_matrix_x.
        // After:  transform = my_matrix_a.
+       //
 
        // Load an identity matrix.
        //
@@ -77,12 +78,15 @@
        // Before: transform = some_matrix_x.
        // After:  transform = Identity.
 
-       // Multiply the current transform by a new matrix.
+       // Multiply the current transform by a new matrix in column-major order.
        //
        glMultMatrixf( my_matrix_b );
        //
        // Before: transform = my_matrix_a.
        // After: transform = my_matrix_a * my_matrix_b.
+
+       glMultTransposeMatrixf( my_matrix_b );
+       //
 
        // Multiply current transform by a right-hand rotation.
        //
@@ -114,6 +118,17 @@
        // Replace the current matrix with the top of stack, and pop stack.
        //
        glPopMatrix();
+
+ /// Vertex Attribute: glNormal
+ //
+ //  A normal is one of the 16 "classic" attributes of a vertex.
+ //
+ //  It is always a 3-element vector.
+ //
+ //  It is usually set to the geometric normal of the object being
+ //    modeled, not necessarily the primitive.  
+ //    
+ //  It is used by code computing lighting. (Covered later.)
 
 
  /// Depth Test (z-Buffering)
