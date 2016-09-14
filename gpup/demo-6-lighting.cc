@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Lighting
-
-// $Id:$
 
 /// Purpose
 //
@@ -24,9 +22,15 @@
  //
  // :ogl45: Section 12.2
 
+ // :Def: Material Property
+ //       Some aspect of the color of an object.
+ //       Think of it as a color.
+
  // :Def: Lighted Color
- //       The color to be written to the frame buffer.
+ //       The color to be written to the frame buffer ..
+ //          based on the material property and lighting.
  //       Models the light that would reach our eyes.
+ //       Exact formula in :ogl14: 12.2.1.1
 
  /// Types of Color
  //
@@ -59,6 +63,46 @@
  //
  //    Non-vertex and non-light specific parameters also set.
             glLightModel( ... )
+
+ /// Material Properties
+ //
+ glMaterial( FACE, COLOR_TYPE, COLOR );
+ //
+ // Sets material properties for ALL vertices in a rendering pass.
+ // Note: glColor can be used to give each vertex its own property ..
+ //       .. but using glColor can only set 1 property.
+ //
+ // FACE: 
+ //   GL_FRONT, GL_BACK, GL_FRONT_AND_BACK
+ //
+ // COLOR_TYPE:   (See :ogl45: Table 12.2)
+ //   GL_AMBIENT, GL_DIFFUSE, GL_SPECULAR, GL_EMISSION, ...
+ //
+ // COLOR
+ //   Usually, a four-component color value.
+ //
+ // :Example: Set diffuse color of back of primitive to gray.
+    glMaterialfv( GL_BACK, GL_DIFFUSE, color_gray );
+
+ /// Light Properties
+ //
+ glLightf( LIGHT_NUM, PARAM, VAL )
+ //
+ // LIGHT_NUM:
+ //  GL_LIGHT0, GL_LIGHT1, etc.
+ //
+ // PARAM:  (See :ogl45: Table 12.2)
+ //  GL_POSITION: Val is a coordinate, set position.
+ //  GL_DIFFUSE:  Val is a color, set light color.
+ //  GL_CONSTANT_ATTENUATION: Parameter for computing brightness.
+ //  ....
+ //
+ // :Example: Turn light on, set location, set color.
+  glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHT0);
+  glLightfv(GL_LIGHT0, GL_POSITION, light_location);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, color_white * opt_light_intensity );
+
 
  /// Typical Lighting Procedure
 
@@ -278,35 +322,6 @@ World::render()
   glLoadIdentity();
   // Frustum: left, right, bottom, top, near, far
   glFrustum(-.8,.8,-.8/aspect,.8/aspect,1,5000);
-
-
-  /// Lighting Computation
-  //
-  //  Three Sets of Settings:
-  //
-  //  - Light Source Parameters
-  //  - Material Parameters
-  //  - Lighting Model Parameters
-  //
-  ///  Light Source Parameters
-  //
-  //   Set using glLightX(LIGHT_NUMBER, PARAMETER_NAME, PARAMETER_VALUE)
-  //   Some Parameters:
-  //      GL_POSITION
-  //      GL_DIFFUSE: Color of diffuse component of light.
-  //      GL_CONSTANT_ATTENUATION: k_0 in formula.
-  //      GL_LINEAR_ATTENUATION: k_1 in formula.
-  //      GL_QUADRATIC_ATTENUATION: k_2 in formula.
-  //
-  ///  Material Parameters
-  //
-  //   Set using glMaterialf
-  //   Some Parameters:
-  //      GL_DIFFUSE: Diffuse color.
-  //
-  ///  Lighting Model Parameters
-  //
-  //   Set using glLightModelX
 
 
   pColor white(1,1,1);
