@@ -358,7 +358,7 @@ World::objects_erase()
 {
   balls.erase();
   links.erase();
-  chain_starts.erase();
+  chain_starts.clear();
 }
 
 ///
