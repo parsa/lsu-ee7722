@@ -1,6 +1,6 @@
-### LSU EE 4702-1 (Fall 2015), GPU Programming
+### LSU EE 4702-1 (Fall 2016), GPU Programming
 ##
-##  Makefile for Homework 1
+##  Makefile for Homework 2
 ##
 
 
