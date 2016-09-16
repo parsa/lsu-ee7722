@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -6,10 +6,6 @@
 /// Purpose
 //
 //   Demonstrate use of Vertex Arrays and Buffer Objects
-
-/// References
-//
-//  OpenGL 3.0 Specification Section 2.8 and 2.9 (Vertex Arrays, Buffer Obj)
 
 #if 0
 ///
@@ -20,7 +16,7 @@
 //
 // :ogl45: OpenGL Specification Version 4.5
 //         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
-
+//
 
  /// The Vertex Specification Related Issues
  //
@@ -125,8 +121,9 @@
 #include <gp/texture-util.h>
 #include "shapes.h"
 
-enum VTX_Spec_Method { VM_Individual, VM_Array, VM_Buffer, VM_SIZE };
-const char* const spec_method_str[] = {"Individual", "Array", "Buffer"};
+enum VTX_Spec_Method { VM_Individual, VM_Strip, VM_Array, VM_Buffer, VM_SIZE };
+const char* const spec_method_str[] =
+  {"Individual", "Strip", "Array", "Buffer"};
 
 class World {
 public:
@@ -171,6 +168,12 @@ public:
 
   bool opt_scene, opt_ambient, opt_specular, opt_diffuse, opt_emissive;
   float opt_shininess;
+
+  int pf_vertices;
+  int pf_triangles;
+  int pf_fragments;
+  int pf_gpu_cpu_bytes;
+  int pf_mem_gpu_bytes;
 
 };
 
@@ -265,8 +268,13 @@ World::render()
      );
 
   ogl_helper.fbprintf
-    ("Vertex Specification Method: %s,  Recompute Coords: %s\n",
-     spec_method_str[opt_method], opt_recompute ? "Yes" : "No");
+    ("Vertex Specification Method: %s ('m' to change),  Recompute Coords: %s ('r')\n",
+     spec_method_str[opt_method], opt_recompute ? "YES" : "NO");
+
+  ogl_helper.fbprintf
+    ("Estimated triangles: %6d  Vertices: %6d  Data: %7.3f kiB/frame\n",
+     pf_triangles, pf_vertices, pf_gpu_cpu_bytes / 1024.0);
+
 
   const int win_width = ogl_helper.get_width();
   const int win_height = ogl_helper.get_height();
@@ -420,9 +428,39 @@ World::render()
   // for each eta). The code below assumes just one triangle strip,
   // and so rendering will not be 100% correct.
 
+  const int pf_bytes_per_vtx = 2 * 3 * 4; // Vertex coordinate and normal.
+
   switch ( opt_method ) {
 
   case VM_Individual:
+    {
+      /// Use Individual Triangles
+
+      // Data sent one vertex at a time. This is the slowest option
+      // because of the overhead needed to send data to the GPU and
+      // toss it in the rendering pipeline.
+
+      glBegin(GL_TRIANGLES);
+      glColor3fv(lsu_spirit_gold);
+      for ( int i=0; i<coords_size; i+=3 )
+        {
+          glNormal3fv( &coords[i] );
+          glVertex3fv( &coords[i + ( i & 1 ? 6 : 0 ) ] );
+          glVertex3fv( &coords[i + 3] );
+          glVertex3fv( &coords[i + ( i & 1 ? 0 : 6 ) ] );
+        }
+      glEnd();
+
+      // Performance factors to show in green text.
+      //
+      pf_vertices = coords_size;
+      pf_triangles = coords_size / 3;
+      pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+
+      break;
+    }
+
+  case VM_Strip:
     {
       /// Use Individual Vertices
 
@@ -434,10 +472,17 @@ World::render()
       glColor3fv(lsu_spirit_gold);
       for ( int i=0; i<coords_size; i+=3 )
         {
-          glNormal3f(coords[i],coords[i+1],coords[i+2]);
-          glVertex3f(coords[i],coords[i+1],coords[i+2]);
+          glNormal3fv( &coords[i] );
+          glVertex3fv( &coords[i] );
         }
       glEnd();
+
+      // Performance factors to show in green text.
+      //
+      pf_vertices = coords_size / 3;
+      pf_triangles = coords_size / 3;
+      pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+
       break;
     }
 
@@ -508,6 +553,13 @@ World::render()
       //
       glDisableClientState(GL_NORMAL_ARRAY);
       glDisableClientState(GL_VERTEX_ARRAY);
+
+      // Performance factors to show in green text.
+      //
+      pf_vertices = coords_size / 3;
+      pf_triangles = coords_size / 3;
+      pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+
       break;
     }
 
@@ -518,6 +570,11 @@ World::render()
       // A buffer object is a chunk of storage managed by OpenGL.
       // The intent is to keep chunks of storage on GPU where they
       // can be re-used.
+
+      // Performance factors to show in green text.
+      //
+      pf_vertices = coords_size / 3;
+      pf_triangles = coords_size / 3;
 
       // Set up or update a buffer object to hold coordinates.
       //
@@ -546,6 +603,13 @@ World::render()
           // Indicate that we've updated the buffer.
           //
           gpu_buffer_stale = false;
+
+          pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+
+        }
+      else
+        {
+          pf_gpu_cpu_bytes = 0;
         }
 
       // Tell GL that subsequent array pointers refer to this buffer.
