@@ -428,7 +428,8 @@ World::render()
   // for each eta). The code below assumes just one triangle strip,
   // and so rendering will not be 100% correct.
 
-  const int pf_bytes_per_vtx = 2 * 3 * 4; // Vertex coordinate and normal.
+  // Size of vertex coordinate or normal.
+  const int pf_bytes_per_vec3 = 3 * sizeof(float);
 
   switch ( opt_method ) {
 
@@ -455,7 +456,10 @@ World::render()
       //
       pf_vertices = coords_size;
       pf_triangles = coords_size / 3;
-      pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+      pf_gpu_cpu_bytes =  // Excludes command overhead, which is large here.
+          (   3 * pf_triangles * pf_bytes_per_vec3  // Vertices
+            +     pf_triangles * pf_bytes_per_vec3  // Normals
+              );
 
       break;
     }
@@ -481,7 +485,10 @@ World::render()
       //
       pf_vertices = coords_size / 3;
       pf_triangles = coords_size / 3;
-      pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+      pf_gpu_cpu_bytes =  // Excludes command overhead, which is large here.
+          (   pf_triangles * pf_bytes_per_vec3  // Vertices
+            + pf_triangles * pf_bytes_per_vec3  // Normals
+              );
 
       break;
     }
@@ -558,7 +565,14 @@ World::render()
       //
       pf_vertices = coords_size / 3;
       pf_triangles = coords_size / 3;
-      pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+
+      // Assuming that OpenGL does not recognize that normals and
+      // vertices are sourced from the same address.
+      //
+      pf_gpu_cpu_bytes =  // Excludes command overhead, which is small here.
+          (   pf_triangles * pf_bytes_per_vec3  // Vertices
+            + pf_triangles * pf_bytes_per_vec3  // Normals
+              );
 
       break;
     }
@@ -604,7 +618,10 @@ World::render()
           //
           gpu_buffer_stale = false;
 
-          pf_gpu_cpu_bytes = pf_vertices * pf_bytes_per_vtx;
+          pf_gpu_cpu_bytes =  // Excludes command overhead, which is small here.
+          (   pf_triangles * pf_bytes_per_vec3  // Vertices
+            + 0                                 // Normals (uses vtx coord)
+              );
 
         }
       else
