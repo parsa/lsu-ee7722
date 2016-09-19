@@ -321,7 +321,7 @@ World::render_objects(Render_Option option)
           pNorm dir_ab(a,b);
           pNorm dir_rt = cross(dir_z,dir_ab);
           pCoor c = a + 0.1 * dir_ab.magnitude * dir_rt;
-          render_it(a,b,c,3);
+          render_it(a,b,c,2);
         }
     }
 
