@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Textures, Blending, and the Alpha Test
 
@@ -21,6 +21,24 @@
 //        An image applied to a primitive, like wallpaper.
 
 //  Textures use lots of time, resources.
+
+ ///   Basic Procedure
+//
+//     Specify a texture.
+//     Specify where each vertex is located in texture image.
+//     Specify how texels should be blended with primitive's color.
+
+
+ /// Texture Object
+//
+//   An object containing information about textures.
+//   Includes the texture itself, plus settings.
+
+ /// Texture Unit
+//
+//   Routine (or hardware) that combines texel with fragment.
+
+
 
  // Chapter 14: Fixed-Function Primitive Assembly and Rasterization
  // Chapter 17: Writing fragments and samples to the framebuffer.
