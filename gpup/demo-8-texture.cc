@@ -12,33 +12,82 @@
 //         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
 
 
-/// Background
+/// Background -- Textures
 //
 
 // :ogl45: Chapter 8
 
 //  :Def: Texture
-//        An image applied to a primitive, like wallpaper.
-
+//   An image applied to a primitive, like wallpaper.
+//   Has many uses.
+//
+//   Textures are used to show the course syllabus on the platform
+//   floor in the classroom examples.
+//
 //  Textures use lots of time, resources.
-
- ///   Basic Procedure
 //
-//     Specify a texture.
-//     Specify where each vertex is located in texture image.
-//     Specify how texels should be blended with primitive's color.
+//  :Def: Texel
+//  A point on a texture image. (Name is mix of texture and pixel.)
 
-
- /// Texture Object
+ /// Basic Procedure
 //
-//   An object containing information about textures.
-//   Includes the texture itself, plus settings.
-
- /// Texture Unit
+//     During Initialization
+//     - Specify a texture, perhaps from an image file like myhouse.jpeg.
+//     - Specify how texels should be blended with primitive's color.
 //
-//   Routine (or hardware) that combines texel with fragment.
+//     During a Rendering Pass
+//     - Provide a texture coordinate for each vertex, indicating
+//       what part of the texture image corresponds to the vertex location.
+//
+ /// What Happens (In a Simple Case)
+//
+//     - Texture coordinates are passed along as vertex attributes.
+//
+//     - Fragment shader uses texture coordinates to retrieve a texel.
+//       (Texel is retrieved and filtered by fixed-function hardware.)
+//
+//     - Fragment shader combines texel with lighted color. If
+//       the fragment survives, the result will be written to
+//       the frame buffer.
+
+ /// Texturing Concepts
+//
+//   :Def: Texture Filtering
 
 
+ /// OpenGL use of Textures
+//
+//   :Def: Texture Object
+//   An object that holds a particular texture plus settings for the
+//   texture.
+//
+//   Texture objects typically are prepared during initialization.
+//
+//   Commands:
+//
+//    Generate a new texture object name. (Returned in second argument.)
+      glGenTextures(1,&tid);
+
+//    Set texture object for subsequent commands.
+      glBindTexture(GL_TEXTURE_2D,tid);
+
+//    Set a parameter for texture object.
+      glTexParameteri(GL_TEXTURE_2D, PNAME, PVAL);
+
+//    Load data into the texture object.
+      glTexImage2D
+
+
+
+//   :Def: Texture Unit
+//   A named (numbered) collection of settings for handling textures.
+//   A rendering pass can use zero or more texture units.
+//
+//   Texture units are set up before a rendering pass.
+
+
+
+/// Background -- Fragment Tests, Blending, FB Update
 
  // Chapter 14: Fixed-Function Primitive Assembly and Rasterization
  // Chapter 17: Writing fragments and samples to the framebuffer.
@@ -46,7 +95,7 @@
  /// Major Steps
  //
  //  -- Early per-fragment tests.
- //  -- Fragment Processing: User-provided shader or compatibility.
+ //  -- Fragment Processing: User-provided shader or compatibility routine.
  //  -- Late per-fragment tests.
 
  //  Early Per-Fragment Tests
