@@ -459,6 +459,23 @@ pCoor mult_MC(pMatrix& m, pCoor c)
   return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
 }
 
+pVect mult_MV(pMatrix3x3 m, pVect c)
+{
+  return pVect(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c));
+}
+
+inline pVect operator * (pMatrix3x3 m, pVect c) { return mult_MV(m,c); }
+
+// Multiply M transposed times V.
+pVect mult_MTV(pMatrix3x3 m, pVect v)
+{
+  pVect q(0,0,0);
+  float* const qf = &q.x;
+  for ( int r=0; r<3; r++ )
+    for ( int c=0; c<3; c++ ) qf[r] += m.rc(c,r) * v.elt(c);
+  return q;
+}
+
 inline void
 pCoor::add_vector(pVect v)
 {
@@ -791,6 +808,27 @@ private:
   }
 
 };
+
+
+class pMatrix3x3_Rotation : public pMatrix3x3 {
+public:
+  pMatrix3x3_Rotation(pQuat q)
+  {
+    pVect v = q.v;
+    set_identity();
+    rc(0,0) = 1 - 2 * v.y * v.y - 2 * v.z * v.z;
+    rc(0,1) = 2 * v.x * v.y - 2 * q.w * v.z;
+    rc(0,2) = 2 * v.x * v.z + 2 * q.w * v.y;
+    rc(1,0) = 2 * v.x * v.y + 2 * q.w * v.z;
+    rc(1,1) = 1 - 2 * v.x * v.x - 2 * v.z * v.z;
+    rc(1,2) = 2 * v.y * v.z - 2 * q.w * v.x;
+    rc(2,0) = 2 * v.x * v.z - 2 * q.w * v.y;
+    rc(2,1) = 2 * v.y * v.z + 2 * q.w * v.x;
+    rc(2,2) = 1 - 2 * v.x * v.x - 2 * v.y * v.y;
+  }
+};
+
+
 
 #ifdef GP_UTIL_DECLARE_ONLY
 pMatrix invert(pMatrix& original);
