@@ -750,7 +750,7 @@ World::render()
   ogl_helper.fbprintf
     ("Links: %s  ('z' to change)  "
      "Tryout 1: %s  ('y' to change)  Tryout 2: %s  ('Y' to change)\n",
-     opt_render_links == 0 ? "render_links_1" : "render_links_2",
+     opt_render_links == 0 ? "render_link_1" : "render_link_2",
      opt_tryout1 ? BLINK("ON","  ") : "OFF",
      opt_tryout2 ? BLINK("ON","  ") : "OFF");
 
@@ -1080,7 +1080,7 @@ World::init()
   frame_timer.work_unit_set("Steps / s");
 
   opt_shadows = true;
-  opt_shader = SO_Phong;
+  opt_shader = SO_Fixed;
 
   ball_eye = NULL;
   opt_ride = false;
@@ -1285,7 +1285,7 @@ World::ball_setup_2()
 
   pCoor first_pos(17.2,14.8f,-20.2);
 
-  pVect dir_dn(0.0,first_pos.y/8,0.0);
+  pVect dir_dn(0.5,first_pos.y/8,0.5);
   pVect dir_x(3*distance_relaxed,0,0);
   pVect dir_z(0,0,3*distance_relaxed);
 
@@ -1319,11 +1319,12 @@ World::ball_setup_2()
   Ball* const tail_start = nb(first_pos - dir_dn);
   links += link_new(balls[balls-6],tail_start);
   links += link_new(balls[balls-3],tail_start);
-  pCoor pos = tail_start->position;
+  pCoor last_pos = tail_start->position;
   for ( int i=1; i<5; i++ )
     {
-      Ball* const ball = nb(pos - dir_dn * i);
+      Ball* const ball = nb(last_pos - dir_dn * (0.5 + drand48()) );
       links += link_new(balls[balls-2],ball);
+      last_pos = ball->position;
     }
 
   tail_ball = balls[balls-1];
@@ -1583,33 +1584,65 @@ void World::balls_freeze(){balls_stop();}
 void
 World::render_link_1(Link *link)
 {
+  /// HOMEWORK 3:  Put solution to Problems 2 and 3 in this routine
+  //  and else where.
+
   Ball *const ball1 = link->ball1;
   Ball *const ball2 = link->ball2;
+
+  // Direction of link relative to center off ball.
+  //
   pVect dir1 = ball1->omatrix * link->cb1;
+
+  // Place on surface of ball where link connects.
+  //
   pCoor pos1 = ball1->position + dir1;
+
+  // Direction and connection location for ball 2.
+  //
   pVect dir2 = ball2->omatrix * link->cb2;
   pCoor pos2 = ball2->position + dir2;
-  pNorm p1p2(pos1,pos2);
 
-  glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
-  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_gray);
+  pVect p1p2(pos1,pos2);
+  pNorm p1p2n(p1p2);
 
-  const int sides = 10;
+  // Number of segments used to construct link.  Each segment is
+  // approximately a cylinder.
+  //
   const int segments = 15;
+
+  // Number of sides of each cylinder.
+  //
+  const int sides = 20;
+
   const float delta_tee = 1.0 / segments;
+
+  // Radius of link.
+  //
   const float rad = ball1->radius * 0.3;
+
+  pNorm dirn1(dir1);
+  pNorm dirn2(dir2);
+
+  // Vectors used to describe the cubic Hermite curve.
+  //
+  pVect v1 = 0.5 * p1p2n.magnitude * dirn1;
+  pVect v2 = 0.5 * p1p2n.magnitude * dirn2;
+
+  // Convert link's local x and y axes to global coordinates.
+  //
+  pVect b1_ydir = ball1->omatrix * link->b1_dir;
+  pVect b1_xdir = cross(b1_ydir,p1p2n);
+
+  pVect b2_dir = ball2->omatrix * link->b2_dir;
+  float angle =  // Twisting of link.
+    acos(min(-1.0f,max(1.0f,dot(b1_ydir,b2_dir))));
 
   pCoor pts[sides+1];
   pVect vecs[sides+1];
 
-  pVect v1 = 2.5 * p1p2.magnitude * dir1;
-  pVect v2 = 2.5 * p1p2.magnitude * dir2;
-
-  pVect b1_dir = ball1->omatrix * link->b1_dir;
-  pVect b2_dir = ball2->omatrix * link->b2_dir;
-  float angle = opt_tryout1 ? 0.0 : acos(dot(b1_dir,b2_dir));
-
   glBegin(GL_TRIANGLE_STRIP);
+  glColor3fv( color_light_gray );
 
   for ( int i=0; i<=segments; i++ )
     {
@@ -1618,18 +1651,23 @@ World::render_link_1(Link *link)
       const float t3 = t2 * t;
 
       // Cubic Hermite interpolation.
+      // Compute point along core of link.
+      //
       pCoor ctr =
         ( 2*t3 - 3*t2 + 1 ) * pos1 + (-2*t3 + 3*t2 + 0 ) * pos2
         + (t3 - 2*t2 + t ) * v1 - (t3 - t2 ) * v2;
 
+      // Compute direction of link at this point.
+      //
       pNorm tan =
         ( 6*t2 - 6*t ) * pos1 + (-6*t2 + 6*t ) * pos2
         + (3*t2 - 4*t + 1 ) * v1 - (3*t2 - 2*t ) * v2;
 
-      pNorm norm = cross(tan,b1_dir);
+      // Compute local x and y axes for drawing a cylinder.
+      //
+      pNorm norm = cross(tan,b1_ydir);
       pVect binorm = cross(tan,norm);
 
-      glColor3fv( i & 1 ? color_red : color_forest_green );
       for ( int j=0; j<=sides; j++ )
         {
           const float theta = j * ( 2 * M_PI / sides ) + t * angle;
@@ -1652,33 +1690,65 @@ World::render_link_1(Link *link)
 void
 World::render_link_2(Link *link)
 {
+  /// HOMEWORK 3:  Put solution to Problems 2 and 3 in this routine
+  //  and else where.
+  //
   Ball *const ball1 = link->ball1;
   Ball *const ball2 = link->ball2;
+
+  // Direction of link relative to center off ball.
+  //
   pVect dir1 = ball1->omatrix * link->cb1;
+
+  // Place on surface of ball where link connects.
+  //
   pCoor pos1 = ball1->position + dir1;
+
+  // Direction and connection location for ball 2.
+  //
   pVect dir2 = ball2->omatrix * link->cb2;
   pCoor pos2 = ball2->position + dir2;
-  pNorm p1p2(pos1,pos2);
 
-  glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
-  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_gray);
+  pVect p1p2(pos1,pos2);
+  pNorm p1p2n(p1p2);
 
-  const int sides = 10;
+  // Number of segments used to construct link.  Each segment is
+  // approximately a cylinder.
+  //
   const int segments = 15;
+
+  // Number of sides of each cylinder.
+  //
+  const int sides = 20;
+
   const float delta_tee = 1.0 / segments;
+
+  // Radius of link.
+  //
   const float rad = ball1->radius * 0.3;
+
+  pNorm dirn1(dir1);
+  pNorm dirn2(dir2);
+
+  // Vectors used to describe the cubic Hermite curve.
+  //
+  pVect v1 = 0.5 * p1p2n.magnitude * dirn1;
+  pVect v2 = 0.5 * p1p2n.magnitude * dirn2;
+
+  // Convert link's local x and y axes to global coordinates.
+  //
+  pVect b1_ydir = ball1->omatrix * link->b1_dir;
+  pVect b1_xdir = cross(b1_ydir,p1p2n);
+
+  pVect b2_dir = ball2->omatrix * link->b2_dir;
+  float angle =  // Twisting of link.
+    acos(min(-1.0f,max(1.0f,dot(b1_ydir,b2_dir))));
 
   pCoor pts[sides+1];
   pVect vecs[sides+1];
 
-  pVect v1 = 2.5 * p1p2.magnitude * dir1;
-  pVect v2 = 2.5 * p1p2.magnitude * dir2;
-
-  pVect b1_dir = ball1->omatrix * link->b1_dir;
-  pVect b2_dir = ball2->omatrix * link->b2_dir;
-  float angle = opt_tryout1 ? 0.0 : acos(dot(b1_dir,b2_dir));
-
   glBegin(GL_TRIANGLE_STRIP);
+  glColor3fv( color_light_gray );
 
   for ( int i=0; i<=segments; i++ )
     {
@@ -1687,18 +1757,23 @@ World::render_link_2(Link *link)
       const float t3 = t2 * t;
 
       // Cubic Hermite interpolation.
+      // Compute point along core of link.
+      //
       pCoor ctr =
         ( 2*t3 - 3*t2 + 1 ) * pos1 + (-2*t3 + 3*t2 + 0 ) * pos2
         + (t3 - 2*t2 + t ) * v1 - (t3 - t2 ) * v2;
 
+      // Compute direction of link at this point.
+      //
       pNorm tan =
         ( 6*t2 - 6*t ) * pos1 + (-6*t2 + 6*t ) * pos2
         + (3*t2 - 4*t + 1 ) * v1 - (3*t2 - 2*t ) * v2;
 
-      pNorm norm = cross(tan,b1_dir);
+      // Compute local x and y axes for drawing a cylinder.
+      //
+      pNorm norm = cross(tan,b1_ydir);
       pVect binorm = cross(tan,norm);
 
-      glColor3fv( i & 1 ? color_red : color_forest_green );
       for ( int j=0; j<=sides; j++ )
         {
           const float theta = j * ( 2 * M_PI / sides ) + t * angle;
