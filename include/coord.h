@@ -68,6 +68,8 @@ public:
 
   pMatrix(){set_identity();}
 
+  pMatrix(pVect c0, pVect c1, pVect c2);
+
   pMatrix(pMatrix m1, pMatrix m2){pMMultiply(*this,m1,m2);}
 
   operator float* () { return &a[0]; }
@@ -109,6 +111,11 @@ public:
   {
     for ( int r=0; r<3; r++ )
       for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
+  }
+  void set_transpose(pMatrix m)
+  {
+    for ( int r=0; r<4; r++ )
+      for ( int c=0; c<4; c++ ) rc(r,c) = m.rc(c,r);
   }
 
   inline float det();
@@ -432,6 +439,10 @@ pangle(pCoor a, pCoor b, pCoor c)
   return pangle(pVect(b,a),pVect(b,c));
 }
 
+
+pMatrix::pMatrix(pVect c0, pVect c1, pVect c2)
+{ set_identity(); set_col(0,c0); set_col(1,c1);  set_col(2,c2); }
+
 inline pVect pMatrix::cv(int col)
 { return pVect(rc_get(0,col),rc_get(1,col),rc_get(2,col)); }
 
@@ -684,9 +695,26 @@ inline float pDistance_sq(pCoor a, pCoor b)
 // Pre-Initialized Matrices
 //
 
+class pMatrix_Rows : public pMatrix {
+public:
+  pMatrix_Rows(pVect r0, pVect r1, pVect r2)
+    { set_identity(); set_row(0,r0); set_row(1,r1); set_row(2,r2); }
+};
+
+class pMatrix_Cols : public pMatrix {
+public:
+  pMatrix_Cols(pVect c0, pVect c1, pVect c2)
+    { set_identity(); set_col(0,c0); set_col(1,c1); set_col(2,c2); }
+};
+
 class pMatrix_Scale : public pMatrix {
 public:
   pMatrix_Scale(float factor){set_scale(factor);}
+  pMatrix_Scale(float x, float y, float z)
+  {
+    set_identity();
+    rc(0,0) = x; rc(1,1) = y; rc(2,2) = z;
+  }
 };
 
 class pMatrix_Translate : public pMatrix {
