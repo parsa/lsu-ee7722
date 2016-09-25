@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 3 --- PRELIMINARY
+ /// Homework 3
  //
  //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw03.pdf
 
@@ -1636,7 +1636,7 @@ World::render_link_1(Link *link)
 
   pVect b2_dir = ball2->omatrix * link->b2_dir;
   float angle =  // Twisting of link.
-    acos(min(-1.0f,max(1.0f,dot(b1_ydir,b2_dir))));
+    acos(max(-1.0f,min(1.0f,dot(b1_ydir,b2_dir))));
 
   pCoor pts[sides+1];
   pVect vecs[sides+1];
@@ -1742,7 +1742,7 @@ World::render_link_2(Link *link)
 
   pVect b2_dir = ball2->omatrix * link->b2_dir;
   float angle =  // Twisting of link.
-    acos(min(-1.0f,max(1.0f,dot(b1_ydir,b2_dir))));
+    acos(max(-1.0f,min(1.0f,dot(b1_ydir,b2_dir))));
 
   pCoor pts[sides+1];
   pVect vecs[sides+1];
