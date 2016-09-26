@@ -80,7 +80,7 @@ gs_main_simple()
 {
   for ( int i=0; i<3; i++ )
     {
-      normal_e = In[i].normal_e;
+      normal_e = In[0].normal_e;
       vertex_e = In[i].vertex_e;
       color = In[i].color;
       gl_Position = In[i].gl_Position;

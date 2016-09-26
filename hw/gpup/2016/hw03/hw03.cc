@@ -299,6 +299,7 @@ public:
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
   pVect platform_normal;
+  GLuint texid_hw;
   GLuint texid_syl;
   GLuint texid_emacs;
   bool opt_platform_texture;
@@ -412,6 +413,7 @@ World::init_graphics()
   platform_zmin = -40; platform_zmax = 40;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
   texid_emacs = pBuild_Texture_File("mult.png", false,-1);
+  texid_hw = pBuild_Texture_File("hw03-assign.png", false,255);
 
   opt_light_intensity = 100.2;
   light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
@@ -573,7 +575,7 @@ World::render_objects(Render_Option option)
             (ball->radius,ball->position,
              pMatrix_Rotation(ball->orientation));
         }
-      glBindTexture(GL_TEXTURE_2D,texid_syl);
+      glBindTexture(GL_TEXTURE_2D,texid_hw);
       for ( Link *link: links )
         {
           if ( !link->is_renderable ) continue;
