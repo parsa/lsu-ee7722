@@ -257,6 +257,11 @@ World::lock_update()
 void
 World::render_it_demo(pCoor a, pCoor b, pCoor c, int version)
 {
+  /// DO NOT put homework solution in this routine.
+  //
+  //  This routine can be modified for experimentation, but don't
+  //  put solution here. The solution should go in to render_it.
+
   pNorm dir_z = cross(c,b,a);
   glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
   glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_gray);
@@ -299,7 +304,6 @@ World::render_it_demo(pCoor a, pCoor b, pCoor c, int version)
 
 }
 
-
 void
 World::render_it(pCoor a, pCoor b, pCoor c, int version)
 {
@@ -310,10 +314,19 @@ World::render_it(pCoor a, pCoor b, pCoor c, int version)
 
   /// SOLUTION
 
+  //
+  /// Construct L shape.
+  //
   float edge_len = dir_dn.magnitude;
 
   float width = dir_rt.magnitude;
   float hwidth = width / 2;
+
+  // Naming scheme:
+  //   l0: Point on left edge,
+  //   l1: point a bit over to the right of l0,...
+  //   r0, t0, b0: point on right, top, bottom edge respectively.
+  //   
   pCoor p_l0t2 = a + width * dir_dn;
   pCoor p_l1t1 = a + hwidth * ( dir_rt + dir_dn );
   pCoor p_l2t0 = a + width * dir_rt;
@@ -325,7 +338,6 @@ World::render_it(pCoor a, pCoor b, pCoor c, int version)
   pCoor p_r0b0 = b + edge_len * dir_rt;
 
   pCoors coords;
-
   coords += p_l2t0;
   coords += a;
   coords += p_l1t1;
@@ -340,36 +352,46 @@ World::render_it(pCoor a, pCoor b, pCoor c, int version)
   glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
   glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_gray);
 
-  pCoors v1_coords;
-
+  // Find center of square to be formed using two L shapes.
+  //
   pCoor p_ctr = a + 0.5 * pVect(a,p_r0b0);
 
-  pMatrix m =
-    pMatrix_Translate(p_ctr)
-    * pMatrix_Rotation(dir_z,M_PI) * pMatrix_Translate(-p_ctr);
-
-  v1_coords = coords;
-
   if ( version > 0 )
-    for ( pCoor co: coords ) v1_coords +=  m * co;
+    {
+      // Construct transformation matrix that will rotate L shape into
+      // position.
+
+      pMatrix m =
+        pMatrix_Translate(p_ctr)
+        * pMatrix_Rotation(dir_z,M_PI) * pMatrix_Translate(-p_ctr);
+
+      // Use transformation to add rotated points on to list.
+      //
+      for ( pCoor co: pCoors(coords) ) coords +=  m * co;
+    }
 
   if ( version < 2 )
     {
+      // Render the L or the square.
+
       glBegin(GL_TRIANGLE_STRIP);
       glColor3fv(color_yellow);
       glNormal3fv(dir_z);
-      for ( pCoor co: v1_coords ) glVertex3fv( co );
+      for ( pCoor co: coords ) glVertex3fv( co );
       glEnd();
       return;
     }
 
   pCoor cube_ctr = p_ctr - 0.5 * edge_len * dir_z;
-  for ( int ano = 0; ano < 2; ano++ )
+
+  // Rotate the square to form a cube.
+
+  for ( int axis_num = 0; axis_num < 2; axis_num++ )
     {
-      pVect axis = ano == 0 ? dir_dn : dir_rt;
+      pVect axis = axis_num == 0 ? dir_dn : dir_rt;
       for ( int face = 0;  face < 4;  face++ )
         {
-          if ( ano == 1 &&  ( ( face & 1 ) == 0 ) ) continue;
+          if ( axis_num == 1 &&  ( ( face & 1 ) == 0 ) ) continue;
           const double angle = face * M_PI / 2;
           pMatrix_Rotation rot(axis,angle);
           pMatrix m =
@@ -377,13 +399,18 @@ World::render_it(pCoor a, pCoor b, pCoor c, int version)
 
           glBegin(GL_TRIANGLE_STRIP);
           glColor3fv(color_yellow);
-          glNormal3fv(rot * dir_z);
-          for ( pCoor co: v1_coords ) glVertex3fv( m * co );
-          glEnd();
 
+          // Use rot, not m, to rotate normal. (Vectors don't need to
+          // be centered.)
+          glNormal3fv(rot * dir_z);
+
+          // Rotate coordinates.
+          //
+          for ( pCoor co: coords ) glVertex3fv( m * co );
+
+          glEnd();
         }
     }
-
 }
 
 
