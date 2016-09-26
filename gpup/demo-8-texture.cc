@@ -52,7 +52,33 @@
 
  /// Texturing Concepts
 //
+//   :Def: Texel Fetch
+//   The retrieval of a texel value at some coordinates.
+//
+//   OpenGL Shading Language texel fetch function:
+     vec4 texel = texture( tex_unit_0, texture_coor );
+//
+//   texture_coor is a 2-D vector of floats. Coordinates space is [0,1]
+//
+//   :Example:  Very simple texture fetch.
+//      Suppose original texture image is 1000 by 1000 pixels.
+//      Suppose texture_coor = { 0.050, 0.070 }.
+//      Fetch would return value of image texel at 50,70.
+//
+//      Suppose an adjacent fragment had texture_coor = { 0.150, 0.170 }
+//      Fetch would return value of image texel at 150,170 ---
+//        --- SKIPPING 100 image texels in each axis.
+
+//
 //   :Def: Texture Filtering
+//   The computing of a texel value at some coordinate using some
+//   combination of image texel values.
+//
+//   Texture filtering has a very strong impact on image appearance.
+//
+//   Texture filtering is compute intensive, and is one of the few
+//   graphics operations that still (in 2016) uses special-purpose GPU
+//   hardware.
 
 
  /// OpenGL use of Textures
@@ -113,11 +139,41 @@
  //    Not every test is listed.
  //    A fragment that fails a test is not processed further.
  //
- //    -- Alpha Test
+ //    -- Alpha Test  (Deprecated)
  //    -- Stencil Test
  //    -- Depth Buffer (z) Test
- //    -- Occlusion
  //    -- Blending
+
+ ///  Depth Buffer Test
+ //
+ //   Operates on depth (z) layer of frame buffer.
+ //
+ //   Turn on and off depth test.
+      glEnable(GL_DEPTH_TEST);
+      glDisable(GL_DEPTH_TEST);
+
+ //   Specify type of test:
+      glDepthFunc(FUNC);
+ //   FUNC -> GL_NEVER, GL_ALWAYS, GL_LESS, GL_LEQUAL, GL_EQUAL,
+ //           GL_GEQUAL, GL_NOTEQUAL
+ //
+      glDepthFunc(GL_LESS); // Pass if fragment z < pixel z.
+
+
+ ///  Blending
+ //
+ //   Method of combining fragment colors with pixel colors.
+ //
+ //   Turn on and off.
+      glEnable(GL_BLEND);
+      glDisable(GL_BLEND);
+ //
+ //   Specify blend operator (Equation) and blend factors (BF)
+      glBlendEquation( EQ );
+      glBlendFunc( SRC_BF, DST_BF );
+ //   EQ -> GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_MIN, GL_MAX
+ //   BF -> GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_DST_COLOR, 
+
 
 
 ///  Keyboard Commands
