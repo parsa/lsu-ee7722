@@ -58,7 +58,7 @@
  //  'F11'  Change size of green text (in upper left).
  //  'F12'  Write screenshot to file.
 
- //  'z'    Switch between render_links_1 and render_links_2.
+ //  'z'    Switch between render_link_1 and render_link_2.
 
  /// Variables
  //   Selected program variables can be modified using the keyboard.
@@ -1636,12 +1636,13 @@ World::render_link_1(Link *link)
   pVect b1_ydir = ball1->omatrix * link->b1_dir;
   pVect b1_xdir = cross(b1_ydir,p1p2n);
 
-  pVect b2_dir = ball2->omatrix * link->b2_dir;
-  float angle =  // Twisting of link.
-    acos(max(-1.0f,min(1.0f,dot(b1_ydir,b2_dir))));
+  pVect b2_ydir = ball2->omatrix * link->b2_dir;
 
   pCoor pts[sides+1];
   pVect vecs[sides+1];
+
+  glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
+  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_red);
 
   glBegin(GL_TRIANGLE_STRIP);
   glColor3fv( color_light_gray );
@@ -1667,12 +1668,13 @@ World::render_link_1(Link *link)
 
       // Compute local x and y axes for drawing a cylinder.
       //
-      pNorm norm = cross(tan,b1_ydir);
+      pVect ydir = (1-t) * b1_ydir + t * b2_ydir;
+      pNorm norm = cross(tan,ydir);
       pVect binorm = cross(tan,norm);
 
       for ( int j=0; j<=sides; j++ )
         {
-          const float theta = j * ( 2 * M_PI / sides ) + t * angle;
+          const float theta = j * ( 2 * M_PI / sides );
           pCoor pt = pts[j];
           pVect vec = vecs[j];
           vecs[j] = cosf(theta) * norm + sinf(theta) * binorm;
@@ -1692,7 +1694,7 @@ World::render_link_1(Link *link)
 void
 World::render_link_2(Link *link)
 {
-  /// HOMEWORK 3:  Put solution to Problems 2 and 3 in this routine
+  /// HOMEWORK 3:  Put solution to Problem 2 in this routine
   //  and else where.
   //
   Ball *const ball1 = link->ball1;
@@ -1742,12 +1744,13 @@ World::render_link_2(Link *link)
   pVect b1_ydir = ball1->omatrix * link->b1_dir;
   pVect b1_xdir = cross(b1_ydir,p1p2n);
 
-  pVect b2_dir = ball2->omatrix * link->b2_dir;
-  float angle =  // Twisting of link.
-    acos(max(-1.0f,min(1.0f,dot(b1_ydir,b2_dir))));
+  pVect b2_ydir = ball2->omatrix * link->b2_dir;
 
   pCoor pts[sides+1];
   pVect vecs[sides+1];
+
+  glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
+  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_red);
 
   glBegin(GL_TRIANGLE_STRIP);
   glColor3fv( color_light_gray );
@@ -1773,12 +1776,13 @@ World::render_link_2(Link *link)
 
       // Compute local x and y axes for drawing a cylinder.
       //
-      pNorm norm = cross(tan,b1_ydir);
+      pVect ydir = (1-t) * b1_ydir + t * b2_ydir;
+      pNorm norm = cross(tan,ydir);
       pVect binorm = cross(tan,norm);
 
       for ( int j=0; j<=sides; j++ )
         {
-          const float theta = j * ( 2 * M_PI / sides ) + t * angle;
+          const float theta = j * ( 2 * M_PI / sides );
           pCoor pt = pts[j];
           pVect vec = vecs[j];
           vecs[j] = cosf(theta) * norm + sinf(theta) * binorm;
