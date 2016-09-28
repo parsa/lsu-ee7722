@@ -9,7 +9,49 @@
  //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2015/hw03.pdf
  //  Solution discussion: http://www.ece.lsu.edu/koppel/gpup/2015/hw03_sol.pdf
 
+#if 0
+/// SOLUTION OUTLINE
 
+ /// Parts of Solution
+ //
+ //  - Preparing a Texture
+ //  - Division of Platform into Overlays (Use many small textures.)
+ //  - Coordinate Spaces: Object (balls) to Overlays to Texture Pixels
+
+ /// Code Organization
+
+ /// Platform_Overlay
+ //
+ Platform_Overlay* platform_overlays;  // Array of overlays.
+ //
+ //  A data structure holding info about texture that covers part of platform.
+ //
+ //  Platform is covered by nx * ny (default 40*40) overlays ..
+ //  .. arranged in a grid.
+ //
+ //  Initialized in My_Piece_Of_The_World::init():
+
+
+
+ /// Overlay Rationale
+ //
+ //  We expect to update texture on CPU and send it back go GPU.
+ //
+ //  This may happen every frame.
+ //
+ //  Suppose minimum scuff size is 1/100 of a tile:
+ //    19 * 19 platform tiles  * 100 * 100  * 24 bytes / texel
+ //    = 86640000 B
+ //
+ //  Recall: PCIe x16:  15.8 GB/s
+ //  Suppose we want a frame rate of 60 f/s
+ //   15.8 10^9 / ( 60 * 86640000 ) = 3.04
+ //   About 1/3 of the capacity will be used for texture updates.
+
+
+
+
+#endif
 /// Purpose
 //
 //   Demonstrate simulation of point masses connected by springs.
@@ -257,14 +299,22 @@ struct Truss_Info {
 void
 My_Piece_Of_The_World::init()
 {
-  twid_x = 256; twid_z = 256;
-  num_texels = twid_x * twid_z;
+  // Number of overlays along each direction.
+  //
   nx = 40; nz = 40;
   num_overlays = nx * nz;
+
+  // Number of texels along each dimension of each overlay's texture.
+  //
+  twid_x = 256; twid_z = 256;
+  num_texels = twid_x * twid_z;
+
   sample_tex_make();
 
   platform_overlays = new Platform_Overlay[num_overlays];
 
+  // Dimensions of overlay in object-space coordinates.
+  //
   wid_x = ( w.platform_xmax - w.platform_xmin ) / nx;
   wid_z = ( w.platform_zmax - w.platform_zmin ) / nz;
   wid_x_inv = 1.0 / wid_x;
