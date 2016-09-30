@@ -11,7 +11,7 @@
 // :ogl45: OpenGL Specification Version 4.5
 //         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
 
-
+#if 0
 /// Background -- Textures
 //
 
@@ -174,7 +174,7 @@
  //   EQ -> GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_MIN, GL_MAX
  //   BF -> GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_DST_COLOR, 
 
-
+#endif
 
 ///  Keyboard Commands
  //
