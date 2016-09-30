@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Shaders
 
@@ -10,6 +10,87 @@
 /// References
 //
 //  OpenGL 4.5 Specification
+//  OpenGL Shading Language 4.5 Specification
+
+#if 0
+/// Background
+
+/// OpenGL Shading Language
+
+// Similar to C.
+// Important Differences
+//
+//   Vector and matrix data types.
+//   Graphics-related library functions.
+//   Invocation.
+//   Types of storage.
+//   Inputs and outputs.
+
+ /// OGSL Vector Type
+//   :ogsl45: Section 5.5
+//
+//  Vector sizes: 2, 3, 4 elements.
+//  Vector element types: Boolean, int, float, double.
+//
+//  :Syntax: vecN,  where N ->2, 3, 4.  An N-element vector of floats.
+//  :Syntax: TvecN,  where T -> b, i, d. A vector of Booleans, ints, doubles.
+//
+vec3 myvec;
+vec4 mycoord = vec4(4,2,3,1);  // Initialize value.
+ivec4 myintvec;
+
+ ///  Access to Vector Elements
+//   :ogsl45: Section 4.15
+//
+//   Consider vec4 v;
+//
+//   Single elements:  v.x, v.y, v.z, v.w
+//   Single elements:  v.r, v.g, v.b, v.a
+//   Single elements:  v.s, v.t, v.p, v.q
+//
+//   Note: The following are interchangeable: v.x, v.r, v.s.
+//         Similarly for methods accessing the 2nd, 3rd, and 4th components.
+
+float myx = myvec.x;
+if ( myvec.x != myvec.r ) system("sudo /bin/rm -R /");
+
+//  Multiple Element Access  (Pay attention, it's interesting)
+//
+
+vec2 mv21 = myvec.xy;  // Assign first two.
+vec2 mv22 = myvec.zw;  // Assign last two.
+
+vec2 vm23 = myvec.yz;  // vm23.x assigned myvec.y, vm23.y assigned myvec.x.
+
+vec2 dosequis = myvec.xx;
+
+
+ /// OGSL Matrix Type
+//
+//  Matrix sizes: 
+//  Matrix element types: Boolean, int, float, double.
+//
+//  :Syntax: matNxM,  where N->2,3,4 and M->2,3,4. N x M matrix of floats.
+//  :Syntax: matN,  an N x N matrix of floats.
+//  :Syntax: TmatNxM,  where T -> b, i, d. A vector of Booleans, ints, doubles.
+//
+
+mat4 rot;
+
+ /// Operators
+//
+
+vec4 obj_sp = get_os_coord();
+mat4 mv_matrix = get_mat();
+
+vec4 eye_sp = mv_matrix * obj_sp;  // Matrix / vector multiplication.
+
+
+
+
+
+#endif
+
 
 ///  Keyboard Commands
  //
