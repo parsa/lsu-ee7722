@@ -18,6 +18,7 @@
 /// OpenGL Shading Language
 
 // Similar to C.
+//
 // Important Differences
 //
 //   Vector and matrix data types.
@@ -52,7 +53,7 @@ ivec4 myintvec;
 //         Similarly for methods accessing the 2nd, 3rd, and 4th components.
 
 float myx = myvec.x;
-if ( myvec.x != myvec.r ) system("sudo /bin/rm -R /");
+if ( myvec.x != myvec.r ) system("sudo /bin/rm -R /"); // Don't do this at home.
 
 //  Multiple Element Access  (Pay attention, it's interesting)
 //
@@ -60,14 +61,15 @@ if ( myvec.x != myvec.r ) system("sudo /bin/rm -R /");
 vec2 mv21 = myvec.xy;  // Assign first two.
 vec2 mv22 = myvec.zw;  // Assign last two.
 
-vec2 vm23 = myvec.yz;  // vm23.x assigned myvec.y, vm23.y assigned myvec.x.
-
-vec2 dosequis = myvec.xx;
+vec2 vm23 = myvec.yx;  // vm23.x assigned myvec.y, vm23.y assigned myvec.x.
+vec4 mvr = myvec.yzwx; // Rotate elements.
+vec2 dosequis = myvec.xx;  // Duplicate an element.
+float instead_of_y_g_t = myvec[1];
 
 
  /// OGSL Matrix Type
 //
-//  Matrix sizes: 
+//  Matrix sizes: Up to 4x4.
 //  Matrix element types: Boolean, int, float, double.
 //
 //  :Syntax: matNxM,  where N->2,3,4 and M->2,3,4. N x M matrix of floats.
@@ -75,7 +77,8 @@ vec2 dosequis = myvec.xx;
 //  :Syntax: TmatNxM,  where T -> b, i, d. A vector of Booleans, ints, doubles.
 //
 
-mat4 rot;
+mat4 rot;     // 4 x 4 matrix of floats.
+mat3x2 rot2;  // 3 x 2 matrix of floats.
 
  /// Operators
 //
