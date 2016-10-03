@@ -16,14 +16,25 @@
 /// Background
 
 /// OpenGL Shading Language
+//  :ogsl45:  OpenGL Shading Language Reference
+
+ // :Def: OpenGL Shading Language
+//  Language used to write shaders.
+//
+//  :Def: OGSL
+//  An abbreviation of OpenGL Shading Language
+//
+//  :Def: Shader
+//  A piece of code (compiled OGSL code) that is invoked by OpenGL.
+
 
 // Similar to C.
 //
 // Important Differences
 //
 //   Vector and matrix data types.
-//   Graphics-related library functions.
 //   Invocation.
+//   Graphics-related library functions.
 //   Types of storage.
 //   Inputs and outputs.
 
@@ -34,7 +45,8 @@
 //  Vector element types: Boolean, int, float, double.
 //
 //  :Syntax: vecN,  where N ->2, 3, 4.  An N-element vector of floats.
-//  :Syntax: TvecN,  where T -> b, i, d. A vector of Booleans, ints, doubles.
+//  :Syntax: TvecN,  where T -> b, u, i, d.
+//           A vector of Booleans, unsigned ints, ints, doubles.
 //
 vec3 myvec;
 vec4 mycoord = vec4(4,2,3,1);  // Initialize value.
@@ -64,7 +76,7 @@ vec2 mv22 = myvec.zw;  // Assign last two.
 vec2 vm23 = myvec.yx;  // vm23.x assigned myvec.y, vm23.y assigned myvec.x.
 vec4 mvr = myvec.yzwx; // Rotate elements.
 vec2 dosequis = myvec.xx;  // Duplicate an element.
-float instead_of_y_g_t = myvec[1];
+float instead_of_y_g_t = myvec[1];  // Access second element.
 
 
  /// OGSL Matrix Type
@@ -82,6 +94,7 @@ mat3x2 rot2;  // 3 x 2 matrix of floats.
 
  /// Operators
 //
+// Many arithmetic operators work with vector and matrix types.
 
 vec4 obj_sp = get_os_coord();
 mat4 mv_matrix = get_mat();
