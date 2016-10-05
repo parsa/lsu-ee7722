@@ -24,7 +24,7 @@ public:
     validated = true;
     pobject = 0;
   }
-# ifdef GL_VERTEX_SHADER
+
   GLint uniform_location(const char *name)
   {
     const GLint rv = ptr_glGetUniformLocation(pobject,name);
@@ -37,11 +37,94 @@ public:
   GLint varying_location(const char *name)
   {return ptr_glGetVaryingLocationNV(pobject, name);}
 
+  GLuint init
+  (const char *source_pathp,
+   const char *main_body_vs, const char *main_body_fs = NULL)
+  {
+    return init_vgf_or_c(source_pathp,main_body_vs,NULL,main_body_fs);
+  }
+
+  GLuint init_vgf_or_c
+  (const char *source_pathp,
+   const char *main_body_vs,
+   const char *main_body_gs = NULL,
+   const char *main_body_fs = NULL)
+  {
+    ready = false;
+    validated = false;
+    source_path = source_pathp;
+
+    const bool compute_shader = !main_body_vs && !main_body_gs && !main_body_fs;
+
+    /// - Create Program Object
+    //
+    pobject = glCreateProgram();
+    if ( pobject == 0 ) return 0;
+
+    /// - Create Compute Shader Shader Object and Put in Program Object
+    //
+    cs_object = compute_shader
+      ? shader_load(GL_COMPUTE_SHADER,source_path,NULL) : 0;
+    if ( cs_object < 0 ) return 0;
+
+    /// - Create Vertex Shader Shader Object and Put in Program Object
+    //
+    vs_object = main_body_vs
+      ? shader_load(GL_VERTEX_SHADER,source_path,main_body_vs) : 0;
+    if ( vs_object < 0 ) return 0;
+
+    /// - Create Geometry Shader Shader Object and Put in Program Object
+    //
+    gs_object = main_body_gs
+      ? shader_load(GL_GEOMETRY_SHADER,source_path,main_body_gs) : 0;
+    if ( gs_object < 0 ) return 0;
+
+    /// - Create Fragment Shader Shader Object and Put in Program Object
+    //
+    fs_object = main_body_fs
+      ? shader_load(GL_FRAGMENT_SHADER,source_path,main_body_fs) : 0;
+    if ( fs_object < 0 ) return 0;
+
+    pError_Check();
+
+    /// - Link Shader Objects in Program Object and Put in Program Object
+    //
+    glLinkProgram(pobject);
+    pError_Check();
+
+    /// - Check Whether Link Successful, If Not Show Errors
+    //
+    GLint link_status;
+    glGetProgramiv(pobject,GL_LINK_STATUS,&link_status);
+    if ( !link_status )
+      {
+        printf(" Link status for %s %c%c%c%c: %d\n",
+               source_path.s,
+               compute_shader ? 'C' : '_',
+               main_body_vs   ? 'V' : '_',
+               main_body_gs   ? 'G' : '_',
+               main_body_fs   ? 'F' : '_',
+               link_status);
+        GLint info_log_length;
+        glGetProgramiv(pobject,GL_INFO_LOG_LENGTH,&info_log_length);
+        char* const prog_info_log = (char*) alloca(info_log_length+1);
+        glGetProgramInfoLog(pobject,info_log_length+1,NULL,prog_info_log);
+        printf(" Program Info log:\n%s\n",prog_info_log);
+        return 0;
+      }
+
+    ready = true;
+    return pobject;
+  }
+
 private:
 
   GLuint shader_load
   (GLenum shader_type, const char *source_path, const char *main_body)
   {
+
+    /// - Create Shader Object
+    //
     const GLuint sobject = glCreateShader(shader_type);
     pError_Check();
     if ( !sobject )
@@ -128,71 +211,6 @@ private:
   }
 
 public:
-  GLuint init
-  (const char *source_pathp,
-   const char *main_body_vs, const char *main_body_fs = NULL)
-  {
-    return init_vgf_or_c(source_pathp,main_body_vs,NULL,main_body_fs);
-  }
-
-  GLuint init_vgf_or_c
-  (const char *source_pathp,
-   const char *main_body_vs,
-   const char *main_body_gs = NULL,
-   const char *main_body_fs = NULL)
-  {
-    ready = false;
-    validated = false;
-    source_path = source_pathp;
-
-    const bool compute_shader = !main_body_vs && !main_body_gs && !main_body_fs;
-
-    pobject = glCreateProgram();
-    if ( pobject == 0 ) return 0;
-
-    cs_object = compute_shader 
-      ? shader_load(GL_COMPUTE_SHADER,source_path,NULL) : 0;
-    if ( cs_object < 0 ) return 0;
-
-    vs_object = main_body_vs 
-      ? shader_load(GL_VERTEX_SHADER,source_path,main_body_vs) : 0;
-    if ( vs_object < 0 ) return 0;
-
-    gs_object = main_body_gs 
-      ? shader_load(GL_GEOMETRY_SHADER,source_path,main_body_gs) : 0;
-    if ( gs_object < 0 ) return 0;
-
-
-    fs_object = main_body_fs
-      ? shader_load(GL_FRAGMENT_SHADER,source_path,main_body_fs) : 0;
-    if ( fs_object < 0 ) return 0;
-
-    pError_Check();
-    glLinkProgram(pobject);
-    pError_Check();
-
-    GLint link_status;
-    glGetProgramiv(pobject,GL_LINK_STATUS,&link_status);
-    if ( !link_status )
-      {
-        printf(" Link status for %s %c%c%c%c: %d\n",
-               source_path.s,
-               compute_shader ? 'C' : '_',
-               main_body_vs   ? 'V' : '_',
-               main_body_gs   ? 'G' : '_',
-               main_body_fs   ? 'F' : '_',
-               link_status);
-        GLint info_log_length;
-        glGetProgramiv(pobject,GL_INFO_LOG_LENGTH,&info_log_length);
-        char* const prog_info_log = (char*) alloca(info_log_length+1);
-        glGetProgramInfoLog(pobject,info_log_length+1,NULL,prog_info_log);
-        printf(" Program Info log:\n%s\n",prog_info_log);
-        return 0;
-      }
-
-    ready = true;
-    return pobject;
-  }
 
   void print_active_attrib()
   {
@@ -276,29 +294,6 @@ public:
     pobject_in_use = pobject;
     return true;
   }
-
-#else
-  // OpenGL Before Vertex Shaders
-
-  GLint uniform_location(const char *name) { return 0; }
-  GLint attribute_location(const char *name) { return 0; }
-  GLint varying_location(const char *name) { return 0; }
-  uint init(const char *source_pathp, const char *main_body)
-  {
-    validated = false;
-    source_path = source_pathp;
-    pobject = 0;
-    pobject_in_use = 0;
-    return pobject;
-  }
-  void print_active_attrib() { }
-  void print_active_uniform() { }
-  void print_active_varying() { }
-  void validate_once() { }
-  void validate() { };
-  bool use() { return false; }
-
-#endif
 
   bool okay(){ return ready; }
 
