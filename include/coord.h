@@ -705,6 +705,11 @@ class pMatrix_Cols : public pMatrix {
 public:
   pMatrix_Cols(pVect c0, pVect c1, pVect c2)
     { set_identity(); set_col(0,c0); set_col(1,c1); set_col(2,c2); }
+  pMatrix_Cols(pVect c0, pVect c1, pVect c2, pCoor c3)
+    {
+      set_identity(); set_col(0,c0); set_col(1,c1); set_col(2,c2);
+      set_col(3,c3);
+    }
 };
 
 class pMatrix_Scale : public pMatrix {
