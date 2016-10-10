@@ -7,14 +7,15 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 420 compatibility
+#version 450 compatibility
 
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
 #define USE_MATERIAL_COLOR
 
-uniform vec4 material_color;
+
+layout ( location = 1 ) uniform vec4 material_color;
 
 
 ///
@@ -48,7 +49,7 @@ vs_main_lighting()
   // gl_Vertex, gl_Normal, gl_Color
   //
   // (storage qualifier "in") (Compatibility Profile)
-  // See OGSL Spec 4.3 Section 7.2
+  // See OGSL Spec 4.5 Section 7.2
 
   /// Pre-Defined Outputs
   //

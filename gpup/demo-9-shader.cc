@@ -284,7 +284,10 @@ World::init()
      "fs_main_phong();"       // Name of fragment shader main routine.
      );
 
-  uni_loc_material_color = vs_phong->uniform_location("material_color");
+  // Retrieve "location" of uniform variable.
+  //
+  uni_loc_material_color =
+    glGetUniformLocation( vs_phong->pobject, "material_color" );
 
   vs_phong->print_active_attrib();
   vs_phong->print_active_uniform();

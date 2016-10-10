@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
 
  /// See demo-10-shader.cc for details.
@@ -23,10 +23,18 @@
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
 
+ /// Declare Uniform Variables
+//
 layout ( location = 0 ) uniform float bulge_loc;
 layout ( location = 1 ) uniform float bulge_dist_thresh;
 layout ( location = 2 ) uniform float wire_radius;
+
+
+ /// Declare (Bind) Buffer Objects
+//
 layout ( binding = 1 ) buffer Helix_Coord  { vec4  helix_coord[];  };
+
+
 uniform sampler2D tex_unit_0;
 
 
@@ -47,12 +55,11 @@ layout ( location = 1 ) in int helix_index;
 
 out Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 tex_coord;
   int hidx;
 };
-
-out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
 
 #endif
 
@@ -63,15 +70,17 @@ layout ( triangle_strip, max_vertices = 4 ) out;
 
 in Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 tex_coord;
   int hidx;
 } In[3];
 
 out Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 tex_coord;
   int hidx;
 };
 
@@ -80,12 +89,11 @@ out Data
 #ifdef _FRAGMENT_SHADER_
 in Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 tex_coord;
   int hidx;
 };
-
-in vec2 gl_TexCoord[];
 
 #endif
 
@@ -106,8 +114,8 @@ vs_main_basic()
   // Compute eye-space vertex coordinate and normal.
   // These are outputs of the vertex shader and inputs to the frag shader.
   //
-  var_vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  var_normal_e = normalize(gl_NormalMatrix * gl_Normal);
+  vertex_e = gl_ModelViewMatrix * gl_Vertex;
+  normal_e = normalize(gl_NormalMatrix * gl_Normal);
 
   // Copy color to output unmodified. Lighting calculations will
   // be performed in the fragment shader.
@@ -115,7 +123,7 @@ vs_main_basic()
   gl_BackColor = gl_FrontColor = gl_Color;
 
   // Copy texture coordinate to output (no need to modify it).
-  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
+  tex_coord = gl_MultiTexCoord0.xy;
 }
 
 void
@@ -147,8 +155,8 @@ vs_main_helix()
 
   // Compute eye-space coordinates for vertex and normal.
   //
-  var_vertex_e = gl_ModelViewMatrix * vertex_o;
-  var_normal_e = normalize(gl_NormalMatrix * gl_Normal);
+  vertex_e = gl_ModelViewMatrix * vertex_o;
+  normal_e = normalize(gl_NormalMatrix * gl_Normal);
 
   // Pass color along to next stage in pipeline.
   //
@@ -157,7 +165,7 @@ vs_main_helix()
   // Pass texture coordinate to next stage in pipeline.
   // Only copy x and y components since it's a 2D texture.
   //
-  gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;
+  tex_coord = gl_MultiTexCoord0.xy;
 }
 #endif
 
@@ -189,9 +197,9 @@ gs_main_helix()
       // Pass the other values through unmodified.
       //
       gl_Position = gl_PositionIn[i];
-      gl_TexCoord[0] = gl_TexCoordIn[i][0];
-      var_normal_e = In[i].var_normal_e;
-      var_vertex_e = In[i].var_vertex_e;
+      tex_coord = In[i].tex_coord;
+      normal_e = In[i].normal_e;
+      vertex_e = In[i].vertex_e;
 
       EmitVertex();
     }
@@ -215,12 +223,12 @@ fs_main_phong()
 
   // Get filtered texel.
   //
-  vec4 texel = texture(tex_unit_0,gl_TexCoord[0].xy);
+  vec4 texel = texture(tex_unit_0,tex_coord);
 
   // Multiply filtered texel color with lighted color of fragment.
   //
   gl_FragColor =
-    texel * generic_lighting( var_vertex_e, gl_Color, normalize(var_normal_e));
+    texel * generic_lighting( vertex_e, gl_Color, normalize(normal_e));
 
   // Copy fragment depth unmodified.
   //
