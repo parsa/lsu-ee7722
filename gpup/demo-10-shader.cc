@@ -39,6 +39,35 @@
 //   User-defined attributes.
 
 
+ /// User-Defined Shader Inputs and Outputs
+//
+ /// Cases:
+//
+//   - Vertex Shader Inputs - Deprecated.
+//   - Fragment Shader Outputs - Not needed.
+//   - Others: vtx to geo, etc.
+//
+ /// Declaration
+//
+//   Variables declared using in or out storage qualifier.
+//   Can be applied to an individual variable or block.
+
+out Data
+{
+  int hidx;
+  vec3 normal_o;
+  vec4 color;
+};
+
+//   The "out" and "in" declarations of connected stages must be compatible.
+//
+//   Geometry shader inputs must be declared as an array. (See below).
+//
+//   Inputs to fragment shader and outputs of stage before fragment
+//     shader can have interpolation qualifiers (see below).
+
+
+
  /// Accessing Buffer Objects in Shader Programs
  //
  //  :ogl45: Section 6.1.1
