@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 3
+ /// Homework 3 --- SOLUTION PRELIMINARY
  //
  //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw03.pdf
 
@@ -381,7 +381,16 @@ public:
 
   /// Homework 3:  This is a good place to declare items needed across calls.
 
-
+  /// SOLUTION
+  //
+  //  Buffer objects for attributes of curved links.
+  GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
+  //  Buffer objects for attributes of straight links.
+  GLuint link_bo_vtx_s, link_bo_nrm_s;
+  //  Number of vertices in curved links.
+  int bo_s_num_vertices;
+  //  Transformation matrix transforming saved straight link to a local space.
+  pMatrix link_s_to_local;
 };
 
 
@@ -434,6 +443,10 @@ World::init_graphics()
   adj_duration = 0.25;
 
   opt_render_links = 0;
+
+  /// SOLUTION
+  link_bo_vtx = 0;
+  bo_s_num_vertices = 0;
 }
 
 
@@ -1586,8 +1599,7 @@ void World::balls_freeze(){balls_stop();}
 void
 World::render_link_1(Link *link)
 {
-  /// HOMEWORK 3:  Put solution to Problems 2 and 3 in this routine
-  //  and else where.
+  /// HOMEWORK 3:  Put solution to Problem 1 here.
 
   Ball *const ball1 = link->ball1;
   Ball *const ball2 = link->ball2;
@@ -1623,6 +1635,14 @@ World::render_link_1(Link *link)
   //
   const float rad = ball1->radius * 0.3;
 
+  /// SOLUTION
+  // Compute scale factors for texture.
+  const float tex_margin = 0.1;
+  const float tex_aspect_ratio = 8.5 / 11;
+  const float page_width_o = 2.5;  // Width of texture in object-space coords.
+  const float tex_t_scale = link->distance_relaxed / page_width_o;
+  const float tex_angle_scale = rad * tex_aspect_ratio / page_width_o;
+
   pNorm dirn1(dir1);
   pNorm dirn2(dir2);
 
@@ -1634,7 +1654,6 @@ World::render_link_1(Link *link)
   // Convert link's local x and y axes to global coordinates.
   //
   pVect b1_ydir = ball1->omatrix * link->b1_dir;
-  pVect b1_xdir = cross(b1_ydir,p1p2n);
 
   pVect b2_ydir = ball2->omatrix * link->b2_dir;
 
@@ -1681,8 +1700,17 @@ World::render_link_1(Link *link)
           pts[j] = ctr + rad * vecs[j];
           if ( i == 0 ) continue;
 
+          // SOLUTION
+          glTexCoord2d
+            (tex_margin + t * tex_t_scale, 0.5 + theta * tex_angle_scale );
+
           glNormal3fv(vecs[j]);
           glVertex3fv(pts[j]);
+
+          // SOLUTION
+          glTexCoord2d
+            (tex_margin + (t-delta_tee)*tex_t_scale,
+             0.5 + theta * tex_angle_scale );
 
           glNormal3fv(vec);
           glVertex3fv(pt);
@@ -1731,6 +1759,13 @@ World::render_link_2(Link *link)
   //
   const float rad = ball1->radius * 0.3;
 
+  /// SOLUTION
+  // Compute scale factors for texture.
+  const float tex_aspect_ratio = 8.5 / 11;
+  const float page_width_o = 2.5;  // Width of texture in object-space coords.
+  const float tex_t_scale = link->distance_relaxed / page_width_o;
+  const float tex_angle_scale = rad * tex_aspect_ratio / page_width_o;
+
   pNorm dirn1(dir1);
   pNorm dirn2(dir2);
 
@@ -1749,12 +1784,19 @@ World::render_link_2(Link *link)
   pCoor pts[sides+1];
   pVect vecs[sides+1];
 
-  glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
-  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_red);
+  /// SOLUTION
+  pNorm c1c2(ball1->position,ball2->position);
+  const float thr = 0.999;
+  const bool straight_link =
+    dot( c1c2, dirn1 ) > thr && dot( c1c2, dirn2 ) < -thr;
 
-  glBegin(GL_TRIANGLE_STRIP);
-  glColor3fv( color_light_gray );
+  /// SOLUTION - Remove OpenGL glBegin command.
 
+  pCoors coords;
+  pVects norms;
+  pVector<float> tcoords;
+
+  if ( !straight_link || bo_s_num_vertices == 0 ) // SOLUTION
   for ( int i=0; i<=segments; i++ )
     {
       const float t = i * delta_tee;
@@ -1789,16 +1831,108 @@ World::render_link_2(Link *link)
           pts[j] = ctr + rad * vecs[j];
           if ( i == 0 ) continue;
 
-          glNormal3fv(vecs[j]);
-          glVertex3fv(pts[j]);
+          /// SOLUTION
+          //
+          //  Remove calls to glNormal3fv and glVertex3fv and replace with
+          //  the code that saves normals and coordinates in lists. Also
+          //  add code saving texture coordinates.
 
-          glNormal3fv(vec);
-          glVertex3fv(pt);
+          tcoords += t * tex_t_scale;
+          tcoords += 0.5 + theta * tex_angle_scale;
+
+          norms += vecs[j];
+          coords += pts[j];
+
+          tcoords += ( t - delta_tee ) * tex_t_scale;
+          tcoords += 0.5 + theta * tex_angle_scale;
+
+          norms += vec;
+          coords += pt;
+
         }
     }
-  glEnd();
-}
 
+  /// SOLUTION
+
+  const bool bo_tco_empty = !link_bo_vtx;
+  if ( !link_bo_vtx )
+    glGenBuffers(5,&link_bo_vtx);
+
+  GLuint bo_vtx = straight_link ? link_bo_vtx_s : link_bo_vtx;
+  GLuint bo_nrm = straight_link ? link_bo_nrm_s : link_bo_nrm;
+
+  if ( !straight_link || !bo_s_num_vertices )
+    {
+      if ( straight_link )
+        {
+          bo_s_num_vertices = coords.size();
+          pMatrix_Translate center(-pos1);
+          pMatrix_Rows rot_to_local
+            ((1/rad)*b1_xdir, (1/rad)*b1_ydir, p1p2n/p1p2n.magnitude);
+          link_s_to_local = rot_to_local * center;
+        }
+
+      glBindBuffer(GL_ARRAY_BUFFER, bo_vtx);
+      glBufferData
+        (GL_ARRAY_BUFFER,           // Kind of buffer object.
+         sizeof(coords[0])*coords.size(), coords.data(),
+         GL_STATIC_DRAW);
+      glBindBuffer(GL_ARRAY_BUFFER, bo_nrm);
+      glBufferData
+        (GL_ARRAY_BUFFER,           // Kind of buffer object.
+         sizeof(norms[0])*norms.size(), norms.data(),
+         GL_STATIC_DRAW);
+    }
+  if ( bo_tco_empty )
+    {
+      glBindBuffer(GL_ARRAY_BUFFER, link_bo_tco);
+      glBufferData
+        (GL_ARRAY_BUFFER,           // Kind of buffer object.
+         sizeof(tcoords[0])*tcoords.size(), tcoords.data(),
+         GL_STATIC_DRAW);
+    }
+
+  const int num_vtx = straight_link ? bo_s_num_vertices : coords.size();
+
+  if ( straight_link )
+    {
+      // Multiply modelview matrix by a matrix that will transform the
+      // coordinates of the straight links that we saved in the buffer
+      // objects link_bo_vtx_s and link_bo_nrm_s to approximately
+      // match the coordinates of the straight link we need to render
+      // now.
+
+      glMatrixMode(GL_MODELVIEW);
+      glPushMatrix();
+      pMatrix_Translate center(pos1);
+      pMatrix_Cols rot_to_global(rad*b1_xdir, rad*b1_ydir, p1p2);
+      pMatrix m = center * rot_to_global* link_s_to_local;
+      glMultTransposeMatrixf(m);
+    }
+
+  glColor3fv( straight_link ? color_pale_green : color_light_gray );
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, bo_vtx);
+  glVertexPointer( 3, GL_FLOAT, sizeof(coords[0]), NULL);
+  glEnableClientState(GL_NORMAL_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, bo_nrm);
+  glNormalPointer( GL_FLOAT, 0, NULL );
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_tco);
+  glTexCoordPointer(2,GL_FLOAT,0,NULL);
+
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, num_vtx );
+
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  if ( straight_link )
+    {
+      glPopMatrix();
+    }
+}
 
 
 void
