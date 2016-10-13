@@ -380,9 +380,6 @@ public:
   pShader *sp_set_1;
   pShader *sp_set_2;
   GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
-
-  /// Homework 5:  This is a good place to declare items needed across calls.
-
 };
 
 
@@ -1664,21 +1661,9 @@ World::render_link_1(Link *link)
   pCoor pts[sides+1];
   pVect vecs[sides+1];
 
-  if ( opt_shader == SO_Phong )
-    {
-      glColor3fv( color_light_gray );
-    }
-  else
-    {
-      glUniform4fv(1, 1, color_light_gray ); // color_bottom
-      glUniform4fv(2, 1, color_red ); // color_back
-      glUniform4fv(4, 1, color_yellow ); // color_side
-      glUniform4fv(5, 1, color_dark_orange ); // color_top
-      glUniform2i(6, segments, sides );
-      glUniform1f(7, rad * 0.4 ); // thickness
-    }
-
-  glBegin(GL_TRIANGLE_STRIP);
+  pCoors coords;
+  pVects norms;
+  pVector<float> tcoords;
 
   for ( int i=0; i<=segments; i++ )
     {
@@ -1717,18 +1702,72 @@ World::render_link_1(Link *link)
 
           if ( i == 0 ) continue;
 
-	  glTexCoord2f( t*tex_t_scale,theta * tex_angle_scale );
-	  glNormal3fv(vecs[j]);
-          glVertex4fv(pts[j]);
+          tcoords += t * tex_t_scale;
+          tcoords += theta * tex_angle_scale;
 
-	  glTexCoord2f( (t-delta_tee)*tex_t_scale,theta * tex_angle_scale );
-	  glNormal3fv(vec);
-          glVertex4fv(pt);
+          norms += vecs[j];
+          coords += pts[j];
+
+          tcoords += ( t - delta_tee ) * tex_t_scale;
+          tcoords += theta * tex_angle_scale;
+
+          norms += vec;
+          coords += pt;
 
         }
     }
 
-  glEnd();
+  if ( !link_bo_vtx ) glGenBuffers(3,&link_bo_vtx);
+
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_vtx);
+  glBufferData
+    (GL_ARRAY_BUFFER,           // Kind of buffer object.
+     sizeof(coords[0])*coords.size(), coords.data(),
+     GL_STREAM_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_nrm);
+  glBufferData
+    (GL_ARRAY_BUFFER,           // Kind of buffer object.
+     sizeof(norms[0])*norms.size(), norms.data(),
+     GL_STREAM_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_tco);
+  glBufferData
+    (GL_ARRAY_BUFFER,           // Kind of buffer object.
+     sizeof(tcoords[0])*tcoords.size(), tcoords.data(),
+     GL_STREAM_DRAW);
+
+  const int num_vtx = coords.size();
+
+  if ( opt_shader == SO_Phong )
+    {
+      glColor3fv( color_light_gray );
+    }
+  else
+    {
+      glUniform4fv(1, 1, color_light_gray ); // color_bottom
+      glUniform4fv(2, 1, color_red ); // color_back
+      glUniform4fv(4, 1, color_yellow ); // color_side
+      glUniform4fv(5, 1, color_dark_orange ); // color_top
+      glUniform2i(6, segments, sides );
+      glUniform1f(7, rad * 0.4 ); // thickness
+    }
+
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_vtx);
+  glVertexPointer( 4, GL_FLOAT, sizeof(coords[0]), NULL);
+  glEnableClientState(GL_NORMAL_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_nrm);
+  glNormalPointer( GL_FLOAT, 0, NULL );
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  glBindBuffer(GL_ARRAY_BUFFER, link_bo_tco);
+  glTexCoordPointer(2,GL_FLOAT,0,NULL);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, num_vtx );
+
+  glDisableClientState(GL_NORMAL_ARRAY);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
 }
 
 
