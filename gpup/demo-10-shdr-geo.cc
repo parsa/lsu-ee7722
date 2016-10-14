@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Demonstration of Geometry Shader
 
@@ -177,11 +177,11 @@ gs_main_helix()
   int gs_vidx_11;
 
   if ( In[0].hidx == In[1].hidx )
-    { gs_vidx_00 = 2;  gs_vidx_10 = 0;  gs_vidx_11 = 1; }
+    { gs_vidx_00 = 2;  gs_vidx_10 = 1;  gs_vidx_11 = 0; }
   else if ( In[0].hidx == In[2].hidx )
-    { gs_vidx_00 = 1;  gs_vidx_10 = 0;  gs_vidx_11 = 2; }
+    { gs_vidx_00 = 1;  gs_vidx_10 = 2;  gs_vidx_11 = 0; }
   else
-    { gs_vidx_00 = 0;  gs_vidx_10 = 1;  gs_vidx_11 = 2;}
+    { gs_vidx_00 = 0;  gs_vidx_10 = 1;  gs_vidx_11 = 2; }
 
   int hidx0 = In[gs_vidx_00].hidx;
   int hidx1 = In[gs_vidx_10].hidx;
@@ -272,14 +272,12 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   //
   vec4 light_pos = gl_LightSource[0].position;
   vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
-  float d_n_ve = -dot(normal_e,vertex_e.xyz);
-  float d_n_vl = dot(normal_e, normalize(v_vtx_light).xyz);
-  bool same_sign = ( d_n_ve > 0 ) == ( d_n_vl > 0 );
-  float phase_light = same_sign ? abs(d_n_vl) : 0;
+  float dist = length(v_vtx_light);
+  float d_n_vl = dot(normalize(normal_e), v_vtx_light) / dist;
+  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
 
   vec3 ambient_light = gl_LightSource[0].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
-  float dist = length(v_vtx_light);
   float distsq = dist * dist;
   float atten_inv =
     gl_LightSource[0].constantAttenuation +

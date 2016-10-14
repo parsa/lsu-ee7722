@@ -103,10 +103,12 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   //
   vec4 light_pos = gl_LightSource[0].position;
   vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
-  float phase_light = max(0.0f,dot(normal_e, normalize(v_vtx_light).xyz));
+  float dist = length(v_vtx_light);
+  float d_n_vl = dot(normalize(normal_e), v_vtx_light) / dist;
+  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
+
   vec3 ambient_light = gl_LightSource[0].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
-  float dist = length(v_vtx_light);
   float distsq = dist * dist;
   float atten_inv =
     gl_LightSource[0].constantAttenuation +
