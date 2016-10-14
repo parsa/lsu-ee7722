@@ -82,12 +82,12 @@ out Data
 //   The declaration of buffer objects in shader code is much different
 //   than C.
 //
-     layout ( binding = 1 ) buffer Helix_Coord  { vec4  helix_coord[];  };
+     layout ( binding = 7 ) buffer Helix_Coord  { vec4  helix_coord[];  };
 
 //   One also has to tell the host code which shader variable to bind
 //   to which buffer object.
 //
-     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_COORD,helix_coords_bo);
+     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, helix_coords_bo);
 
 
  /// Interpolation Qualifiers
