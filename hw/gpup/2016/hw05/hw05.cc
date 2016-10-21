@@ -266,8 +266,9 @@ enum Shader_Option { SO_Phong, SO_Set_1, SO_Set_2, SO_ENUM_SIZE };
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
-  void init();
+  World(pOpenGL_Helper &fb, int argc, char **argv):ogl_helper(fb)
+  {init(argc,argv);}
+  void init(int argc, char **argv);
   void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
   void frame_callback();
@@ -1057,7 +1058,7 @@ World::cb_keyboard()
 
 
 void
-World::init()
+World::init(int argc, char **argv)
 {
   chain_length = 14;
 
@@ -1100,8 +1101,13 @@ World::init()
      "fs_main();"         // Name of fragment shader main routine.
      );
 
+
+  PSplit exe_pieces(argv[0],'/');
+  pString this_exe_name(exe_pieces.pop());
+
   const char* const links_shader_code_path =
-    false ? "hw05-shdr-links-sol.cc" : "hw05-shdr-links.cc";
+    this_exe_name == "hw05-sol"
+    ? "hw05-shdr-links-sol.cc" : "hw05-shdr-links.cc";
 
   sp_set_1 = new pShader
     (links_shader_code_path,
@@ -1837,7 +1843,7 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
-  World world(popengl_helper);
+  World world(popengl_helper,argv,argc);
 
   glDisable(GL_DEBUG_OUTPUT);
   glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
