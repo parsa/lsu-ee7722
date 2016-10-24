@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 3 --- SOLUTION PRELIMINARY
+ /// Homework 3 and 4 --- SOLUTION PRELIMINARY
  //
  //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw03.pdf
 
@@ -379,9 +379,9 @@ public:
 
   int opt_render_links;
 
-  /// Homework 3:  This is a good place to declare items needed across calls.
+  /// Homework 4:  This is a good place to declare items needed across calls.
 
-  /// SOLUTION
+  /// SOLUTION -- Homework 4
   //
   //  Buffer objects for attributes of curved links.
   GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
@@ -444,7 +444,7 @@ World::init_graphics()
 
   opt_render_links = 0;
 
-  /// SOLUTION
+  /// SOLUTION -- Homework 4
   link_bo_vtx = 0;
   bo_s_num_vertices = 0;
 }
@@ -1635,7 +1635,7 @@ World::render_link_1(Link *link)
   //
   const float rad = ball1->radius * 0.3;
 
-  /// SOLUTION
+  /// SOLUTION -- Homework 3
   // Compute scale factors for texture.
   const float tex_margin = 0.1;
   const float tex_aspect_ratio = 8.5 / 11;
@@ -1700,14 +1700,14 @@ World::render_link_1(Link *link)
           pts[j] = ctr + rad * vecs[j];
           if ( i == 0 ) continue;
 
-          // SOLUTION
+          /// SOLUTION -- Homework 3
           glTexCoord2d
             (tex_margin + t * tex_t_scale, 0.5 + theta * tex_angle_scale );
 
           glNormal3fv(vecs[j]);
           glVertex3fv(pts[j]);
 
-          // SOLUTION
+          /// SOLUTION -- Homework 3
           glTexCoord2d
             (tex_margin + (t-delta_tee)*tex_t_scale,
              0.5 + theta * tex_angle_scale );
@@ -1759,7 +1759,6 @@ World::render_link_2(Link *link)
   //
   const float rad = ball1->radius * 0.3;
 
-  /// SOLUTION
   // Compute scale factors for texture.
   const float tex_aspect_ratio = 8.5 / 11;
   const float page_width_o = 2.5;  // Width of texture in object-space coords.
@@ -1784,13 +1783,13 @@ World::render_link_2(Link *link)
   pCoor pts[sides+1];
   pVect vecs[sides+1];
 
-  /// SOLUTION
+  /// SOLUTION -- Homework 4
   pNorm c1c2(ball1->position,ball2->position);
   const float thr = 0.999;
   const bool straight_link =
     dot( c1c2, dirn1 ) > thr && dot( c1c2, dirn2 ) < -thr;
 
-  /// SOLUTION - Remove OpenGL glBegin command.
+  /// SOLUTION -- Homework 4 Remove OpenGL glBegin command.
 
   pCoors coords;
   pVects norms;
@@ -1831,7 +1830,7 @@ World::render_link_2(Link *link)
           pts[j] = ctr + rad * vecs[j];
           if ( i == 0 ) continue;
 
-          /// SOLUTION
+          /// SOLUTION -- Homework 4
           //
           //  Remove calls to glNormal3fv and glVertex3fv and replace with
           //  the code that saves normals and coordinates in lists. Also
@@ -1852,7 +1851,7 @@ World::render_link_2(Link *link)
         }
     }
 
-  /// SOLUTION
+  /// SOLUTION -- Homework 4
 
   const bool bo_tco_empty = !link_bo_vtx;
   if ( !link_bo_vtx )
@@ -1932,6 +1931,8 @@ World::render_link_2(Link *link)
     {
       glPopMatrix();
     }
+
+  /// SOLUTION -- Homework 4, above
 }
 
 
