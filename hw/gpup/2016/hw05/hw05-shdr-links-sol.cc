@@ -1,10 +1,8 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 5
+ /// Homework 5 -- SOLUTION
  //
  //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw05.pdf
-
- /// Use this file for your solution.
 
 
 // Specify version of OpenGL Shading Language.
@@ -39,6 +37,10 @@ out Data_to_GS
   vec4 gl_Position;
 
   /// SOLUTION -- Problem 1
+  //
+  // Carry the value of theta to the geometry shader where it will be
+  // used to determine whether triangles should be discarded.
+  //
   float theta;
 };
 
@@ -53,8 +55,9 @@ vs_main()
 
   /// SOLUTION -- Problem 1
   //
-  //  Move theta to newly declared vertex shader output and re-construct
-  //  the object space vertex coordinate in vtx_o
+  //  Move the theta value to the newly declared vertex shader output
+  //  named theta and re-construct the object space vertex coordinate
+  //  in vtx_o
   //
   theta = gl_Vertex.w;
   vec4 vtx_o = vec4(gl_Vertex.xyz,1);
@@ -76,8 +79,9 @@ in Data_to_GS
 
   /// SOLUTION -- Problem 1
   //
-  // Carry theta value to GS where it will be used to determine if
-  // triangles should be discarded.
+  // Carry the value of theta to the geometry shader where it will be
+  // used to determine whether triangles should be discarded.
+  //
   float theta;
 } In[];
 
@@ -88,8 +92,11 @@ out Data_to_FS
   vec2 gl_TexCoord[1];
 
   /// SOLUTION -- Problem 2
-  flat vec3 normal_f;
+  //
+  //  See in Data_to_FS for detailed comments describing these declarations.
+  //
   flat bool is_side;
+  flat vec3 normal_f;
   float height;
 };
 
@@ -101,7 +108,8 @@ layout ( triangles ) in;
 //
  /// SOLUTION -- Problem 2
 //
-// Specify just enough vertices to render triangle (3) and sides (2*4=8)
+// Specify just enough vertices to render the raised or surface
+// triangle (3) and the sides (2*4=8)
 //
 layout ( triangle_strip, max_vertices = 11 ) out;
 
@@ -112,7 +120,7 @@ gs_main_1()
 
   /// SOLUTION -- Problem 1
   //
-  //  Discard primitives in which the provoking vertex is a theta = 0,
+  //  Discard primitives in which the provoking vertex is at theta = 0,
   //  because for those primitives vertex In[0] belongs to a previous
   //  segment.
   //
@@ -153,11 +161,11 @@ gs_main_2()
 
   is_side = true;
 
-  // Raise one out of every eight triangles.
+  // Raise one out of every four triangles.
   //
   const bool raised = ( gl_PrimitiveIDIn & 0x3 ) == 0;
 
-  // Draw Side Triangles
+  /// Draw Side Triangles
   //
   // Side triangles are drawn as one triangle strip. Note that In[0]
   // is examined for the first (i=0) and last (i=3) iteration of the loop.
@@ -181,14 +189,14 @@ gs_main_2()
       vec3 v_this_prev = vertex_e_prev.xyz - vertex_e_surface.xyz;
       normal_f = cross(norm,v_this_prev);
 
-      // Emit side triangle vertex at raised triangle.
+      // Emit the side triangle vertex shared with the raised triangle.
       //
       height = 1;
       vertex_e = vertex_e_raised;
       gl_Position = gl_ProjectionMatrix * vertex_e_raised;
       EmitVertex();
 
-      // Emit side triangle vertex at surface.
+      // Emit the side triangle vertex shared with the surface triangle.
       //
       height = 0;
       vertex_e = vertex_e_surface;
@@ -198,7 +206,7 @@ gs_main_2()
   EndPrimitive();
 
   is_side = false;
-  height = raised ? 1 : 0;
+  height = float(raised);
 
   // Emit either a raised or surface triangle.
   //
@@ -229,8 +237,21 @@ in Data_to_FS
   vec2 gl_TexCoord[1];
 
   /// SOLUTION -- Problem 2
-  flat vec3 normal_f;  // Declare flat so normal is the same on whole triangle.
+
+  // If true, fragment is part of a side triangle.
+  //
   flat bool is_side;
+
+  // Surface normal to be used for side triangles. Since it is declared
+  // flat the value for a fragment is taken from the provoking vertex
+  // (3rd vertex for triangles) rather than an interpolation of the values
+  // at all three triangle vertices.
+  //
+  flat vec3 normal_f;
+
+  // Distance from surface. Zero means at the surface, one means at
+  // the raised triangle.  We want it's value to be interpolated.
+  //
   float height;
 };
 
@@ -273,29 +294,33 @@ fs_main_2()
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
 
   /// SOLUTION -- Problem 2
-  float marg = 0.333;
+  //
+  float marg = 1.0/3;
   float omm = 1 - marg;  // One Minus Margin
 
+  // Blend appropriate set of colors together.  Note that for
+  // non-side triangles height = 0.
+  //
   vec4 color2 = !gl_FrontFacing ? color_back :
-    height > omm ? ( ( height - omm ) * color_top
-                     + ( 1.0 - height ) * color_side ) / marg :
-    height < marg ? ( height * color_side
+    height > omm ?  (   ( height - omm ) * color_top
+                      + ( 1.0 - height ) * color_side   ) / marg :
+    height < marg ? (             height * color_side
                      + ( marg - height ) * color_bottom ) / marg :
     color_side;
 
-  // Compute a texture blend amount and apply it to texel.
-  float tblend = 2 * abs(height-0.5);
-  vec4 texel2;
-  texel2.xyz = vec3(1-tblend) + tblend*texel.xyz;
-  texel2.w = 1;
+  // Compute a texture blend amount and use it to blend the texel color
+  // with the color white.
+  //
+  float tblend = 2 * abs(height-0.5);  // Note: Value is between 0 and 1.
+  vec4 white = vec4(1,1,1,1);
+  vec4 texel2 = (1-tblend) * white + tblend * texel;
 
-  /// SOLUTION -- Problem 2
+  // For side triangles use the non-interpolated normal.
   //
   vec3 norm = is_side ? normal_f : normal_e;
 
   // Multiply filtered texel color with lighted color of fragment.
   //
-  /// SOLUTION
   gl_FragColor = texel2 * generic_lighting(vertex_e, color2, norm);
 
   // Copy fragment depth unmodified.
