@@ -174,6 +174,59 @@
  //   EQ -> GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_MIN, GL_MAX
  //   BF -> GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_DST_COLOR, 
 
+
+///  Background -- Stencil Operations
+//
+//   :Def: Stencil Buffer
+//   A layer of the frame buffer holding on integer per pixel.
+//
+//   :Def: Stencil Test
+//   A per-fragment test that uses the stencil buffer.
+//   For example, if stencil buffer value = 0, test fails, discard fragment.
+//
+//   :Def: Stencil Operation
+//   The conditions under which stencil buffer updated.
+
+
+ /// Stencil Test
+//
+//   Stencil test is set up using glStencilFunc.
+   //
+   glStencilFunc(FUNC, REF,  MASK);
+   //
+   //   FUNC -> GL_NEVER, GL_ALWAYS, GL_LESS, GL_LEQUAL, GL_EQUAL,
+   //           GL_GEQUAL, GL_NOTEQUAL
+   //
+   //   Test passes if:  REF & MASK  FUNC  VAL & MASK
+
+   // :Example::
+   //
+   glStencilFunc(GL_EQUAL, 4,  5);
+   //
+   //  Suppose VAL = 12
+   //  4 & 5  ==  12 & 5
+   //  4      ==  4         --> Test passes.
+   //
+   //  Suppose VAL = 13
+   //  4 & 5  ==  13 & 5
+   //  4      ==  5         --> Test fails
+
+ /// Stencil Op (Stencil Update)
+//
+//   Stencil update set up using glStencilOp
+
+glStencilOp(SFAIL,DFAIL,DPASS);
+ //
+ // SFAIL, DFAIL, DPASS ->
+ // GL_KEEP, GL_ZERO, GL_REPLACE, GL_INCR, GL_DECR, GL_INVERT,
+ // GL_INCR_WRAP, GL_DECR_WRAP.
+
+
+
+
+
+
+
 #endif
 
 ///  Keyboard Commands
