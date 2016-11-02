@@ -178,7 +178,7 @@
 ///  Background -- Stencil Operations
 //
 //   :Def: Stencil Buffer
-//   A layer of the frame buffer holding on integer per pixel.
+//   A layer of the frame buffer holding one integer for each pixel.
 //
 //   :Def: Stencil Test
 //   A per-fragment test that uses the stencil buffer.
@@ -191,13 +191,28 @@
  /// Stencil Test
 //
 //   Stencil test is set up using glStencilFunc.
+//   Typical test: stencil test passes if value in stencil buffer > 10.
    //
    glStencilFunc(FUNC, REF,  MASK);
+   glStencilFuncSeparate(FACE, FUNC, REF,  MASK);
+   //
+   //   FACE -> GL_FRONT, GL_BACK, GL_FRONT_AND_BACK
+   //           That side of the primitive that the test applies to.
+   //           Can provide one test for the front, and a different
+   //            test for the back.
    //
    //   FUNC -> GL_NEVER, GL_ALWAYS, GL_LESS, GL_LEQUAL, GL_EQUAL,
    //           GL_GEQUAL, GL_NOTEQUAL
    //
+   //   REF  -> An integer. 
+   //           The stencil value will be compared to REF.
+   //
+   //   MASK -> An integer.
+   //           Used to select which bits of the stencil value to use.
+   //           For simpler uses, MASK = -1 (all 1s in binary).
+   //
    //   Test passes if:  REF & MASK  FUNC  VAL & MASK
+   //
 
    // :Example::
    //
@@ -211,15 +226,43 @@
    //  4 & 5  ==  13 & 5
    //  4      ==  5         --> Test fails
 
- /// Stencil Op (Stencil Update)
+ /// Stencil Operation
 //
-//   Stencil update set up using glStencilOp
-
-glStencilOp(SFAIL,DFAIL,DPASS);
+//   The stencil operation is used to modify the value in the stencil buffer.
+//
+//   Typical operation: Write the stencil buffer if the depth test passes.
+//
+   glStencilOp(SFAIL, DFAIL, DPASS);
+   glStencilOpSeparate(FACE, SFAIL, DFAIL, DPASS);
  //
- // SFAIL, DFAIL, DPASS ->
- // GL_KEEP, GL_ZERO, GL_REPLACE, GL_INCR, GL_DECR, GL_INVERT,
- // GL_INCR_WRAP, GL_DECR_WRAP.
+ // Specify how stencil buffer value is modified in each of three situations:
+ //
+ //   DPASS: How to modify if the depth test passes.  Easy to understand.
+ //   SFAIL: How to modify if the stencil test fails.
+ //   DFAIL: How to modify if the depth test fails.
+ //
+ //   Values for SFAIL, DFAIL, DPASS:
+ //     GL_KEEP: 
+ //       Don't do anything. (Don't change stencil buffer value.)
+ //
+ //     GL_ZERO, GL_INCR, GL_DECR, GL_INVERT:
+ //       Set to zero, add 1, subtract 1, bitwise invert.
+ //       Arithmetic is saturating: 0-1 = 0.
+ //
+ //     GL_REPLACE:
+ //       Set stencil value to reference value that was used in glStencilFunc.
+ //
+ //     GL_INCR_WRAP, GL_DECR_WRAP
+ //       Add one to stencil value, ignore overflow. (0-1 = max value.)
+
+ // :Example:
+ //
+ // Write stencil buffer with a 5.
+ //
+ //
+    glStencilFunc(GL_NEVER, -1,  5);  // Set ref value to 5.
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Update stencil.
+
 
 
 
