@@ -2,8 +2,6 @@
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
-// $Id:$
-
 #ifndef SHAPES_H
 #define SHAPES_H
 
@@ -12,6 +10,9 @@ public:
   Sphere(){};
   void init(int slices);
   void shadow_volume_init(int slices);
+  void render_bunch_gather();
+  void render_bunch_render();
+  void render_bunch_render_sv();
   void render();
   void render(float radiusp, pVect position)
   { radius = radiusp;  center = position; render(); }
@@ -34,6 +35,13 @@ public:
   void render_shadow_volume(float radius, pCoor position);
   void rotation_matrix_compute();
   int slices;
+
+  bool bunch_rendering;
+  GLuint sphere_rot_bo, sphere_pos_rad_bo, sphere_color_bo;
+  pMatrixs sphere_rots;
+  pCoors sphere_pos_rads;
+  pColors sphere_colors;
+
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<float> tex_coord_bo;
   pBuffer_Object<pVect> shadow_volume_points_bo;
@@ -57,6 +65,8 @@ Sphere::init(int slicesp)
   // a unit-radius sphere. Place coordinates in buffer object using
   // pBuffer_Object objects. Also initialize other variables.
   
+  bunch_rendering = false;
+  sphere_rot_bo = sphere_pos_rad_bo = sphere_color_bo = 0;
   slices = slicesp;             // Amount of detail.
   axis = pVect(0,1,0);
   angle = 0;
@@ -123,9 +133,68 @@ Sphere::rotation_matrix_compute()
 }
 
 void
+Sphere::render_bunch_gather()
+{
+  bunch_rendering = true;
+  if ( !sphere_color_bo )
+    {
+      glGenBuffers(1, &sphere_rot_bo);
+      glGenBuffers(1, &sphere_pos_rad_bo);
+      glGenBuffers(1, &sphere_color_bo);
+    }
+  sphere_rots.clear();
+  sphere_pos_rads.clear();
+  sphere_colors.clear();
+}
+
+void
+Sphere::render_bunch_render()
+{
+
+# define TO_BO(name,num) \
+  glBindBuffer(GL_ARRAY_BUFFER,name##_bo); \
+  glBufferData \
+    (GL_ARRAY_BUFFER, name##s.size_chars(), name##s.data(), GL_STREAM_DRAW); \
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,num,name##_bo);
+
+  TO_BO(sphere_rot,1);
+  TO_BO(sphere_pos_rad,2);
+  TO_BO(sphere_color,3);
+# undef TO_BO
+  glBindBuffer(GL_ARRAY_BUFFER,0);
+
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
+  points_bo.bind();
+  glVertexPointer(3,GL_FLOAT,0,0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  tex_coord_bo.bind();
+  glTexCoordPointer(2,GL_FLOAT,0,0);
+  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  glDrawArraysInstanced
+    (GL_TRIANGLE_STRIP,0,points_bo.elements,sphere_pos_rads.size());
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+  glDisable(GL_CULL_FACE);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
+  bunch_rendering = false;
+}
+
+void
 Sphere::render()
 {
   if ( opt_render_flat ) { render_flat(); return; }
+  if ( tri_count ) *tri_count += points_bo.elements;
+
+  if ( bunch_rendering )
+    {
+      if ( !default_orientation )
+        sphere_rots += rotation_matrix;
+      pCoor pos_rad(center);  pos_rad.w = radius;
+      sphere_pos_rads += pos_rad;
+      sphere_colors += color;
+      return;
+    }
   glColor3fv(color);
   glMatrixMode(GL_MODELVIEW);
 
@@ -134,6 +203,8 @@ Sphere::render()
   glScalef(radius,radius,radius);
   if ( !default_orientation ) glMultTransposeMatrixf(rotation_matrix);
 
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
   points_bo.bind();
   glVertexPointer(3,GL_FLOAT,0,0);
   glEnableClientState(GL_VERTEX_ARRAY);
@@ -147,7 +218,7 @@ Sphere::render()
   glDisableClientState(GL_NORMAL_ARRAY);
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glPopMatrix();
-  if ( tri_count ) *tri_count += points_bo.elements;
+  glDisable(GL_CULL_FACE);
 }
 
 void
@@ -249,6 +320,12 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 
   pMatrix transform = tr * rot * scale1;
 
+  if ( bunch_rendering )
+    {
+      sphere_rots += transform;
+      return;
+    }
+
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glMultTransposeMatrixf(transform);
@@ -259,6 +336,32 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
+}
+
+void
+Sphere::render_bunch_render_sv()
+{
+
+# define TO_BO(name,num) \
+  glBindBuffer(GL_ARRAY_BUFFER,name##_bo); \
+  glBufferData \
+    (GL_ARRAY_BUFFER, name##s.size_chars(), name##s.data(), GL_STREAM_DRAW); \
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,num,name##_bo);
+
+  TO_BO(sphere_rot,1);
+# undef TO_BO
+  glBindBuffer(GL_ARRAY_BUFFER,0);
+
+  glDisable(GL_CULL_FACE);
+
+  shadow_volume_points_bo.bind();
+  glVertexPointer(3,GL_FLOAT,0,0);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glDrawArraysInstanced
+    (GL_QUAD_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
+
+  glDisableClientState(GL_VERTEX_ARRAY);
+  bunch_rendering = false;
 }
 
 

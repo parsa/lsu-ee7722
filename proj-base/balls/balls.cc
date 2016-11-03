@@ -191,6 +191,7 @@ glStencilOp(SFAIL,DFAIL,DPASS);
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
 #include <gp/cuda-util.h>
+#include <gp/coord-containers.h>
 #include "shapes.h"
 #include "balls.cuh"
 
@@ -497,7 +498,7 @@ public:
   void contact_pairs_find();
   bool penetration_balls_resolve
   (Ball *ball1, Ball *ball2, bool b2_real = true);
-  void balls_render(bool attempt_ot);
+  void balls_render_instances();
   void balls_render_simple();
   void balls_remove();
   void balls_stop();
@@ -565,6 +566,8 @@ public:
 
   pShader *vs_fixed;
   pShader *vs_reflect;
+  pShader *s_sphere;
+  pShader *s_sv_instances;
 
   GLint sun_axis_e, sun_axis_ne, sun_platform_xrad_sq, sun_light_num;
   GLint sun_platform_xmid, sun_platform_xrad; 
@@ -786,6 +789,11 @@ World::init()
   // stages, rather than using one of our shaders.
   //
   vs_fixed = new pShader();
+
+  s_sphere = new pShader
+    ("balls-shdr.cc", "vs_main_sphere();");
+  s_sv_instances = new pShader
+    ("balls-shdr.cc", "vs_main_sv_instances();");
 
   eye_location = pCoor(17.9,-2,117.2);
   eye_direction = pVect(-0.15,-0.06,-0.96);
@@ -3456,80 +3464,40 @@ World::balls_render_simple()
 }
 
 void
-World::balls_render(bool attempt_ot)
+World::balls_render_instances()
 {
-  physs_occluded = 0;
-  int iter=0;
+  sphere.render_bunch_gather();
   for ( Phys *phys; eye_dist.iterate(phys); )
     {
       Ball* const ball = BALL(phys);
-      iter++;
       if ( !ball ) continue;
       pColor color =
         opt_color_events ? ball->color_event : ball->color_natural;
 
-      // Retrieve the result of an occlusion test on this ball.
-      //
-      while ( attempt_ot && ball->occlusion_query_active )
-        {
-          GLint avail = -1;
-          glGetQueryObjectiv
-            (ball->query_occlusion_id,GL_QUERY_RESULT_AVAILABLE,&avail);
-          if ( !avail ) break;
-          GLint samples_passed = -1;
-          glGetQueryObjectiv
-            (ball->query_occlusion_id,GL_QUERY_RESULT,&samples_passed);
-          ball->occlusion_query_active = false;
-          ball->occluded = samples_passed == 0;
-          if ( ball->occluded ) ball->occluded_run++;
-          else                  ball->occluded_run = 0;
-          ball->occlusion_countdown = 3;
-          break;
-        }
+      {
+        Sphere* const s = &sphere;
 
-      if ( ball->occluded ) physs_occluded++;
-      
-      // Decide whether to perform an occlusion test.
-      //
-      const bool do_ot = attempt_ot && ball->occlusion_countdown-- == 0;
-
-      // Don't render this ball because it hasn't resulted in
-      // anything being written to the frame buffer more than
-      // 10 consecutive times.
-      //
-      if ( ball->occluded_run > 10 && !do_ot ) continue;
-
-      // Maybe start an occlusion query.
-      if ( do_ot )
-        glBeginQuery(GL_SAMPLES_PASSED,ball->query_occlusion_id);
-
-      if ( ball->occluded_run > 10 )
-        {
-          // Ball is probably not visible, so render it with
-          // a simple sphere.
-          //
-          sphere_lite.render_simple(ball->radius,ball->position);
-        }
-      else
-        {
-          // Get sphere with detail level appropriate for viewer distance.
-          //
-          Sphere* const s = opt_pause ? &sphere : sphere_get(ball);
-
-          // Set ball's color, position, and orientation, and
-          // render it.
-          //
-          pMatrix_Rotation rot(ball->orientation);
-          s->color = color;
-          s->render(ball->radius,ball->position,rot);
-        }
-      if ( do_ot )
-        {
-          ball->occlusion_query_active = true;
-          glEndQuery(GL_SAMPLES_PASSED);
-        }
+        // Set ball's color, position, and orientation, and
+        // render it.
+        //
+        pMatrix_Rotation rot(ball->orientation);
+        s->color = color;
+        s->render(ball->radius,ball->position,rot);
+      }
     }
+
+  GLboolean l0, l1;
+  glGetBooleanv(GL_LIGHT0,&l0);
+  glGetBooleanv(GL_LIGHT1,&l1);
+  int light_state = l0 | (l1<<1);
+  glUniform2i(1, opt_debug, opt_debug2);
+  glUniform1i(2, light_state);
+  glUniform1i(3,1);
+
+  sphere.render_bunch_render();
 }
+
+
 
 void
 World::render_shadow_volumes(pCoor light_pos)
@@ -3584,12 +3552,23 @@ World::render_shadow_volumes(pCoor light_pos)
 
   // Render balls' shadow volumes.
   //
+  sphere.render_bunch_gather();
+
   for ( Ball *ball; balls_iterate(ball); )
     {
-      Sphere* const s = opt_pause ? &sphere : sphere_get(ball);
+      Sphere* const s = &sphere;
       s->light_pos = light_pos;
       s->render_shadow_volume(ball->radius,ball->position);
     }
+  {
+    int light_state = 0;
+    s_sv_instances->use();
+    glUniform2i(1, opt_debug, opt_debug2);
+    glUniform1i(2, light_state);
+    sphere.render_bunch_render_sv();
+    vs_fixed->use();
+  }
+
 
   // Render tiles' shadow volumes.
   //
@@ -3627,7 +3606,9 @@ World::render_objects(bool attempt_ot)
 
   // Render each ball.
   //
-  balls_render(attempt_ot);
+  s_sphere->use();
+  balls_render_instances();
+  vs_fixed->use();
 
   glDisable(GL_COLOR_SUM);
   glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
@@ -3843,7 +3824,7 @@ World::render()
      ? BLINK(gpu_physics_method_str[opt_physics_method],"      ") 
      : gpu_physics_method_str[opt_physics_method], 
      opt_debug, opt_debug2,
-     opt_verify ? BLINK("On ","   ") : "Off");
+     opt_verify ? BLINK("ON ","   ") : "OFF");
 
   if ( opt_physics_method == GP_cuda && cuda_initialized )
     {
@@ -3957,17 +3938,20 @@ World::render()
 
       // Send constants to shader.
       //
+      modelview_projection = projection * modelview;
+
       glUniform1f(sun_platform_xmid, platform_xmid);
       glUniform1f(sun_platform_xrad, platform_xrad);
       glUniform1i(sun_opt_mirror_method, opt_mirror_method);
       glUniform1i(sun_opt_color_events, opt_color_events);
       glUniform4fv(sun_eye_location, 1, eye_location);
       glUniformMatrix4fv(sun_eye_to_world, 1, true, modelview_inv);
-      modelview_projection = projection * modelview;
       glUniformMatrix4fv(sun_world_to_clip, 1, true, modelview_projection);
+      glUniform1i(3,0);
 
-      balls_render(false);
       tile_manager.render();
+
+      balls_render_instances();
 
       // Change back to fixed functionality (no user shader).
       //
@@ -4209,6 +4193,9 @@ main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
+  glDisable(GL_DEBUG_OUTPUT);
+  glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
+                        GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
 
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.render_w,&world);

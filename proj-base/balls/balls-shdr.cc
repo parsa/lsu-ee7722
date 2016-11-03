@@ -1,8 +1,7 @@
-/// LSU EE 4702-1 (Fall 2011), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
-// $Id:$
 
 /// Purpose
 //
@@ -13,13 +12,43 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 430 compatibility
+#version 450 compatibility
 
 // The _GEOMETRY_SHADER_ define is put there by code in shader.h.
 //
 #ifdef _GEOMETRY_SHADER_
 #extension GL_EXT_geometry_shader4 : enable
 #endif
+
+
+layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
+layout ( binding = 2 ) buffer spr { vec4 sphere_pos_rad[]; };
+layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
+
+layout ( location = 1 ) uniform bvec2 opt_debug;
+layout ( location = 2 ) uniform int lighting_options;
+layout ( location = 3 ) uniform int sphere_instances;
+
+struct Coord_Norm
+{
+  vec4 vertex_o;
+  vec3 norm_o;
+};
+
+Coord_Norm
+vs_sphere_coord_norm_get()
+{
+  vec4 pos_rad = sphere_pos_rad[gl_InstanceID];
+  float rad = pos_rad.w;
+  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
+  vec4 normr = rot * gl_Vertex;
+  vec3 norm = normr.xyz;
+  Coord_Norm cn;
+
+  cn.vertex_o = vec4( pos_rad.xyz + rad * norm, 1 );
+  cn.norm_o = norm;
+  return cn;
+}
 
 
 ///
@@ -328,6 +357,53 @@ alhazan(vec2 eye, vec2 vertex)
 void
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 {
+  // Return lighted color of vertex_e.
+  //
+
+  vec3 nspc_color = color.rgb * gl_LightModel.ambient.rgb;
+  vec3 spec_color = vec3(0);
+
+  for ( int i=0; i<2; i++ )
+    {
+      if ( ( lighting_options & ( 1 << i ) ) == 0 ) continue;
+      vec4 light_pos = gl_LightSource[i].position;
+      vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
+      float dist = length(v_vtx_light);
+      float dist_vl_inv = 1.0 / dist;
+      vec3 v_vtx_l_n = v_vtx_light * dist_vl_inv;
+
+      float d_n_vl = dot(normalize(normal_e), v_vtx_l_n);
+      //  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
+      float phase_light = max(0,true ? d_n_vl : -d_n_vl );
+
+      vec3 ambient_light = gl_LightSource[i].ambient.rgb;
+      vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
+      float distsq = dist * dist;
+      float atten_inv =
+        gl_LightSource[i].constantAttenuation +
+        gl_LightSource[i].linearAttenuation * dist +
+        gl_LightSource[i].quadraticAttenuation * distsq;
+      vec3 lighted_color =
+        color.rgb
+        * ( ambient_light + phase_light * diffuse_light ) / atten_inv;
+      nspc_color += lighted_color;
+
+      vec3 h = normalize( v_vtx_l_n - normalize(vertex_e.xyz) );
+
+      spec_color +=
+        pow(max(0.0,dot(normal_e,h)),gl_FrontMaterial.shininess)
+        * gl_FrontMaterial.specular.rgb
+        * gl_LightSource[i].specular.rgb / atten_inv;
+    }
+
+  gl_FrontColor = vec4(nspc_color,color.a);
+  gl_FrontSecondaryColor = vec4(spec_color,1);
+}
+
+
+void
+generic_lighting_olde(vec4 vertex_e, vec4 color, vec3 normal_e)
+{
   // Compute Lighting for Ball
   // Uses OpenGL lighting model, nothing fancy here.
 
@@ -368,8 +444,58 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 
 #ifdef _VERTEX_SHADER_
 
+/// Sphere Instance (Non-Reflection) Shaders
+
+void
+vs_main_sphere()
+{
+  Coord_Norm cn = vs_sphere_coord_norm_get();
+
+  vec4 color = sphere_color[gl_InstanceID];
+
+  vec4 vertex_e = gl_ModelViewMatrix * cn.vertex_o;
+  vec3 normal_e = gl_NormalMatrix * cn.norm_o;
+
+  generic_lighting(vertex_e,color,normal_e);
+
+  gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * cn.vertex_o;
+}
+
+
+void
+vs_main_sv_instances()
+{
+  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
+  vec4 vertex_o = rot * gl_Vertex;
+  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
+  gl_FrontColor = gl_Color;
+}
+
+
+
+/// Reflection Vertex Shaders
+
+void vs_main_reflect_common(Coord_Norm cn);
+
 void
 vs_main_reflect()
+{
+  Coord_Norm cn;
+  if ( sphere_instances == 1 )
+    {
+      cn = vs_sphere_coord_norm_get();
+    }
+  else
+    {
+      cn.vertex_o = gl_Vertex;
+      cn.norm_o = gl_Normal;
+    }
+  vs_main_reflect_common(cn);
+}
+
+void
+vs_main_reflect_common(Coord_Norm cn)
 {
   /// Compute locations of reflected points of vertex.
 
@@ -377,8 +503,8 @@ vs_main_reflect()
   //
   gl_TexCoord[0] = gl_MultiTexCoord0;
 
-  vec4 vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  vec3 normal_e = normalize(gl_NormalMatrix * gl_Normal);
+  vec4 vertex_e = gl_ModelViewMatrix * cn.vertex_o;
+  vec3 normal_e = normalize(gl_NormalMatrix * cn.norm_o);
   vec4 vertex_e_pn = vertex_e + vec4(normal_e,0);
 
   // Compute lighting using ordinary lighting calculations.
