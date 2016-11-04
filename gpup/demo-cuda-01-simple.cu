@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
@@ -68,10 +68,12 @@
  /// Global
  //
  //  Works like "regular" memory on CPU, but it's usually separated.
+ //  Uses the same hardware as OpenGL buffer objects.
 
  /// Constant
  //
  //  Limited amount of storage, read-only on GPU.
+ //  Probably uses the same hardware as OpenGL uniforms.
 
 
 #endif
