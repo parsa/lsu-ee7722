@@ -440,6 +440,7 @@ pangle(pCoor a, pCoor b, pCoor c)
 }
 
 
+inline
 pMatrix::pMatrix(pVect c0, pVect c1, pVect c2)
 { set_identity(); set_col(0,c0); set_col(1,c1);  set_col(2,c2); }
 
@@ -465,12 +466,12 @@ pMatrix::set_col(int c, pCoor v)
   for ( int r=0; r<4; r++ ) rc(r,c) = v[r];
 }
 
-pCoor mult_MC(pMatrix& m, pCoor c)
+inline pCoor mult_MC(pMatrix& m, pCoor c)
 {
   return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
 }
 
-pVect mult_MV(pMatrix3x3 m, pVect c)
+inline pVect mult_MV(pMatrix3x3 m, pVect c)
 {
   return pVect(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c));
 }
@@ -478,7 +479,7 @@ pVect mult_MV(pMatrix3x3 m, pVect c)
 inline pVect operator * (pMatrix3x3 m, pVect c) { return mult_MV(m,c); }
 
 // Multiply M transposed times V.
-pVect mult_MTV(pMatrix3x3 m, pVect v)
+inline pVect mult_MTV(pMatrix3x3 m, pVect v)
 {
   pVect q(0,0,0);
   float* const qf = &q.x;
