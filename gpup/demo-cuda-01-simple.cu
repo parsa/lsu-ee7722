@@ -76,10 +76,36 @@
  //  Probably uses the same hardware as OpenGL uniforms.
 
 
+ /// The Whole Process
+ //
+ //   - Install CUDA toolkit and NVIDIA drivers.
+ //   - Write hello.cu.
+ //   - Compile with nvcc
+ //   - Run.
+
+
+ /// Typical Program Structure
+ //
+ //   - Prepare input data on CPU.
+ //   - Send data from CPU to GPU.
+ //   - Launch kernel.
+ //   - Send data from GPU to CPU.
+
+ /// Multithreaded Execution
+ //
+ //  :Def: Thread
+ //  A path of execution through a program.
+ //  Most beginner programs have one thread.
+ //
+ //  :Def: Multithreaded Execution
+ //  Execution of a program using more than one thread.
+ //  On CPUs, program starts with one thread (in main), additional
+ //   threads are requested by programmer.
+
+
 #endif
 
 
-#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
