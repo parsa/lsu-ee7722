@@ -6,8 +6,10 @@ const pColor color_green(0.1,0.8,0.1);
 const pColor color_blue(0.1,0.1,0.8);
 const pColor color_cyan(0.1,0.8,0.8);
 const pColor color_gray(0x303030);
-const pColor color_light_gray(0.8,0.8,0.8);
-const pColor color_dark_gray(0.15,0.15,0.15);
+const pColor color_dim_gray(0x696969);
+const pColor color_dark_gray(0xa9a9a9);
+const pColor color_x_gray(0xbebebe);
+const pColor color_light_gray(0xd3d3de);
 const pColor color_black(0x0);
 const pColor color_white(0xffffff);
 
