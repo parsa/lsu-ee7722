@@ -185,6 +185,7 @@ pFrame_Timer::init()
 {
   inited = true;
   frame_inside = false;
+  phys_inside = false;
   glGenQueries(2,query_timer_id);
   query_timer_idx = 0;
   frame_group_start_time = time_wall_fp();
