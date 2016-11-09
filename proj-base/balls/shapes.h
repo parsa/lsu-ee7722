@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Spring 2010), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Spring 2016), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -10,7 +10,10 @@ public:
   Sphere(){};
   void init(int slices);
   void shadow_volume_init(int slices);
-  void render_bunch_gather();
+  void bunch_invalidate()
+  { world_time_last_update = world_time - 1; }
+  void render_bunch_gather(double world_timep);
+  void render_bunch_gather_sv();
   void render_bunch_render();
   void render_bunch_render_sv();
   void render();
@@ -37,10 +40,13 @@ public:
   int slices;
 
   bool bunch_rendering;
-  GLuint sphere_rot_bo, sphere_pos_rad_bo, sphere_color_bo;
-  pMatrixs sphere_rots;
+  GLuint sphere_rot_bo, sphere_sv_rot_bo, sphere_pos_rad_bo, sphere_color_bo;
+  pMatrixs sphere_rots, sphere_sv_rots;
   pCoors sphere_pos_rads;
   pColors sphere_colors;
+
+  double world_time;
+  double world_time_last_update;
 
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<float> tex_coord_bo;
@@ -66,7 +72,7 @@ Sphere::init(int slicesp)
   // pBuffer_Object objects. Also initialize other variables.
   
   bunch_rendering = false;
-  sphere_rot_bo = sphere_pos_rad_bo = sphere_color_bo = 0;
+  sphere_sv_rot_bo = sphere_rot_bo = sphere_pos_rad_bo = sphere_color_bo = 0;
   slices = slicesp;             // Amount of detail.
   axis = pVect(0,1,0);
   angle = 0;
@@ -133,9 +139,11 @@ Sphere::rotation_matrix_compute()
 }
 
 void
-Sphere::render_bunch_gather()
+Sphere::render_bunch_gather(double world_timep)
 {
+  world_time = world_timep;
   bunch_rendering = true;
+  if ( world_time_last_update == world_time ) return;
   if ( !sphere_color_bo )
     {
       glGenBuffers(1, &sphere_rot_bo);
@@ -148,12 +156,22 @@ Sphere::render_bunch_gather()
 }
 
 void
+Sphere::render_bunch_gather_sv()
+{
+  bunch_rendering = true;
+  if ( !sphere_sv_rot_bo ) glGenBuffers(1, &sphere_sv_rot_bo );
+  sphere_sv_rots.clear();
+}
+
+void
 Sphere::render_bunch_render()
 {
+  const bool first_render = world_time_last_update != world_time;
+  world_time_last_update = world_time;
 
 # define TO_BO(name,num) \
   glBindBuffer(GL_ARRAY_BUFFER,name##_bo); \
-  glBufferData \
+  if ( first_render ) glBufferData \
     (GL_ARRAY_BUFFER, name##s.size_chars(), name##s.data(), GL_STREAM_DRAW); \
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER,num,name##_bo);
 
@@ -177,7 +195,6 @@ Sphere::render_bunch_render()
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glDisable(GL_CULL_FACE);
   glBindBuffer(GL_ARRAY_BUFFER,0);
-  bunch_rendering = false;
 }
 
 void
@@ -188,6 +205,7 @@ Sphere::render()
 
   if ( bunch_rendering )
     {
+      if ( world_time == world_time_last_update ) return;
       if ( !default_orientation )
         sphere_rots += rotation_matrix;
       pCoor pos_rad(center);  pos_rad.w = radius;
@@ -322,7 +340,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 
   if ( bunch_rendering )
     {
-      sphere_rots += transform;
+      sphere_sv_rots += transform;
       return;
     }
 
@@ -341,14 +359,13 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 void
 Sphere::render_bunch_render_sv()
 {
-
 # define TO_BO(name,num) \
   glBindBuffer(GL_ARRAY_BUFFER,name##_bo); \
   glBufferData \
     (GL_ARRAY_BUFFER, name##s.size_chars(), name##s.data(), GL_STREAM_DRAW); \
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER,num,name##_bo);
 
-  TO_BO(sphere_rot,1);
+  TO_BO(sphere_sv_rot,1);
 # undef TO_BO
   glBindBuffer(GL_ARRAY_BUFFER,0);
 
@@ -361,7 +378,6 @@ Sphere::render_bunch_render_sv()
     (GL_QUAD_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
 
   glDisableClientState(GL_VERTEX_ARRAY);
-  bunch_rendering = false;
 }
 
 

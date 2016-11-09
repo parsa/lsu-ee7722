@@ -260,12 +260,6 @@ public:
   virtual float max_z_get(double delta_t) { return 0; }
   virtual float min_z_get(double delta_t) { return 0; }
 
-  GLuint query_occlusion_id;
-  bool occlusion_query_active;
-  bool occluded;
-  int occluded_run;
-  int occlusion_countdown;
-
   int contact_count;        // Number of other objects in contact with.
   bool collision;           // True if object collided with something.
   uint32_t debug_pair_calls;
@@ -485,8 +479,6 @@ public:
   Ball *dball;
   Ball* pball;
 
-  int physs_occluded;
-
   // Lists used for computing which phys pairs are in proximity.
   //
   PSList<Phys*,double> phys_zsort;
@@ -499,7 +491,6 @@ public:
   bool penetration_balls_resolve
   (Ball *ball1, Ball *ball2, bool b2_real = true);
   void balls_render_instances();
-  void balls_render_simple();
   void balls_remove();
   void balls_stop();
   void balls_rot_stop();
@@ -748,7 +739,7 @@ World::init()
   opt_block_size = 128;
 
   frame_timer.work_unit_set("Steps / s");
-  world_time = 0;
+  world_time = time_wall_fp();
   opt_gravity_accel = 9.8;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
@@ -1750,11 +1741,6 @@ Phys::Phys(Phys_Type phys_type):
   phys_type(phys_type),original(NULL)
 {
   read_only = false;
-  occluded = false;
-  occlusion_query_active = false;
-  occluded_run = 0;
-  occlusion_countdown = 0;
-  glGenQueries(1,&query_occlusion_id);
   contact_count = 0;
   collision = false;
   serial = phys_serial_next++;
@@ -1769,14 +1755,11 @@ Phys::Phys(Phys& phys)
   C(serial);C(idx);
   C(proximity);
   C(contact_count); C(debug_pair_calls); C(collision);
-  query_occlusion_id = 0;
 #undef C
 }
 
 Phys::~Phys()
 {
-  if ( query_occlusion_id )
-    glDeleteQueries(1,&query_occlusion_id);
 }
 
 bool
@@ -3442,48 +3425,21 @@ World::sphere_get(Ball *ball)
 }
 
 void
-World::balls_render_simple()
-{
-  // Render balls without textures. Intended for casting shadows.
-
-  tile_manager.render_simple();
-
-  for ( Ball *ball; balls_iterate(ball); )
-    {
-      const int c = ball->contact_count;
-
-      // Assume that a ball in contact with more than 6 others
-      // won't cast a visible shadow.
-      //
-      if ( c > 6 ) continue;
-
-      Sphere* const s = opt_pause ? &sphere : sphere_get(ball);
-
-      s->render_simple(ball->radius,ball->position);
-    }
-}
-
-void
 World::balls_render_instances()
 {
-  sphere.render_bunch_gather();
+  sphere.render_bunch_gather(world_time);
   for ( Phys *phys; eye_dist.iterate(phys); )
     {
       Ball* const ball = BALL(phys);
       if ( !ball ) continue;
       pColor color =
         opt_color_events ? ball->color_event : ball->color_natural;
-
-      {
-        Sphere* const s = &sphere;
-
-        // Set ball's color, position, and orientation, and
-        // render it.
-        //
-        pMatrix_Rotation rot(ball->orientation);
-        s->color = color;
-        s->render(ball->radius,ball->position,rot);
-      }
+      // Set ball's color, position, and orientation, and
+      // render it.
+      //
+      pMatrix_Rotation rot(ball->orientation);
+      sphere.color = color;
+      sphere.render(ball->radius,ball->position,rot);
     }
 
   GLboolean l0, l1;
@@ -3552,7 +3508,7 @@ World::render_shadow_volumes(pCoor light_pos)
 
   // Render balls' shadow volumes.
   //
-  sphere.render_bunch_gather();
+  sphere.render_bunch_gather_sv();
 
   for ( Ball *ball; balls_iterate(ball); )
     {
@@ -3676,7 +3632,6 @@ World::render()
     {
       /// Don't change simulation state.
       //
-      world_time = time_now;
     }
   else
     {
@@ -3805,10 +3760,9 @@ World::render()
 
   Ball& ball = *ball_first();
   ogl_helper.fbprintf
-    ("Balls %4d (%4d/%4d)  Tiles %3d  Last Ball Pos  "
+    ("Balls %4d   Tiles %3d  Last Ball Pos  "
      "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
-     physs.occ(), 
-     physs.occ() - physs_occluded, physs_occluded,
+     physs.occ(),
      tile_manager.occ(),
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z,
@@ -4117,7 +4071,9 @@ World::cb_keyboard()
     if ( opt_mirror_method == 4 ) opt_mirror_method = 0;
     break;
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
-  case 'p': case 'P': opt_pause = !opt_pause; break;
+  case 'p': case 'P': opt_pause = !opt_pause;
+    if ( !opt_pause ) world_time = time_wall_fp();
+    break;
   case 'q': opt_debug = !opt_debug; break;
   case 'Q': opt_debug2 = !opt_debug2; break;
   case 'R': balls_remove(); break;
@@ -4152,6 +4108,7 @@ World::cb_keyboard()
   }
 
   variables_update();
+  sphere.bunch_invalidate();
 
   // Update eye_direction based on keyboard command.
   //

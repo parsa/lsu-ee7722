@@ -357,9 +357,6 @@ alhazan(vec2 eye, vec2 vertex)
 void
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 {
-  // Return lighted color of vertex_e.
-  //
-
   vec3 nspc_color = color.rgb * gl_LightModel.ambient.rgb;
   vec3 spec_color = vec3(0);
 
@@ -400,46 +397,6 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   gl_FrontSecondaryColor = vec4(spec_color,1);
 }
 
-
-void
-generic_lighting_olde(vec4 vertex_e, vec4 color, vec3 normal_e)
-{
-  // Compute Lighting for Ball
-  // Uses OpenGL lighting model, nothing fancy here.
-
-  vec4 new_color = vec4( color.rgb * gl_LightModel.ambient.rgb, color.a);
-  vec4 spec_color = vec4(0,0,0,1);
-
-  for ( int i=0; i<2; i++ )
-    {
-      vec4 light_pos = gl_LightSource[i].position;
-      vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
-      float phase_light = dot_pos(normal_e, normalize(v_vtx_light).xyz);
-      pNorm v_to_light = mn(vertex_e,light_pos);
-      pNorm v_to_eye = mn(vertex_e,vec4(0,0,0,1));
-      pNorm h = mn( v_to_light.v + v_to_eye.v );
-      bool f = dot(normal_e,v_to_light.v) > 0.0;
-      vec3 ambient_light = gl_LightSource[i].ambient.rgb;
-      vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
-      float dist = length(v_vtx_light);
-      float distsq = dist * dist;
-      float atten_inv =
-        gl_LightSource[i].constantAttenuation +
-        gl_LightSource[i].linearAttenuation * dist +
-        gl_LightSource[i].quadraticAttenuation * distsq;
-      new_color.rgb +=
-        color.rgb *
-        ( ambient_light + phase_light * diffuse_light ) / atten_inv;
-      if ( !f ) continue;
-      spec_color.rgb +=
-        pow(dot_pos(normal_e,h.v),gl_FrontMaterial.shininess)
-        * gl_FrontMaterial.specular.rgb
-        * gl_LightSource[i].specular.rgb / atten_inv;
-    }
-
-    gl_FrontColor = new_color;
-    gl_FrontSecondaryColor =  spec_color;
-}
 
 
 #ifdef _VERTEX_SHADER_
