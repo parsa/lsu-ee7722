@@ -196,7 +196,7 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_er)
 
   vec3 nspc_color = color.rgb * gl_LightModel.ambient.rgb;
   vec3 spec_color = vec3(0);
-  vec3 normal_e = normalize(normal_e);
+  vec3 normal_e = normalize(normal_er);
 
   for ( int i=0; i<2; i++ )
     {
