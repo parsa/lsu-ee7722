@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
@@ -31,13 +31,18 @@
 //
 //   -- CC 3.0, 3.5
 //      Kepler
-//      Product cycle ending. (17 November 2014,  9:24:12 CST)
+//      Product cycle ending.
 //      Currently the highest performance for scientific computation.
 //
 //   -- CC 5.2
 //      Maxwell
-//      Product cycle beginning. (17 November 2014,  9:24:16 CST)
+//      Product cycle ending.
+//
+//   -- CC 6.X
+//      Pascal
+//      Product cycle starting.
 //      Currently the highest performance for single-precision computation.
+
 
 
  /// Hardware Organization
@@ -51,26 +56,33 @@
 //        CUDA Core:  Can perform most single-precision non-divide FP.
 
 
- /// Thread Organization
+ /// CUDA Thread Organization
 //
+//   :Def: Kernel
 //
-//   Thread
+//   :Def: Thread
 //     Has one PC.
 //      Sort of a brain, or maybe just a body that can be in one place
 //      at one time.
+//
+//   :Def: Block
+//     A grouping of threads.
+//
+//     The number of threads in a block is called the block size.
+
+
+//     All threads in a block execute on the same multiprocessor.
+//     Threads within a block share shared memory.
+//
+//   :Def: Grid
+//     A collection of blocks.
 //
 //   Warp
 //     A collection of 32 threads.
 //     One day the size of warp may change but it's been 32 through CC 5.2.
 //     Threads in a warp travel together.
 //
-//   Block
-//     A collection of threads, number determined by user.
-//     All threads in a block execute on the same multiprocessor.
-//     Threads within a block share shared memory.
-//
-//   Grid
-//     A collection of blocks.
+
 
  /// Kernel Launch
 //
