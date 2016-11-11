@@ -115,26 +115,7 @@
 #include <new>
 
 #include <cuda_runtime.h>
-
- /// CUDA API Error-Checking Wrapper
-///
-#define CE(call)                                                              \
- {                                                                            \
-   const cudaError_t rv = call;                                               \
-   if ( rv != cudaSuccess )                                                   \
-     {                                                                        \
-       printf("CUDA error %d, %s\n",rv,cudaGetErrorString(rv));               \
-       exit(1);                                                               \
-     }                                                                        \
- }
-
-double
-time_fp()
-{
-  struct timespec tp;
-  clock_gettime(CLOCK_REALTIME,&tp);
-  return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
-}
+#include "../cuda/intro-vtx-transform/util.h"
 
 struct Vertex
 {
@@ -147,6 +128,8 @@ struct App
   int array_size;
   Vertex *v_in;
   float *m_out;
+  float *m_out_check;
+
   float4 *d_v_in;
   float *d_m_out;
 };
@@ -170,7 +153,8 @@ cuda_thread_start_simple()
 
   if ( tid >= d_app.num_threads ) return;
 
-  const int elt_per_thread = d_app.array_size / d_app.num_threads;
+  const int elt_per_thread =
+    ( d_app.array_size + d_app.num_threads - 1 ) / d_app.num_threads;
   const int start = elt_per_thread * tid;
   const int stop = start + elt_per_thread;
 
@@ -180,7 +164,7 @@ cuda_thread_start_simple()
 
       float sos = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
 
-      d_app.d_m_out[h] = sqrtf( sos );
+      d_app.d_m_out[h] = sos;
     }
 }
 
@@ -197,213 +181,273 @@ cuda_thread_start_efficient()
 
       float sos = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
 
-      d_app.d_m_out[h] = sqrtf( sos );
+      d_app.d_m_out[h] = sos;
     }
 }
 
 
-///
-/// Collect Information About GPU and Code
-///
 
-// Info about a specific kernel.
-//
-struct Kernel_Info {
-  void (*func_ptr)();           // Pointer to kernel function.
-  const char *name;             // ASCII version of kernel name.
-  cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
-};
 
-// Info about GPU and each kernel.
-//
-struct GPU_Info {
-  double bw_Bps;
-  static const int num_kernels_max = 4;
-  int num_kernels;
-  Kernel_Info ki[num_kernels_max];
-};
-
-GPU_Info gpu_info;
-
-void
-cuda_init()
+GPU_Info
+print_gpu_and_kernel_info()
 {
-  // Get information about GPU and its ability to run CUDA.
-  //
-  int device_count;
-  cudaGetDeviceCount(&device_count); // Get number of GPUs.
-  if ( device_count == 0 )
-    {
-      fprintf(stderr,"No GPU found, exiting.\n");
-      exit(1);
-    }
+  GPU_Info info;
 
-  cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
+  print_gpu_info();
 
-  /// Print information about the available GPUs.
-  //
-  for ( int dev=0; dev<device_count; dev++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
-
-      const int cc_per_mp =
-        cuda_prop.major == 1 ? 8 :
-        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-        cuda_prop.major == 3 ? 192 : 0;
-
-      const double chip_bw_Bps = gpu_info.bw_Bps =
-        2 * cuda_prop.memoryClockRate * 1000.0
-        * ( cuda_prop.memoryBusWidth >> 3 );
-      const double chip_sp_flops =
-        1000.0 * cc_per_mp * cuda_prop.clockRate
-        * cuda_prop.multiProcessorCount;
-
-      printf
-        ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  TH/BL: %4d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cc_per_mp,
-         cuda_prop.maxThreadsPerBlock);
-
-      printf
-        ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
-         "OP/ELT %.2f\n",
-         dev,
-         cuda_prop.l2CacheSize >> 10,
-         chip_bw_Bps * 1e-9,
-         chip_sp_flops * 1e-9,
-         4 * chip_sp_flops / chip_bw_Bps);
-
-    }
-
-  // Choose GPU 0 because we don't have time to provide a way to let
-  // the user choose.
+  // Choose GPU 0 because it's usually the better choice.
   //
   int dev = 0;
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
+  info.get_gpu_info(dev);
 
-  gpu_info.num_kernels = 0;
+  info.GET_INFO(cuda_thread_start_simple);
+  info.GET_INFO(cuda_thread_start_efficient);
 
-#define GET_INFO(proc_name) {                                                 \
-  const int idx = gpu_info.num_kernels++;                                     \
-  if ( idx < gpu_info.num_kernels_max ) {                                     \
-    gpu_info.ki[idx].name = #proc_name;                                       \
-    gpu_info.ki[idx].func_ptr = (void(*)())proc_name;                         \
-    CE(cudaFuncGetAttributes(&gpu_info.ki[idx].cfa,proc_name));               \
-  }}
-
-  GET_INFO(cuda_thread_start_simple);
-  GET_INFO(cuda_thread_start_efficient);
-
-#undef GET_INFO
-
-  // Print information about time_step routine.
+  // Print information about kernel.
   //
-  printf("\nCUDA Routine Resource Usage:\n");
+  printf("\nCUDA Kernel Resource Usage:\n");
 
-  for ( int i=0; i<gpu_info.num_kernels; i++ )
+  for ( int i=0; i<info.num_kernels; i++ )
     {
-      printf("For %s:\n", gpu_info.ki[i].name);
+      printf("For %s:\n", info.ki[i].name);
       printf("  %6zd shared, %zd const, %zd loc, %d regs; "
              "%d max threads per block.\n",
-             gpu_info.ki[i].cfa.sharedSizeBytes,
-             gpu_info.ki[i].cfa.constSizeBytes,
-             gpu_info.ki[i].cfa.localSizeBytes,
-             gpu_info.ki[i].cfa.numRegs,
-             gpu_info.ki[i].cfa.maxThreadsPerBlock);
+             info.ki[i].cfa.sharedSizeBytes,
+             info.ki[i].cfa.constSizeBytes,
+             info.ki[i].cfa.localSizeBytes,
+             info.ki[i].cfa.numRegs,
+             info.ki[i].cfa.maxThreadsPerBlock);
     }
-
-  printf("\n");
+  return info;
 }
+
 
 ///
 /// Main Routine
 ///
 
+
 int
 main(int argc, char **argv)
 {
-  const int nt_raw = argc < 2 ? 1 : atoi(argv[1]);
-  app.num_threads = abs(nt_raw);
+  // Get info about GPU and each kernel.
+  //
+  GPU_Info info = print_gpu_and_kernel_info();
 
-  app.array_size = argc < 3 ? 1 << 20 : int( atof(argv[2]) * (1<<20) );
-  const int array_size_bytes = app.array_size * sizeof(app.v_in[0]);
-  const int out_array_size_bytes = app.array_size * sizeof(app.m_out[0]);
+  const int num_mp = info.cuda_prop.multiProcessorCount;
 
-  const bool simple = argc < 4 ? 1 : atof(argv[3]);
+  // Examine argument 1, block count, default is number of MPs.
+  //
+  const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
+  const int num_blocks =
+     arg1_int == 0 ? num_mp :
+     arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
 
-  if ( argc < 2 ) cuda_init();
+  // Examine argument 2, number of threads per block.
+  //
+  const int thd_per_block_arg = argc < 3 ? 1024 : atoi(argv[2]);
+  const int thd_per_block_goal =
+   thd_per_block_arg == 0 ? 1024 : thd_per_block_arg;
+  const int num_threads = app.num_threads = num_blocks * thd_per_block_goal;
 
-  const int threads_per_block = 256;
-  const int blocks_per_grid =
-    ( app.num_threads + threads_per_block-1 ) / threads_per_block;
+  const bool vary_warps = thd_per_block_arg == 0;
+
+  // Examine argument 3, size of array in MiB. Fractional values okay.
+  //
+  app.array_size = argc < 4 ? 1 << 20 : int( atof(argv[3]) * (1<<20) );
+
+  if ( num_threads <= 0 || app.array_size <= 0 )
+    {
+      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK] "
+             "[DATA_SIZE_MiB]\n",
+             argv[0]);
+      exit(1);
+    }
+
+  const int in_size_bytes = app.array_size * sizeof( app.v_in[0] );
+  const int out_size_bytes = app.array_size * sizeof( app.m_out[0] );
+  const int overrun_size_bytes = 1024 * sizeof( app.v_in[0] );
 
   // Allocate storage for CPU copy of data.
   //
   app.v_in = new Vertex[app.array_size];
   app.m_out = new float[app.array_size];
+  app.m_out_check = new float[app.array_size];
 
   // Allocate storage for GPU copy of data.
   //
-  CE( cudaMalloc( &app.d_v_in,  array_size_bytes     ) );
-  CE( cudaMalloc( &app.d_m_out, out_array_size_bytes ) );
+  CE( cudaMalloc( &app.d_v_in,  in_size_bytes + overrun_size_bytes ) );
+  CE( cudaMalloc( &app.d_m_out, out_size_bytes + overrun_size_bytes ) );
 
-  printf("Launching %d blocks * %d threads for %d elts using %s kernel.\n",
-         blocks_per_grid, threads_per_block, app.array_size,
-         simple ? "simple" : "efficient" );
+  printf("Array size: %d  4-component vectors.\n", app.array_size);
 
   // Initialize input array.
   //
   for ( int i=0; i<app.array_size; i++ )
     for ( int j=0; j<4; j++ ) app.v_in[i].a[j] = drand48();
 
-  const double time_start = time_fp();
-
-  // Copy input array from CPU to GPU.
+  // Compute correct answer.
   //
-  CE( cudaMemcpy
-      ( app.d_v_in, app.v_in, array_size_bytes, cudaMemcpyHostToDevice ) );
+  for ( int i=0; i<app.array_size; i++ )
+    {
+      app.m_out_check[i] = 0;
+      for ( int j=0; j<4; j++ )
+        app.m_out_check[i] += app.v_in[i].a[j] * app.v_in[i].a[j];
+    }
 
-  // Copy App structure to GPU.
-  //
-  CE( cudaMemcpyToSymbol
-      ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
+  const int64_t num_ops = 4 * app.array_size;  // Multiply-adds.
 
+  // Amount of data in and out of GPU chip.
+  const int amt_data_bytes = in_size_bytes + out_size_bytes;
 
+  double elapsed_time_s = 86400; // Reassigned to minimum run time.
 
-  /// Launch Kernel
-  //
-  if ( simple )
+  {
+    // Prepare events used for timing.
+    //
+    cudaEvent_t gpu_start_ce, gpu_stop_ce;
+    CE(cudaEventCreate(&gpu_start_ce));
+    CE(cudaEventCreate(&gpu_stop_ce));
 
-    cuda_thread_start_simple<<< blocks_per_grid, threads_per_block >>>();
+    // Copy input array from CPU to GPU.
+    //
+    CE( cudaMemcpy
+        ( app.d_v_in, app.v_in, in_size_bytes, cudaMemcpyHostToDevice ) );
 
-  else
+    // Copy App structure to GPU.
+    //
+    CE( cudaMemcpyToSymbol
+        ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
-    cuda_thread_start_efficient<<< blocks_per_grid, threads_per_block >>>();
+    // Launch kernel multiple times and keep track of the best time.
+    printf("Launching with %d blocks of up to %d threads. \n",
+           num_blocks, thd_per_block_goal);
 
-  // Copy output array from GPU to CPU.
-  //
-  CE( cudaMemcpy
-      ( app.m_out, app.d_m_out, out_array_size_bytes, cudaMemcpyDeviceToHost) );
+    for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
+      {
+        cudaFuncAttributes& cfa = info.ki[kernel].cfa;
+        const int wp_limit = cfa.maxThreadsPerBlock >> 5;
 
-  const double data_size = app.array_size * ( sizeof(Vertex) + sizeof(float) );
-  const double fp_op_count = app.array_size * 5;
-  const double elapsed_time = time_fp() - time_start;
+        const int thd_limit = wp_limit << 5;
+        const int thd_per_block_no_vary = min(thd_per_block_goal,thd_limit);
 
-  printf("Elapsed time for %d threads and %d elements is %.3f µs\n",
-         app.num_threads, app.array_size, 1e6 * elapsed_time);
-  printf("Rate %.3f GFLOPS,  %.3f GB/s\n",
-         1e-9 * fp_op_count / elapsed_time,
-         1e-9 * data_size / elapsed_time);
+        const int wp_start = 4;
+        const int wp_stop = vary_warps ? wp_limit : wp_start;
+        const int wp_inc = 4;
+
+        for ( int wp_cnt = wp_start; wp_cnt <= wp_stop; wp_cnt += wp_inc )
+          {
+            const int thd_per_block =
+              vary_warps ? wp_cnt << 5 : thd_per_block_no_vary;
+
+            // Zero the output array.
+            //
+            CE(cudaMemset(app.d_m_out,0,out_size_bytes));
+
+            // Measure execution time starting "now", which is after data
+            // set to GPU.
+            //
+            CE(cudaEventRecord(gpu_start_ce,0));
+
+            typedef void (*KPtr)();
+            // Launch Kernel
+            //
+            KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
+              ();
+
+            // Stop measuring execution time now, which is before is data
+            // returned from GPU.
+            //
+            CE(cudaEventRecord(gpu_stop_ce,0));
+            CE(cudaEventSynchronize(gpu_stop_ce));
+            float cuda_time_ms = -1.1;
+            CE(cudaEventElapsedTime(&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
+
+            const double this_elapsed_time_s = cuda_time_ms * 0.001;
+
+            const double thpt_compute_gflops =
+              num_ops / this_elapsed_time_s * 1e-9;
+            const double thpt_data_gbps =
+              amt_data_bytes / this_elapsed_time_s * 1e-9;
+
+            if ( vary_warps )
+              {
+                const char* const stars = "********************************************************************************";
+                const int stars_len = 80;
+                const double comp_frac = 
+                  4e9 * thpt_compute_gflops / info.chip_sp_flops;
+                const int max_st_len = 52;
+
+                // Number of warps, rounded up.
+                //
+                const int num_wps = ( thd_per_block + 31 ) >> 5;
+
+                // The maximum number of active blocks per MP for this
+                // kernel when launched with a block size of thd_per_block.
+                //
+                const int max_bl_per_mp =
+                  info.get_max_active_blocks_per_mp(kernel,thd_per_block);
+
+                // Compute number of blocks available per MP based only on
+                // the number of blocks.  This may be larger than the
+                // number of blocks that can run.
+                //
+                const int bl_per_mp_available =
+                  0.999 + double(num_blocks) / num_mp;
+
+                // The number of active blocks is the minimum of what
+                // can fit and how many are available.
+                //
+                const int bl_per_mp =
+                  min( bl_per_mp_available, max_bl_per_mp );
+
+                // Based on the number of blocks, compute the num ber of warps.
+                //
+                const int act_wps = num_wps * bl_per_mp;
+
+                if ( wp_cnt == wp_start )
+                  printf("Kernel %s:\n", info.ki[kernel].name);
+
+                printf("%2d %2d wp  %6.0f µs  %4.0f GF  %4.0f GB/s %s\n",
+                       num_wps, act_wps,
+                       this_elapsed_time_s * 1e6,
+                       thpt_compute_gflops, thpt_data_gbps,
+                       &stars[stars_len-int(comp_frac*max_st_len)]);
+
+              } else {
+
+              printf("K %-15s %2d wp  %11.3f µs  %8.3f GFLOPS  %8.3f GB/s\n",
+                     info.ki[kernel].name,
+                     (thd_per_block + 31 ) >> 5,
+                     this_elapsed_time_s * 1e6,
+                     thpt_compute_gflops, thpt_data_gbps);
+
+            }
+
+            elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);
+
+            // Copy output array from GPU to CPU.
+            //
+            CE( cudaMemcpy
+                ( app.m_out, app.d_m_out, out_size_bytes, cudaMemcpyDeviceToHost) );
+            continue; // Battle Short.
+            int err_count = 0;
+            for ( int i=0; i<app.array_size; i++ )
+              {
+                if ( fabs( app.m_out_check[i] - app.m_out[i] ) > 1e-5 )
+                    {
+                      err_count++;
+                      if ( err_count < 5 )
+                        printf("Error at vec %d: %.7f != %.7f (correct)\n",
+                               i, app.m_out[i], app.m_out_check[i] );
+                    }
+                }
+            if ( err_count )
+              printf("Total errors %d\n", err_count);
+          }
+      }
+  }
+
 }
