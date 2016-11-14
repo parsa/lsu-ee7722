@@ -100,6 +100,58 @@
 //    Number of threads per block is a multiple of 32.
 
 
+ /// Global Memory Access
+//
+//   :Sample:  mval = a[tid];
+//
+//   Important rule:
+//
+//     Consecutive threads should access consecutive data items.
+//       As in:  mval = a[ tid ];
+//       Not:    mval = a[ tid * 1000 ];
+//
+//     Size of contiguous chunks (accessed by consecutive threads)     
+//     should be a multiple of 32 bytes.
+//
+ /// Possible Locations of Global Data
+//
+//   - Off-Chip Global Memory
+//     Requires about 400 cycles to obtain data.
+//     Subject to off-chip BW limit. 
+//       BW limit in Telsa K20c:  208 GB/s
+//       BW limit in GTX 780:     288 GB/s
+//
+//   - Level 2 Cache  (Not caché, please).
+//     Size varies, about 1 MiB.
+//     Requires about 200 cycles to obtain data.
+//     Much higher BW limit.
+//
+//   Note: L2 only has a small latency benefit.
+//         Larger benefit is higher bandwidth.
+//
+ /// Memory Requests
+//
+//   How Things Work (CC 3.x to 6.x)
+//
+//     - Threads in a warp execute a load instruction. E.g., mval = a[tid];
+//
+//     - Hardware coalesces these loads based on address into
+//        contiguous *requests* of size 32, 64, or 128 B.
+//
+//     - Requests are sent to L2 cache, and if necessary, off-chip storage.
+//
+//     - Dependent instructions can execute when requests return.
+//
+//   Implications
+//
+//     Bandwidth consumed determined by request size ..
+//     .. not by how much data actually needed.
+//
+//     Possible slow down with a larger number of requests ..
+//     .. so 10 128-B requests better than 40 32-B request ..
+//     .. even though they are the same size.
+
+
  /// 
 
 #endif
@@ -152,12 +204,12 @@ kmain_simple()
 
   const int elt_per_thread =
     ( d_app.array_size + d_app.num_threads - 1 ) / d_app.num_threads;
-  const int start = elt_per_thread * tid;
+  const int start = elt_per_thread * tid;  // Bad: Non-consecutive access.
   const int stop = start + elt_per_thread;
 
   for ( int h=start; h<stop; h++ )
     {
-      float4 p = d_app.d_in[h];
+      float4 p = d_app.d_in[h];  // Bad: Non-consecutive access.
       float sos = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
       d_app.d_out[h] = sos;
     }
@@ -171,7 +223,7 @@ kmain_efficient()
 
   for ( int h=tid; h<d_app.array_size; h += d_app.num_threads )
     {
-      float4 p = d_app.d_in[h];
+      float4 p = d_app.d_in[h];  // Good: Consecutive access.
       float sos = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
       d_app.d_out[h] = sos;
     }
@@ -353,14 +405,16 @@ main(int argc, char **argv)
         const int thd_limit = wp_limit << 5;
         const int thd_per_block_no_vary = min(thd_per_block_goal,thd_limit);
 
-        const int wp_start = 4;
+        const int wp_start = 1;
         const int wp_stop = vary_warps ? wp_limit : wp_start;
-        const int wp_inc = 4;
+        const int wp_inc = 1;
 
         for ( int wp_cnt = wp_start; wp_cnt <= wp_stop; wp_cnt += wp_inc )
           {
             const int thd_per_block =
               vary_warps ? wp_cnt << 5 : thd_per_block_no_vary;
+
+            if ( vary_warps && wp_cnt > 4 && wp_cnt & 0x3 ) continue;
 
             app.num_threads = thd_per_block * num_blocks;
 
