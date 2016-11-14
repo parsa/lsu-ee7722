@@ -96,14 +96,11 @@ print_gpu_info()
       exit(1);
     }
 
-  int dev = 0;
-  CE(cudaGetDevice(&dev));
-  printf("Using GPU %d\n",dev);
-
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
 
   /// Print information about the available GPUs.
   //
+  for ( int dev = 0; dev < device_count; dev++ )
   {
     CE(cudaGetDeviceProperties(&cuda_prop,dev));
     printf
@@ -133,7 +130,7 @@ print_gpu_info()
     printf
       ("GPU %d: L2: %d kiB   MEM<->L2: %.1f GB/s\n",
        dev,
-       cuda_prop.l2CacheSize,
+       cuda_prop.l2CacheSize >> 10,
        mem_l2_gbs);
 
     const double sp_gflops = 
@@ -164,7 +161,6 @@ print_gpu_info()
        4 * sp_gflops / mem_l2_gbs,
        8 * dp_gflops / mem_l2_gbs);
   }
-
 }
 
 
