@@ -233,7 +233,9 @@ pFrame_Timer::user_timer_end(int timer_id)
 void
 pFrame_Timer::frame_rate_group_start_check()
 {
-  if ( frame_group_count++ >= frame_group_size ) frame_rate_group_start();
+  if ( frame_group_count++ >= frame_group_size
+       && time_wall_fp() - frame_group_start_time > 1 )
+    frame_rate_group_start();
 }
 
 void
@@ -499,13 +501,13 @@ const void* const all_glut_fonts[] =
 
 const void* const glut_fonts[] =
   { 
+    GLUT_BITMAP_TIMES_ROMAN_24,
+    GLUT_BITMAP_HELVETICA_18,
     GLUT_BITMAP_TIMES_ROMAN_10,
     GLUT_BITMAP_HELVETICA_10,
     GLUT_BITMAP_HELVETICA_12,
     GLUT_BITMAP_8_BY_13,
-    GLUT_BITMAP_9_BY_15,
-    GLUT_BITMAP_HELVETICA_18,
-    GLUT_BITMAP_TIMES_ROMAN_24
+    GLUT_BITMAP_9_BY_15
  };
 
 class pOpenGL_Helper {
@@ -518,7 +520,7 @@ public:
     animation_frame_rate = 60;
     animation_record = false;
     user_text_reprint_called = false;
-    glut_font_idx = 2;
+    glut_font_idx = 0;
     opengl_helper_self_ = this;
     width = height = 0;
     frame_period = -1; // No timer callback.
