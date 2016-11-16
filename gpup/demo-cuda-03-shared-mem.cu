@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2015), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
 
  /// Shared memory CUDA Example, without LSU ECE helper classes.
@@ -10,25 +10,66 @@
 #if 0
 /// Background
 
- /// Shared Memory
+ /// Shared Address Space and Shared Memory
  //
- //  An address space that's shared amongst threads in a block.
- //    Members of a block can load values that other block members wrote.
+ //  References
+ //    General description: CUDA C Programming Guide Section 3.23 (v8)
+ //    Amount of SM: CUDA C Programming Guide Section Table 12 (Appendix G)
  //
- //  The maximum amount of shared memory is 48 kiB per block in Kepler
- //  and Maxwell devices.
  //
- //  A variable is assigned to shared memory if it is declared using
- //  the __shared__ qualifier.
+ //  :Def: Shared Address Space
+ //  An address space provided by CUDA (through CC 5.x) in which:
+ //
+ //   - Each block has its own address space.
+ //
+ //   - Address space is shared by all threads in a block.
+ //
+ //   - Locations can be read and written.
+ //
+ //   - Size of space is 48 kiB in CC 2.X to CC 5.x (so far).
+ //
+ //   - Shared address space uses shared memory.
+ //
+ //
+ //  :Def: Shared Memory
+ //  Hardware used to implement the shared address space.
+ //
+ //   - Shared memory is part of SM, so no communication limits.
+ //
+ //   - Amount of shared memory per SM (NOT per block) varies:
+ //      48 kiB  CC 2.0 - CC 3.5
+ //     112 kiB  CC 3.7
+ //      64 kiB  CC 5.0, 5.3
+ //      96 kiB  CC 5.2
+ //
+ //   - Low latency (fast). As low as 12 cycles.
+ //
+ //   - High throughput.
+ //
+ //   - Banked organization.  Throughput depends on access patterns.
+ //
+ //
+ /// Declaration and Use of Shared Memory
+ //
+ //   - Declare variables using __shared__ qualifier.
+ //
+ //   - Declaration can be at procedure or global scope.
+ //
+ //   - Any type can be shared, including arrays.
+ //
+ //   - Pointers to shared variables can be taken.
  //
  //  :Example: Declaration examples.
 
 __shared__ int amount;
 __shared__ float4 forces[12];
 
+
  /// Shared Memory Uses
  //
  //  Communication between threads.
+ //    For example, to compute a block-wide sum.
+ //
  //  Caching of global memory. 
  //    (Copying to a place where it can be accessed quickly.)
 
@@ -84,26 +125,8 @@ __shared__ float4 forces[12];
 #include <new>
 
 #include <cuda_runtime.h>
+#include "../cuda/intro-vtx-transform/util.h"
 
- /// CUDA API Error-Checking Wrapper
-///
-#define CE(call)                                                              \
- {                                                                            \
-   const cudaError_t rv = call;                                               \
-   if ( rv != cudaSuccess )                                                   \
-     {                                                                        \
-       printf("CUDA error %d, %s\n",rv,cudaGetErrorString(rv));               \
-       exit(1);                                                               \
-     }                                                                        \
- }
-
-double
-time_fp()
-{
-  struct timespec tp;
-  clock_gettime(CLOCK_REALTIME,&tp);
-  return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
-}
 
 #if 0
 
@@ -252,85 +275,12 @@ cuda_thread_start()
 /// Collect Information About GPU and Code
 ///
 
-// Info about a specific kernel.
-//
-struct Kernel_Info {
-  void (*func_ptr)();           // Pointer to kernel function.
-  const char *name;             // ASCII version of kernel name.
-  cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
-};
-
-// Info about GPU and each kernel.
-//
-struct GPU_Info {
-  double bw_Bps;
-  static const int num_kernels_max = 4;
-  int num_kernels;
-  Kernel_Info ki[num_kernels_max];
-};
-
-GPU_Info gpu_info;
-
 void
 cuda_init()
 {
-  // Get information about GPU and its ability to run CUDA.
-  //
-  int device_count;
-  cudaGetDeviceCount(&device_count); // Get number of GPUs.
-  if ( device_count == 0 )
-    {
-      fprintf(stderr,"No GPU found, exiting.\n");
-      exit(1);
-    }
+  GPU_Info gpu_info;
 
-  cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
-
-  /// Print information about the available GPUs.
-  //
-  for ( int dev=0; dev<device_count; dev++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
-
-      const int cc_per_mp =
-        cuda_prop.major == 1 ? 8 :
-        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-        cuda_prop.major == 3 ? 192 : 0;
-
-      const double chip_bw_Bps = gpu_info.bw_Bps =
-        2 * cuda_prop.memoryClockRate * 1000.0
-        * ( cuda_prop.memoryBusWidth >> 3 );
-      const double chip_sp_flops =
-        1000.0 * cc_per_mp * cuda_prop.clockRate
-        * cuda_prop.multiProcessorCount;
-
-      printf
-        ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  TH/BL: %4d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cc_per_mp,
-         cuda_prop.maxThreadsPerBlock);
-
-      printf
-        ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
-         "OP/ELT %.2f\n",
-         dev,
-         cuda_prop.l2CacheSize >> 10,
-         chip_bw_Bps * 1e-9,
-         chip_sp_flops * 1e-9,
-         4 * chip_sp_flops / chip_bw_Bps);
-
-    }
+  print_gpu_info();
 
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.
@@ -338,19 +288,9 @@ cuda_init()
   int dev = 0;
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
+  gpu_info.get_gpu_info(dev);
 
-  gpu_info.num_kernels = 0;
-
-#define GET_INFO(proc_name) {                                                 \
-  const int idx = gpu_info.num_kernels++;                                     \
-  if ( idx < gpu_info.num_kernels_max ) {                                     \
-    gpu_info.ki[idx].name = #proc_name;                                       \
-    gpu_info.ki[idx].func_ptr = (void(*)())proc_name;                         \
-  }}
-
-  GET_INFO(cuda_thread_start);
-
-#undef GET_INFO
+  gpu_info.GET_INFO(cuda_thread_start);
 
   // Print information about time_step routine.
   //
