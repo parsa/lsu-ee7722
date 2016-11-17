@@ -39,8 +39,8 @@
  //   - Amount of shared memory per SM (NOT per block) varies:
  //      48 kiB  CC 2.0 - CC 3.5
  //     112 kiB  CC 3.7
- //      64 kiB  CC 5.0, 5.3
- //      96 kiB  CC 5.2
+ //      64 kiB  CC 5.0, 5.3, 6.0, 6.2
+ //      96 kiB  CC 5.2, 6.1
  //
  //   - Low latency (fast). As low as 12 cycles.
  //
