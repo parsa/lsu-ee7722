@@ -1,16 +1,18 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
 
 // Specify version of OpenGL Shading Language.
 //
-#version 430 compatibility
-#extension GL_EXT_geometry_shader4 : enable
+#version 450 compatibility
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
 
 layout ( location = 2 ) uniform float wire_radius;
 layout ( location = 3 ) uniform float theta;
+layout ( location = 4 ) uniform vec4 front_color;
+layout ( location = 5 ) uniform vec4 back_color;
+
 layout ( binding = 1 ) buffer Helix_Coord  { vec4  helix_coord[];  };
 layout ( binding = 2 ) buffer Helix_u  { vec4  helix_u[];  };
 layout ( binding = 3 ) buffer Helix_v  { vec4  helix_v[];  };
@@ -34,12 +36,12 @@ layout ( location = 1 ) in ivec2 helix_index;
 
 out Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec4 gl_Position;
+  vec2 gl_TexCoord;
   ivec2 hidx;
 };
-
-out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
 
 #endif
 
@@ -57,15 +59,18 @@ layout ( max_vertices = 3 ) out;
 
 in Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec4 gl_Position;
+  vec2 gl_TexCoord;
   ivec2 hidx;
 } In[3];
 
 out Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 gl_TexCoord;
 };
 
 #endif
@@ -73,11 +78,10 @@ out Data
 #ifdef _FRAGMENT_SHADER_
 in Data
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 gl_TexCoord;
 };
-
-in vec2 gl_TexCoord[];
 
 #endif
 
@@ -124,19 +128,14 @@ vs_main_helix()
 
   // Compute eye-space coordinates for vertex and normal.
   //
-  var_vertex_e = gl_ModelViewMatrix * vertex_o;
-  var_normal_e = normalize(gl_NormalMatrix * normal);
-
-  // Call our lighting routine to compute the lighted color of this
-  // vertex.
-  //
-  gl_BackColor = gl_FrontColor = gl_Color;
+  vertex_e = gl_ModelViewMatrix * vertex_o;
+  normal_e = normalize(gl_NormalMatrix * normal);
 
   // Copy texture coordinate to output (no need to modify it).
   // Only copy x and y components since it's a 2D texture.
   //
-  gl_TexCoord[0].x = -helix_index.x * 0.25f;
-  gl_TexCoord[0].y = helix_index.y * 0.05f;
+  gl_TexCoord.x = -helix_index.x * 0.25f;
+  gl_TexCoord.y = helix_index.y * 0.05f;
 }
 #endif
 
@@ -149,17 +148,12 @@ gs_main_helix()
 
   for ( int i=0; i<3; i++ )
     {
-      // Send the adjusted colors.
-      //
-      gl_FrontColor = gl_FrontColorIn[i];
-      gl_BackColor = gl_BackColorIn[i];
-
       // Pass the other values through unmodified.
       //
-      gl_Position = gl_PositionIn[i];
-      gl_TexCoord[0] = gl_TexCoordIn[i][0];
-      var_normal_e = In[i].var_normal_e;
-      var_vertex_e = In[i].var_vertex_e;
+      gl_Position = In[i].gl_Position;
+      gl_TexCoord = In[i].gl_TexCoord;
+      normal_e = In[i].normal_e;
+      vertex_e = In[i].vertex_e;
 
       EmitVertex();
     }
@@ -183,12 +177,14 @@ fs_main_phong()
 
   // Get filtered texel.
   //
-  vec4 texel = texture(tex_unit_0,gl_TexCoord[0].xy);
+  vec4 texel = texture(tex_unit_0,gl_TexCoord.xy);
+
+  vec4 color = gl_FrontFacing ? front_color : back_color;
 
   // Multiply filtered texel color with lighted color of fragment.
   //
   gl_FragColor =
-    texel * generic_lighting( var_vertex_e, gl_Color, normalize(var_normal_e));
+    texel * generic_lighting( vertex_e, color, normal_e);
 
   // Copy fragment depth unmodified.
   //
@@ -198,30 +194,45 @@ fs_main_phong()
 
 
 vec4
-generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
+generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_er)
 {
   // Return lighted color of vertex_e.
   //
-  vec4 light_pos = gl_LightSource[0].position;
-  vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
-  float d_n_ve = -dot(normal_e,vertex_e.xyz);
-  float d_n_vl = dot(normal_e, normalize(v_vtx_light).xyz);
-  bool same_sign = ( d_n_ve > 0 ) == ( d_n_vl > 0 );
-  float phase_light = same_sign ? abs(d_n_vl) : 0;
 
-  vec3 ambient_light = gl_LightSource[0].ambient.rgb;
-  vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
-  float dist = length(v_vtx_light);
-  float distsq = dist * dist;
-  float atten_inv =
-    gl_LightSource[0].constantAttenuation +
-    gl_LightSource[0].linearAttenuation * dist +
-    gl_LightSource[0].quadraticAttenuation * distsq;
-  vec4 lighted_color;
-  lighted_color.rgb =
-    color.rgb * gl_LightModel.ambient.rgb
-    + color.rgb * ( ambient_light + phase_light * diffuse_light ) / atten_inv;
-  lighted_color.a = color.a;
-  return lighted_color;
+  vec3 nspc_color = color.rgb * gl_LightModel.ambient.rgb;
+  vec3 spec_color = vec3(0);
+  vec3 normal_e = normalize(normal_er);
+
+  for ( int i=0; i<1; i++ )
+    {
+      vec4 light_pos = gl_LightSource[i].position;
+      vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
+      float dist = length(v_vtx_light);
+      float dist_vl_inv = 1.0 / dist;
+      vec3 v_vtx_l_n = v_vtx_light * dist_vl_inv;
+
+      float d_n_vl = dot(normal_e, v_vtx_l_n);
+      float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
+
+      vec3 ambient_light = gl_LightSource[i].ambient.rgb;
+      vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
+      float distsq = dist * dist;
+      float atten_inv =
+        gl_LightSource[i].constantAttenuation +
+        gl_LightSource[i].linearAttenuation * dist +
+        gl_LightSource[i].quadraticAttenuation * distsq;
+      vec3 lighted_color =
+        color.rgb
+        * ( ambient_light + phase_light * diffuse_light ) / atten_inv;
+      nspc_color += lighted_color;
+
+      vec3 h = normalize( v_vtx_l_n - normalize(vertex_e.xyz) );
+
+      spec_color +=
+        pow(max(0.0,dot(normal_e,h)),16)
+        * color.rgb
+        * gl_LightSource[i].specular.rgb / atten_inv;
+    }
+
+  return vec4(nspc_color+spec_color,1);
 }
-

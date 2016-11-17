@@ -12,7 +12,7 @@
  //  accesses helix_position.
 
 
- ///  Note: Requires OpenGL 4.3 and CUDA
+ ///  Note: Requires OpenGL 4.5 and CUDA
 
 ///  Keyboard Commands
  //
@@ -81,11 +81,6 @@
 #include <GL/glext.h>
 #include <GL/glxext.h>
 
-// NVIDIA has not yet updated their include files. :-(
-#ifndef GL_ARB_shader_storage_buffer_object
-#define GL_SHADER_STORAGE_BUFFER          0x90D2
-#endif
-
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
@@ -100,6 +95,7 @@
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
 #include "shapes.h"
+#include <gp/colors.h>
 
 #include <gp/cuda-util.h>
 
@@ -855,10 +851,9 @@ World::render()
 
   // Specify color. Since it's not an array the same color
   // will be used for all vertices, which is what we want.
-  // If we wanted to vary vertex colors we could have created
-  // and used a color array.
   //
-  glColor3fv(lsu_spirit_gold);
+  glUniform4fv(4,1,lsu_spirit_gold);
+  glUniform4fv(5,1,color_red);
 
   glBindBuffer(GL_ARRAY_BUFFER, helix_indices_bo);
   glEnableVertexAttribArray(ATTR_IDX_HELIX_INDICES);
