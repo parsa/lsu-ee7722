@@ -1,23 +1,42 @@
 
-struct CWorld {
-
-  float *ball_mass, *ball_fdt_to_do;
-  float4 *force, *ball_torque, *ball_position, *ball_velocity;
-  float4 *ball_omega, *ball_orientation;
-
-
-};
 
 
 
-
-struct CUDA_Ball_X { // X is for transpose.
+struct CBall {
   float4 *position;
   float4 *orientation;
   float4 *velocity;
-  float4 *prev_velocity;
+  float *mass, *fdt_to_do;
+  float4 *force, *torque;
   float4 *omega;
-  int4 *tact_counts;
-  float4 *ball_props;
-  float4 *to_111;
 };
+
+struct CLink {
+  int *ball1, *ball2;
+  float4 *cb1, *cb2;
+  float4 *torque1, *torque2;
+  float4 *spring_force_12;
+};
+
+
+class CPU_GPU_Common
+{
+public:
+  float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
+
+  CBall balls, h_balls;
+  CLink links, h_links;
+
+  unsigned int n_balls;
+  unsigned int n_links;
+
+  bool opt_test1; // For ad-hoc use.
+  bool opt_test2; // For ad-hoc use.
+
+  bool opt_head_lock, opt_tail_lock;
+  float opt_spring_constant;
+  float opt_air_resistance;
+  float4 gravity_accel;
+};
+
+void data_cpu_to_gpu_common(CPU_GPU_Common *host_c);

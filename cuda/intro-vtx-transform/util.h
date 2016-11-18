@@ -1,7 +1,7 @@
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef CUDA_UTIL_H
+#define CUDA_UTIL_H
 
-template<typename T> inline T min(T a, T b) { return b < a ? b : a; }
+#include <stdio.h>
 
  /// CUDA API Error-Checking Wrapper
 ///
@@ -46,7 +46,7 @@ public:
   {
     ki[num_kernels].name = k_name;
     ki[num_kernels].func_ptr = k_ptr;
-    CE( cudaFuncGetAttributes(&ki[num_kernels].cfa,k_ptr) );
+    CE( cudaFuncGetAttributes(&ki[num_kernels].cfa,(const void*)k_ptr) );
     num_kernels++;
   }
   void get_gpu_info(int dev)
@@ -70,7 +70,7 @@ public:
     {
       int num_blocks = -1;
       CE( cudaOccupancyMaxActiveBlocksPerMultiprocessor
-          (&num_blocks, ki[knum].func_ptr, block_size, 0) );
+          (&num_blocks, (const void*)ki[knum].func_ptr, block_size, 0) );
       return num_blocks;
     }
 

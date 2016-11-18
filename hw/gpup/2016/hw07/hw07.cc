@@ -85,6 +85,7 @@
 #include <GL/glxext.h>
 #include <GL/glu.h>
 #include <GL/freeglut.h>
+#include <cuda_runtime.h>
 
 #include <gp/util.h>
 #include <gp/glextfuncs.h>
@@ -99,7 +100,8 @@
 #include <gp/util-containers.h>
 #include <gp/coord-containers.h>
 #include "shapes.h"
-
+#include "hw07.cuh"
+#include "/home/faculty/koppel/teach/gpcom/gpup/cuda/intro-vtx-transform/util.h"
 
 ///
 /// Main Data Structures
@@ -376,7 +378,13 @@ public:
 
   Links link_new(Ball *ball1, Ball *ball2, float stiffness = 0.2);
 
-  // Homework 6
+
+  /// CUDA Stuff
+
+  void data_cpu_to_gpu_constants();
+  void data_cpu_to_gpu_dynamic();
+  void data_gpu_to_cpu_dynamic();
+  CPU_GPU_Common c;  // c is for common.  See hw07.cuh.
 
   void render_link_1(Link *link);
   void render_link_2_start();
@@ -498,6 +506,7 @@ World::platform_update()
   platform_tile_coords.to_gpu();
   platform_tex_coords.re_take(p_tex_coords);
   platform_tex_coords.to_gpu();
+
 }
 
 void
@@ -1118,6 +1127,11 @@ World::init(int argc, char **argv)
   opt_shadow_volumes = false;
   opt_shader = SO_Set_1;
 
+  /// Init CUDA
+
+  c.n_balls = 0;
+  c.n_links = 0;
+
   init_graphics();
 
   // Declared like a programmable shader, but used for fixed-functionality.
@@ -1278,6 +1292,98 @@ World::link_new(Ball *ball1, Ball *ball2, float stiffness)
     }
   return links_rv;
 }
+
+///
+/// CUDA Code
+///
+
+void
+World::data_cpu_to_gpu_constants()
+{
+  c.platform_xmin = platform_xmin;
+  c.platform_xmax = platform_xmax;
+  c.platform_zmax = platform_zmax;
+  c.platform_zmin = platform_zmin;
+
+  data_cpu_to_gpu_common(&c);
+}
+
+
+float4 tof4(pCoor c)
+{
+  float4 f4;
+  f4.x = c.x;
+  f4.y = c.y;
+  f4.z = c.z;
+  f4.w = c.w;
+  return f4;
+}
+
+pCoor topc(float4 c)
+{
+  pCoor f4;
+  f4.x = c.x;
+  f4.y = c.y;
+  f4.z = c.z;
+  f4.w = c.w;
+  return f4;
+}
+
+void
+World::data_cpu_to_gpu_dynamic()
+{
+  const int n_balls = balls.size();
+  const bool need_alloc = n_balls != c.n_balls;
+  const bool need_init = c.n_balls == 0;
+
+#define MOVE(n_balls,balls,memb)                                              \
+  {                                                                           \
+    const int size_elt_bytes = sizeof(c.balls.memb[0]);                       \
+    const int size_bytes = n_balls * size_elt_bytes;                          \
+    if ( need_alloc )                                                         \
+      {                                                                       \
+        if ( !need_init )                                                     \
+          {                                                                   \
+            CE( cudaFree( c.balls.memb ) );                                   \
+            free(c.h_##balls.memb);                                           \
+          }                                                                   \
+        CE( cudaMalloc( &c.balls.memb, size_bytes ) );                        \
+        c.h_##balls.memb = (decltype(c.balls.memb)) malloc( size_bytes );     \
+      }                                                                       \
+    for ( int i=0; i<n_balls; i++ )                                           \
+      memcpy(&c.h_##balls.memb[i],&balls[i]->memb,size_elt_bytes);            \
+    CE( cudaMemcpy                                                            \
+        ( c.balls.memb, c.h_##balls.memb,                                     \
+          size_bytes, cudaMemcpyDefault ) );                                  \
+  }
+
+  MOVE(n_balls,balls,position);
+  MOVE(n_balls,balls,velocity);
+#undef MOVE
+}
+
+void
+World::data_gpu_to_cpu_dynamic()
+{
+  const int n_balls = balls.size();
+
+#define MOVE(n_balls,balls,memb)                                              \
+  {                                                                           \
+    const int size_elt_bytes = sizeof(c.balls.memb[0]);                       \
+    const int size_bytes = n_balls * size_elt_bytes;                          \
+    CE( cudaMemcpy                                                            \
+        ( c.h_##balls.memb, c.balls.memb, size_bytes,                         \
+          cudaMemcpyDeviceToHost ) );                                         \
+    for ( int i=0; i<n_balls; i++ )                                           \
+      memcpy(&balls[i]->memb,&c.h_##balls.memb[i], size_elt_bytes);           \
+  }
+
+  MOVE(n_balls,balls,position);
+  MOVE(n_balls,balls,velocity);
+#undef MOVE
+
+}
+
 
 ///
 /// Physical Simulation Code
@@ -1950,17 +2056,6 @@ World::render_link_2_gather(Link *link)
   pVect p1p2(pos1,pos2);
   pNorm p1p2n(p1p2);
 
-  // Number of segments used to construct link.  Each segment is
-  // approximately a cylinder.
-  //
-  const int segments = opt_segments;
-
-  // Number of sides of each cylinder.
-  //
-  const int sides = opt_sides;
-
-  const float delta_tee = 1.0 / segments;
-
   // Radius of link.
   //
   const float rad = ball1->radius * 0.3;
@@ -2081,6 +2176,14 @@ World::frame_callback()
   frame_timer.phys_start();
   const double time_now = time_wall_fp();
 
+  const bool opt_cuda = true;
+  if ( opt_cuda )
+    {
+      data_cpu_to_gpu_constants();
+      data_cpu_to_gpu_dynamic();
+      data_gpu_to_cpu_dynamic();
+    }
+
   if ( !opt_pause || opt_single_frame || opt_single_time_step )
     {
       /// Advance simulation state.
@@ -2101,7 +2204,13 @@ World::frame_callback()
 
       while ( world_time < world_time_target )
         {
-          time_step_cpu(opt_time_step_duration);
+          if ( false && opt_cuda )
+            {
+            }
+          else
+            {
+              time_step_cpu(opt_time_step_duration);
+            }
           world_time += opt_time_step_duration;
           const double time_right_now = time_wall_fp();
           if ( time_right_now > wall_time_limit ) break;
@@ -2110,6 +2219,11 @@ World::frame_callback()
       // Reset these, just in case they were set.
       //
       opt_single_frame = opt_single_time_step = false;
+    }
+
+  if ( opt_cuda )
+    {
+      // data_gpu_to_cpu_dynamic();
     }
 
   frame_timer.phys_end();
