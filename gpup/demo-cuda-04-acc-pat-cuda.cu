@@ -1,17 +1,20 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
 
+#if 0
  /// CUDA Demo 04
  //
  //  This code demonstrates different methods of all-to-all access in
  //  CUDA, such as the accesses to array in the code below:
  //
- //  for ( int i=0; i<n; i++ ) for ( j=0; j<n; j++ ) sum += array[i] * array[j];
+     for ( int x=0; x<n; x++ )
+       for ( int y=0; y<n; y++ )
+         sum += array[ x ] * array[ y ];
  //
  ///  See routines time_step_intersect_1 and time_step_intersect_2 in
  //  demo-cuda-04-acc-pat-cuda.cu. Instead of array, this code
  //  accesses helix_position.
-
+#endif
 
 #include "cuda-coord.cu"
 #include "demo-cuda-04-acc-pat.cuh"
@@ -100,6 +103,7 @@ time_step_intersect_1()
     {
       if ( hi.opt_use_shared )
         {
+          __syncthreads();
           if ( threadIdx.x < thd_per_a )
             pos_cache[threadIdx.x] =
               m3(helix_position[ j - b_idx_start + threadIdx.x ] );
@@ -124,9 +128,10 @@ time_step_intersect_1()
       const float pen = 2 * hi.wire_radius - dist.magnitude;
       float3 f = pen * hi.opt_spring_constant * dist;
 
-      // Add force to shared variable. This is time consuming but
-      // done infrequently. (A segment can normally only intersect a
-      // a few other segments.)
+      // Add force to shared variable. This is time consuming
+      // (especially in CC 3.x and older GPUs) but done
+      // infrequently. (A segment can normally only intersect a a few
+      // other segments.)
       //
       atomicAdd(&force[a_local_idx].x,f.x);
       atomicAdd(&force[a_local_idx].y,f.y);
@@ -229,6 +234,7 @@ time_step_intersect_2()
     {
       if ( hi.opt_use_shared )
         {
+          __syncthreads();
           if ( threadIdx.x < thd_per_a )
             pos_cache[threadIdx.x] = m3(helix_position[j]);
           __syncthreads();
