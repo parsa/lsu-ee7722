@@ -1129,8 +1129,8 @@ World::init(int argc, char **argv)
 
   /// Init CUDA
 
-  c.n_balls = 0;
-  c.n_links = 0;
+  c.alloc_n_balls = 0;
+  c.alloc_n_links = 0;
 
   init_graphics();
 
@@ -1297,18 +1297,6 @@ World::link_new(Ball *ball1, Ball *ball2, float stiffness)
 /// CUDA Code
 ///
 
-void
-World::data_cpu_to_gpu_constants()
-{
-  c.platform_xmin = platform_xmin;
-  c.platform_xmax = platform_xmax;
-  c.platform_zmax = platform_zmax;
-  c.platform_zmin = platform_zmin;
-
-  data_cpu_to_gpu_common(&c);
-}
-
-
 float4 tof4(pCoor c)
 {
   float4 f4;
@@ -1316,6 +1304,16 @@ float4 tof4(pCoor c)
   f4.y = c.y;
   f4.z = c.z;
   f4.w = c.w;
+  return f4;
+}
+
+float4 tof4(pVect c)
+{
+  float4 f4;
+  f4.x = c.x;
+  f4.y = c.y;
+  f4.z = c.z;
+  f4.w = 0;
   return f4;
 }
 
@@ -1330,11 +1328,33 @@ pCoor topc(float4 c)
 }
 
 void
+World::data_cpu_to_gpu_constants()
+{
+  c.platform_xmin = platform_xmin;
+  c.platform_xmax = platform_xmax;
+  c.platform_zmax = platform_zmax;
+  c.platform_zmin = platform_zmin;
+
+  c.n_balls = balls.size();
+  c.n_links = links.size();
+  c.opt_tryout1 = opt_tryout1;
+  c.opt_tryout2 = opt_tryout2;
+  c.opt_spring_constant = opt_spring_constant;
+  c.opt_air_resistance = opt_air_resistance;
+  c.opt_head_lock = opt_head_lock;
+  c.opt_tail_lock = opt_tail_lock;
+  c.gravity_accel = tof4(gravity_accel);
+
+  data_cpu_to_gpu_common(&c);
+}
+
+
+void
 World::data_cpu_to_gpu_dynamic()
 {
   const int n_balls = balls.size();
-  const bool need_alloc = n_balls != c.n_balls;
-  const bool need_init = c.n_balls == 0;
+  const bool need_alloc = n_balls > c.alloc_n_balls;
+  const bool need_init = c.alloc_n_balls == 0;
 
 #define MOVE(n_balls,balls,memb)                                              \
   {                                                                           \
@@ -1360,6 +1380,7 @@ World::data_cpu_to_gpu_dynamic()
   MOVE(n_balls,balls,position);
   MOVE(n_balls,balls,velocity);
 #undef MOVE
+  if ( need_alloc ) c.alloc_n_balls = n_balls;
 }
 
 void
@@ -1371,11 +1392,12 @@ World::data_gpu_to_cpu_dynamic()
   {                                                                           \
     const int size_elt_bytes = sizeof(c.balls.memb[0]);                       \
     const int size_bytes = n_balls * size_elt_bytes;                          \
+    const int size_elt2_bytes = sizeof(balls[0]->memb);                       \
     CE( cudaMemcpy                                                            \
         ( c.h_##balls.memb, c.balls.memb, size_bytes,                         \
           cudaMemcpyDeviceToHost ) );                                         \
     for ( int i=0; i<n_balls; i++ )                                           \
-      memcpy(&balls[i]->memb,&c.h_##balls.memb[i], size_elt_bytes);           \
+      memcpy(&balls[i]->memb,&c.h_##balls.memb[i], size_elt2_bytes);          \
   }
 
   MOVE(n_balls,balls,position);
@@ -2206,9 +2228,11 @@ World::frame_callback()
         {
           if ( false && opt_cuda )
             {
+              launch_time_step(opt_time_step_duration);
             }
           else
             {
+              launch_time_step(opt_time_step_duration);
               time_step_cpu(opt_time_step_duration);
             }
           world_time += opt_time_step_duration;
@@ -2223,7 +2247,7 @@ World::frame_callback()
 
   if ( opt_cuda )
     {
-      // data_gpu_to_cpu_dynamic();
+      data_gpu_to_cpu_dynamic();
     }
 
   frame_timer.phys_end();

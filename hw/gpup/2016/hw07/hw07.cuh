@@ -27,11 +27,12 @@ public:
   CBall balls, h_balls;
   CLink links, h_links;
 
+  int alloc_n_balls, alloc_n_links;
   unsigned int n_balls;
   unsigned int n_links;
 
-  bool opt_test1; // For ad-hoc use.
-  bool opt_test2; // For ad-hoc use.
+  bool opt_tryout1; // For ad-hoc use.
+  bool opt_tryout2; // For ad-hoc use.
 
   bool opt_head_lock, opt_tail_lock;
   float opt_spring_constant;
@@ -40,3 +41,4 @@ public:
 };
 
 void data_cpu_to_gpu_common(CPU_GPU_Common *host_c);
+void launch_time_step(double delta_t);

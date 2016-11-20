@@ -16,8 +16,17 @@ __constant__ CPU_GPU_Common dc;
 void
 data_cpu_to_gpu_common(CPU_GPU_Common *host_c)
 {
-  dc = *host_c;
+  CE( cudaMemcpy( &dc, host_c, sizeof(*host_c), cudaMemcpyDefault ) );
 }
+
+__global__ void time_step_gpu(double delta_t);
+
+__host__ void
+launch_time_step(double delta_t)
+{
+  time_step_gpu<<<13,256>>>(delta_t);
+}
+
 
 __global__ void
 time_step_gpu(double delta_t)
