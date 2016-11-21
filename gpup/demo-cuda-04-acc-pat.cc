@@ -246,6 +246,8 @@ public:
   int cuda_time_step_count;
   int64_t time_inter_cyc;
 
+  int inter_block_size, inter_nblocks;
+
   pCUDA_Memory<pCoor> helix_position;
   pCUDA_Memory<pVect> helix_velocity;
   pCUDA_Memory<pQuat> helix_orientation;
@@ -328,7 +330,7 @@ World::init()
   opt_use_shared = false;
   opt_test = false;
 
-  interp_seg_per_block = 8;
+  interp_seg_per_block = 32;
   variable_control.insert_power_of_2
     (interp_seg_per_block,"Seg / Block",1,64);
 
@@ -393,6 +395,7 @@ World::physics_advance()
       // needs to be done rarely, at start up and when the user
       // changes a variable.
       //
+#pragma omp parallel for
       for ( int i=0; i<phys_helix_segments; i++ )
         {
           Wire_Segment* const ws = &wire_segments[i];
@@ -449,7 +452,7 @@ World::physics_advance()
 
       // Use a small block size under the assumption that
       // phys_helix_segments is small.
-      const int block_size = 64;
+      const int block_size = 128;  // Not for intersection code.
       const int grid_size =
         ( phys_helix_segments + block_size - 1 ) / block_size;
 
@@ -478,6 +481,9 @@ World::physics_advance()
       const double world_time_target = world_time + duration;
       int iter_count = 0;
 
+      inter_block_size = 256;
+      inter_nblocks = phys_helix_segments/interp_seg_per_block;
+
       while ( world_time < world_time_target )
         {
           iter_count++;
@@ -486,8 +492,7 @@ World::physics_advance()
               cuda_time_step_count++;
               time_step_launch(grid_size,block_size);
               time_step_intersect_launch
-                (phys_helix_segments/interp_seg_per_block,256,
-                 opt_physics_method);
+                (inter_nblocks, inter_block_size, opt_physics_method);
               time_step_update_pos_launch(grid_size,block_size);
             }
           else
@@ -531,6 +536,7 @@ World::physics_advance()
           helix_velocity.from_cuda();
           helix_orientation.from_cuda();
           helix_omega.from_cuda();
+#pragma omp parallel for
           for ( int i=0; i<phys_helix_segments; i++ )
             {
               Wire_Segment* const ws = &wire_segments[i];
@@ -545,6 +551,7 @@ World::physics_advance()
 
       // Compute vectors used for drawing wire, and copy helix coordinate.
       //
+#pragma omp parallel for
       for ( int i=0; i<phys_helix_segments; i++ )
         {
           Wire_Segment* const ws = &wire_segments[i];
@@ -604,8 +611,9 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
-  ogl_helper.fbprintf("Interp routine: %ld cyc\n",
-                      time_inter_cyc);
+  ogl_helper.fbprintf
+    ("Interp routine: Bl Sz %3d  N Blocks %4d  Bl Time %ld cyc\n",
+     inter_block_size, inter_nblocks, time_inter_cyc);
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
@@ -945,6 +953,7 @@ World::time_step_cpu()
 
   /// Initialize wire segment variables for time step.
   //
+#pragma omp parallel for
   for ( int i=0; i<phys_helix_segments; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];
