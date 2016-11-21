@@ -125,7 +125,15 @@ __shared__ float4 forces[12];
 #include <new>
 
 #include <cuda_runtime.h>
-#include "../cuda/intro-vtx-transform/util.h"
+#include <gp/cuda-gpuinfo.h>
+
+inline double
+time_fp()
+{
+  struct timespec tp;
+  clock_gettime(CLOCK_REALTIME,&tp);
+  return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
+}
 
 
 #if 0

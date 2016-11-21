@@ -167,7 +167,7 @@
 #include <new>
 
 #include <cuda_runtime.h>
-#include "../cuda/intro-vtx-transform/util.h"
+#include <gp/cuda-gpuinfo.h>
 
 
 struct App
