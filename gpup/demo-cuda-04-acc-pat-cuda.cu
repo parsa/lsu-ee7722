@@ -321,20 +321,13 @@ cuda_setup(GPU_Info *gpu_info)
 
   cudaError_t e1 = cudaSuccess;
 
-#define GET_INFO(proc_name) {                                                 \
-  const int idx = gpu_info->num_kernels++;                                    \
-  if ( idx >= gpu_info->num_kernels_max ) return e1;                          \
-  gpu_info->ki[idx].name = #proc_name;                                        \
-  gpu_info->ki[idx].func_ptr = (void(*)())proc_name;                          \
-  e1 = cudaFuncGetAttributes(&gpu_info->ki[idx].cfa,proc_name);               \
-  if ( e1 != cudaSuccess ) return e1; }
-
-  GET_INFO(time_step);
-  GET_INFO(time_step_intersect_1);
-  GET_INFO(time_step_intersect_2);
-  GET_INFO(time_step_update_pos);
-
-#undef GET_INFO
+  /// WARNING: Code in render expects time_step_intersect_1 and
+  /// time_step_intersect_2 to be 2nd and 3rd (at index 1 and 2) of
+  /// gpu_info::ki.
+  gpu_info->GET_INFO(time_step);
+  gpu_info->GET_INFO(time_step_intersect_1);
+  gpu_info->GET_INFO(time_step_intersect_2);
+  gpu_info->GET_INFO(time_step_update_pos);
 
   return e1;
 }

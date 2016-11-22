@@ -611,9 +611,20 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
-  ogl_helper.fbprintf
-    ("Interp routine: Bl Sz %3d  N Blocks %4d  Bl Time %ld cyc\n",
-     inter_block_size, inter_nblocks, time_inter_cyc);
+  if ( opt_physics_method != GP_cpu )
+    {
+      const int bl_p_sm =
+        gpu_info.get_max_active_blocks_per_mp
+        (opt_physics_method,inter_block_size);
+      const double bl_p_sm_avail =
+        double(inter_nblocks) / gpu_info.cuda_prop.multiProcessorCount;
+
+      ogl_helper.fbprintf
+        ("Interp routine: Bl Sz %3d  N Blocks %4d  Bl/SM %2d %4.1f   "
+         "Bl Time %ld cyc\n",
+         inter_block_size, inter_nblocks,
+         bl_p_sm, min(bl_p_sm+0.0,bl_p_sm_avail), time_inter_cyc);
+    }
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
@@ -1114,51 +1125,9 @@ World::cuda_init()
       exit(1);
     }
 
-  /// Print information about the available GPUs.
+  // Print information about the available GPUs.
   //
-  for ( int dev=0; dev<device_count; dev++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
-
-      const int cc_per_mp =
-        cuda_prop.major == 1 ? 8 :
-        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-        cuda_prop.major == 3 ? 192 : 0;
-
-      const double chip_bw_Bps = gpu_info.bw_Bps =
-        2 * cuda_prop.memoryClockRate * 1000.0
-        * ( cuda_prop.memoryBusWidth >> 3 );
-      const double chip_sp_flops =
-        1000.0 * cc_per_mp * cuda_prop.clockRate
-        * cuda_prop.multiProcessorCount;
-
-      printf
-        ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  TH/BL: %4d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cc_per_mp,
-         cuda_prop.maxThreadsPerBlock);
-
-      printf
-        ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
-         "OP/ELT %.2f\n",
-         dev,
-         cuda_prop.l2CacheSize >> 10,
-         chip_bw_Bps * 1e-9,
-         chip_sp_flops * 1e-9,
-         4 * chip_sp_flops / chip_bw_Bps);
-
-    }
+  print_gpu_info();
 
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.
@@ -1172,7 +1141,7 @@ World::cuda_init()
   CE(cudaEventCreate(&frame_start_ce));
   CE(cudaEventCreate(&frame_stop_ce));
 
-  gpu_info.num_kernels = 0;
+  gpu_info.get_gpu_info(dev);
   cuda_setup(&gpu_info);
 
   // Print information about time_step routine.
