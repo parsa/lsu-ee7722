@@ -67,11 +67,13 @@ public:
         * cuda_prop.multiProcessorCount;
     }
 
-  int get_max_active_blocks_per_mp(int knum, int block_size)
+  int get_max_active_blocks_per_mp
+  (int knum, int block_size, int dynamic_shared_memory_bytes = 0)
     {
       int num_blocks = -1;
       CE( cudaOccupancyMaxActiveBlocksPerMultiprocessor
-          (&num_blocks, (void*)ki[knum].func_ptr, block_size, 0) );
+          (&num_blocks, (void*)ki[knum].func_ptr, block_size,
+           dynamic_shared_memory_bytes) );
       return num_blocks;
     }
 
