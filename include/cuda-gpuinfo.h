@@ -43,12 +43,12 @@ struct Kernel_Info {
 class GPU_Info {
 public:
   GPU_Info() { num_kernels = 0; }
-  void get_info( GPU_Info_Func k_ptr, const char *k_name)
+  int get_info(GPU_Info_Func k_ptr, const char *k_name)
   {
     ki[num_kernels].name = k_name;
     ki[num_kernels].func_ptr = k_ptr;
-    CE( cudaFuncGetAttributes(&ki[num_kernels].cfa,k_ptr) );
-    num_kernels++;
+    CE( cudaFuncGetAttributes(&ki[num_kernels].cfa,(void*)k_ptr) );
+    return num_kernels++;
   }
   void get_gpu_info(int dev)
     {
@@ -71,7 +71,7 @@ public:
     {
       int num_blocks = -1;
       CE( cudaOccupancyMaxActiveBlocksPerMultiprocessor
-          (&num_blocks, ki[knum].func_ptr, block_size, 0) );
+          (&num_blocks, (void*)ki[knum].func_ptr, block_size, 0) );
       return num_blocks;
     }
 
