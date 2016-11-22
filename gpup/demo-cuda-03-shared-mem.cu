@@ -288,7 +288,7 @@ cuda_init()
 {
   GPU_Info gpu_info;
 
-  print_gpu_info();
+  gpu_info_print();
 
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.

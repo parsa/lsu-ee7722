@@ -85,7 +85,7 @@ public:
 #define GET_INFO(proc) get_info((GPU_Info_Func)proc,#proc)
 
 inline void
-print_gpu_info()
+gpu_info_print()
 {
   // Get information about GPU and its ability to run CUDA.
   //

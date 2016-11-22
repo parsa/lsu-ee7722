@@ -1127,7 +1127,7 @@ World::cuda_init()
 
   // Print information about the available GPUs.
   //
-  print_gpu_info();
+  gpu_info_print();
 
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.

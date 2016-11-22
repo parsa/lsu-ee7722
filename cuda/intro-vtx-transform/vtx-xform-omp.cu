@@ -291,7 +291,7 @@ reduce_method_4(float thd_sum)
 void
 print_gpu_and_kernel_info()
 {
-  print_gpu_info();
+  gpu_info_print();
 
   cudaFuncAttributes cfa_prob1; // Properties of code to run on device.
   CE( cudaFuncGetAttributes(&cfa_prob1,cuda_thread_start) );
