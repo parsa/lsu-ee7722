@@ -613,17 +613,21 @@ World::render()
 
   if ( opt_physics_method != GP_cpu )
     {
-      const int bl_p_sm =
+      const int bl_p_sm_max =
         gpu_info.get_max_active_blocks_per_mp
         (opt_physics_method,inter_block_size);
+      const int wp_p_bl = ( inter_block_size + 31 ) >> 5;
       const double bl_p_sm_avail =
         double(inter_nblocks) / gpu_info.cuda_prop.multiProcessorCount;
 
+      const double bl_p_sm = min( bl_p_sm_max + 0.0, bl_p_sm_avail );
+
       ogl_helper.fbprintf
         ("Interp routine: Bl Sz %3d  N Blocks %4d  Bl/SM %2d %4.1f   "
-         "Bl Time %ld cyc\n",
+         "Wp/SM %4.1f   Bl Time %ld cyc\n",
          inter_block_size, inter_nblocks,
-         bl_p_sm, min(bl_p_sm+0.0,bl_p_sm_avail), time_inter_cyc);
+         bl_p_sm_max, bl_p_sm, bl_p_sm * wp_p_bl,
+         time_inter_cyc);
     }
 
   ogl_helper.fbprintf
