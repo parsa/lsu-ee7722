@@ -92,12 +92,18 @@ time_step_intersect_1()
   const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
   const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
 
-  __shared__ pVect force[256];
+  // Declare dynamically allocated shared memory. Will be split
+  // between array for forces, force, and position cache, pos_cache.
+  //
+  extern __shared__ float3 shared[];
+
+  pVect* const force = shared;
   if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
 
   __syncthreads();
 
-  __shared__ float3 pos_cache[256];
+
+  float3* const pos_cache = &shared[blockDim.x];
 
   for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
     {
@@ -222,13 +228,19 @@ time_step_intersect_2()
   const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
   const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
 
-  __shared__ pVect force[256];
+  // Declare dynamically allocated shared memory. Will be split
+  // between array for forces, force, and position cache, pos_cache.
+  //
+  extern __shared__ float3 shared[];
+
+  pVect* const force = shared;
   if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
 
   // Wait for thread 0 to initialize force.
   __syncthreads();
 
-  __shared__ float3 pos_cache[256];
+
+  float3* const pos_cache = &shared[blockDim.x];
 
   for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
     {
@@ -279,7 +291,7 @@ time_step_intersect_2()
     // Re-compute a_idx so that first a_per_block threads can write
     // velocities.
 
-    const int a_local_idx = threadIdx.x % a_per_block;
+    const int a_local_idx = threadIdx.x;
     const int a_idx = a_idx_block + a_local_idx;
 
     // Update velocity and write it.
@@ -479,11 +491,11 @@ helix_apply_force_at
 
 __host__ void
 time_step_intersect_launch
-(int grid_size, int block_size, int version)
+(int grid_size, int block_size, int version, int dynamic_sm_amt)
 {
   switch ( version ) {
-    case 1: time_step_intersect_1<<<grid_size,block_size>>>();
-    case 2: time_step_intersect_2<<<grid_size,block_size>>>();
+    case 1: time_step_intersect_1<<<grid_size,block_size,dynamic_sm_amt>>>();
+    case 2: time_step_intersect_2<<<grid_size,block_size,dynamic_sm_amt>>>();
   }
 }
 

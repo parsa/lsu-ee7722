@@ -7,7 +7,7 @@ __host__ cudaError_t cuda_setup(GPU_Info *gpu_info);
 __host__ void time_step_launch(int grid_size, int block_size);
 
  __host__ void time_step_intersect_launch
-(int grid_size, int block_size, int version);
+(int grid_size, int block_size, int version, int dynamic_sm_amt);
 
 __host__ void time_step_update_pos_launch
 (int grid_size, int block_size);
@@ -19,7 +19,8 @@ struct Timing_Data {
 
 struct Helix_Info {
   bool opt_gravity;
-  bool opt_test;
+  bool opt_tryout1;
+  bool opt_tryout2;
   bool opt_end_fixed;
   int opt_use_shared;
   float opt_spring_constant;

@@ -43,7 +43,9 @@
  //  'B'    Release spring.
  //  'p'    Pause simulation.
  //  'g'    Toggle gravity on and off.
- //  't'    Toggle state of Boolean opt_test, use it as you like.
+ //  'y'    Toggle state of Boolean opt_tryout1, use it as you like.
+ //  'Y'    Toggle state of Boolean opt_tryout2, use it as you like.
+
  //  'S'    Switch between different shaders in reverse direction.
  //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
@@ -220,6 +222,7 @@ public:
   bool opt_gravity;
   int opt_use_shared;
   bool opt_test;
+  bool opt_tryout1, opt_tryout2;
   float helix_seg_mass;
   float helix_seg_mass_inv;
   float helix_seg_ma_axis;
@@ -247,6 +250,7 @@ public:
   int64_t time_inter_cyc;
 
   int inter_block_size, inter_nblocks;
+  int inter_dynamic_sm_size_bytes;
 
   pCUDA_Memory<pCoor> helix_position;
   pCUDA_Memory<pVect> helix_velocity;
@@ -329,11 +333,15 @@ World::init()
   opt_gravity = true;
   opt_use_shared = false;
   opt_test = false;
+  opt_tryout1 = false;
+  opt_tryout2 = false;
 
   interp_seg_per_block = 32;
   variable_control.insert_power_of_2
     (interp_seg_per_block,"Seg / Block",1,64);
 
+  variable_control.insert_power_of_2
+    (inter_block_size, "Interp Block Size", 32, 1024);
   cuda_init();
 }
 
@@ -422,7 +430,8 @@ World::physics_advance()
 
 #define SET(m) hi.m = m;
       SET(opt_gravity);
-      SET(opt_test);
+      SET(opt_tryout1);
+      SET(opt_tryout2);
       SET(opt_end_fixed);
       SET(opt_use_shared);
       SET(opt_spring_constant);
@@ -481,8 +490,11 @@ World::physics_advance()
       const double world_time_target = world_time + duration;
       int iter_count = 0;
 
-      inter_block_size = 256;
       inter_nblocks = phys_helix_segments/interp_seg_per_block;
+      const int thd_per_a = inter_block_size / interp_seg_per_block;
+      inter_dynamic_sm_size_bytes =
+        inter_block_size * sizeof(pVect) +
+        ( opt_use_shared ? thd_per_a * sizeof(pVect) : 0 );
 
       while ( world_time < world_time_target )
         {
@@ -492,7 +504,8 @@ World::physics_advance()
               cuda_time_step_count++;
               time_step_launch(grid_size,block_size);
               time_step_intersect_launch
-                (inter_nblocks, inter_block_size, opt_physics_method);
+                (inter_nblocks, inter_block_size,
+                 opt_physics_method, inter_dynamic_sm_size_bytes);
               time_step_update_pos_launch(grid_size,block_size);
             }
           else
@@ -615,7 +628,7 @@ World::render()
     {
       const int bl_p_sm_max =
         gpu_info.get_max_active_blocks_per_mp
-        (opt_physics_method,inter_block_size);
+        (opt_physics_method,inter_block_size,inter_dynamic_sm_size_bytes);
       const int wp_p_bl = ( inter_block_size + 31 ) >> 5;
       const double bl_p_sm_avail =
         double(inter_nblocks) / gpu_info.cuda_prop.multiProcessorCount;
@@ -657,7 +670,7 @@ World::render()
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Debug: %d ('t')\n",
+    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Tryouts: %d %d ('y' 'Y')\n",
      opt_physics_method == GP_cpu
      ? BLINK(gpu_physics_method_str[opt_physics_method],"      ")
      : gpu_physics_method_str[opt_physics_method],
@@ -666,7 +679,8 @@ World::render()
      opt_end_fixed ? "YES" : "NO",
      opt_end_fixed ? "B" : "b",
      opt_use_shared,
-     opt_test);
+     opt_tryout1,
+     opt_tryout2);
 
   //  ogl_helper.fbprintf("Spring Energy: %f\n", helix_spring_energy);
 
@@ -1119,7 +1133,7 @@ World::cuda_init()
   cuda_constants_stale = true;
   cuda_time_step_count = 0;
 
-  inter_block_size = 64; // Will be automatically updated.
+  inter_block_size = 256; // Will be automatically updated.
   inter_nblocks = 1;  // Will be automatically updated.
 
   // Get information about GPU and its ability to run CUDA.
@@ -1219,12 +1233,14 @@ World::cb_keyboard()
     cuda_constants_stale = true;
     break;
 
-  case 't': case 'T': opt_test = !opt_test; break;
-
   case 'p': case 'P':
     opt_pause = !opt_pause;
     if ( !opt_pause ) world_time = time_wall_fp();
     break;
+
+  case 'y': opt_tryout1 = !opt_tryout1; break;
+  case 'Y': opt_tryout2 = !opt_tryout2; break;
+
 
   case ' ':
     if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
