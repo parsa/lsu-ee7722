@@ -1161,7 +1161,7 @@ World::cuda_init()
   cuda_time_step_count = 0;
 
   timing_data_size = 0;
-  intersect_block_size = 256; // Will be automatically updated.
+  intersect_block_size = 32;  // Will be automatically updated.
   intersect_nblocks = 1;      // Will be automatically updated.
 
   // Get information about GPU and its ability to run CUDA.
