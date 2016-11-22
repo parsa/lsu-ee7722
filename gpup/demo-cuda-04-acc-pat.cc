@@ -1115,6 +1115,9 @@ World::cuda_init()
   cuda_constants_stale = true;
   cuda_time_step_count = 0;
 
+  inter_block_size = 64; // Will be automatically updated.
+  inter_nblocks = 1;  // Will be automatically updated.
+
   // Get information about GPU and its ability to run CUDA.
   //
   int device_count;
