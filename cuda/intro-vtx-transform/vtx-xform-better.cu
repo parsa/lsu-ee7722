@@ -89,7 +89,7 @@ cuda_thread_start()
 void
 print_gpu_and_kernel_info()
 {
-  print_gpu_info();
+  gpu_info_print();
 
   cudaFuncAttributes cfa_prob1; // Properties of code to run on device.
   CE( cudaFuncGetAttributes(&cfa_prob1,cuda_thread_start) );

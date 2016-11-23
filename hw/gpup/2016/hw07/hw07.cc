@@ -1,16 +1,11 @@
-/// LSU EE 4702
+/// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// CUDA Demo 04
+ /// Homework 7
  //
- //  This code demonstrates different methods of all-to-all access in
- //  CUDA. such as the accesses to array in the code below:
+ //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw07.pdf
  //
- //  for ( int i=0; i<n; i++ ) for ( j=0; j<n; j++ ) sum ++ array[i] * array[j];
- //
- //  See routines time_step_intersect_1 and time_step_intersect_2 in
- //  demo-cuda-04-acc-pat-cuda.cu. Instead of array, this code
- //  accesses helix_position.
-
+ /// DO NOT USE THIS FILE FOR YOUR SOLUTION.
+ //  Use file hw07-cuda.cu for your solution.
 
  ///  Note: Requires OpenGL 4.5 and CUDA
 
@@ -35,7 +30,7 @@
  //  (Also see variables below.)
  //
  //  'a'    Switch between CPU and GPU physics.
- //  'i'    Cycle three methods of interpenetration handling:
+ //  'i'    Cycle three methods of intersection handling:
  //           GPU Physics Mode: None, GPU-Prob-1, GPU-Prob-2.
  //           CPU Physics Mode: None, CPU, CPU (last two equivalent).
  //  'b'    Grab free end (last segment) of spring. Once grabbed, can
@@ -46,7 +41,7 @@
  //  'y'    Toggle state of Boolean opt_tryout1, use it as you like.
  //  'Y'    Toggle state of Boolean opt_tryout2, use it as you like.
 
- //  'S'    Switch between different shaders in reverse direction.
+ //  's'    Switch between different shared memory schemes.
  //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
 
@@ -68,9 +63,12 @@
  //       Higher values makes the spring tighter, but at some maximum
  //       the simulation will become unstable.
  //
- //     Seg / Block (interp_seg_per_block)
+ //     Seg / Block (intersect_seg_per_block)
  //       The number of segments per CUDA block that the interpenetration
  //       routine will use.
+ //
+ //     Intersect Block Size
+ //       The number of threads in the blocks used for intersection tests.
 
 
 
@@ -101,7 +99,7 @@
 
 #include <gp/cuda-util.h>
 
-#include "demo-cuda-04-acc-pat.cuh"
+#include "hw07.cuh"
 
 // Define storage buffer binding indices and attribute locations.
 //
@@ -220,8 +218,6 @@ public:
   float opt_spring_constant;
   float opt_helix_density;
   bool opt_gravity;
-  int opt_use_shared;
-  bool opt_test;
   bool opt_tryout1, opt_tryout2;
   float helix_seg_mass;
   float helix_seg_mass_inv;
@@ -241,16 +237,19 @@ public:
   bool cuda_initialized;
   bool cuda_constants_stale;
   cudaEvent_t frame_start_ce, frame_stop_ce;
-  cudaEvent_t interp_start_ce, interp_stop_ce;
+  cudaEvent_t intersect_start_ce, intersect_stop_ce;
   int block_size_max;
-  int interp_seg_per_block;
+  int intersect_seg_per_block;
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
   GPU_Info gpu_info;
   int cuda_time_step_count;
-  int64_t time_inter_cyc;
+  int64_t time_intersect_cyc;
 
-  int inter_block_size, inter_nblocks;
-  int inter_dynamic_sm_size_bytes;
+  int intersect_block_size, intersect_nblocks;
+  int intersect_dynamic_sm_size_bytes;
+  int timing_data_size;
+  void *d_timing_data;
+  Timing_Data *h_timing_data;
 
   pCUDA_Memory<pCoor> helix_position;
   pCUDA_Memory<pVect> helix_velocity;
@@ -258,6 +257,11 @@ public:
   pCUDA_Memory<pVect> helix_omega;
 
   void cuda_init();
+
+  /// Homework 7
+  //
+  Shared_Memory_Option opt_sm_option;
+
 };
 
 void
@@ -265,7 +269,7 @@ World::init()
 {
   coords_stale = true;
 
-  seg_per_helix_revolution = 80;
+  seg_per_helix_revolution = 64;
   seg_per_wire_revolution = 20;
   revolutions_per_helix = 8;
 
@@ -304,7 +308,7 @@ World::init()
   //
   sp_fixed = new pShader();
 
-  const char* const file = "demo-cuda-04-acc-pat-shdr.cc";
+  const char* const file = "hw07-shdr.cc";
 
   sp_geo_shade = new pShader
     (file,           // File holding shader program.
@@ -331,17 +335,18 @@ World::init()
   world_time = 0;
   last_frame_wall_time = time_wall_fp();
   opt_gravity = true;
-  opt_use_shared = false;
-  opt_test = false;
   opt_tryout1 = false;
   opt_tryout2 = false;
 
-  interp_seg_per_block = 32;
+  intersect_seg_per_block = 32;
   variable_control.insert_power_of_2
-    (interp_seg_per_block,"Seg / Block",1,64);
+    (intersect_seg_per_block,"Seg / Block",1,64);
 
   variable_control.insert_power_of_2
-    (inter_block_size, "Interp Block Size", 32, 1024);
+    (intersect_block_size, "Intersect Block Size", 32, 1024);
+
+  opt_sm_option = SMO_none;
+
   cuda_init();
 }
 
@@ -433,7 +438,7 @@ World::physics_advance()
       SET(opt_tryout1);
       SET(opt_tryout2);
       SET(opt_end_fixed);
-      SET(opt_use_shared);
+      SET(opt_sm_option);
       SET(opt_spring_constant);
       SET(delta_t);
       SET(delta_t_mass_inv);
@@ -447,11 +452,6 @@ World::physics_advance()
       SET(helix_rn_trans);
 #undef SET
       TO_DEV(hi);
-
-      Timing_Data timing_data;
-      timing_data.inter_time = 0;
-      timing_data.inter_count = 0;
-      TO_DEV(timing_data);
     }
 
 
@@ -464,9 +464,6 @@ World::physics_advance()
       const int block_size = 128;  // Not for intersection code.
       const int grid_size =
         ( phys_helix_segments + block_size - 1 ) / block_size;
-
-      if ( opt_physics_method != GP_cpu )
-        CE(cudaEventRecord(frame_start_ce,0));
 
       // Evolve simulated state in time steps of duration delta_t until
       // simulated time reaches current time.
@@ -490,11 +487,36 @@ World::physics_advance()
       const double world_time_target = world_time + duration;
       int iter_count = 0;
 
-      inter_nblocks = phys_helix_segments/interp_seg_per_block;
-      const int thd_per_a = inter_block_size / interp_seg_per_block;
-      inter_dynamic_sm_size_bytes =
-        inter_block_size * sizeof(pVect) +
-        ( opt_use_shared ? thd_per_a * sizeof(pVect) : 0 );
+      intersect_nblocks = phys_helix_segments / intersect_seg_per_block;
+      const int thd_per_a = intersect_block_size / intersect_seg_per_block;
+      intersect_dynamic_sm_size_bytes =
+        intersect_seg_per_block * sizeof(pVect) +
+        ( opt_sm_option == SMO_none ? 0 :
+          opt_sm_option == SMO_one_iteration ||
+          opt_sm_option == SMO_sync_experiment
+          ? thd_per_a * sizeof(pVect) :
+          intersect_block_size * sizeof(pVect) );
+
+      const int timing_data_chars =
+        intersect_nblocks * sizeof(h_timing_data[0]);
+
+      if ( opt_physics_method != GP_cpu )
+        {
+          CE(cudaEventRecord(frame_start_ce,0));
+          if ( timing_data_size < intersect_nblocks )
+            {
+              if ( timing_data_size )
+                {
+                  CE( cudaFree( d_timing_data ) );
+                  delete [] h_timing_data;
+                }
+              CE( cudaMalloc ( &d_timing_data, timing_data_chars ) );
+              TO_DEV_DS(timing_data,d_timing_data);
+              h_timing_data = new Timing_Data[intersect_nblocks];
+              timing_data_size = intersect_nblocks;
+            }
+          CE( cudaMemset( d_timing_data, 0, timing_data_chars ) );
+        }
 
       while ( world_time < world_time_target )
         {
@@ -504,8 +526,8 @@ World::physics_advance()
               cuda_time_step_count++;
               time_step_launch(grid_size,block_size);
               time_step_intersect_launch
-                (inter_nblocks, inter_block_size,
-                 opt_physics_method, inter_dynamic_sm_size_bytes);
+                (intersect_nblocks, intersect_block_size,
+                 opt_physics_method, intersect_dynamic_sm_size_bytes);
               time_step_update_pos_launch(grid_size,block_size);
             }
           else
@@ -524,11 +546,15 @@ World::physics_advance()
         {
           // Collect amount of time CUDA took to compute this frame.
           //
-
-          Timing_Data timing_data;
-          FROM_DEV(timing_data);
-          time_inter_cyc =
-            timing_data.inter_time / max(1,timing_data.inter_count);
+          CE( cudaMemcpy( h_timing_data, d_timing_data,
+                          timing_data_chars, cudaMemcpyDefault ) );
+          time_intersect_cyc = 0;
+          for ( int i=0; i<intersect_nblocks; i++ )
+            {
+              set_max(time_intersect_cyc,
+                h_timing_data[i].intersect_time /
+                      max(1,h_timing_data[i].intersect_count));
+            }
 
           CE(cudaEventRecord(frame_stop_ce,0));
           CE(cudaEventSynchronize(frame_stop_ce));
@@ -628,19 +654,20 @@ World::render()
     {
       const int bl_p_sm_max =
         gpu_info.get_max_active_blocks_per_mp
-        (opt_physics_method,inter_block_size,inter_dynamic_sm_size_bytes);
-      const int wp_p_bl = ( inter_block_size + 31 ) >> 5;
+        (opt_physics_method, intersect_block_size,
+         intersect_dynamic_sm_size_bytes );
+      const int wp_p_bl = ( intersect_block_size + 31 ) >> 5;
       const double bl_p_sm_avail =
-        double(inter_nblocks) / gpu_info.cuda_prop.multiProcessorCount;
+        double(intersect_nblocks) / gpu_info.cuda_prop.multiProcessorCount;
 
       const double bl_p_sm = min( bl_p_sm_max + 0.0, bl_p_sm_avail );
 
       ogl_helper.fbprintf
-        ("Interp routine: Bl Sz %3d  N Blocks %4d  Bl/SM %2d %4.1f   "
-         "Wp/SM %4.1f   Bl Time %ld cyc\n",
-         inter_block_size, inter_nblocks,
+        ("Intersect routine: Bl Sz %3d  N Blocks %4d  Bl/SM %2d %4.1f   "
+         "Wp/SM %4.1f   Bl Time %.3f µs\n",
+         intersect_block_size, intersect_nblocks,
          bl_p_sm_max, bl_p_sm, bl_p_sm * wp_p_bl,
-         time_inter_cyc);
+         1e3 * time_intersect_cyc / gpu_info.cuda_prop.clockRate);
     }
 
   ogl_helper.fbprintf
@@ -670,7 +697,7 @@ World::render()
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Tryouts: %d %d ('y' 'Y')\n",
+    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %s ('s')  Tryouts: %d %d ('y' 'Y')\n",
      opt_physics_method == GP_cpu
      ? BLINK(gpu_physics_method_str[opt_physics_method],"      ")
      : gpu_physics_method_str[opt_physics_method],
@@ -678,7 +705,7 @@ World::render()
      opt_gravity ? "ON" : "OFF",
      opt_end_fixed ? "YES" : "NO",
      opt_end_fixed ? "B" : "b",
-     opt_use_shared,
+     smo_text[opt_sm_option],
      opt_tryout1,
      opt_tryout2);
 
@@ -1039,7 +1066,7 @@ World::time_step_cpu()
   const float delta_t_ma_perp_axis = delta_t / helix_seg_ma_perp_axis;
 
 
-  /// Quick and Dirty and Slow Interpenetration Routine
+  /// Quick and Dirty and Slow Intersection (interpenetration) Routine
   //
   {
     // Rule out interpenetration between segments that are closer
@@ -1133,8 +1160,9 @@ World::cuda_init()
   cuda_constants_stale = true;
   cuda_time_step_count = 0;
 
-  inter_block_size = 256; // Will be automatically updated.
-  inter_nblocks = 1;  // Will be automatically updated.
+  timing_data_size = 0;
+  intersect_block_size = 32;  // Will be automatically updated.
+  intersect_nblocks = 1;      // Will be automatically updated.
 
   // Get information about GPU and its ability to run CUDA.
   //
@@ -1146,7 +1174,7 @@ World::cuda_init()
       exit(1);
     }
 
-  // Print information about the available GPUs.
+  /// Print information about the available GPUs.
   //
   gpu_info_print();
 
@@ -1229,7 +1257,8 @@ World::cb_keyboard()
     cuda_constants_stale = true;
     break;
 
-  case 's': case 'S': opt_use_shared = !opt_use_shared;
+  case 's': case 'S':
+    opt_sm_option = Shared_Memory_Option(( opt_sm_option + 1 ) % SMO_ENUM_SIZE);
     cuda_constants_stale = true;
     break;
 

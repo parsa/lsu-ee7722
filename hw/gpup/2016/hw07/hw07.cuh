@@ -1,6 +1,16 @@
 
-
 #include <gp/cuda-gpuinfo.h>
+
+enum Shared_Memory_Option
+{
+  SMO_none,
+  SMO_sync_experiment,
+  SMO_one_iteration,
+  SMO_multiple_iterations,
+  SMO_ENUM_SIZE
+};
+
+const char* const smo_text[] = {"NONE","SYNC EXPER", "ONE ITER", "MULT ITERS" };
 
 __host__ cudaError_t cuda_setup(GPU_Info *gpu_info);
 
@@ -13,8 +23,8 @@ __host__ void time_step_update_pos_launch
 (int grid_size, int block_size);
 
 struct Timing_Data {
-  clock_t inter_time;
-  int inter_count;
+  clock_t intersect_time;
+  int intersect_count;
 };
 
 struct Helix_Info {
@@ -22,8 +32,8 @@ struct Helix_Info {
   bool opt_tryout1;
   bool opt_tryout2;
   bool opt_end_fixed;
-  int opt_use_shared;
   float opt_spring_constant;
+  Shared_Memory_Option opt_sm_option;
 
   float delta_t;
   float delta_t_mass_inv;
@@ -37,3 +47,4 @@ struct Helix_Info {
   pVect gravity_accel;
   pQuat helix_rn_trans;
 };
+

@@ -1,8 +1,6 @@
-/// LSU EE 4702-X / EE 77XX   -*- c++ -*-
+/// LSU EE 4702-X / EE 7722   -*- c++ -*-
 //
  ///  CUDA Utility Classes and Macros
-
- // $Id:$
 
  /// Purpose
 //
@@ -30,6 +28,7 @@
 
  /// CUDA API Error-Checking Wrapper
 ///
+#ifndef CE
 #define CE(call)                                                              \
  {                                                                            \
    const cudaError_t rv = call;                                               \
@@ -39,6 +38,7 @@
        pError_Msg(msg.s);                                                     \
      }                                                                        \
  }
+#endif
 
 inline void pError_Check_CUDA() {CE(cudaGetLastError());}
 

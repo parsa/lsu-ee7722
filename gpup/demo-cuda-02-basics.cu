@@ -167,7 +167,7 @@
 #include <new>
 
 #include <cuda_runtime.h>
-#include "../cuda/intro-vtx-transform/util.h"
+#include <gp/cuda-gpuinfo.h>
 
 
 struct App
@@ -263,7 +263,7 @@ print_gpu_and_kernel_info()
 {
   GPU_Info info;
 
-  print_gpu_info();
+  gpu_info_print();
 
   // Choose GPU 0 because it's usually the better choice.
   //

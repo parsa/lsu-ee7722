@@ -1,23 +1,13 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
+ /// Homework 7
+ //
+ //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw07.pdf
 
-#if 0
- /// CUDA Demo 04
- //
- //  This code demonstrates different methods of all-to-all access in
- //  CUDA, such as the accesses to array in the code below:
- //
-     for ( int x=0; x<n; x++ )
-       for ( int y=0; y<n; y++ )
-         sum += array[ x ] * array[ y ];
- //
- ///  See routines time_step_intersect_1 and time_step_intersect_2 in
- //  demo-cuda-04-acc-pat-cuda.cu. Instead of array, this code
- //  accesses helix_position.
-#endif
+ /// Use this file for your solution.
 
 #include "cuda-coord.cu"
-#include "demo-cuda-04-acc-pat.cuh"
+#include "hw07.cuh"
 #include <gp/cuda-util-kernel.h>
 
 // Physical State Variables
@@ -27,12 +17,14 @@ __constant__ float3 *helix_velocity;     // Note: float4 would be faster.
 __constant__ float4 *helix_orientation;
 __constant__ float3 *helix_omega;        // Note: float4 would be faster.
 
-__device__ Timing_Data timing_data;   // Measure execution time of intersect.
+__constant__ Timing_Data *timing_data;   // Measure execution time of intersect.
 __constant__ Helix_Info hi;  // Scalar Constants
 
 __global__ void
 time_step_intersect_1()
 {
+  /// Homework 7  SOLUTION IN THIS ROUTINE
+
   // Find intersections of one helix segment with some other
   // segments. Each block handles several "a" segments, the threads in
   // the block check for intersection with other segments, called "b"
@@ -87,8 +79,6 @@ time_step_intersect_1()
   const int a_idx = a_idx_block + a_local_idx;
   const int b_idx_start = threadIdx.x / a_per_block;
 
-
-  const float3 a_position = m3(helix_position[a_idx]);
   const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
   const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
 
@@ -97,17 +87,30 @@ time_step_intersect_1()
   //
   extern __shared__ float3 shared[];
 
+  const bool use_shared =
+    hi.opt_sm_option == SMO_one_iteration
+    || hi.opt_sm_option == SMO_multiple_iterations;
+
   pVect* const force = shared;
+  float3* const pos_cache = &shared[a_per_block];
+
   if ( threadIdx.x < a_per_block ) force[threadIdx.x] = mv(0,0,0);
 
   __syncthreads();
 
-
-  float3* const pos_cache = &shared[blockDim.x];
+  const float3 a_position = m3(helix_position[a_idx]);
 
   for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
     {
-      if ( hi.opt_use_shared )
+      if ( hi.opt_sm_option == SMO_one_iteration )
+        {
+          __syncthreads();
+          if ( threadIdx.x < thd_per_a )
+            pos_cache[threadIdx.x] =
+              m3(helix_position[ j - b_idx_start + threadIdx.x ] );
+          __syncthreads();
+        }
+      else if ( hi.opt_sm_option == SMO_multiple_iterations )
         {
           __syncthreads();
           if ( threadIdx.x < thd_per_a )
@@ -116,8 +119,8 @@ time_step_intersect_1()
           __syncthreads();
         }
 
-      float3 b_position = 
-        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
+      float3 b_position =
+        use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
 
       pVect ab = mv(a_position,b_position);
 
@@ -161,16 +164,18 @@ time_step_intersect_1()
     velocity = mv(0,0,0);
   helix_velocity[a_idx] = velocity;
 
-  if ( !threadIdx.x && !blockIdx.x )
+  if ( !threadIdx.x )
     {
-      timing_data.inter_time += clock64() - time_start;
-      timing_data.inter_count++;
+      timing_data[blockIdx.x].intersect_time += clock64() - time_start;
+      timing_data[blockIdx.x].intersect_count++;
     }
 }
 
 __global__ void
 time_step_intersect_2()
 {
+  /// DO NOT MODIFY THIS ROUTINE.
+
   // Find intersections of one helix segment with some other
   // segments. Each block handles several "a" segments, the threads in the
   // block check for intersection with other segments, called "b"
@@ -239,20 +244,33 @@ time_step_intersect_2()
   // Wait for thread 0 to initialize force.
   __syncthreads();
 
+  const bool use_shared =
+    hi.opt_sm_option == SMO_one_iteration
+    || hi.opt_sm_option == SMO_multiple_iterations;
 
-  float3* const pos_cache = &shared[blockDim.x];
+  float3* const pos_cache = &shared[a_per_block];
+
+  /// DO NOT MODIFY THIS ROUTINE.
 
   for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
     {
-      if ( hi.opt_use_shared )
+      if ( hi.opt_sm_option == SMO_one_iteration )
         {
           __syncthreads();
           if ( threadIdx.x < thd_per_a )
             pos_cache[threadIdx.x] = m3(helix_position[j]);
           __syncthreads();
         }
-      float3 b_position = 
-        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
+      else if ( hi.opt_sm_option == SMO_multiple_iterations )
+        {
+          __syncthreads();
+          if ( threadIdx.x < thd_per_a )
+            pos_cache[threadIdx.x] = m3(helix_position[j]);
+          __syncthreads();
+        }
+
+      float3 b_position =
+        use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
 
       pVect ab = mv(a_position,b_position);
 
@@ -302,10 +320,10 @@ time_step_intersect_2()
       velocity = mv(0,0,0);
     helix_velocity[a_idx] = velocity;
 
-    if ( !threadIdx.x && !blockIdx.x )
+    if ( !threadIdx.x )
       {
-        timing_data.inter_time += clock64() - time_start;
-        timing_data.inter_count++;
+        timing_data[blockIdx.x].intersect_time += clock64() - time_start;
+        timing_data[blockIdx.x].intersect_count++;
       }
   }
 }
@@ -325,21 +343,19 @@ cuda_setup(GPU_Info *gpu_info)
   CU_SYM(helix_velocity);
   CU_SYM(helix_orientation);
   CU_SYM(helix_omega);
-  CU_SYM(hi);
   CU_SYM(timing_data);
+  CU_SYM(hi);
 
   // Return attributes of CUDA functions. The code needs the
   // maximum number of threads.
 
   cudaError_t e1 = cudaSuccess;
 
-  /// WARNING: Code in render expects time_step_intersect_1 and
-  /// time_step_intersect_2 to be 2nd and 3rd (at index 1 and 2) of
-  /// gpu_info::ki.
   gpu_info->GET_INFO(time_step);
   gpu_info->GET_INFO(time_step_intersect_1);
   gpu_info->GET_INFO(time_step_intersect_2);
   gpu_info->GET_INFO(time_step_update_pos);
+
 
   return e1;
 }

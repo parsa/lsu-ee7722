@@ -10,7 +10,6 @@ CUDAPATH = /usr/local/cuda
 
 
 OPT_FLAGS =  -O3
-# OPT_FLAGS =
 
 CXX = g++
 
@@ -58,7 +57,7 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 CUFLAGS = -g $(OPT_FLAGS) -Xcompiler -Wall -Xcompiler -Wno-unused-function \
  -Xcompiler -Wno-parentheses -Xcompiler -std=gnu++98 \
  --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_30 \
- $(INCLUDE)
+ $(INCLUDE) -Xcompiler -fopenmp
 
 %.o: %.cc Makefile $(INCLUDES)
 	$(CXX) $(CXXFLAGS) -c $*.cc

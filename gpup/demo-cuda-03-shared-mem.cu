@@ -125,7 +125,15 @@ __shared__ float4 forces[12];
 #include <new>
 
 #include <cuda_runtime.h>
-#include "../cuda/intro-vtx-transform/util.h"
+#include <gp/cuda-gpuinfo.h>
+
+inline double
+time_fp()
+{
+  struct timespec tp;
+  clock_gettime(CLOCK_REALTIME,&tp);
+  return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
+}
 
 
 #if 0
@@ -280,7 +288,7 @@ cuda_init()
 {
   GPU_Info gpu_info;
 
-  print_gpu_info();
+  gpu_info_print();
 
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.
