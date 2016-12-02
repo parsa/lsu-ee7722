@@ -44,7 +44,7 @@
  /// Simulation Options
  //  (Also see variables below.)
  //
- //  'w'    Twirl balls around axis formed by head and tail. (Prob 2 soln).
+ //  'w'    Twirl balls around axis formed by head and tail.
  //  '1'    Set up scene 1.
  //  '2'    Set up scene 2.
  //  '3'    Set up scene 3.
