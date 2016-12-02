@@ -44,7 +44,7 @@ LIBRARIES =  -lX11  -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw07 
+default: hw07 hw07-sol
 
 INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
 	        gl-buffer.h texture-util.h cuda-util.h
@@ -67,6 +67,9 @@ CUFLAGS = -g $(OPT_FLAGS) -Xcompiler -Wall -Xcompiler -Wno-unused-function \
 	$(CUXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
+
+hw07-sol: hw07.o hw07-cuda-sol.o
+	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 hw07: hw07.o hw07-cuda.o
 	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
