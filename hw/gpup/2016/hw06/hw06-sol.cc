@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 6
+ /// Homework 6 -- SOLUTION
  //
  //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw06.pdf
 
