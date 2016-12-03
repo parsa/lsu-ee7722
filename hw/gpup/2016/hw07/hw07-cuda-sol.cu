@@ -147,8 +147,10 @@ time_step_intersect_1()
 
       /// SOLUTION -- Problem 3
       //
-      //  For the multiple iteration case the index to pos_cache
-      //  is a function of j.
+      //  For the multiple-iteration case retrieve pos_cache[
+      //  cache_idx_next ] (the value of cache_idx_next changes from
+      //  iteration to iteration) rather than pos_cache[ b_idx_start ]
+      //  (the value of b_idx_start is the same every iteration).
       //
       float3 b_position =
         hi.opt_sm_option == SMO_one_iteration
