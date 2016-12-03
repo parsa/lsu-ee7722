@@ -2,7 +2,7 @@
 //
  /// Homework 7 -- SOLUTION
  //
- //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw07.pdf
+ //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw07_sol.pdf
 
  /// Use this file for your solution.
 
@@ -87,10 +87,6 @@ time_step_intersect_1()
   //
   extern __shared__ float3 shared[];
 
-  const bool use_shared =
-    hi.opt_sm_option == SMO_one_iteration
-    || hi.opt_sm_option == SMO_multiple_iterations;
-
   pVect* const force = shared;
   float3* const pos_cache = &shared[a_per_block];
 
@@ -100,18 +96,24 @@ time_step_intersect_1()
 
   const float3 a_position = m3(helix_position[a_idx]);
 
-  /// SOLUTION
-  int cache_elt_remaining = use_shared ? 0 : -1;
-  int cache_num_refills = 0;
-  int cache_idx_start = 0;
+  /// SOLUTION -- Problem 3
+  //
+  //  The next element of pos_cache to use. Its value should be
+  //  between 0 and blockDim.x (block size) -1. It is intentionally
+  //  initialized to an out-of-range value so that the cache will be
+  //  loaded.
+  //
+  int cache_idx_next = b_idx_start + blockDim.x;
+  //
+  //  The next element of helix to put into the cache.
+  //
+  int b_idx_next = threadIdx.x;
 
   for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
     {
       if ( hi.opt_sm_option == SMO_one_iteration )
         {
           __syncthreads();
-          /// SOLUTION
-          cache_idx_start = j - b_idx_start;
           if ( threadIdx.x < thd_per_a )
             pos_cache[threadIdx.x] =
               m3(helix_position[ j - b_idx_start + threadIdx.x ] );
@@ -119,25 +121,45 @@ time_step_intersect_1()
         }
       else if ( hi.opt_sm_option == SMO_sync_experiment )
         {
+          /// SOLUTION -- Problem 2
+          //
+          //  See if just executing __syncthreads slows things down.
+          //
           __syncthreads();
           __syncthreads();
         }
-      else if ( hi.opt_sm_option == SMO_multiple_iterations
-                && cache_elt_remaining == 0 )
+      else if ( hi.opt_sm_option == SMO_multiple_iterations )
         {
-          __syncthreads();
-          cache_idx_start = cache_num_refills * blockDim.x;
-          pos_cache[threadIdx.x] =
-            m3(helix_position[ cache_idx_start + threadIdx.x ] );
-          __syncthreads();
-          cache_num_refills++;
-          cache_elt_remaining = blockDim.x;
+          /// SOLUTION -- Problem 3
+          //
+          // If the next pos_cache element to use is out of range, then
+          // load pos_cache with a new batch of data.
+          //
+          if ( cache_idx_next >= blockDim.x )
+            {
+              __syncthreads();
+              cache_idx_next = b_idx_start;
+              pos_cache[ threadIdx.x ] = m3(helix_position[ b_idx_next ] );
+              b_idx_next += blockDim.x;
+              __syncthreads();
+            }
         }
-      cache_elt_remaining -= thd_per_a;
 
-      /// SOLUTION
+      /// SOLUTION -- Problem 3
+      //
+      //  For the multiple iteration case the index to pos_cache
+      //  is a function of j.
+      //
       float3 b_position =
-        use_shared ? pos_cache[j-cache_idx_start] : m3(helix_position[j]);
+        hi.opt_sm_option == SMO_one_iteration
+        ? pos_cache[ b_idx_start ] :
+        hi.opt_sm_option == SMO_multiple_iterations
+        ? pos_cache[ cache_idx_next ]
+        : m3( helix_position[j] );
+
+      /// SOLUTION -- Problem 3
+      //
+      cache_idx_next += thd_per_a;
 
       pVect ab = mv(a_position,b_position);
 
