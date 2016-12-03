@@ -2,7 +2,7 @@
 //
  /// Homework 6 -- SOLUTION
  //
- //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw06.pdf
+ //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw06_sol.pdf
 
  //  For Homework 6 edit this file and hw06-shdr-links.cc.
 
