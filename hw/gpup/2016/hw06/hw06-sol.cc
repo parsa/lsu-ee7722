@@ -895,6 +895,8 @@ World::render()
     }
   else
     {
+      /// Render With Shadows
+
       //
       // First pass, render using only ambient light.
       //
