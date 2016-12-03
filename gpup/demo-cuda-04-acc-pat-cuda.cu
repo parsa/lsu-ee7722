@@ -2,6 +2,11 @@
 //
 
 #if 0
+/// Reference
+//
+//  :ccpg8: CUDA C Programming Guide Version 8
+//          https://docs.nvidia.com/cuda/cuda-c-programming-guide
+
  /// CUDA Demo 04
  //
  //  This code demonstrates different methods of all-to-all access in

@@ -5,7 +5,8 @@
 
 /// References
 //
-//
+//  :ccpg8: CUDA C Programming Guide Version 8
+//          https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
 #if 0
 /// Background
