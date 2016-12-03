@@ -901,7 +901,6 @@ World::render()
       glDisable(GL_LIGHT0);
 
       // Send balls, tiles, and platform to opengl.
-      // Do occlusion test too.
       //
       render_objects(RO_Normally);
 
