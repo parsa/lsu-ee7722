@@ -30,7 +30,7 @@ LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw06 
+default: hw06 hw06-sol
 
 
 .cc.o:

@@ -54,8 +54,8 @@ time_step_intersect_1()
   //  assigns "a" and "b" elements to threads.  The table
   //  is based upon the following values:
   //
-  //    blockDim = 8,     blockIdx = 4,   hi.phys_helix_segments = 1024
-  //    a_per_block = 4,  thd_per_a = 2,  a_idx_block = 16
+  //    blockDim = 8,       blockIdx = 4,     hi.phys_helix_segments = 1024
+  //    m:a_per_block = 4,  d:thd_per_a = 2,  a_idx_block = 16
   //
   // tIx     al   a      b ---> 
   //   0     0    16     0  2  4 ... 1022

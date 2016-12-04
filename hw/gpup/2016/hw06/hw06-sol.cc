@@ -1,8 +1,8 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 6
+ /// Homework 6 -- SOLUTION
  //
- //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw06.pdf
+ //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw06_sol.pdf
 
  //  For Homework 6 edit this file and hw06-shdr-links.cc.
 
@@ -895,13 +895,14 @@ World::render()
     }
   else
     {
+      /// Render With Shadows
+
       //
       // First pass, render using only ambient light.
       //
       glDisable(GL_LIGHT0);
 
       // Send balls, tiles, and platform to opengl.
-      // Do occlusion test too.
       //
       render_objects(RO_Normally);
 
@@ -1152,8 +1153,7 @@ World::init(int argc, char **argv)
   pString this_exe_name(exe_pieces.pop());
 
   const char* const links_shader_code_path =
-    this_exe_name == "hw06-sol"
-    ? "hw06-shdr-links-sol.cc" : "hw06-shdr-links.cc";
+    true ? "hw06-shdr-links-sol.cc" : "hw06-shdr-links.cc";
 
   sp_set_1 = new pShader
     (links_shader_code_path,
@@ -2016,23 +2016,41 @@ World::render_link_2_render()
   const bool first_render = world_time_link_update != world_time;
   world_time_link_update = world_time;
 
+  // Number of segments used to construct link.  Each segment is
+  // approximately a cylinder.
+  //
+  const int segments = opt_segments;
+
+  /// SOLUTION -- Problem 1
+  //
+  // Number of "vertices" per instance. This is the number of vertices
+  // used in a rendering pass (per instance). Geometry shader
+  // gs_main_1 will render two triangles from each pair of
+  // "vertices". The word "vertices" is in quotes to indicate that we
+  // are talking about what OpenGL calls a vertex.
+  //
+  int n_vertices = -1;  // Set to -1 to provoke an error if we forget to set it.
+
   if ( opt_shader == SO_Set_1 )
     {
       // Use shaders vs_main_1 and gs_main_1
       //
       sp_set_1->use();
+
+      /// SOLUTION -- Problem 1
+      //
+      //  Just render two vertices per instance, as required by the problem.
+      //
+      n_vertices = 2;
     }
   else
     {
       // Use shaders vs_main_2 and gs_main_2
       //
       sp_set_2->use();
+      n_vertices = segments + 1;
     }
 
-  // Number of segments used to construct link.  Each segment is
-  // approximately a cylinder.
-  //
-  const int segments = opt_segments;
 
   // Number of sides of each cylinder.
   //
@@ -2069,8 +2087,13 @@ World::render_link_2_render()
   glUniform1i(6, light_state);
   glUniform2i(3, opt_tryout1, opt_tryout2);
 
+  /// SOLUTION -- Problem 1
+  //
+  // Use variable n_vertices to specifiy number of vertices in 3rd argument.
+  // (See code above.)
+  //
   glDrawArraysInstanced
-    (GL_LINE_STRIP, 0, segments+1, n_instances);
+    (GL_LINE_STRIP, 0, n_vertices, n_instances);
 
   sp_fixed->use();
 }

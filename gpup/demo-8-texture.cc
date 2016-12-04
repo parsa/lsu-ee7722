@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Textures, Blending, and the Alpha Test
+ /// Textures, Blending, the Alpha Test, and Stencils
 
 /// Purpose
 //
@@ -115,8 +115,8 @@
 
 /// Background -- Fragment Tests, Blending, FB Update
 
- // Chapter 14: Fixed-Function Primitive Assembly and Rasterization
- // Chapter 17: Writing fragments and samples to the framebuffer.
+ // :ogl45: Chapter 14: Fixed-Function Primitive Assembly and Rasterization
+ // :ogl45: Chapter 17: Writing fragments and samples to the framebuffer.
 
  /// Major Steps
  //
@@ -176,6 +176,8 @@
 
 
 ///  Background -- Stencil Operations
+//
+//   :ogl45: Section 17.3.3
 //
 //   :Def: Stencil Buffer
 //   A layer of the frame buffer holding one integer for each pixel.
