@@ -47,8 +47,8 @@ out Data_to_GS
   /// SOLUTION -- Problem 2
   //
   float t;
-  vec4 ctr;
-  vec3 norm, binorm;
+  vec4 ctr_e;
+  vec3 norm_e, binorm_e;
 
   // Any changes here must also be made to the fragment shader input.
 };
@@ -94,24 +94,25 @@ vs_main_2()
   // Cubic Hermite interpolation.
   // Compute point along core of link in object space.
   //
-  ctr.xyz =
+  vec3 ctr_o =
     ( 2*t3 - 3*t2 + 1 ) * pos1[iid].xyz + (-2*t3 + 3*t2 ) * pos2[iid].xyz
     + ( t3 - 2*t2 + t ) * v1[iid].xyz - ( t3 - t2 ) * v2[iid].xyz;
-  ctr.w = 1;
+  ctr_e = gl_ModelViewMatrix * vec4(ctr_o,1);
 
   // Compute direction of link at this point.
   //
-  vec3 tan_raw =
+  vec3 tan_o =
     ( 6*t2 - 6*t ) * pos1[iid].xyz + ( -6*t2 + 6*t ) * pos2[iid].xyz
     + ( 3*t2 - 4*t + 1 ) * v1[iid].xyz - ( 3*t2 - 2*t ) * v2[iid].xyz;
-  vec3 tan = normalize(tan_raw);
+
+  vec3 tan_e = normalize( gl_NormalMatrix * tan_o );
 
   // Compute local x and y axes for drawing a cylinder.
   //
-  vec3 ydir = mix(b1_ydir[iid].xyz, b2_ydir[iid].xyz, t);
-  vec3 norm_raw = cross(tan,ydir);
-  norm = normalize(norm_raw);
-  binorm = cross(tan,norm);
+  vec3 ydir_o = mix(b1_ydir[iid].xyz, b2_ydir[iid].xyz, t);
+  vec3 norm_raw = cross(tan_o,ydir_o);
+  norm_e = normalize(gl_NormalMatrix * norm_raw);
+  binorm_e = cross(tan_e,norm_e);
 }
 
 #endif
@@ -127,8 +128,8 @@ in Data_to_GS
 
   /// SOLUTION -- Problem 2
   float t;
-  vec4 ctr;
-  vec3 norm, binorm;
+  vec4 ctr_e;
+  vec3 norm_e, binorm_e;
 } In[];
 
 out Data_to_FS
@@ -193,23 +194,16 @@ gs_main_2()
     {
       const float theta = j * ( 2 * M_PI / sides );
 
-      vec3 vect0 = cos(theta) * In[0].norm + sin(theta) * In[0].binorm;
-      vec3 vect1 = cos(theta) * In[1].norm + sin(theta) * In[1].binorm;
-      vec4 pt0 = In[0].ctr + vec4(rad * vect0,0);
-      vec4 pt1 = In[1].ctr + vec4(rad * vect1,0);
-
-      normal_e = gl_NormalMatrix * vect1;
-      vertex_e = gl_ModelViewMatrix * pt1;
-      gl_TexCoord[0] =
-        vec2( In[1].t * tex_scale.x, 0.5 + theta * tex_scale.y );
-      gl_Position = gl_ModelViewProjectionMatrix * pt1;
+      normal_e = cos(theta) * In[1].norm_e + sin(theta) * In[1].binorm_e;
+      vertex_e = In[1].ctr_e + vec4( rad * normal_e, 0);
+      gl_TexCoord[0] = vec2( In[1].t * tex_scale.x, 0.5 + theta * tex_scale.y );
+      gl_Position = gl_ProjectionMatrix * vertex_e;
       EmitVertex();
 
-      normal_e = gl_NormalMatrix * vect0;
-      vertex_e = gl_ModelViewMatrix * pt0;
-      gl_TexCoord[0] =
-        vec2( In[0].t * tex_scale.x, 0.5 + theta * tex_scale.y );
-      gl_Position = gl_ModelViewProjectionMatrix * pt0;
+      normal_e = cos(theta) * In[0].norm_e + sin(theta) * In[0].binorm_e;
+      vertex_e = In[0].ctr_e + vec4(rad * normal_e,0);
+      gl_TexCoord[0] = vec2( In[0].t * tex_scale.x, 0.5 + theta * tex_scale.y );
+      gl_Position = gl_ProjectionMatrix * vertex_e;
       EmitVertex();
     }
   EndPrimitive();
