@@ -27,7 +27,7 @@ in vec2 gl_MultiTexCoord0;
 out Data_to_GS
 {
   vec3 normal_e;
-  vec4 vertex_e;
+  vec4 vertex_e, vertex_o;
   vec2 gl_TexCoord[1];
   vec4 color;
   vec4 gl_Position;
@@ -39,9 +39,6 @@ out Data_to_GS
 void
 vs_main()
 {
-  // Here, the vertex shader does nothing except pass variables
-  // to the geometry shader.
-
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
   normal_e = normalize(gl_NormalMatrix * gl_Normal);
@@ -53,7 +50,7 @@ void
 vs_main_instances_sv()
 {
   mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 vertex_o = rot * gl_Vertex;
+  vertex_o = rot * gl_Vertex;
   gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
 }
 
@@ -65,7 +62,7 @@ vs_main_instances_sphere()
   mat4 rot = transpose(sphere_rot[gl_InstanceID]);
   vec4 normr = rot * gl_Vertex;
   vec3 normal_o = normr.xyz;
-  vec4 vertex_o = vec4( pos_rad.xyz + rad * normal_o, 1 );
+  vertex_o = vec4( pos_rad.xyz + rad * normal_o, 1 );
 
   gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
   vertex_e = gl_ModelViewMatrix * vertex_o;
@@ -82,7 +79,7 @@ vs_main_instances_sphere()
 in Data_to_GS
 {
   vec3 normal_e;
-  vec4 vertex_e;
+  vec4 vertex_e, vertex_o;
   vec2 gl_TexCoord[1];
   vec4 color;
   vec4 gl_Position;
@@ -104,12 +101,17 @@ layout ( triangles ) in;
 //
 layout ( triangle_strip, max_vertices = 3 ) out;
 
-
 void
 gs_main_simple()
 {
+#if 0
+  vec4 v01 = In[1].gl_Position - In[0].gl_Position;
+  vec4 v02 = In[1].gl_Position - In[0].gl_Position;
+#endif
+
   for ( int i=0; i<3; i++ )
     {
+      vec4 vertex_o = In[i].vertex_o;
       normal_e = In[i].normal_e;
       vertex_e = In[i].vertex_e;
       color = In[i].color;
@@ -154,21 +156,13 @@ vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 void
 fs_main()
 {
-  // Perform lighting, fetch and blend texture, then emit fragment.
-  //
-
-  // Get filtered texel, unless the fragment belongs to an edge primitive.
-  //
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
-
   vec4 color2 = gl_FrontFacing ? color : vec4(0.5,0,0,1);
 
-  // Multiply filtered texel color with lighted color of fragment.
-  //
-  gl_FragColor = texel * generic_lighting(vertex_e, color2, normal_e);
+  vec4 lighted_color = generic_lighting(vertex_e, color2, normal_e);
 
-  // Copy fragment depth unmodified.
-  //
+  gl_FragColor = texel * lighted_color;
+
   gl_FragDepth = gl_FragCoord.z;
 }
 
@@ -177,12 +171,7 @@ fs_main_sv()
 {
   vec4 color2 = gl_FrontFacing ? vec4(0.8,0,0,1) : vec4(0,0,0,0);
 
-  // Multiply filtered texel color with lighted color of fragment.
-  //
   gl_FragColor = color2;
-
-  // Copy fragment depth unmodified.
-  //
   gl_FragDepth = gl_FragCoord.z;
 }
 
