@@ -190,7 +190,7 @@ public:
 
   pMatrix3x3(){set_identity();}
 
-  pMatrix3x3(pMatrix& m, int r, int c);
+  pMatrix3x3(pMatrix& m, int r = 3, int c = 3);
 
   operator float* () { return &a[0]; }
 
@@ -830,8 +830,9 @@ public:
     rot_check(*this,dir_from,dir_to);
   }
 private:
-  static void rot_check(pMatrix& r, pVect f_raw, pVect t_raw)
+  static void rot_check(pMatrix& r4x4, pVect f_raw, pVect t_raw)
   {
+    pMatrix3x3 r(r4x4);
     pVect f(f_raw);
     pVect t(t_raw);
     pVect t2 = r * f;

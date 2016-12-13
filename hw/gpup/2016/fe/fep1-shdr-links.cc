@@ -1,8 +1,11 @@
 /// LSU EE 4702-1 (Fall 2016), GPU Programming
 //
- /// Homework 6 -- SOLUTION
+ /// Final Exam Code
  //
- //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw06.pdf
+ //  See http://www.ece.lsu.edu/koppel/gpup/2016/fe.pdf
+ //
+ //  This file contains code used in Final Exam problem 1 which was
+ //  based on Homework 6.
 
 
 // Specify version of OpenGL Shading Language.
@@ -34,12 +37,10 @@ layout ( binding = 7 ) buffer sc7 { vec4 tex_rad[]; };
 
 
 
-
-const int ST_SIZE = 14;
-layout ( binding = 8 ) buffer stbo { float sin_table_bo[]; };
-layout ( location = 7 ) uniform float sin_table_u[ST_SIZE];
-
 #ifdef _VERTEX_SHADER_
+
+void compute_ctr_norm_binorm(float t);
+
 
 // Interface block for vertex shader output / geometry shader input.
 //
@@ -52,11 +53,86 @@ out Data_to_GS
   float t;
   vec4 ctr_e;
   vec3 norm_e, binorm_e;
-
-  float sin_table[ST_SIZE];
 };
 
-in float in_sin_table[ST_SIZE];
+void
+vs_main_2()
+{
+  t = gl_VertexID * delta_tee;
+  compute_ctr_norm_binorm(t);  // Compute and assign norm_e, etc.
+}
+
+#if 0
+void
+gs_main_2_excerpt()
+{
+  // ...
+  for ( int j=0; j<=sides; j++ )
+    {
+      const float theta = j * ( 2 * M_PI / sides );
+      vec3 vect1 = cos(theta) * In[1].norm_e + sin(theta) * In[1].binorm_e;
+      //...
+    }
+  EndPrimitive();
+}
+#endif
+
+#endif
+
+#ifdef _GEOMETRY_SHADER_
+
+in Data_to_GS
+{
+  int iid; // Instance ID
+  vec4 gl_Position;
+  vec4 vertex_e;
+
+  float t;
+  vec4 ctr_e;
+  vec3 norm_e, binorm_e;
+} In[];
+
+out Data_to_FS
+{
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec2 gl_TexCoord[1];
+};
+
+layout ( lines ) in;
+layout ( triangle_strip, max_vertices = 78 ) out;
+
+void
+gs_main_2()
+{
+  const float M_PI = 3.1415926535;
+  const vec2 tex_scale = tex_rad[In[1].iid].xy;
+  const float rad = tex_rad[In[1].iid].z;
+  const float sides = sides_rad.x;
+
+  for ( int j=0; j<=sides; j++ )
+    {
+      const float theta = j * ( 2 * M_PI / sides );
+      const float tx_y = 0.5 + theta * tex_scale.y;
+      for ( int i=1; i>=0; i-- )
+        {
+          normal_e =
+            cos(theta) * In[i].norm_e + sin(theta) * In[i].binorm_e;
+          vertex_e = In[i].ctr_e + vec4( rad * normal_e, 0);
+          gl_TexCoord[0] = vec2( In[i].t * tex_scale.x, tx_y );
+          gl_Position = gl_ProjectionMatrix * vertex_e;
+          EmitVertex();
+        }
+    }
+  EndPrimitive();
+}
+
+
+
+#endif
+
+
+#ifdef _VERTEX_SHADER_
 
 void
 compute_ctr_norm_binorm(float t)
@@ -89,136 +165,12 @@ compute_ctr_norm_binorm(float t)
   binorm_e = cross(tan_e,norm_e);
 }
 
-void
-vs_main_2()
-{
-  t = gl_VertexID * delta_tee;
-  compute_ctr_norm_binorm(t);
-
-  // Plan A:
-  sin_table = in_sin_table;
-
-  // Plan B:
-  const float M_PI = 3.1415926535;
-  const float sides = sides_rad.x;
-  for ( int j=0; j<=sides; j++ ) sin_table[j] = sin( j * 2 * M_PI / sides );
-
-}
-
-#endif
-
-#ifdef _GEOMETRY_SHADER_
-
-in Data_to_GS
-{
-  int iid; // Instance ID
-  vec4 gl_Position;
-  vec4 vertex_e;
-
-  float t;
-  vec4 ctr_e;
-  vec3 norm_e, binorm_e;
-
-  float sin_table[ST_SIZE];
-} In[];
-
-out Data_to_FS
-{
-  vec3 normal_e;
-  vec4 vertex_e;
-  vec2 gl_TexCoord[1];
-};
-
-layout ( lines ) in;
-layout ( triangle_strip, max_vertices = 78 ) out;
-
-#if 0
-void
-gs_main_2_excerpt()
-{
-  // ...
-  for ( int j=0; j<=sides; j++ )
-    {
-      const float theta = j * ( 2 * M_PI / sides );
-      vec3 vect1 = cos(theta) * In[1].norm_e + sin_table[j] * In[1].binorm_e;
-      //...
-    }
-  EndPrimitive();
-}
-#endif
-
-void
-gs_main_2()
-{
-  const float M_PI = 3.1415926535;
-  const vec2 tex_scale = tex_rad[In[1].iid].xy;
-  const float rad = tex_rad[In[1].iid].z;
-  const float sides = sides_rad.x;
-
-  for ( int j=0; j<=sides; j++ )
-    {
-      const float theta = j * ( 2 * M_PI / sides );
-      const float tx_y = 0.5 + theta * tex_scale.y;
-      for ( int i=1; i>=0; i-- )
-        {
-          normal_e =
-            cos(theta) * In[i].norm_e + In[i].sin_table[j] * In[i].binorm_e;
-          vertex_e = In[i].ctr_e + vec4( rad * normal_e, 0);
-          gl_TexCoord[0] = vec2( In[i].t * tex_scale.x, tx_y );
-          gl_Position = gl_ProjectionMatrix * vertex_e;
-          EmitVertex();
-        }
-    }
-  EndPrimitive();
-}
-
-
-
-#endif
-
-
-#ifdef _VERTEX_SHADER_
 
 void
 vs_main_1()
 {
-  // In the vertex shader compute the coordinate of the axis of the
-  // cylinder (ctr) and the vectors orthogonal to the axis. The
-  // geometry shader will use a pair of these to draw the cylinder
-  // surface.
-
-  iid = gl_InstanceID;
-
-  // Compute the values of t, t^2 and t^3 needed to compute point on
-  // curve (core of link).
-  //
-  const int i = gl_VertexID;
-  t = i * delta_tee;
-  const float t2 = t * t;
-  const float t3 = t2 * t;
-
-  // Cubic Hermite interpolation.
-  // Compute point along core of link in object space.
-  //
-  vec3 ctr_o =
-    ( 2*t3 - 3*t2 + 1 ) * pos1[iid].xyz + (-2*t3 + 3*t2 ) * pos2[iid].xyz
-    + ( t3 - 2*t2 + t ) * v1[iid].xyz - ( t3 - t2 ) * v2[iid].xyz;
-  ctr_e = gl_ModelViewMatrix * vec4(ctr_o,1);
-
-  // Compute direction of link at this point.
-  //
-  vec3 tan_o =
-    ( 6*t2 - 6*t ) * pos1[iid].xyz + ( -6*t2 + 6*t ) * pos2[iid].xyz
-    + ( 3*t2 - 4*t + 1 ) * v1[iid].xyz - ( 3*t2 - 2*t ) * v2[iid].xyz;
-
-  vec3 tan_e = normalize( gl_NormalMatrix * tan_o );
-
-  // Compute local x and y axes for drawing a cylinder.
-  //
-  vec3 ydir_o = mix(b1_ydir[iid].xyz, b2_ydir[iid].xyz, t);
-  vec3 norm_raw = cross(tan_o,ydir_o);
-  norm_e = normalize(gl_NormalMatrix * norm_raw);
-  binorm_e = cross(tan_e,norm_e);
+  t = gl_VertexID * delta_tee;
+  compute_ctr_norm_binorm(t);
 }
 
 #endif

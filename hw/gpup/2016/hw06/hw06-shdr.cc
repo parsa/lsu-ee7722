@@ -52,26 +52,30 @@ vs_main()
 void
 vs_main_instances_sv()
 {
-  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 vertex_o = rot * gl_Vertex;
+  mat3 rot = mat3(transpose(sphere_rot[gl_InstanceID]));
+  vec4 vertex_o = vec4( rot * gl_Vertex.xyz, 1 );
   gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
 }
+
+layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
+layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
 
 void
 vs_main_instances_sphere()
 {
-  vec4 pos_rad = sphere_pos_rad[gl_InstanceID];
-  float rad = pos_rad.w;
-  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 normr = rot * gl_Vertex;
-  vec3 normal_o = normr.xyz;
-  vec4 vertex_o = vec4( pos_rad.xyz + rad * normal_o, 1 );
+  mat4 transform = sphere_rot[gl_InstanceID];
+  vec3 ctr = transform[3].xyz;           // Extract coord of sphere center.
+  float radius = transform[3][3];        // Extract sphere radius.
+  mat3 rot = transpose(mat3(transform)); // Extract rotation matrix.
 
+  vec3 normal_o = rot * gl_Vertex.xyz;
+  vec4 vertex_o = vec4( ctr + radius * normal_o, 1 );
+
+  color = sphere_color[gl_InstanceID];
   gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
   vertex_e = gl_ModelViewMatrix * vertex_o;
   normal_e = normalize(gl_NormalMatrix * normal_o );
   gl_TexCoord[0] = gl_MultiTexCoord0;
-  color = sphere_color[gl_InstanceID];
 }
 
 #endif

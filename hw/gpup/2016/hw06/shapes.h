@@ -222,7 +222,12 @@ Sphere::render()
     {
       if ( world_time == world_time_last_update ) return;
       if ( !default_orientation )
-        sphere_rots += rotation_matrix;
+        {
+          pMatrix trans = rotation_matrix;
+          trans.set_row(3,center);
+          trans.rc(3,3) = radius;
+          sphere_rots += trans;
+        }
       pCoor pos_rad(center);  pos_rad.w = radius;
       sphere_pos_rads += pos_rad;
       sphere_colors += color;
