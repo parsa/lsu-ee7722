@@ -130,7 +130,7 @@ out Data_to_FS
 };
 
 layout ( lines ) in;
-layout ( triangle_strip, max_vertices = 42 ) out;
+layout ( triangle_strip, max_vertices = 78 ) out;
 
 #if 0
 void

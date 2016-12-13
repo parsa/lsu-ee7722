@@ -445,7 +445,7 @@ World::init_graphics()
   adj_duration = 0.25;
 
   link_bo_vtx = 0;
-  opt_sides = 20;
+  opt_sides = 17;
   opt_segments = 15;
   variable_control.insert(opt_sides,"Link Sides");
   variable_control.insert(opt_segments,"Link Segments");
