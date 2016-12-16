@@ -47,4 +47,4 @@ hw01sol: hw01sol.o
 
 
 clean:
-	/bin/rm *.o *.ptx *.sass *.cubin hw01
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw01 hw01sol

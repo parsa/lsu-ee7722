@@ -47,3 +47,6 @@ hw1.o:  $(INCLUDES) hw1-graphics.cc
 hw1: hw1.o 
 	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
+clean:
+	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx *.html hw1
+

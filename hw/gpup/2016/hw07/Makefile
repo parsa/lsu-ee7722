@@ -75,6 +75,6 @@ hw07: hw07.o hw07-cuda.o
 	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 clean:
-	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx hw07 hw07-debug
+	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx *.html hw07 hw07-debug hw07-sol
 
 

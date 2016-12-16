@@ -78,4 +78,4 @@ boxes: $(OBJ_FILES)
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 clean:
-	rm -f *.d *.o *.ptx *.sass *.cubin *~
+	rm -f *.d *.o *.ptx *.sass *.cubin *~ boxes

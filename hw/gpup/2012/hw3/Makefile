@@ -53,5 +53,6 @@ hw3-sol: hw3-sol.cc $(INCLUDES)
 
 
 clean:
-	/bin/rm -f hw3 hw3-debug *.o *~
+	/bin/rm -f hw3 hw3-debug *.o *~ hw3-sol hw3-sol-debug
+
 

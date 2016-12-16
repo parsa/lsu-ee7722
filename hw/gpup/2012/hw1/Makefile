@@ -1,8 +1,7 @@
-### LSU EE 4702-1 (Fall 2011), GPU Programming
+### LSU EE 4702-1 (Fall 2012), GPU Programming
 ##
 ##  Makefile for Homework 1
 ##
-## $Id:$
 
 
 COURSE_INCLUDE_DIR_POSSIBILITIES = ../include ../../include
@@ -56,5 +55,5 @@ hw1-sol: hw1-sol.cc $(INCLUDES) hw1-graphics.cc
 
 
 clean:
-	/bin/rm -f hw1 hw1-debug *.o *~
+	/bin/rm -f hw1 hw1-debug *.o *~ hw1 hw1-debug hw1-sol hw1-sol-debug
 

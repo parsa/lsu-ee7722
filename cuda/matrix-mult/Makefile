@@ -50,3 +50,6 @@ matrix-mult-kernel.o: Makefile matrix-mult.cuh matrix-mult-kernel.cu
 matrix-mult: matrix-mult.o matrix-mult-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
+clean:
+	/bin/rm -f  *.o *~ *.cubin *.ptx matrix-mult
+

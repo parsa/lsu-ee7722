@@ -47,4 +47,4 @@ hw02sol: hw02sol.o
 
 
 clean:
-	/bin/rm *.o *.ptx *.sass *.cubin hw02 hw02sol
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw02 hw02sol

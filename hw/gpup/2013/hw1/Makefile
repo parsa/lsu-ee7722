@@ -2,7 +2,6 @@
 ##
 ##  Makefile for Homework 1
 ##
-## $Id:$
 
 
 COURSE_INCLUDE_DIR_POSSIBILITIES = ../include ../../include ../../../include
@@ -55,5 +54,6 @@ hw1-sol: hw1-sol.cc $(INCLUDES) hw1-graphics.cc
 
 
 clean:
-	/bin/rm -f hw1 hw1-debug *.o *~
+	/bin/rm -f hw1 hw1-debug *.o *~ hw1-sol hw1-sol-debug
+
 

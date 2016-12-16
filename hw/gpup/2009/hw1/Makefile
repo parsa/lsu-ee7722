@@ -39,3 +39,7 @@ hw1: hw1.cc $(INCLUDES)
 	$(CXX) $(CFLAGS) $(OPTFLAGS) $@.cc -o $@ $(LIBRARIES)
 	$(CXX) $(CFLAGS) $@.cc -o $@-debug $(LIBRARIES)
 
+
+clean:
+	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx *.html hw1
+

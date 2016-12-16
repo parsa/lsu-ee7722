@@ -55,3 +55,6 @@ stencil-2d-kernel.o: Makefile stencil-2d.cuh stencil-2d-kernel.cu
 stencil-2d: stencil-2d.o stencil-2d-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
+clean:
+	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx stencil stencil-2d
+
