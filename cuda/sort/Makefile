@@ -49,3 +49,6 @@ sort-kernel.o: Makefile sort.cuh sort-kernel.cu
 sort: sort.o sort-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
+clean:
+	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx sort
+

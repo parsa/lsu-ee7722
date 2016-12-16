@@ -39,3 +39,7 @@ $(PROG_NAMES): %: %.o Makefile
 .cc.o:
 	$(CXX) $(CFLAGS) -fverbose-asm -S $*.cc
 	$(CXX) $(CFLAGS) -c $*.s
+
+clean:
+	/bin/rm -f *.s  *.o *~ *.sass *.cubin *.ptx *.html
+

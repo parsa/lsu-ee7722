@@ -66,4 +66,4 @@ hw06sol: hw06sol.cc $(INCLUDES) hw06-graphics.cc
 
 
 clean:
-	/bin/rm -f hw06 hw06-debug hw06-sol hw06-sol-debug *.o *~
+	/bin/rm -f hw06 hw06-debug hw06sol hw06sol-debug *.o *~ *.html

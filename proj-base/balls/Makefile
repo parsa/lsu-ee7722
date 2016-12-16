@@ -45,3 +45,7 @@ balls: balls.cc shapes.h tiles.h Makefile balls.cuh balls-kernel.o
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $@.cc balls-kernel.o -o $@ $(LIBRARIES)
 	$(CXX) $(CXXFLAGS) $@.cc -o $@-debug balls-kernel.o $(LIBRARIES)
 
+
+clean:
+	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx balls balls-debug
+

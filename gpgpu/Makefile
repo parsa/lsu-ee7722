@@ -47,4 +47,4 @@ balloon: balloon-kernel.o balloon.o
 	$(NVCC) $(NVCCFLAGS) $(NVCCCCFLAGS) -o $@ $^ $(LIBRARIES) 
 
 clean:
-	/bin/rm -f *.o *.cubin *.ptx
+	/bin/rm -f *.o *.cubin *.ptx balloon

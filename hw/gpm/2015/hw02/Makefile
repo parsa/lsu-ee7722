@@ -46,4 +46,4 @@ hw02: hw02.o
 
 
 clean:
-	/bin/rm *.o *.ptx *.sass *.cubin hw02
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw02

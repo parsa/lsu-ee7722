@@ -60,4 +60,4 @@ stream-2: stream-2.o stream-2-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin
+	/bin/rm -f *.o *.ptx *.sass *.cubin stream stream-full stream-2
