@@ -4,18 +4,24 @@
 
 struct CBall {
   float4 *position;
-  float4 *orientation;
   float4 *velocity;
-  float *mass, *fdt_to_do;
-  float4 *force, *torque;
+  float4 *force;
+  pQuat *orientation;
+  pMatrix3x3 *omatrix;
   float4 *omega;
+  float4 *torque;
+  float *mass, *fdt_to_do;
+  bool *locked;
 };
 
 struct CLink {
-  int *ball1, *ball2;
+  int *ball1_idx, *ball2_idx;
   float4 *cb1, *cb2;
   float4 *torque1, *torque2;
   float4 *spring_force_12;
+  float *distance_relaxed;
+  bool *is_simulatable;
+  bool *is_surface_connection;
 };
 
 

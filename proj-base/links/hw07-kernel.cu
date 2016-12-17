@@ -3,6 +3,7 @@
 #include "hw07.cuh"
 #include <gp/cuda-util-kernel.h>
 #include "/home/faculty/koppel/teach/gpcom/gpup/cuda/intro-vtx-transform/util.h"
+#include <assert.h>
 
 // opt_air_resistance
 
@@ -16,57 +17,71 @@ __constant__ CPU_GPU_Common dc;
 void
 data_cpu_to_gpu_common(CPU_GPU_Common *host_c)
 {
-  CE( cudaMemcpy( &dc, host_c, sizeof(*host_c), cudaMemcpyDefault ) );
+  CE( cudaMemcpyToSymbol( dc, host_c, sizeof(*host_c) ) );
 }
 
-__global__ void time_step_gpu(double delta_t);
+__global__ void time_step_gpu_links(float delta_t);
+__global__ void time_step_gpu_balls(float delta_t);
 
 __host__ void
 launch_time_step(double delta_t)
 {
-  time_step_gpu<<<13,256>>>(delta_t);
+  time_step_gpu_links<<<13,256>>>(delta_t);
+  time_step_gpu_balls<<<13,256>>>(delta_t);
+}
+
+
+
+__device__ bool
+platform_collision_possible(pCoor pos)
+{
+  // Assuming no motion in x or z axes.
+  //
+  return pos.x >= dc.platform_xmin && pos.x <= dc.platform_xmax
+    && pos.z >= dc.platform_zmin && pos.z <= dc.platform_zmax;
 }
 
 
 __global__ void
-time_step_gpu(double delta_t)
+time_step_gpu_links(float delta_t)
 {
   const int tid = threadIdx.x + blockDim.x * blockIdx.x;
   const int n_threads = blockDim.x * gridDim.x;
 
-#if 0
-  for ( int i=0; i<n_links; i++ )
-    {
-      Link* const link = links[i];
-      if ( !link->is_simulatable ) continue;
-
-#define link(mem) dc.links.mem[lidx]
+#define link(mem) dc.links.mem[li]
 #define ball1(mem) dc.balls.mem[ball_1_idx]
 #define ball2(mem) dc.balls.mem[ball_2_idx]
 
+  for ( int li=tid; li<dc.n_links; li += n_threads )
+    {
+      if ( !link(is_simulatable) ) continue;
+
       // Spring Force from Neighbor Balls
       //
-      const int ball_1_idx = link(ball1);
-      const int ball_2_idx = link(ball2);
+      const int ball_1_idx = link(ball1_idx);
+      const int ball_2_idx = link(ball2_idx);
+
+      pCoor ball1_pos = ball1(position);
+      pCoor ball2_pos = ball2(position);
 
       // Find position and velocity of the point where the link touches
       // the surface of ball 1 ...
       //
-      pVect dir1 = ball1->omatrix * link->cb1;
-      pCoor pos1 = ball1->position + dir1;
-      pVect vel1 = ball1->velocity + ball1->point_rot_vel(dir1);
+      pVect dir1 = ball1(omatrix) * link(cb1);
+      pCoor pos1 = ball1_pos + dir1;
+      pVect vel1 = ball1(velocity) + cross( ball1(omega), dir1 );
 
       // ... and ball 2.
       //
-      pVect dir2 = ball2->omatrix * link->cb2;
-      pCoor pos2 = ball2->position + dir2;
-      pVect vel2 = ball2->velocity + ball2->point_rot_vel(dir2);
+      pVect dir2 = ball2(omatrix) * link(cb2);
+      pCoor pos2 = ball2_pos + dir2;
+      pVect vel2 = ball2(velocity) + cross( ball2(omega), dir2 );
 
       // Construct a normalized (Unit) Vector from ball to neighbor
       // based on link connection points and ball centers.
       //
-      pNorm link_dir(pos1,pos2);
-      pNorm c_to_c(ball1->position,ball2->position);
+      pNorm link_dir = mn(pos1,pos2);
+      pNorm c_to_c = mn(ball1_pos,ball2_pos);
 
       const float link_length = link_dir.magnitude;
 
@@ -78,7 +93,7 @@ time_step_gpu(double delta_t)
       // Compute by how much the spring is stretched (positive value)
       // or compressed (negative value).
       //
-      const float spring_stretch = link_length - link->distance_relaxed;
+      const float spring_stretch = link_length - link(distance_relaxed);
 
       // Determine whether spring is gaining energy (whether its length
       // is getting further from its relaxed length).
@@ -90,33 +105,26 @@ time_step_gpu(double delta_t)
       // friction.
       //
       const float spring_constant =
-        gaining_e ? opt_spring_constant : opt_spring_constant * 0.7;
+        gaining_e ? dc.opt_spring_constant : dc.opt_spring_constant * 0.7;
 
       const float force_mag = spring_constant * spring_stretch;
       pVect spring_force_12 = force_mag * link_dir;
 
       // Apply forces affecting linear momentum.
       //
-      link->spring_force_12 = spring_force_12;
+      link(spring_force_12) = spring_force_12;
 
-      if ( ! link->is_surface_connection ) continue;
+      if ( ! link(is_surface_connection) ) continue;
+
+      pNorm dir1n = mn(dir1);
+      pNorm dir2n = mn(dir2);
 
       // Apply torque.
       //
-      link->torque1 = cross(pNorm(dir1), spring_force_12);
-      link->torque2 = cross(pNorm(dir2), spring_force_12);
+      link(torque1) = cross(dir1n, spring_force_12);
+      link(torque2) = cross(dir2n, spring_force_12);
     }
-#endif
 
-
-  for ( int bi=tid; bi<dc.n_balls; bi += n_threads )
-    {
-#define ball(mem) dc.balls.mem[bi]
-      dc.balls.force[bi] = dc.gravity_accel;
-      ball(force) = ball(mass) * dc.gravity_accel;
-      ball(torque) = make_float4(0);
-#undef ball
-    }
 
 #if 0
   // Note: Because two links can reference the same ball this should
@@ -131,18 +139,45 @@ time_step_gpu(double delta_t)
       ball1->torque += link->torque1;
       ball2->torque -= link->torque2;
     }
+#endif
+
+}
+
+__global__ void
+time_step_gpu_balls(float delta_t)
+{
+  const int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  const int n_threads = blockDim.x * gridDim.x;
+
+
+#if 0
+  // Note: Because two links can reference the same ball this should
+  // not be done in parallel.
+  for ( Link *link: links )
+    {
+      if ( !link->is_simulatable ) continue;
+      Ball* const ball1 = link->ball1;
+      Ball* const ball2 = link->ball2;
+      ball1->force += link->spring_force_12;
+      ball2->force -= link->spring_force_12;
+      ball1->torque += link->torque1;
+      ball2->torque -= link->torque2;
+    }
+#endif
+
+#define ball(mem) dc.balls.mem[bi]
+
 
   ///
   /// Update Position of Each Ball
   ///
 
-  for ( int bi=0; bi<n_balls; bi++ )
+  for ( int bi=tid; bi<dc.n_balls; bi += n_threads )
     {
-      Ball* const ball = balls[bi];
-      if ( ball->locked )
+      if ( ball(locked) )
         {
-          ball->velocity = pVect(0,0,0);
-          ball->omega = pVect(0,0,0);
+          ball(velocity) = m4(0);
+          ball(omega) = m4(0);
           continue;
         }
 
@@ -154,26 +189,29 @@ time_step_gpu(double delta_t)
       // length. This inaccuracy will make the simulation unstable
       // when spring constant is large for the time step.
       //
-      const float mass = max( ball->mass, ball->mass_min );
+      const float mass = ball(mass);
+      pCoor ball_position = m3(ball(position));
+      pVect ball_velocity = m3(ball(velocity));
+      //  pVect ball_force = m3(ball(force));
+      pVect ball_force = mass * m3(dc.gravity_accel);
 
-      pVect delta_v = ( ball->force / mass ) * delta_t;
+      pVect delta_v = ( delta_t / mass ) * ball_force;
 
-      if ( platform_collision_possible(ball->position) && ball->position.y < 0 )
+      if ( platform_collision_possible(ball_position) && ball_position.y < 0 )
         {
           const float spring_constant_plat =
-            ball->velocity.y < 0 ? 100000 : 50000;
+            ball_velocity.y < 0 ? 100000 : 50000;
           const float fric_coefficient = 0.1;
-          const float force_up = -ball->position.y * spring_constant_plat;
+          const float force_up = -ball_position.y * spring_constant_plat;
           const float delta_v_up = force_up / mass * delta_t;
           const float fric_force_mag = fric_coefficient * force_up;
-          pNorm surface_v(ball->velocity.x,0,ball->velocity.z);
+          pNorm surface_v = mn(ball_velocity.x,0,ball_velocity.z);
           const float delta_v_surf = fric_force_mag / mass * delta_t;
 
           if ( delta_v_surf > surface_v.magnitude )
             {
               // Ignoring other forces?
-              delta_v =
-                pVect(-ball->velocity.x,delta_v.y,-ball->velocity.z);
+              delta_v = m3(-ball_velocity.x,delta_v.y,-ball_velocity.z);
             }
           else
             {
@@ -182,22 +220,27 @@ time_step_gpu(double delta_t)
           delta_v.y += delta_v_up;
         }
 
-      ball->velocity += delta_v;
+      ball_velocity += delta_v;
 
       // Air Resistance
       //
-      const double fs = pow(1+opt_air_resistance,-delta_t);
-      ball->velocity *= fs;
+      const double fs = pow(1+dc.opt_air_resistance,-delta_t);
+      ball_velocity *= fs;
+      ball(velocity) = m4(ball_velocity);
 
       // Update Position
       //
       // Assume that velocity is constant.
       //
-      ball->position += ball->velocity * delta_t;
+      ball_position += ball_velocity * delta_t;
+      ball(position) = m4(ball_position);
 
-      ball->omega += delta_t * ball->fdt_to_do * ball->torque;
+      pVect ball_omega = m3(ball(omega));
 
-      pNorm axis(ball->omega);
+      ball_omega += delta_t * ball(fdt_to_do) * m3(ball(torque));
+      ball(omega) = m4(ball_omega);
+
+      pNorm axis = mn(ball_omega);
 
       // Update Orientation
       //
@@ -205,12 +248,14 @@ time_step_gpu(double delta_t)
       //
       if ( axis.mag_sq < 0.000001 ) continue;
 
-      // Update ball orientation.
-      //
-      ball->orientation_set
-        ( pQuat(axis,delta_t * axis.magnitude) * ball->orientation );
+      pQuat orientation =
+        mq( axis, delta_t * axis.magnitude ) * ball(orientation);
+      ball(orientation) = orientation;
+      ball(omatrix) = mrot(orientation);
     }
-#endif
+
+#undef ball
+
 }
 
 

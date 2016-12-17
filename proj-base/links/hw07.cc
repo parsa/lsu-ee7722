@@ -99,9 +99,9 @@
 
 #include <gp/util-containers.h>
 #include <gp/coord-containers.h>
+#include <gp/cuda-gpuinfo.h>
 #include "shapes.h"
 #include "hw07.cuh"
-#include "/home/faculty/koppel/teach/gpcom/gpup/cuda/intro-vtx-transform/util.h"
 
 ///
 /// Main Data Structures
@@ -247,6 +247,8 @@ public:
   int serial;
   Ball* const ball1;
   Ball* const ball2;
+  int ball1_idx;
+  int ball2_idx;
   pVect cb1, cb2, b1_dir, b2_dir;
   bool is_surface_connection;
   bool is_renderable, is_simulatable;
@@ -1353,10 +1355,12 @@ void
 World::data_cpu_to_gpu_dynamic()
 {
   const int n_balls = balls.size();
-  const bool need_alloc = n_balls > c.alloc_n_balls;
+  const int n_links = links.size();
+  const bool need_alloc =
+    n_balls > c.alloc_n_balls || n_links > c.alloc_n_links;
   const bool need_init = c.alloc_n_balls == 0;
 
-#define MOVE(n_balls,balls,memb)                                              \
+#define ALLOC_MOVE(n_balls,balls,memb,do_move)                                \
   {                                                                           \
     const int size_elt_bytes = sizeof(c.balls.memb[0]);                       \
     const int size_bytes = n_balls * size_elt_bytes;                          \
@@ -1370,17 +1374,43 @@ World::data_cpu_to_gpu_dynamic()
         CE( cudaMalloc( &c.balls.memb, size_bytes ) );                        \
         c.h_##balls.memb = (decltype(c.balls.memb)) malloc( size_bytes );     \
       }                                                                       \
-    for ( int i=0; i<n_balls; i++ )                                           \
-      memcpy(&c.h_##balls.memb[i],&balls[i]->memb,size_elt_bytes);            \
-    CE( cudaMemcpy                                                            \
-        ( c.balls.memb, c.h_##balls.memb,                                     \
-          size_bytes, cudaMemcpyDefault ) );                                  \
+    if ( do_move )                                                            \
+      {                                                                       \
+        for ( int i=0; i<n_balls; i++ )                                       \
+          memcpy(&c.h_##balls.memb[i],&balls[i]->memb,size_elt_bytes);        \
+        CE( cudaMemcpy                                                        \
+            ( c.balls.memb, c.h_##balls.memb,                                 \
+              size_bytes, cudaMemcpyDefault ) );                              \
+      }                                                                       \
   }
+
+#define MOVEc(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,1)
+#define MOVE(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,1)
+#define ALLOC(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,0)
 
   MOVE(n_balls,balls,position);
   MOVE(n_balls,balls,velocity);
+  ALLOC(n_balls,balls,force);
+
+  MOVE(n_balls,balls,orientation);
+  ALLOC(n_balls,balls,omatrix);
+  MOVE(n_balls,balls,omega);
+  ALLOC(n_balls,balls,torque);
+  MOVEc(n_balls,balls,mass);
+  MOVEc(n_balls,balls,fdt_to_do);
+  MOVEc(n_balls,balls,locked);
+
+
 #undef MOVE
-  if ( need_alloc ) c.alloc_n_balls = n_balls;
+#undef MOVEc
+#undef ALLOC
+#undef ALLOC_MOVE
+  if ( need_alloc )
+    {
+      c.alloc_n_balls = n_balls;
+      c.alloc_n_links = n_links;
+      data_cpu_to_gpu_common(&c);
+    }
 }
 
 void
@@ -1402,6 +1432,10 @@ World::data_gpu_to_cpu_dynamic()
 
   MOVE(n_balls,balls,position);
   MOVE(n_balls,balls,velocity);
+  MOVE(n_balls,balls,orientation);
+  MOVE(n_balls,balls,omatrix);
+  MOVE(n_balls,balls,omega);
+
 #undef MOVE
 
 }
@@ -1628,6 +1662,9 @@ World::ball_setup_5()
 void
 World::setup_at_end()
 {
+  for ( int i=0; i<balls.size(); i++ ) balls[i]->idx = i;
+  for ( Link *l : links )
+    { l->ball1_idx = l->ball1->idx; l->ball2_idx = l->ball2->idx; }
 }
 
 
@@ -2203,7 +2240,8 @@ World::frame_callback()
     {
       data_cpu_to_gpu_constants();
       data_cpu_to_gpu_dynamic();
-      data_gpu_to_cpu_dynamic();
+      //  launch_time_step(0.1);
+      //  data_gpu_to_cpu_dynamic();
     }
 
   if ( !opt_pause || opt_single_frame || opt_single_time_step )
@@ -2226,7 +2264,7 @@ World::frame_callback()
 
       while ( world_time < world_time_target )
         {
-          if ( false && opt_cuda )
+          if ( true && opt_cuda )
             {
               launch_time_step(opt_time_step_duration);
             }
