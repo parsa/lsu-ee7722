@@ -4,7 +4,7 @@
 
 using namespace pCUDA_coord;
 
-#include "hw07.cuh"
+#include "links.cuh"
 #include <gp/cuda-util-kernel.h>
 #include <gp/cuda-gpuinfo.h>
 #include <assert.h>

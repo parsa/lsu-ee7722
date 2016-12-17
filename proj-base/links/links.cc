@@ -1,8 +1,7 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE EE 7722/ EE 4702-X, GPU Prog/MicroArch
 //
- /// Homework 7
+ /// Links Project Base Code
  //
- //  See http://www.ece.lsu.edu/koppel/gpup/2016/hw07.pdf
 
 /// Purpose
 //
@@ -101,7 +100,7 @@
 #include <gp/coord-containers.h>
 #include <gp/cuda-gpuinfo.h>
 #include "shapes.h"
-#include "hw07.cuh"
+#include "links.cuh"
 
 ///
 /// Main Data Structures
@@ -386,7 +385,7 @@ public:
   void data_cpu_to_gpu_constants();
   void data_cpu_to_gpu_dynamic();
   void data_gpu_to_cpu_dynamic();
-  CPU_GPU_Common c;  // c is for common.  See hw07.cuh.
+  CPU_GPU_Common c;  // c is for common.  See links.cuh.
 
   void render_link_1(Link *link);
   void render_link_2_start();
@@ -1141,21 +1140,21 @@ World::init(int argc, char **argv)
   sp_fixed = new pShader();
 
   sp_phong = new pShader
-    ("hw07-shdr.cc",// File holding shader program.
+    ("links-shdr.cc",// File holding shader program.
      "vs_main(); ",       // Name of vertex shader main routine.
      "gs_main_simple();", // Name of geometry shader main routine.
      "fs_main();"         // Name of fragment shader main routine.
      );
 
   sp_instances_sphere = new pShader
-    ("hw07-shdr.cc",// File holding shader program.
+    ("links-shdr.cc",// File holding shader program.
      "vs_main_instances_sphere(); ", // Used to render many spheres at once.
      "gs_main_simple();", // Name of geometry shader main routine.
      "fs_main();"         // Name of fragment shader main routine.
      );
 
   sp_instances_sv = new pShader
-    ("hw07-shdr.cc",// File holding shader program.
+    ("links-shdr.cc",// File holding shader program.
      "vs_main_instances_sv();" // Instances of vtx coord only. Use gl_Color.
      ,"gs_main_sv();",
      "fs_main_sv();"
@@ -1165,7 +1164,7 @@ World::init(int argc, char **argv)
   PSplit exe_pieces(argv[0],'/');
   pString this_exe_name(exe_pieces.pop());
 
-  const char* const links_shader_code_path = "hw07-shdr-links.cc";
+  const char* const links_shader_code_path = "links-shdr-links.cc";
 
   sp_set_1 = new pShader
     (links_shader_code_path,
@@ -2201,7 +2200,7 @@ World::render_link_2_render()
   const size_t n_instances = lis_pos1.size();
 
   // Bind buffer objects holding link and ball info to locations
-  // specified in file hw07-shdr-links.cc
+  // specified in file links-shdr-links.cc
   //
   for ( size_t i=0; i<lis_pvects.size(); i++ )
     {

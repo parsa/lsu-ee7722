@@ -1,6 +1,6 @@
-### LSU EE 4702-1 (Fall 2016), GPU Programming
+### LSU EE 4702-x / EE 7722
 ##
-##  Makefile for Homework 7
+##  Makefile for Links Demo
 ##
 
 OPT_FLAGS =
@@ -31,17 +31,12 @@ CUXX = $(CUDAPATH)/bin/nvcc
 
 CXX = $(CUXX)
 
-HW07_CC_SRC = hw07.cc
-HW07_CC_SRC_SOL = hw07-sol.cc
-HW07_CU_SRC = hw07-kernel.cu
-HW07_CU_SRC_SOL = hw07-kernel-sol.cu
+LINKS_CC_SRC = links.cc
+LINKS_CU_SRC = links-kernel.cu
 
-SRC_FILES = $(HW07_CC_SRC)
-CU_SRC_FILES = $(HW07_CU_SRC)
+SRC_FILES = $(LINKS_CC_SRC)
+CU_SRC_FILES = $(LINKS_CU_SRC)
 OBJ_FILES = $(SRC_FILES:.cc=.o) $(CU_SRC_FILES:.cu=.o)
-
-SRC_FILES_SOL = $(HW07_CC_SRC_SOL)
-OBJ_FILES_SOL = $(SRC_FILES_SOL:.cc=.o) $(HW07_CU_SRC_SOL:.cu=.o)
 
 .SUFFIXES: .cu .cuh
 
@@ -69,7 +64,7 @@ LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw07
+default: links
 
 
 INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
@@ -82,7 +77,6 @@ INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
 #
 ifneq ($(MAKECMDGOALS),clean)
 -include $(SRC_FILES:.cc=.d) $(CU_SRC_FILES:.cu=.d)
--include $(SRC_FILES_SOL:.cc=.d) $(HW07_CU_SRC_SOL:.cu=.d)
 endif
 
 # Prepare file holding dependencies, to be included in this file.
@@ -109,15 +103,11 @@ endif
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 
-hw07: $(OBJ_FILES)
+links: $(OBJ_FILES)
 	$(CUXX) $(CUFLAGS) $(OBJ_FILES)  $(LINKFLAGS) \
-	-o $@ $(LIBDIR)  $(LIBRARIES) 
-
-hw07-sol: $(OBJ_FILES_SOL)
-	$(CUXX) $(CUFLAGS) $(OBJ_FILES_SOL)  $(LINKFLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES) 
 
 
 clean:
-	/bin/rm -f hw07 hw07-debug *.d *.o *~ hw07-sol hw07-sol-debug *.sass *.ptx *.cubin hw07-sol
+	/bin/rm -f links links-debug *.d *.o *~ *.sass *.ptx *.cubin 
 
