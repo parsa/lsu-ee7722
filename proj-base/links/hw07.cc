@@ -1345,7 +1345,7 @@ World::data_cpu_to_gpu_constants()
   c.opt_air_resistance = opt_air_resistance;
   c.opt_head_lock = opt_head_lock;
   c.opt_tail_lock = opt_tail_lock;
-  c.gravity_accel = tof4(gravity_accel);
+  c.gravity_accel = gravity_accel;
 
   data_cpu_to_gpu_common(&c);
 }
@@ -1393,13 +1393,20 @@ World::data_cpu_to_gpu_dynamic()
   ALLOC(n_balls,balls,force);
 
   MOVE(n_balls,balls,orientation);
-  ALLOC(n_balls,balls,omatrix);
+  MOVEc(n_balls,balls,omatrix);
   MOVE(n_balls,balls,omega);
   ALLOC(n_balls,balls,torque);
   MOVEc(n_balls,balls,mass);
   MOVEc(n_balls,balls,fdt_to_do);
   MOVEc(n_balls,balls,locked);
 
+  MOVEc(n_links,links,ball1_idx);
+  MOVEc(n_links,links,ball2_idx);
+  MOVEc(n_links,links,cb1);
+  MOVEc(n_links,links,cb2);
+  MOVEc(n_links,links,distance_relaxed);
+  MOVEc(n_links,links,is_simulatable);
+  MOVEc(n_links,links,is_surface_connection);
 
 #undef MOVE
 #undef MOVEc
@@ -1420,18 +1427,19 @@ World::data_gpu_to_cpu_dynamic()
 
 #define MOVE(n_balls,balls,memb)                                              \
   {                                                                           \
-    const int size_elt_bytes = sizeof(c.balls.memb[0]);                       \
-    const int size_bytes = n_balls * size_elt_bytes;                          \
-    const int size_elt2_bytes = sizeof(balls[0]->memb);                       \
+    const int size_elt_fr_bytes = sizeof(c.balls.memb[0]);                    \
+    const int size_elt_to_bytes = sizeof(balls[0]->memb);                     \
+    const int size_bytes = n_balls * size_elt_fr_bytes;                       \
     CE( cudaMemcpy                                                            \
         ( c.h_##balls.memb, c.balls.memb, size_bytes,                         \
           cudaMemcpyDeviceToHost ) );                                         \
     for ( int i=0; i<n_balls; i++ )                                           \
-      memcpy(&balls[i]->memb,&c.h_##balls.memb[i], size_elt2_bytes);          \
+      memcpy(&balls[i]->memb,&c.h_##balls.memb[i], size_elt_to_bytes);        \
   }
 
   MOVE(n_balls,balls,position);
   MOVE(n_balls,balls,velocity);
+  for ( Ball *b : balls ) b->position.w = 1;
   MOVE(n_balls,balls,orientation);
   MOVE(n_balls,balls,omatrix);
   MOVE(n_balls,balls,omega);
@@ -2270,7 +2278,6 @@ World::frame_callback()
             }
           else
             {
-              launch_time_step(opt_time_step_duration);
               time_step_cpu(opt_time_step_duration);
             }
           world_time += opt_time_step_duration;

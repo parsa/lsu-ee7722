@@ -3,22 +3,22 @@
 
 
 struct CBall {
-  float4 *position;
-  float4 *velocity;
-  float4 *force;
+  pCoor *position;
+  pVect4 *velocity;
+  pVect4 *force;
   pQuat *orientation;
   pMatrix3x3 *omatrix;
-  float4 *omega;
-  float4 *torque;
+  pVect4 *omega;
+  pVect4 *torque;
   float *mass, *fdt_to_do;
   bool *locked;
 };
 
 struct CLink {
   int *ball1_idx, *ball2_idx;
-  float4 *cb1, *cb2;
-  float4 *torque1, *torque2;
-  float4 *spring_force_12;
+  pVect4 *cb1, *cb2;
+  pVect4 *torque1, *torque2;
+  pVect4 *spring_force_12;
   float *distance_relaxed;
   bool *is_simulatable;
   bool *is_surface_connection;
@@ -43,7 +43,7 @@ public:
   bool opt_head_lock, opt_tail_lock;
   float opt_spring_constant;
   float opt_air_resistance;
-  float4 gravity_accel;
+  pVect gravity_accel;
 };
 
 void data_cpu_to_gpu_common(CPU_GPU_Common *host_c);

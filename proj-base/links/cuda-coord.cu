@@ -2,105 +2,97 @@
 /// Useful Functions and Types
 ///
 
-typedef float3 pCoor;
-typedef float3 pVect;
+namespace pCUDA_coord
+{
 
-struct pMatrix3x3 { float3 r0, r1, r2; };
-__device__ float3
-make_float3(float4 f4){return make_float3(f4.x,f4.y,f4.z);}
+typedef float4 pCoor;
 
-__device__ float3 m3(float a, float b, float c){ return make_float3(a,b,c); }
-__device__ float3 m3(float4 a){ return make_float3(a); }
-__device__ float3 xyz(float4 a){ return m3(a); }
-__device__ float4 m4(float3 v, float w) { return make_float4(v.x,v.y,v.z,w); }
-__device__ float4 m4(float3 v) { return make_float4(v.x,v.y,v.z,0); }
+class pVect {
+public:
+  __device__ pVect(){};
+  __device__ pVect(float f):x(f),y(f),z(f){};
+  __device__ pVect(float xp, float yp, float zp):x(xp),y(yp),z(zp){};
+  float x, y, z;
+};
 
-__device__ float4 make_float4(float f) { return make_float4(f,f,f,f); }
-__device__ float4 m4(float f) { return make_float4(f); }
+// Intended for situations where a power-of-2 stride element is needed.
+class  __builtin_align__(16) pVect4 {
+public:
+  float x, y, z, w;
+  __device__ pVect4(float f):x(f),y(f),z(f),w(f){};
+  __device__ operator const pVect () const { return pVect(x,y,z); }
+  __device__ void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
+};
+
+class pCoor3 {
+  public:
+  __device__ pCoor3(pCoor c) { x=c.x; y=c.y; z=c.z; }
+  float x, y, z;
+};
+
 
 __device__ pVect operator +(pVect a,pVect b)
-{ return make_float3(a.x+b.x,a.y+b.y,a.z+b.z); }
+{ return pVect(a.x+b.x,a.y+b.y,a.z+b.z); }
+__device__ pCoor operator +(pCoor a,pVect b)
+{ return make_float4(a.x+b.x,a.y+b.y,a.z+b.z,a.w); }
 __device__ pVect operator -(pVect a,pVect b)
-{ return make_float3(a.x-b.x,a.y-b.y,a.z-b.z); }
-__device__ pVect operator -(float4 a,float4 b)
-{ return make_float3(a.x-b.x,a.y-b.y,a.z-b.z); }
-__device__ pVect operator -(pCoor a,float4 b)
-{ return make_float3(a.x-b.x,a.y-b.y,a.z-b.z); }
-__device__ pVect operator *(float s, pVect v)
-{return make_float3(s*v.x,s*v.y,s*v.z);}
-__device__ pVect operator *(pVect v, float s)
-{return make_float3(s*v.x,s*v.y,s*v.z);}
-__device__ float4 operator *(float s, float4 v)
-{return make_float4(s*v.x,s*v.y,s*v.z,s*v.w);}
-__device__ pVect operator *(pVect u, pVect v)
-{return make_float3(u.x*v.x,u.y*v.y,u.z*v.z);}
-__device__ pVect operator -(pVect v) { return make_float3(-v.x,-v.y,-v.z); }
-__device__ float3 operator -=(float3& a, pVect b) {a = a - b; return a;}
-__device__ float3 operator +=(float3& a, pVect b) {a = a + b; return a;}
+{ return pVect(a.x-b.x,a.y-b.y,a.z-b.z); }
+__device__ pVect operator -(pCoor a,pCoor b)
+{ return pVect(a.x-b.x,a.y-b.y,a.z-b.z); }
 
-__device__ float3 operator *=(float3& a, float b)
+__device__ pVect operator *(float s, pVect v)
+{return pVect(s*v.x,s*v.y,s*v.z);}
+__device__ pVect operator *(pVect v, float s)
+{return pVect(s*v.x,s*v.y,s*v.z);}
+__device__ pVect operator *(pVect u, pVect v)
+{return pVect(u.x*v.x,u.y*v.y,u.z*v.z);}
+
+__device__ pVect operator -(pVect v) { return pVect(-v.x,-v.y,-v.z); }
+__device__ pVect operator -=(pVect& a, pVect b) {a = a - b; return a;}
+__device__ pVect operator +=(pVect& a, pVect b) {a = a + b; return a;}
+__device__ pCoor operator +=(pCoor& a, pVect b) {a = a + b; return a;}
+__device__ pVect operator *=(pVect& a, float b)
 { a.x *= b;  a.y *= b; a.z *= b;  return a;}
 
-struct pNorm {
+class pNorm {
+public:
+  __device__ pNorm(pVect v){ set_vect(v); }
+  __device__ pNorm(float x, float y, float z){ set_vect(pVect(x,y,z)); }
+  __device__ pNorm(pCoor p1, pCoor p2){ set_vect(p2-p1); }
+  __device__ pNorm(){};
+  __device__ void set_vect(pVect v);
   pVect v;
   float mag_sq, magnitude;
 };
 
 __device__ pVect operator *(float s, pNorm n) { return s * n.v;}
 
-// Make a Coordinate
-__device__ pCoor 
-mc(float x, float y, float z){ return make_float3(x,y,z); }
-__device__ pCoor mc(float4 c){ return make_float3(c.x,c.y,c.z); }
-
-__device__ void set_f3(float3& a, float4 b){a.x = b.x; a.y = b.y; a.z = b.z;}
-__device__ void set_f4(float4& a, float3 b)
-{a.x = b.x; a.y = b.y; a.z = b.z; a.w = 1;}
-__device__ void set_f4(float4& a, float3 b, float c)
-{a.x = b.x; a.y = b.y; a.z = b.z; a.w = c;}
-
-// Make a Vector
-__device__ pVect
-mv(float x, float y, float z){ return make_float3(x,y,z); }
-__device__ pVect mv(float3 a, float3 b) { return b-a; }
-__device__ pVect mv(float a) { return make_float3(a,a,a); }
-
 __device__ float dot(float4 a, float4 b)
 { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;}
 __device__ float dot(pVect a, pVect b){ return a.x*b.x + a.y*b.y + a.z*b.z;}
 __device__ float dot(pVect a, pNorm b){ return dot(a,b.v); }
 __device__ float dot(pNorm a, pVect b){ return dot(a.v,b); }
-__device__ float dot3(float4 a, float4 b){ return dot(m3(a),m3(b)); }
 
 __device__ float mag_sq(pVect v){ return dot(v,v); }
 __device__ float length(pVect a) {return sqrtf(mag_sq(a));}
 __device__ pVect normalize(pVect a) { return rsqrtf(mag_sq(a))*a; }
 
-// Make a Normal (a structure containing a normalized vector and length)
-__device__ pNorm mn(pVect v)
+__device__ void
+pNorm::set_vect(pVect u)
 {
-  pNorm n;
-  n.mag_sq = mag_sq(v);
-  if ( n.mag_sq == 0 )
+  mag_sq = dot(u,u);
+  if ( mag_sq == 0 )
     {
-      n.magnitude = 0;
-      n.v.x = n.v.y = n.v.z = 0;
+      magnitude = 0;
+      v.x = v.y = v.z = 0;
     }
   else
     {
-      const float rsq = 1.0f/sqrtf(n.mag_sq);
-      n.magnitude = 1.0f/rsq;
-      n.v = rsq * v;
+      const float rsq = 1.0f/sqrtf(mag_sq);
+      magnitude = 1.0f/rsq;
+      v = rsq * u;
     }
-  return n;
 }
-__device__ pNorm mn(float4 a, float4 b) {return mn(b-a);}
-__device__ pNorm mn(pCoor a, pCoor b) {return mn(b-a);}
-__device__ pNorm mn(float x, float y, float z) {return mn(mv(x,y,z));}
-__device__ pNorm mn(float4 v4)
-{ pNorm n; n.v = m3(v4);  n.magnitude = v4.w;  return n; }
-__device__ pNorm mn(float3 v3, float mag)
-{ pNorm n; n.v = v3;  n.magnitude = mag;  return n; }
 
 // The unary - operator doesn't seem to work when used in an argument.
 __device__ pNorm operator -(pNorm n)
@@ -112,19 +104,18 @@ __device__ pNorm operator -(pNorm n)
   return m;
 }
 
-struct pQuat {
-  float3 v;
+class pQuat {
+public:
+  __device__ pQuat(){};
+  __device__ pQuat(pNorm axis, float angle)
+  {
+    v = __sinf(angle/2) * axis.v;
+    w = __cosf(angle/2);
+  }
+
+  pVect v;
   float w;
 };
-
-// Make Quaternion
-__device__ pQuat mq(pNorm axis, float angle)
-{
-  pQuat q;
-  q.v = __sinf(angle/2) * axis.v;
-  q.w = __cosf(angle/2);
-  return q;
-}
 
 __device__ pQuat cast_quat(float4 v)
 {
@@ -152,92 +143,87 @@ __device__ pQuat quat_normalize(pQuat q)
 __device__ float4 c4(pQuat q){ return make_float4(q.v.x,q.v.y,q.v.z,q.w); }
 __device__ float4 m4(pNorm v, float w) { return m4(v.v,w); }
 
-__device__ pVect fabs(pVect v){ return mv(fabs(v.x),fabs(v.y),fabs(v.z)); }
-__device__ float min(pVect v){ return min(min(v.x,v.y),v.z); }
-__device__ float max(pVect v){ return max(max(v.x,v.y),v.z); }
+__device__ pVect fabs(pVect v)
+{ return pVect(::fabs(v.x),::fabs(v.y),::fabs(v.z)); }
+__device__ float min(pVect v){ return ::min(::min(v.x,v.y),v.z); }
+__device__ float max(pVect v){ return ::max(::max(v.x,v.y),v.z); }
 __device__ float sum(pVect v){ return v.x+v.y+v.z; }
 
 // Cross Product of Two Vectors
-__device__ float3
-cross(float3 a, float3 b)
+__device__ pVect
+cross(pVect a, pVect b)
 {
-  return make_float3
+  return pVect
     ( a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x );
 }
 __device__ pVect cross(pVect a, pNorm b){ return cross(a,b.v); }
 __device__ pVect cross(pNorm a, pVect b){ return cross(a.v,b); }
-__device__ pVect crossf3(float4 a, float4 b) { return cross(m3(a),m3(b)); }
 
 // Cross Product of Vectors Between Coordinates
-__device__ float3
- cross3(float3 a, float3 b, float3 c)
+__device__ pVect
+ cross3(pCoor a, pCoor b, pCoor c)
 {
-  float3 ab = a - b;
-  float3 cb = c - b;
+  pVect ab = a - b;
+  pVect cb = c - b;
   return cross(ab,cb);
 }
-__device__ pVect cross3(pVect a, pVect b, pNorm c) { return cross3(a,b,c.v); }
-
 
 __device__ pQuat quat_mult(pQuat a, pQuat b)
 {
   float w = a.w * b.w - dot(a.v,b.v);
-  float3 v = a.w * b.v + b.w * a.v + cross(a.v,b.v);
+  pVect v = a.w * b.v + b.w * a.v + cross(a.v,b.v);
   pQuat q;
   q.w = w;
   q.v = v;
   return q;
-  //  return cast_quat(v.x,v.y,v.z,w);
 };
 
 __device__ inline pQuat operator * (pQuat q, pQuat v)
 { return quat_mult(q,v); }
 
 
+class pMatrix3x3 {
+public:
+  __device__ pMatrix3x3() {};
+  __device__ pMatrix3x3(pQuat q){ set_rotation(q); }
+  __device__ void set_rotation(pQuat q);
+  __device__ void set_rotation(pVect u, float theta);
+  pVect r0, r1, r2;
+};
+
 __device__ void
-pMatrix_set_rotation(pMatrix3x3& m, pVect u, float theta)
+pMatrix3x3::set_rotation(pVect u, float theta)
 {
   const float cos_theta = __cosf(theta);
   const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta );
-  m.r0.x = u.x * u.x + cos_theta * ( 1 - u.x * u.x );
-  m.r0.y = u.x * u.y * ( 1 - cos_theta ) - u.z * sin_theta;
-  m.r0.z = u.z * u.x * ( 1 - cos_theta ) + u.y * sin_theta;
-  m.r1.x = u.x * u.y * ( 1 - cos_theta ) + u.z * sin_theta;
-  m.r1.y = u.y * u.y + cos_theta * ( 1 - u.y * u.y );
-  m.r1.z = u.y * u.z * ( 1 - cos_theta ) - u.x * sin_theta;
-  m.r2.x = u.z * u.x * ( 1 - cos_theta ) - u.y * sin_theta;
-  m.r2.y = u.y * u.z * ( 1 - cos_theta ) + u.x * sin_theta;
-  m.r2.z = u.z * u.z + cos_theta * ( 1 - u.z * u.z );
+  r0.x = u.x * u.x + cos_theta * ( 1 - u.x * u.x );
+  r0.y = u.x * u.y * ( 1 - cos_theta ) - u.z * sin_theta;
+  r0.z = u.z * u.x * ( 1 - cos_theta ) + u.y * sin_theta;
+  r1.x = u.x * u.y * ( 1 - cos_theta ) + u.z * sin_theta;
+  r1.y = u.y * u.y + cos_theta * ( 1 - u.y * u.y );
+  r1.z = u.y * u.z * ( 1 - cos_theta ) - u.x * sin_theta;
+  r2.x = u.z * u.x * ( 1 - cos_theta ) - u.y * sin_theta;
+  r2.y = u.y * u.z * ( 1 - cos_theta ) + u.x * sin_theta;
+  r2.z = u.z * u.z + cos_theta * ( 1 - u.z * u.z );
 }
 
 // Set matrix m to a rotation matrix based on quaternion q.
 __device__ void
-pMatrix_set_rotation(pMatrix3x3& m, float4 q)
+pMatrix3x3::set_rotation(pQuat q)
 {
-  m.r0.x = 1.f - 2.f * q.y * q.y - 2.f * q.z * q.z;
-  m.r0.y = 2.f * q.x * q.y - 2.f * q.w * q.z;
-  m.r0.z = 2.f * q.x * q.z + 2.f * q.w * q.y;
-  m.r1.x = 2.f * q.x * q.y + 2.f * q.w * q.z;
-  m.r1.y = 1.f - 2.f * q.x * q.x - 2.f * q.z * q.z;
-  m.r1.z = 2.f * q.y * q.z - 2.f * q.w * q.x;
-  m.r2.x = 2.f * q.x * q.z - 2.f * q.w * q.y;
-  m.r2.y = 2.f * q.y * q.z + 2.f * q.w * q.x;
-  m.r2.z = 1.f - 2.f * q.x * q.x - 2.f * q.y * q.y;
+  r0.x = 1.f - 2.f * q.v.y * q.v.y - 2.f * q.v.z * q.v.z;
+  r0.y = 2.f * q.v.x * q.v.y - 2.f * q.w * q.v.z;
+  r0.z = 2.f * q.v.x * q.v.z + 2.f * q.w * q.v.y;
+  r1.x = 2.f * q.v.x * q.v.y + 2.f * q.w * q.v.z;
+  r1.y = 1.f - 2.f * q.v.x * q.v.x - 2.f * q.v.z * q.v.z;
+  r1.z = 2.f * q.v.y * q.v.z - 2.f * q.w * q.v.x;
+  r2.x = 2.f * q.v.x * q.v.z - 2.f * q.w * q.v.y;
+  r2.y = 2.f * q.v.y * q.v.z + 2.f * q.w * q.v.x;
+  r2.z = 1.f - 2.f * q.v.x * q.v.x - 2.f * q.v.y * q.v.y;
 }
 
-__device__ void
-pMatrix_set_rotation(pMatrix3x3& m, pQuat q)
-{
-  pMatrix_set_rotation(m,c4(q));
-}
+__device__ pVect operator *(pMatrix3x3 m, pVect coor)
+{ return
+    pVect(dot(m.r0,coor), dot(m.r1,coor), dot(m.r2,coor)); }
 
-__device__ pMatrix3x3 mrot(pQuat q)
-{
-  pMatrix3x3 m;
-  pMatrix_set_rotation(m,q);
-  return m;
-}
-
-__device__ float3 operator *(pMatrix3x3 m, float3 coor)
-{ return make_float3(dot(m.r0,coor), dot(m.r1,coor), dot(m.r2,coor)); }
-
+} // namespace pCUDA_coord

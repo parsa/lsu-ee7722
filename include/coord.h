@@ -372,6 +372,15 @@ public:
   float x, y, z;
 };
 
+// Intended for situations where a power-of-2 stride element is needed.
+class pVect4 {
+public:
+  float x, y, z, w;
+  operator const pVect () const { return pVect(x,y,z); }
+  void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
+};
+
+
 class pColor {
 public:
   pColor(float r, float g, float b):r(r),g(g),b(b),a(1){}
