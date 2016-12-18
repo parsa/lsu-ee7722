@@ -38,39 +38,20 @@ collect_symbols()
 }
 
 
-static __host__ int
-kernels_get_attr_(pCUDA_Func_Attributes *attr)
+__host__ void
+kernels_get_attr(GPU_Info& info)
 {
   collect_symbols();
 
-  int count = 0;
-
-#define GETATTR(func)                                                         \
-  count++;                                                                    \
-  if ( attr ) {                                                               \
-      attr->err = cudaFuncGetAttributes(&attr->attr,func);                    \
-      attr->name = #func;                                                     \
-      attr++;                                                                 \
-    }
-
-  GETATTR(mm);
-  GETATTR(mm_iter);
-  GETATTR(mm_blk_cache_ab);
-  GETATTR(mm_blk_cache_ab_opt);
-  GETATTR(mm_blk_cache_a_local_t<3>);
-  GETATTR(mm_blk_cache_a_local_t<4>);
-  GETATTR(mm_blk_cache_ab_tc);
-  return count;
-#undef GETATTR
+  info.GET_INFO(mm);
+  info.GET_INFO(mm_iter);
+  info.GET_INFO(mm_blk_cache_ab);
+  info.GET_INFO(mm_blk_cache_ab_opt);
+  info.GET_INFO(mm_blk_cache_a_local_t<3>);
+  info.GET_INFO(mm_blk_cache_a_local_t<4>);
+  info.GET_INFO(mm_blk_cache_ab_tc);
 }
 
-__host__ int
-kernels_get_attr(pCUDA_Func_Attributes **attr)
-{
-  int count = kernels_get_attr_(NULL);
-  *attr = (pCUDA_Func_Attributes*) calloc(count,sizeof(**attr));
-  return kernels_get_attr_(*attr);
-}
 
 // This routine executes on the CPU.
 //

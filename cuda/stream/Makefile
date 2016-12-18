@@ -26,8 +26,8 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
-CXXFLAGS = $(CFLAGS)
+CXXFLAGS = $(CFLAGS)  -std=c++11
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
 LIBRARIES =   
 
 
@@ -36,16 +36,16 @@ default: all
 all: stream stream-full stream-2
 
 .cc.o:
-	$(CXX) $(CFLAGS) -c $*.cc
+	$(CXX) $(CXXFLAGS) -c $*.cc
 
 .cu.o: Makefile
-	$(CXX) $(CFLAGS) -c $*.cu
-	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx
-	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
+	$(CXX) $(CUFLAGS) -c $*.cu
+	$(CXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 
-stream-full: stream-full.cu
+stream-full: stream-full.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 

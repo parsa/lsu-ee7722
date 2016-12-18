@@ -3,7 +3,12 @@ INCLUDE =  -I../../include
 LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
-CUDUMP = $(CUDAPATH)/bin/cuobjdump
+CUDUMP = $(CUDAPATH)/bin/nvdisasm
+CUDUMPFLAGS = --print-code 
+# --print-line-info 
+# --print-instruction-encoding
+# --print-life-ranges --life-range-mode wide
+
 
 # -Xnvopencc -LIST:source=on
 
@@ -24,9 +29,10 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 .SUFFIXES: .cu .cuh
 
-
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
+CXXFLAGS = $(CFLAGS)  -std=c++11
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
+
 LIBRARIES =    -lrt 
 
 
@@ -37,10 +43,10 @@ default: stencil stencil-2d
 	$(CXX) $(CFLAGS) -c $*.cc
 
 .cu.o: Makefile
-	$(CXX) $(CFLAGS) -c $*.cu
-	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx
-	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
-	$(CUDUMP) -sass $*.cubin > $*.sass
+	$(CXX) $(CUFLAGS) -c $*.cu
+	$(CXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 
 stencil.o: stencil.cc stencil-kernel.cu stencil.cuh Makefile

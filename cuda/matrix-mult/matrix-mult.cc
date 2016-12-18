@@ -8,99 +8,52 @@
 #include <gp/cuda-util.h>
 #include "matrix-mult.cuh"
 
+GPU_Info gpu_info;
 cudaEvent_t cuda_start_ce, cuda_stop_ce;
-cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
-
-double cuda_ips_get(cudaDeviceProp cuda_prop)
-{
-  const int peak_ipc =
-  cuda_prop.major == 1 ? 8 : 
-    cuda_prop.major == 2 & cuda_prop.minor == 0 ? 32 :
-    cuda_prop.major == 2 & cuda_prop.minor == 1 ? 48 : 0;
-
-  return peak_ipc
-    * 1000.0 * cuda_prop.multiProcessorCount * cuda_prop.clockRate;
-}
 
 void
 cuda_init()
 {
+  // Print info about available GPUs.
+  //
+  gpu_info_print();
+
   // Get information about GPU and its ability to run CUDA.
   //
   int device_count;
   cudaGetDeviceCount(&device_count); // Get number of GPUs.
   ASSERTS( device_count );
-  for ( int dev = 0; dev < device_count; dev ++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
-
-      printf
-        ("GPU %d: CAP: %d.%d  MP: %2d  TH/WP: %3d  TH/BL: %4d  "
-         "BL/GR %d/%d/%d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cuda_prop.warpSize,
-         cuda_prop.maxThreadsPerBlock,
-         cuda_prop.maxGridSize[0],
-         cuda_prop.maxGridSize[1],
-         cuda_prop.maxGridSize[2]
-         );
-
-      printf
-        ("GPU %d: SHARED: %5d  CONST: %5d  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: PEAK EXEC RATE: %7.3f GI/s\n",
-         dev, cuda_ips_get(cuda_prop));
-
-    }
 
   const int dev_prefer = 1;
   const int dev = min(dev_prefer,device_count-1);
 
   printf("Using GPU %d\n",dev);
   CE(cudaSetDevice(dev));
-  CE(cudaGetDeviceProperties(&cuda_prop,dev));
-
+  gpu_info.get_gpu_info(dev);
 
   // Prepare events used for timing.
   //
   CE(cudaEventCreate(&cuda_start_ce));
   CE(cudaEventCreate(&cuda_stop_ce));
-}
 
-pCUDA_Func_Attributes*
-cuda_func_attr_get(int &count)
-{
-  pCUDA_Func_Attributes *func_attr;
-  count = kernels_get_attr(&func_attr);
+  kernels_get_attr(gpu_info);
 
   printf("CUDA Routine Resource Usage:\n");
 
-  for ( int i=0; i<count; i++ )
+  for ( int i=0; i<gpu_info.num_kernels; i++ )
     {
-      pStringF err_txt("Err %d",func_attr[i].err);
-      printf(" %-20s: %s\n"
-             "%6zd B shared,  %zd B const,  %zd B loc,  %d regs; "
-             "%d max thr / block\n",
-             func_attr[i].name,
-             func_attr[i].err ? err_txt.s : "",
-             func_attr[i].attr.sharedSizeBytes,
-             func_attr[i].attr.constSizeBytes,
-             func_attr[i].attr.localSizeBytes,
-             func_attr[i].attr.numRegs,
-             func_attr[i].attr.maxThreadsPerBlock);
+      auto& ki = gpu_info.ki[i];
+      printf(" %-20s:\n"
+             "%6zd B shared,  %4zd B const,  %4zd B loc,  %3d regs; "
+             "%4d max thr / block\n",
+             ki.name,
+             ki.cfa.sharedSizeBytes,
+             ki.cfa.constSizeBytes,
+             ki.cfa.localSizeBytes,
+             ki.cfa.numRegs,
+             ki.cfa.maxThreadsPerBlock);
     }
-  return func_attr;
 }
-
 
 class Matrix_Mult {
 public:
@@ -128,13 +81,9 @@ public:
   pCUDA_Memory<int32_t> t_compute;
   pCUDA_Memory<int32_t> t_all;
 
-  pCUDA_Func_Attributes *cuda_func_attr;
-  int cuda_func_attr_count;
-
   void init(int argc, char **argv)
   {
     cuda_init();
-    cuda_func_attr = cuda_func_attr_get(cuda_func_attr_count);
 
     srand48(1);                   // Seed random number generator.
 
@@ -270,7 +219,7 @@ public:
 
     return;
 
-    if ( cuda_prop.major >= 2 )
+    if ( gpu_info.cuda_prop.major >= 2 )
       {
         run(8,1,4);
         run(8,2,4);
@@ -313,7 +262,7 @@ public:
     void* const a_dev = a.get_dev_addr();
     void* const b_dev = b.get_dev_addr();
 
-    if ( block_size > cuda_func_attr[version].attr.maxThreadsPerBlock ) return;
+    if ( block_size > gpu_info.ki[version].cfa.maxThreadsPerBlock ) return;
 
     // Specify Launch Configuration
     //
@@ -329,7 +278,8 @@ public:
     // Prepare for the number of blocks to array_size / block_size.
     //
     if ( bl_per_mp )
-      dg.x = min(grid_size_max,cuda_prop.multiProcessorCount * bl_per_mp);
+      dg.x =
+        min(grid_size_max,gpu_info.cuda_prop.multiProcessorCount * bl_per_mp);
     else
       dg.x = grid_size_max;
     dg.y = dg.z = 1;
@@ -348,11 +298,11 @@ public:
 
     printf("Grid Dim %3d,  Block Dim %3d,  BL/MP %.2f,  %s\n",
            dg.x, db.x,
-           double(dg.x)/cuda_prop.multiProcessorCount,
-           cuda_func_attr[version].name
+           double(dg.x)/gpu_info.cuda_prop.multiProcessorCount,
+           gpu_info.ki[version].name
            );
 
-    if ( int(dg.x) > cuda_prop.maxGridSize[0] )
+    if ( int(dg.x) > gpu_info.cuda_prop.maxGridSize[0] )
       {
         printf("*** Maximum grid size exceeded, doing nothing. Sorry.\n");
         return;
@@ -418,7 +368,7 @@ public:
             + max(1,row_cnt >> dim_block_lg) // Read elements of b.
             );
 
-        const double peak_insn = cuda_time_ms * 1e-3 * cuda_ips_get(cuda_prop);
+        const double peak_insn = cuda_time_ms * 1e-3 * gpu_info.chip_sp_flops;
 
         printf("CUDA Time %7.3f ms  Throughput %7.3f GFlop/s  Eff %.4f  "
                "Eff ac %.4f\n",
