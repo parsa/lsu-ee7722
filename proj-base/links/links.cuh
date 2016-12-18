@@ -1,13 +1,13 @@
 
 
-
+#include <gp/cuda-gpuinfo.h>
 
 struct CBall {
   pCoor *position;
   pVect4 *velocity;
   pVect4 *force;
   pQuat *orientation;
-  pMatrix3x3 *omatrix;
+  pMatrix3x3p *omatrix;
   pVect4 *omega;
   pVect4 *torque;
   float *mass, *fdt_to_do;
@@ -47,4 +47,5 @@ public:
 };
 
 void data_cpu_to_gpu_common(CPU_GPU_Common *host_c);
-void launch_time_step(double delta_t);
+void launch_time_step(float delta_t, int gsize, int blksize);
+__host__ cudaError_t cuda_setup(GPU_Info *gpu_info);

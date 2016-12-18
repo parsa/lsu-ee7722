@@ -129,7 +129,7 @@ public:
   pCoor position;
   pVect velocity;
   pQuat orientation;
-  pMatrix3x3 omatrix;
+  pMatrix3x3p omatrix;
   pVect omega;                  // Spin rate and axis.
 
   int idx; // Position in balls_pos_rad;
@@ -272,7 +272,7 @@ typedef pVectorI<Ball> Balls;
 
 
 enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
-enum Shader_Option { SO_Phong, SO_Set_1, SO_Set_2, SO_ENUM_SIZE };
+enum Shader_Option { SO_Phong, SO_Set_1, SO_ENUM_SIZE };
 
 class World {
 public:
@@ -385,7 +385,9 @@ public:
   /// CUDA Stuff
 
   int opt_physics_method;
+  GPU_Info gpu_info;
   cudaEvent_t frame_start_ce, frame_stop_ce;
+  int opt_block_size;
   bool gpu_const_data_stale;
   bool cpu_phys_data_stale;
 
@@ -394,12 +396,10 @@ public:
   void data_gpu_to_cpu_dynamic();
   CPU_GPU_Common c;  // c is for common.  See links.cuh.
 
-  void render_link_1(Link *link);
-  void render_link_2_start();
-  void render_link_2_gather(Link *link);
-  void render_link_2_render();
+  void render_link_start();
+  void render_link_gather(Link *link);
+  void render_link_render();
 
-  pShader *sp_set_1;
   pShader *sp_set_2;
   GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
   double world_time_link_update;
@@ -616,26 +616,12 @@ World::render_objects(Render_Option option)
 
       glBindTexture(GL_TEXTURE_2D,texid_hw);
 
-      const bool rl2 = opt_shader >= SO_Set_1;
-
-      if ( rl2 )
-        {
-          render_link_2_start();
-        }
-      else
-        {
-          sp_phong->use();
-          glUniform1i(2, light_state);
-          glUniform2i(3, opt_tryout1, opt_tryout2);
-        }
+      render_link_start();
 
       for ( Link *link: links )
         {
           if ( !link->is_renderable ) continue;
-          if ( !rl2 )
-            render_link_1(link);
-          else
-            render_link_2_gather(link);
+          render_link_gather(link);
           continue;
 
           Ball *const ball1 = link->ball1;
@@ -650,8 +636,7 @@ World::render_objects(Render_Option option)
           cyl.render(pos1,0.3*ball1->radius, pos2-pos1);
         }
 
-      if ( rl2 )
-        render_link_2_render();
+      render_link_render();
 
     }
 
@@ -811,6 +796,10 @@ World::render()
     ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z );
+
+  ogl_helper.fbprintf
+    ("%4zd Balls  %4zd Links\n",
+     balls.size(), links.size());
 
   const char *sh_names[] = { "PLAIN", "SET 1", "SET 2" };
 
@@ -1111,13 +1100,6 @@ World::cb_keyboard()
 void
 World::init(int argc, char **argv)
 {
-  opt_physics_method = GP_cuda;
-  gpu_const_data_stale = true;
-  cpu_phys_data_stale = false;
-
-  CE( cudaEventCreate(&frame_start_ce) );
-  CE( cudaEventCreate(&frame_stop_ce) );
-
   chain_length = 14;
 
   opt_time_step_duration = 0.0003;
@@ -1148,6 +1130,61 @@ World::init(int argc, char **argv)
   opt_shader = SO_Set_1;
 
   /// Init CUDA
+
+  // Get information about GPU and its ability to run CUDA.
+  //
+  int device_count;
+  cudaGetDeviceCount(&device_count); // Get number of GPUs.
+  if ( device_count == 0 )
+    {
+      fprintf(stderr,"No GPU found, exiting.\n");
+      exit(1);
+    }
+
+  // Print information about the available GPUs.
+  //
+  gpu_info_print();
+
+  // Choose GPU 0 because we don't have time to provide a way to let
+  // the user choose.
+  //
+  int dev = 0;
+  CE(cudaSetDevice(dev));
+  printf("Using GPU %d\n",dev);
+
+  gpu_info.get_gpu_info(dev);
+  cuda_setup(&gpu_info);
+
+  // Print information about time_step routine.
+  //
+  printf("\nCUDA Routine Resource Usage:\n");
+
+  int block_size_max = 4096;
+
+  for ( int i=0; i<gpu_info.num_kernels; i++ )
+    {
+      printf("For %s:\n", gpu_info.ki[i].name);
+      printf("  %6zd shared, %zd const, %zd loc, %d regs; "
+             "%d max threads per block.\n",
+             gpu_info.ki[i].cfa.sharedSizeBytes,
+             gpu_info.ki[i].cfa.constSizeBytes,
+             gpu_info.ki[i].cfa.localSizeBytes,
+             gpu_info.ki[i].cfa.numRegs,
+             gpu_info.ki[i].cfa.maxThreadsPerBlock);
+      set_min(block_size_max,gpu_info.ki[i].cfa.maxThreadsPerBlock);
+    }
+
+  opt_physics_method = GP_cuda;
+  gpu_const_data_stale = true;
+  cpu_phys_data_stale = false;
+
+  CE( cudaEventCreate(&frame_start_ce) );
+  CE( cudaEventCreate(&frame_stop_ce) );
+
+  opt_block_size = 32;
+
+  variable_control.insert_power_of_2
+    (opt_block_size, "Block Size", 32, block_size_max);
 
   c.alloc_n_balls = 0;
   c.alloc_n_links = 0;
@@ -1185,12 +1222,6 @@ World::init(int argc, char **argv)
 
   const char* const links_shader_code_path = "links-shdr-links.cc";
 
-  sp_set_1 = new pShader
-    (links_shader_code_path,
-     "vs_main_1(); ",     // Name of vertex shader main routine.
-     "gs_main_1();",      // Name of geometry shader main routine.
-     "fs_main();"       // Name of fragment shader main routine.
-     );
   sp_set_2 = new pShader
     (links_shader_code_path,
      "vs_main_2(); ",     // Name of vertex shader main routine.
@@ -1378,7 +1409,7 @@ World::data_cpu_to_gpu_dynamic()
     n_balls > c.alloc_n_balls || n_links > c.alloc_n_links;
   const bool need_init = c.alloc_n_balls == 0;
 
-#define ALLOC_MOVE(n_balls,balls,memb,do_move)                                \
+#define ALLOC_MOVE_ZERO(n_balls,balls,memb,do_move,do_zero)                   \
   {                                                                           \
     const int size_elt_bytes = sizeof(c.balls.memb[0]);                       \
     const int size_bytes = n_balls * size_elt_bytes;                          \
@@ -1400,20 +1431,25 @@ World::data_cpu_to_gpu_dynamic()
             ( c.balls.memb, c.h_##balls.memb,                                 \
               size_bytes, cudaMemcpyDefault ) );                              \
       }                                                                       \
+    else if ( do_zero )                                                       \
+      {                                                                       \
+        CE( cudaMemset( c.balls.memb, 0, size_bytes ) );                      \
+      }                                                                       \
   }
 
-#define MOVEc(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,gpu_const_data_stale)
-#define MOVE(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,1)
-#define ALLOC(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,0)
-
+#define MOVEc(num,ptr,memb) \
+  ALLOC_MOVE_ZERO(num,ptr,memb,gpu_const_data_stale,0)
+#define MOVE(num,ptr,memb) ALLOC_MOVE_ZERO(num,ptr,memb,1,0)
+#define ALLOC(num,ptr,memb) ALLOC_MOVE_ZERO(num,ptr,memb,0,0)
+#define ZERO(num,ptr,memb) ALLOC_MOVE_ZERO(num,ptr,memb,0,1)
   MOVE(n_balls,balls,position);
   MOVE(n_balls,balls,velocity);
-  ALLOC(n_balls,balls,force);
+  ZERO(n_balls,balls,force);
 
   MOVE(n_balls,balls,orientation);
   MOVEc(n_balls,balls,omatrix);
   MOVE(n_balls,balls,omega);
-  ALLOC(n_balls,balls,torque);
+  ZERO(n_balls,balls,torque);
   MOVEc(n_balls,balls,mass);
   MOVEc(n_balls,balls,fdt_to_do);
   MOVEc(n_balls,balls,locked);
@@ -1429,6 +1465,7 @@ World::data_cpu_to_gpu_dynamic()
 #undef MOVE
 #undef MOVEc
 #undef ALLOC
+#undef ZERO
 #undef ALLOC_MOVE
   if ( need_alloc )
     {
@@ -1929,164 +1966,7 @@ void World::balls_freeze(){balls_stop();}
 
 
 void
-World::render_link_1(Link *link)
-{
-  Ball *const ball1 = link->ball1;
-  Ball *const ball2 = link->ball2;
-
-  // Direction of link relative to center off ball.
-  //
-  pVect dir1 = ball1->omatrix * link->cb1;
-
-  // Place on surface of ball where link connects.
-  //
-  pCoor pos1 = ball1->position + dir1;
-
-  // Direction and connection location for ball 2.
-  //
-  pVect dir2 = ball2->omatrix * link->cb2;
-  pCoor pos2 = ball2->position + dir2;
-
-  pVect p1p2(pos1,pos2);
-  pNorm p1p2n(p1p2);
-
-  // Number of segments used to construct link.  Each segment is
-  // approximately a cylinder.
-  //
-  const int segments = opt_segments;
-
-  // Number of sides of each cylinder.
-  //
-  const int sides = opt_sides;
-
-  const float delta_tee = 1.0 / segments;
-
-  // Radius of link.
-  //
-  const float rad = ball1->radius * 0.3;
-
-  // Compute scale factors for texture.
-  const float tex_aspect_ratio = 3147 / 1151;
-  const float page_width_o = 2.5;  // Width of texture in object-space coords.
-  const float tex_t_scale = link->distance_relaxed / page_width_o;
-  const float tex_angle_scale = rad * tex_aspect_ratio / page_width_o;
-
-  pNorm dirn1(dir1);
-  pNorm dirn2(dir2);
-
-  // Vectors used to describe the cubic Hermite curve.
-  //
-  pVect v1 = p1p2n.magnitude * dirn1;
-  pVect v2 = p1p2n.magnitude * dirn2;
-
-  // Convert link's local x and y axes to global coordinates.
-  //
-  pVect b1_ydir = ball1->omatrix * link->b1_dir;
-
-  pVect b2_ydir = ball2->omatrix * link->b2_dir;
-
-  pCoor pts[sides+1];
-  pVect vecs[sides+1];
-
-  pCoors coords;
-  pVects norms;
-  pVector<float> tcoords;
-
-  for ( int i=0; i<=segments; i++ )
-    {
-      const float t = i * delta_tee;
-      const float t2 = t * t;
-      const float t3 = t2 * t;
-
-      // Cubic Hermite interpolation.
-      // Compute point along core of link.
-      //
-      pCoor ctr =
-        ( 2*t3 - 3*t2 + 1 ) * pos1 + (-2*t3 + 3*t2 ) * pos2
-        + (t3 - 2*t2 + t ) * v1 - (t3 - t2 ) * v2;
-
-      // Compute direction of link at this point.
-      //
-      pNorm tan =
-        ( 6*t2 - 6*t ) * pos1 + (-6*t2 + 6*t ) * pos2
-        + (3*t2 - 4*t + 1 ) * v1 - (3*t2 - 2*t ) * v2;
-
-      // Compute local x and y axes for drawing a cylinder.
-      //
-      pVect ydir = (1-t) * b1_ydir + t * b2_ydir;
-      pNorm norm = cross(tan,ydir);
-      pVect binorm = cross(tan,norm);
-
-      for ( int j=0; j<sides; j++ )
-        {
-          const float theta = j * ( 2 * M_PI / sides );
-          pCoor pt = pts[j];
-          pVect vec = vecs[j];
-          vecs[j] = cosf(theta) * norm + sinf(theta) * binorm;
-          pts[j] = ctr + rad * vecs[j];
-
-          if ( opt_shader == SO_Set_1 ) pts[j].w = theta;
-
-          if ( i == 0 ) continue;
-
-          tcoords += t * tex_t_scale;
-          tcoords += theta * tex_angle_scale;
-
-          norms += vecs[j];
-          coords += pts[j];
-
-          tcoords += ( t - delta_tee ) * tex_t_scale;
-          tcoords += theta * tex_angle_scale;
-
-          norms += vec;
-          coords += pt;
-
-        }
-    }
-
-  if ( !link_bo_vtx ) glGenBuffers(3,&link_bo_vtx);
-
-  glBindBuffer(GL_ARRAY_BUFFER, link_bo_vtx);
-  glBufferData
-    (GL_ARRAY_BUFFER,           // Kind of buffer object.
-     sizeof(coords[0])*coords.size(), coords.data(),
-     GL_STREAM_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, link_bo_nrm);
-  glBufferData
-    (GL_ARRAY_BUFFER,           // Kind of buffer object.
-     sizeof(norms[0])*norms.size(), norms.data(),
-     GL_STREAM_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, link_bo_tco);
-  glBufferData
-    (GL_ARRAY_BUFFER,           // Kind of buffer object.
-     sizeof(tcoords[0])*tcoords.size(), tcoords.data(),
-     GL_STREAM_DRAW);
-
-  const int num_vtx = coords.size();
-
-  glColor3fv( color_dim_gray );
-
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glBindBuffer(GL_ARRAY_BUFFER, link_bo_vtx);
-  glVertexPointer( 4, GL_FLOAT, sizeof(coords[0]), NULL);
-  glEnableClientState(GL_NORMAL_ARRAY);
-  glBindBuffer(GL_ARRAY_BUFFER, link_bo_nrm);
-  glNormalPointer( GL_FLOAT, 0, NULL );
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  glBindBuffer(GL_ARRAY_BUFFER, link_bo_tco);
-  glTexCoordPointer(2,GL_FLOAT,0,NULL);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, num_vtx );
-
-  glDisableClientState(GL_NORMAL_ARRAY);
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-}
-
-void
-World::render_link_2_start()
+World::render_link_start()
 {
   if ( world_time_link_update == world_time ) return;
 
@@ -2110,7 +1990,7 @@ World::render_link_2_start()
 }
 
 void
-World::render_link_2_gather(Link *link)
+World::render_link_gather(Link *link)
 {
   // Place data needed to render link (the argument to this function)
   // in arrays. Just before rendering those arrays will be placed in
@@ -2182,7 +2062,7 @@ World::render_link_2_gather(Link *link)
 
 
 void
-World::render_link_2_render()
+World::render_link_render()
 {
   // Perform a rendering pass to render all the links collected
   // by the routine render_link_2.
@@ -2193,18 +2073,7 @@ World::render_link_2_render()
   const bool first_render = world_time_link_update != world_time;
   world_time_link_update = world_time;
 
-  if ( opt_shader == SO_Set_1 )
-    {
-      // Use shaders vs_main_1 and gs_main_1
-      //
-      sp_set_1->use();
-    }
-  else
-    {
-      // Use shaders vs_main_2 and gs_main_2
-      //
-      sp_set_2->use();
-    }
+  sp_set_2->use();
 
   // Number of segments used to construct link.  Each segment is
   // approximately a cylinder.
@@ -2261,6 +2130,13 @@ World::frame_callback()
   frame_timer.phys_start();
   const double time_now = time_wall_fp();
   const int time_step_count_start = time_step_count;
+  const int nmp = gpu_info.cuda_prop.multiProcessorCount;
+  int bl_p_sm_max = 1024;
+  for ( int i=0; i<gpu_info.num_kernels; i++ )
+    set_min
+      (bl_p_sm_max,
+       gpu_info.get_max_active_blocks_per_mp(i, opt_block_size, 0) );
+  const int grid_size = bl_p_sm_max * nmp;
 
   const bool opt_cuda = opt_physics_method != GP_cpu;
   if ( opt_cuda )
@@ -2292,7 +2168,7 @@ World::frame_callback()
         {
           if ( opt_cuda )
             {
-              launch_time_step(opt_time_step_duration);
+              launch_time_step(opt_time_step_duration,grid_size,opt_block_size);
             }
           else
             {

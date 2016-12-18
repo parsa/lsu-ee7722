@@ -157,7 +157,7 @@ fs_main()
   // Perform lighting, fetch and blend texture, then emit fragment.
   //
 
-  // Get filtered texel, unless the fragment belongs to an edge primitive.
+  // Get filtered texel.
   //
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
 
@@ -176,13 +176,7 @@ void
 fs_main_sv()
 {
   vec4 color2 = gl_FrontFacing ? vec4(0.8,0,0,1) : vec4(0,0,0,0);
-
-  // Multiply filtered texel color with lighted color of fragment.
-  //
   gl_FragColor = color2;
-
-  // Copy fragment depth unmodified.
-  //
   gl_FragDepth = gl_FragCoord.z;
 }
 

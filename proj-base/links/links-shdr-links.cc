@@ -41,7 +41,6 @@ out Data_to_GS
   vec4 gl_Position;
   vec4 vertex_e;
 
-  /// SOLUTION
   float t;
   vec4 ctr;
   vec3 norm, binorm;
@@ -50,25 +49,8 @@ out Data_to_GS
 };
 
 void
-vs_main_1()
-{
-  iid = gl_InstanceID;
-  const int i = gl_VertexID;
-  float t = i * delta_tee;
-
-  vec3 vertex_1 = pos1[iid].xyz;
-  vec3 vertex_2 = pos2[iid].xyz;
-  vec4 vertex_o = vec4( mix( vertex_2, vertex_1, t ), 1);
-  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
-  vertex_e = gl_ModelViewMatrix * vertex_o;
-}
-
-void
 vs_main_2()
 {
-  // Here, the vertex shader does nothing except pass variables
-  // to the geometry shader.
-
   iid = gl_InstanceID;
 
   const int i = gl_VertexID;
@@ -110,7 +92,6 @@ in Data_to_GS
   vec4 gl_Position;
   vec4 vertex_e;
 
-  /// SOLUTION
   float t;
   vec4 ctr;
   vec3 norm, binorm;
@@ -129,28 +110,8 @@ layout ( lines ) in;
 
 // Type of primitives emitted geometry shader output.
 //
-
-// Sides + 2
 layout ( triangle_strip, max_vertices = 42 ) out;
 
-
-void
-gs_main_1()
-{
-  vec3 v01 = In[1].vertex_e.xyz - In[0].vertex_e.xyz;
-  vec3 ax = normalize(v01.x == 0 ? vec3(0,v01.z,-v01.y) : vec3(v01.y,-v01.x,0));
-  float l = length(v01);
-  for ( int i=0; i<2; i++ )
-    {
-      vertex_e = In[i].vertex_e;
-      gl_Position = In[i].gl_Position;
-      EmitVertex();
-      vertex_e = In[i].vertex_e + vec4( ax * l * 0.1, 1 );
-      gl_Position = gl_ProjectionMatrix * vertex_e;
-      EmitVertex();
-    }
-  EndPrimitive();
-}
 
 void
 gs_main_2()
@@ -210,10 +171,9 @@ fs_main()
   // Perform lighting, fetch and blend texture, then emit fragment.
   //
 
-  // Get filtered texel, unless the fragment belongs to an edge primitive.
+  // Get filtered texel.
   //
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
-
   vec4 color2 = gl_FrontFacing ? color_front : color_back;
 
   // Multiply filtered texel color with lighted color of fragment.

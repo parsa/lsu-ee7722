@@ -6,10 +6,25 @@ using namespace pCUDA_coord;
 
 #include "links.cuh"
 #include <gp/cuda-util-kernel.h>
-#include <gp/cuda-gpuinfo.h>
-#include <assert.h>
 
 __constant__ CPU_GPU_Common dc;
+
+__global__ void time_step_gpu_links(float delta_t);
+__global__ void time_step_gpu_balls(float delta_t);
+
+__host__ cudaError_t
+cuda_setup(GPU_Info *gpu_info)
+{
+  // Return attributes of CUDA functions. The code needs the
+  // maximum number of threads.
+
+  cudaError_t e1 = cudaSuccess;
+
+  gpu_info->GET_INFO(time_step_gpu_links);
+  gpu_info->GET_INFO(time_step_gpu_balls);
+
+  return e1;
+}
 
 void
 data_cpu_to_gpu_common(CPU_GPU_Common *host_c)
@@ -17,16 +32,11 @@ data_cpu_to_gpu_common(CPU_GPU_Common *host_c)
   CE( cudaMemcpyToSymbol( dc, host_c, sizeof(*host_c) ) );
 }
 
-__global__ void time_step_gpu_zero();
-__global__ void time_step_gpu_links(float delta_t);
-__global__ void time_step_gpu_balls(float delta_t);
-
 __host__ void
-launch_time_step(double delta_t)
+launch_time_step(float delta_t, int gsize, int blksize)
 {
-  time_step_gpu_zero<<<13,256>>>();
-  time_step_gpu_links<<<13,256>>>(delta_t);
-  time_step_gpu_balls<<<13,256>>>(delta_t);
+  time_step_gpu_links<<<gsize,blksize>>>(delta_t);
+  time_step_gpu_balls<<<gsize,blksize>>>(delta_t);
 }
 
 
@@ -40,6 +50,13 @@ platform_collision_possible(pCoor pos)
     && pos.z >= dc.platform_zmin && pos.z <= dc.platform_zmax;
 }
 
+__device__ void
+pAtomic_Add(pVect4& d, pVect s)
+{
+  atomicAdd(&d.x,s.x);
+  atomicAdd(&d.y,s.y);
+  atomicAdd(&d.z,s.z);
+}
 
 __global__ void
 time_step_gpu_links(float delta_t)
@@ -98,33 +115,23 @@ time_step_gpu_links(float delta_t)
       // Determine whether spring is gaining energy (whether its length
       // is getting further from its relaxed length).
       //
-      const bool gaining_e = ( delta_s > 0.0 ) == ( spring_stretch > 0 );
+      const bool gaining_e = ( delta_s > 0.0f ) == ( spring_stretch > 0 );
 
       // Use a smaller spring constant when spring is loosing energy,
       // a quick and dirty way of simulating energy loss due to spring
       // friction.
       //
       const float spring_constant =
-        gaining_e ? dc.opt_spring_constant : dc.opt_spring_constant * 0.7;
+        gaining_e ? dc.opt_spring_constant : dc.opt_spring_constant * 0.7f;
 
       const float force_mag = spring_constant * spring_stretch;
       pVect spring_force_12 = force_mag * link_dir;
 
       // Apply forces affecting linear momentum.
       //
-      //  link(spring_force_12) = spring_force_12;
 
-#define ATOMIC(d,s) \
-      atomicAdd(&d.x,s.x); atomicAdd(&d.y,s.y); atomicAdd(&d.z,s.z);
-
-      ATOMIC(ball1(force),spring_force_12);
-      ATOMIC(ball2(force),-spring_force_12);
-#if 0
-      ball1->force += link->spring_force_12;
-      ball2->force -= link->spring_force_12;
-      ball1->torque += link->torque1;
-      ball2->torque -= link->torque2;
-#endif
+      pAtomic_Add( ball1(force),  spring_force_12 );
+      pAtomic_Add( ball2(force), -spring_force_12 );
 
       if ( ! link(is_surface_connection) ) continue;
 
@@ -134,40 +141,10 @@ time_step_gpu_links(float delta_t)
       // Apply torque.
       //
       pVect torque1 = cross(dir1n, spring_force_12);
-      pVect torque2 = cross(dir2n, spring_force_12);
+      pVect torque2 = cross(spring_force_12,dir2n);
 
-      ATOMIC(ball1(torque),torque1);
-      ATOMIC(ball2(torque),-torque2);
-    }
-
-#if 0
-  // Note: Because two links can reference the same ball this should
-  // not be done in parallel.
-  for ( Link *link: links )
-    {
-      if ( !link->is_simulatable ) continue;
-      Ball* const ball1 = link->ball1;
-      Ball* const ball2 = link->ball2;
-      ball1->force += link->spring_force_12;
-      ball2->force -= link->spring_force_12;
-      ball1->torque += link->torque1;
-      ball2->torque -= link->torque2;
-    }
-#endif
-
-}
-
-__global__ void
-time_step_gpu_zero()
-{
-  const int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  const int n_threads = blockDim.x * gridDim.x;
-#define ball(mem) dc.balls.mem[bi]
-
-  for ( int bi=tid; bi<dc.n_balls; bi += n_threads )
-    {
-      ball(force) = pVect4(0);
-      ball(torque) = pVect4(0);
+      pAtomic_Add( ball1(torque),  torque1 );
+      pAtomic_Add( ball2(torque),  torque2 );
     }
 }
 
@@ -177,24 +154,7 @@ time_step_gpu_balls(float delta_t)
   const int tid = threadIdx.x + blockDim.x * blockIdx.x;
   const int n_threads = blockDim.x * gridDim.x;
 
-
-#if 0
-  // Note: Because two links can reference the same ball this should
-  // not be done in parallel.
-  for ( Link *link: links )
-    {
-      if ( !link->is_simulatable ) continue;
-      Ball* const ball1 = link->ball1;
-      Ball* const ball2 = link->ball2;
-      ball1->force += link->spring_force_12;
-      ball2->force -= link->spring_force_12;
-      ball1->torque += link->torque1;
-      ball2->torque -= link->torque2;
-    }
-#endif
-
 #define ball(mem) dc.balls.mem[bi]
-
 
   ///
   /// Update Position of Each Ball
@@ -204,8 +164,8 @@ time_step_gpu_balls(float delta_t)
     {
       if ( ball(locked) )
         {
-          ball(velocity) = pVect(0);
-          ball(omega) = pVect(0);
+          ball(velocity) = pVect4(0);
+          ball(omega) = pVect4(0);
           continue;
         }
 
@@ -219,9 +179,9 @@ time_step_gpu_balls(float delta_t)
       //
       const float mass = ball(mass);
       pCoor ball_position = ball(position);
-      pVect ball_velocity = ball(velocity);
-      pVect ball_force = ball(force);
-      ball(force) = pVect(0);
+      pVect4 ball_velocity = ball(velocity);
+      pVect4 ball_force = ball(force);
+      ball(force) = pVect4(0);
       ball_force += mass * dc.gravity_accel;
 
       pVect delta_v = ( delta_t / mass ) * ball_force;
@@ -264,10 +224,11 @@ time_step_gpu_balls(float delta_t)
       ball_position += ball_velocity * delta_t;
       ball(position) = ball_position;
 
-      pVect ball_omega = ball(omega);
+      pVect4 ball_omega = ball(omega);
 
       ball_omega += delta_t * ball(fdt_to_do) * ball(torque);
       ball(omega) = ball_omega;
+      ball(torque) = pVect4(0);
 
       pNorm axis(ball_omega);
 
@@ -275,12 +236,12 @@ time_step_gpu_balls(float delta_t)
       //
       // If ball isn't spinning fast skip expensive rotation.
       //
-      //  if ( axis.mag_sq < 0.000001 ) continue;
+      if ( axis.mag_sq < 0.000001f ) continue;
 
       pQuat orientation =
         pQuat( axis, delta_t * axis.magnitude ) * ball(orientation);
       ball(orientation) = orientation;
-      ball(omatrix) = pMatrix3x3(orientation);
+      ball(omatrix) = pMatrix3x3p(orientation);
     }
 
 #undef ball

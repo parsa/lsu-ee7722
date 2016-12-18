@@ -3,7 +3,7 @@
 ##  Makefile for Links Demo
 ##
 
-OPT_FLAGS =
+OPT_FLAGS = -O3
 
 # Uncomment the line below for GPU optimization.
 #

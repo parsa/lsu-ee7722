@@ -16,12 +16,15 @@ public:
 };
 
 // Intended for situations where a power-of-2 stride element is needed.
-class  __builtin_align__(16) pVect4 {
+class __builtin_align__(16) pVect4 {
 public:
   float x, y, z, w;
+  __device__ pVect4(){};
   __device__ pVect4(float f):x(f),y(f),z(f),w(f){};
   __device__ operator const pVect () const { return pVect(x,y,z); }
   __device__ void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
+  __device__ void operator += (pVect v) {x+=v.x; y+=v.y; z+=v.z; }
+  __device__ void operator *= (float f) {x*=f; y*=f; z*=f; }
 };
 
 class pCoor3 {
@@ -104,7 +107,7 @@ __device__ pNorm operator -(pNorm n)
   return m;
 }
 
-class pQuat {
+class __builtin_align__(16) pQuat {
 public:
   __device__ pQuat(){};
   __device__ pQuat(pNorm axis, float angle)
@@ -182,17 +185,23 @@ __device__ inline pQuat operator * (pQuat q, pQuat v)
 { return quat_mult(q,v); }
 
 
-class pMatrix3x3 {
+class __builtin_align__(16) pMatrix3x3p {
 public:
-  __device__ pMatrix3x3() {};
-  __device__ pMatrix3x3(pQuat q){ set_rotation(q); }
+  __device__ pMatrix3x3p() {};
+  __device__ pMatrix3x3p(pQuat q){ set_rotation(q); }
+  __device__ pMatrix3x3p(pMatrix3x3p& m){r0=m.r0; r1=m.r1; r2=m.r2;}
   __device__ void set_rotation(pQuat q);
   __device__ void set_rotation(pVect u, float theta);
-  pVect r0, r1, r2;
+  pVect4 r0, r1, r2;
+};
+
+class pMatrix {
+public:
+  pVect4 r[4];
 };
 
 __device__ void
-pMatrix3x3::set_rotation(pVect u, float theta)
+pMatrix3x3p::set_rotation(pVect u, float theta)
 {
   const float cos_theta = __cosf(theta);
   const float sin_theta = sqrtf(1.0f - cos_theta * cos_theta );
@@ -209,7 +218,7 @@ pMatrix3x3::set_rotation(pVect u, float theta)
 
 // Set matrix m to a rotation matrix based on quaternion q.
 __device__ void
-pMatrix3x3::set_rotation(pQuat q)
+pMatrix3x3p::set_rotation(pQuat q)
 {
   r0.x = 1.f - 2.f * q.v.y * q.v.y - 2.f * q.v.z * q.v.z;
   r0.y = 2.f * q.v.x * q.v.y - 2.f * q.w * q.v.z;
@@ -220,9 +229,10 @@ pMatrix3x3::set_rotation(pQuat q)
   r2.x = 2.f * q.v.x * q.v.z - 2.f * q.w * q.v.y;
   r2.y = 2.f * q.v.y * q.v.z + 2.f * q.w * q.v.x;
   r2.z = 1.f - 2.f * q.v.x * q.v.x - 2.f * q.v.y * q.v.y;
+  r0.w = r1.w = r2.w = 0;  // Zero these to get vector writes.
 }
 
-__device__ pVect operator *(pMatrix3x3 m, pVect coor)
+__device__ pVect operator *(pMatrix3x3p m, pVect coor)
 { return
     pVect(dot(m.r0,coor), dot(m.r1,coor), dot(m.r2,coor)); }
 
