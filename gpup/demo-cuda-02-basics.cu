@@ -217,95 +217,17 @@ kmain_simple()
     }
 }
 
-float dot(float4 p, float4 q) { return p.x*q.x+p.y*q.y+p.z*q.z+p.w*q.w;}
-float dot(float3 p, float3 q) { return p.x*q.x+p.y*q.y+p.z*q.z;}
-float dot(float2 p, float2 q) { return p.x*q.x+p.y*q.y;}
-
 __global__ void
 kmain_efficient()
 {
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int n_threads = blockDim.x * gridDim.x;
+  if ( tid >= d_app.num_threads ) return;
 
-  for ( int h=tid; h<d_app.array_size; h += n_threads )
+  for ( int h=tid; h<d_app.array_size; h += d_app.num_threads )
     {
-      float4 p = d_app.d_in[h];
-      d_app.d_out[h] = dot(p,p);
-    }
-}
-
-__global__ void
-prob_x(float2 *d_in, float *d_out)
-{
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int n_threads = blockDim.x * gridDim.x;
-
-  for ( int h=tid; h<d_app.array_size-1; h += n_threads )
-    {
-      float2 p = d_in[h];
-      float2 q = d_in[h+1];
-      float dp = dot(p,q);
-      d_out[h] = dp;
-    }
-}
-
-__global__ void
-prob_x2_sol(float2 *d_in, float *d_out)
-{
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int n_threads = blockDim.x * gridDim.x;
-
-  __shared__ float3 sm[1024];
-
-  for ( int h=tid; h<d_app.array_size; h += n_threads )
-    {
-      float2 p = d_in[h];
-      __syncthreads();
-      sm[threadIdx.x] = p;
-      __syncthreads();
-      float2 q = sm[threadIdx.x+1];
-      float dp = dot(p,q);
-      d_out[h] = dp;
-    }
-}
-
-__global__ void
-prob_x2(float2 *d_in, float *d_out)
-{
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int n_threads = blockDim.x * gridDim.x;
-
-  __shared__ float3 sm[1024];
-
-  for ( int h=tid; h<d_app.array_size; h += n_threads )
-    {
-      float2 p = d_in[h];
-
-
-      float2 q = d_in[h+1];
-
-      float dp = dot(p,q);
-      d_out[h] = dp;
-    }
-}
-
-__global__ void
-prob_x3(float3 *d_in, float *d_out)
-{
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int n_threads = blockDim.x * gridDim.x;
-
-  __shared__ float3 sm[1024];
-
-  for ( int h=tid; h<d_app.array_size-1; h += n_threads )
-    {
-      float3 p = d_in[h];
-      __syncthreads();
-      sm[threadIdx.x] = p;
-      __syncthreads();
-      float3 q = sm[threadIdx.x+1];
-      float dp = dot(p,q);
-      d_out[h] = dp;
+      float4 p = d_app.d_in[h];  // Good: Consecutive access.
+      float sos = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
+      d_app.d_out[h] = sos;
     }
 }
 

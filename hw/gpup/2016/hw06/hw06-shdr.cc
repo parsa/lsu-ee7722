@@ -57,9 +57,6 @@ vs_main_instances_sv()
   gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
 }
 
-layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
-layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
-
 void
 vs_main_instances_sphere()
 {

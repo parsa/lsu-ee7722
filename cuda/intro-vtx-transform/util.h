@@ -1,5 +1,5 @@
-#ifndef CUDA_UTIL_H
-#define CUDA_UTIL_H
+#ifndef UTIL_H
+#define UTIL_H
 
 #include <gp/cuda-gpuinfo.h>
 
