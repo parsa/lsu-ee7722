@@ -25,7 +25,9 @@ TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
 
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)
+CXXFLAGS = $(CFLAGS)  -std=c++11
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
+
 LIBRARIES = -lrt -lpthread 
 
 #default: vtx-xform
@@ -40,9 +42,9 @@ all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 	$(CXX) $(CFLAGS) -c $*.s
 
 %.o: %.cu Makefile util.h
-	$(CXX) $(CFLAGS) -c $*.cu
-	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx &
-	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
+	$(CXX) $(CUFLAGS) -c $*.cu
+	$(CXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
+	$(CXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 %: %.o

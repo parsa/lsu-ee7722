@@ -1,5 +1,5 @@
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef INTRO_VTX_TRANSFORM_UTIL_H
+#define INTRO_VTX_TRANSFORM_UTIL_H
 
 #include <gp/cuda-gpuinfo.h>
 
