@@ -111,6 +111,8 @@
 
 class World;
 
+enum GPU_Physics_Method { GP_cpu, GP_cuda, GP_ENUM_SIZE };
+const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
 
 // Object Holding Ball State
 //
@@ -381,6 +383,11 @@ public:
 
 
   /// CUDA Stuff
+
+  int opt_physics_method;
+  cudaEvent_t frame_start_ce, frame_stop_ce;
+  bool gpu_const_data_stale;
+  bool cpu_phys_data_stale;
 
   void data_cpu_to_gpu_constants();
   void data_cpu_to_gpu_dynamic();
@@ -808,8 +815,9 @@ World::render()
   const char *sh_names[] = { "PLAIN", "SET 1", "SET 2" };
 
   ogl_helper.fbprintf
-    ("Shader: %s  ('v' to change)  "
-     "Tryout 1: %s  ('y' to change)  Tryout 2: %s  ('Y' to change)\n",
+    ("Physics: %s ('a' to change)  Shader: %s  ('v')  "
+     "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')\n",
+     gpu_physics_method_str[opt_physics_method],
      sh_names[opt_shader],
      opt_tryout1 ? BLINK("ON","  ") : "OFF",
      opt_tryout2 ? BLINK("ON","  ") : "OFF");
@@ -1021,6 +1029,10 @@ World::cb_keyboard()
   case '3': ball_setup_3(); break;
   case '4': ball_setup_4(); break;
   case '5': ball_setup_5(); break;
+  case 'a':
+    opt_physics_method++;
+    if ( opt_physics_method == GP_ENUM_SIZE ) opt_physics_method = GP_cpu;
+    break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
@@ -1099,6 +1111,13 @@ World::cb_keyboard()
 void
 World::init(int argc, char **argv)
 {
+  opt_physics_method = GP_cuda;
+  gpu_const_data_stale = true;
+  cpu_phys_data_stale = false;
+
+  CE( cudaEventCreate(&frame_start_ce) );
+  CE( cudaEventCreate(&frame_stop_ce) );
+
   chain_length = 14;
 
   opt_time_step_duration = 0.0003;
@@ -1180,7 +1199,6 @@ World::init(int argc, char **argv)
      );
 
   ball_setup_3();
-  lock_update();
 }
 
 Ball*
@@ -1224,6 +1242,7 @@ World::lock_update()
       ball->mass_min = ball->spring_constant_sum * dtis;
       ball->constants_update();
     }
+  gpu_const_data_stale = true;
 }
 
 void
@@ -1383,7 +1402,7 @@ World::data_cpu_to_gpu_dynamic()
       }                                                                       \
   }
 
-#define MOVEc(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,1)
+#define MOVEc(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,gpu_const_data_stale)
 #define MOVE(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,1)
 #define ALLOC(num,ptr,memb) ALLOC_MOVE(num,ptr,memb,0)
 
@@ -1417,6 +1436,7 @@ World::data_cpu_to_gpu_dynamic()
       c.alloc_n_links = n_links;
       data_cpu_to_gpu_common(&c);
     }
+  gpu_const_data_stale = false;
 }
 
 void
@@ -1438,7 +1458,6 @@ World::data_gpu_to_cpu_dynamic()
 
   MOVE(n_balls,balls,position);
   MOVE(n_balls,balls,velocity);
-  for ( Ball *b : balls ) b->position.w = 1;
   MOVE(n_balls,balls,orientation);
   MOVE(n_balls,balls,omatrix);
   MOVE(n_balls,balls,omega);
@@ -1669,7 +1688,8 @@ World::ball_setup_5()
 void
 World::setup_at_end()
 {
-  for ( int i=0; i<balls.size(); i++ ) balls[i]->idx = i;
+  lock_update();
+  for ( uint i=0; i<balls.size(); i++ ) balls[i]->idx = i;
   for ( Link *l : links )
     { l->ball1_idx = l->ball1->idx; l->ball2_idx = l->ball2->idx; }
 }
@@ -1680,7 +1700,6 @@ World::setup_at_end()
 void
 World::time_step_cpu(double delta_t)
 {
-  time_step_count++;
   const int n_balls = balls;
   const int n_links = links;
 
@@ -2241,14 +2260,14 @@ World::frame_callback()
 
   frame_timer.phys_start();
   const double time_now = time_wall_fp();
+  const int time_step_count_start = time_step_count;
 
-  const bool opt_cuda = true;
+  const bool opt_cuda = opt_physics_method != GP_cpu;
   if ( opt_cuda )
     {
+      CE( cudaEventRecord(frame_start_ce,0) );
       data_cpu_to_gpu_constants();
       data_cpu_to_gpu_dynamic();
-      //  launch_time_step(0.1);
-      //  data_gpu_to_cpu_dynamic();
     }
 
   if ( !opt_pause || opt_single_frame || opt_single_time_step )
@@ -2271,7 +2290,7 @@ World::frame_callback()
 
       while ( world_time < world_time_target )
         {
-          if ( true && opt_cuda )
+          if ( opt_cuda )
             {
               launch_time_step(opt_time_step_duration);
             }
@@ -2279,6 +2298,7 @@ World::frame_callback()
             {
               time_step_cpu(opt_time_step_duration);
             }
+          time_step_count++;
           world_time += opt_time_step_duration;
           const double time_right_now = time_wall_fp();
           if ( time_right_now > wall_time_limit ) break;
@@ -2292,9 +2312,19 @@ World::frame_callback()
   if ( opt_cuda )
     {
       data_gpu_to_cpu_dynamic();
+      CE( cudaEventRecord(frame_stop_ce,0) );
     }
 
   frame_timer.phys_end();
+  frame_timer.work_amt_set(time_step_count-time_step_count_start);
+
+  float cuda_time = 0;
+  if ( opt_cuda )
+    {
+      CE(cudaEventSynchronize(frame_stop_ce));
+      CE(cudaEventElapsedTime(&cuda_time,frame_start_ce,frame_stop_ce));
+    }
+  frame_timer.cuda_frame_time_set(cuda_time);
 
   last_frame_wall_time = time_now;
 
