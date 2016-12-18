@@ -3,7 +3,12 @@ INCLUDE =  -I../../include
 LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
-CUDUMP = $(CUDAPATH)/bin/cuobjdump
+CUDUMP = $(CUDAPATH)/bin/nvdisasm
+CUDUMPFLAGS = --print-code 
+# --print-line-info 
+# --print-instruction-encoding
+# --print-life-ranges --life-range-mode wide
+
 
 # -Xnvopencc -LIST:source=on
 
@@ -25,8 +30,9 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags)
-LIBRARIES =    -lrt 
+CXXFLAGS = $(CFLAGS)  $(shell Magick++-config --cppflags --cxxflags) -std=c++11
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
+
 LIBRARIES =   
 
 
@@ -37,10 +43,10 @@ default: sort
 	$(CXX) $(CFLAGS) -c $*.cc
 
 .cu.o: Makefile
-	$(CXX) $(CFLAGS) -c $*.cu
-	$(CXX) $(CFLAGS) -ptx $*.cu -o $*.ptx
-	$(CXX) $(CFLAGS) -cubin $*.cu -o $*.cubin
-	$(CUDUMP) -sass $*.cubin > $*.sass
+	$(CXX) $(CUFLAGS) -c $*.cu
+	$(CXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 
 sort.o: sort.cc sort-kernel.cu sort.cuh Makefile
@@ -50,5 +56,5 @@ sort: sort.o sort-kernel.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
 
 clean:
-	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx sort
+	/bin/rm -f  *.o *~ sort-kernel.sass *.cubin *.ptx sort
 
