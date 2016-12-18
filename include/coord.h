@@ -184,13 +184,35 @@ public:
   inline void column_set(int col, pVect v);
 };
 
-class pMatrix3x3 {
+template <int stride>
+class pMatrix3x3x {
 public:
-  float a[9];
+  float a[3*stride];
 
-  pMatrix3x3(){set_identity();}
+  pMatrix3x3x(){set_identity();}
+  pMatrix3x3x(pMatrix& m, int r = 3, int c = 3)
+  {
+    int rj = 0;
+    for ( int ri=0; ri<4; ri++ )
+      {
+        if ( ri == r ) continue;
+        int cj = 0;
+        for ( int ci=0; ci<4; ci++ )
+          {
+            if ( ci == c ) continue;
+            rc(rj,cj) = m.rc(ri,ci);
+            cj++;
+          }
+        rj++;
+      }
+  }
 
-  pMatrix3x3(pMatrix& m, int r = 3, int c = 3);
+  template<int s2>
+  pMatrix3x3x(pMatrix3x3x<s2> m)
+    {
+      for ( int r=0; r<3; r++ )
+        for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(r,c);
+    }
 
   operator float* () { return &a[0]; }
 
@@ -204,7 +226,7 @@ public:
     for ( int i=0; i<3; i++ ) rc(i,i) = 1;
   };
 
-  void set_transpose(pMatrix3x3 m)
+  void set_transpose(pMatrix3x3x<stride> m)
   {
     for ( int r=0; r<3; r++ )
       for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
@@ -213,9 +235,9 @@ public:
   inline float det();
   inline pMatrix inverse();
 
-  float* row_get(int row_num) { return &a[row_num*3]; }
-  float rc_get(int row, int col) const {return a[ ( row *3 ) + col ];}
-  float& rc(int row, int col) {return a[ ( row *3 ) + col ];}
+  float* row_get(int row_num) { return &a[row_num*stride]; }
+  float rc_get(int row, int col) const {return a[ ( row * stride ) + col ];}
+  float& rc(int row, int col) {return a[ ( row * stride ) + col ];}
   inline pVect r(int row_num);
 
   void row_swap(int r1, int r2)
@@ -248,6 +270,9 @@ public:
 
 };
 
+typedef pMatrix3x3x<3> pMatrix3x3;
+typedef pMatrix3x3x<4> pMatrix3x3p;
+
 inline pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
 
 inline void
@@ -270,24 +295,6 @@ pMMultiply3x3(pMatrix& p, pMatrix m1, pMatrix m2)
 #undef T
 #undef E
 #undef C
-}
-
-inline
-pMatrix3x3::pMatrix3x3(pMatrix& m, int r, int c)
-{
-  int rj = 0;
-  for ( int ri=0; ri<4; ri++ )
-    {
-      if ( ri == r ) continue;
-      int cj = 0;
-      for ( int ci=0; ci<4; ci++ )
-        {
-          if ( ci == c ) continue;
-          rc(rj,cj) = m.rc(ri,ci);
-          cj++;
-        }
-      rj++;
-    }
 }
 
 #define VEC_REDUCE_AND(v,f) ( f(v.x) && f(v.y) && f(v.z) )
@@ -371,6 +378,15 @@ public:
 
   float x, y, z;
 };
+
+// Intended for situations where a power-of-2 stride element is needed.
+class pVect4 {
+public:
+  float x, y, z, w;
+  operator const pVect () const { return pVect(x,y,z); }
+  void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
+};
+
 
 class pColor {
 public:
@@ -477,6 +493,7 @@ inline pVect mult_MV(pMatrix3x3 m, pVect c)
 }
 
 inline pVect operator * (pMatrix3x3 m, pVect c) { return mult_MV(m,c); }
+inline pVect operator * (pMatrix m, pVect c) { return mult_MV(m,c); }
 
 // Multiply M transposed times V.
 inline pVect mult_MTV(pMatrix3x3 m, pVect v)
@@ -530,15 +547,15 @@ inline float sum(pVect v){ return v.x+v.y+v.z; }
 
 inline pMatrix operator * (pMatrix m1, pMatrix m2){ return pMatrix(m1,m2); }
 
-inline pVect 
-pMatrix3x3::r(int row_num)
+template<int stride> inline pVect
+pMatrix3x3x<stride>::r(int row_num)
 {
   float* const row = row_get(row_num);
   return pVect(row[0],row[1],row[2]);
 }
 
-inline float
-pMatrix3x3::det()
+template<int stride> inline float
+pMatrix3x3x<stride>::det()
 {
   return dot( r(0), cross( r(1), r(2) ) );
 }
