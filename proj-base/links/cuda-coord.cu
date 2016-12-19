@@ -19,8 +19,9 @@ public:
 class __builtin_align__(16) pVect4 {
 public:
   float x, y, z, w;
-  __device__ pVect4(){};
-  __device__ pVect4(float f):x(f),y(f),z(f),w(f){};
+  __device__ pVect4(){}
+  __device__ pVect4(float f):x(f),y(f),z(f),w(f){}
+  __device__ pVect4(pVect v){ x=v.x; y=v.y; z=v.z; w=0; }
   __device__ operator const pVect () const { return pVect(x,y,z); }
   __device__ void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
   __device__ void operator += (pVect v) {x+=v.x; y+=v.y; z+=v.z; }

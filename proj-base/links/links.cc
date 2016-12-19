@@ -1442,13 +1442,13 @@ World::data_cpu_to_gpu_dynamic()
 #define MOVE(num,ptr,memb) ALLOC_MOVE_ZERO(num,ptr,memb,1,0)
 #define ALLOC(num,ptr,memb) ALLOC_MOVE_ZERO(num,ptr,memb,0,0)
 #define ZERO(num,ptr,memb) ALLOC_MOVE_ZERO(num,ptr,memb,0,1)
-  MOVE(n_balls,balls,position);
-  MOVE(n_balls,balls,velocity);
+  MOVEc(n_balls,balls,position);
+  MOVEc(n_balls,balls,velocity);
   ZERO(n_balls,balls,force);
 
-  MOVE(n_balls,balls,orientation);
+  MOVEc(n_balls,balls,orientation);
   MOVEc(n_balls,balls,omatrix);
-  MOVE(n_balls,balls,omega);
+  MOVEc(n_balls,balls,omega);
   ZERO(n_balls,balls,torque);
   MOVEc(n_balls,balls,mass);
   MOVEc(n_balls,balls,fdt_to_do);
