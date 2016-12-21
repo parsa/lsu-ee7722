@@ -23,7 +23,7 @@ MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
 MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 CXXFLAGS = $(CFLAGS)  $(MAGICKCXX) -std=c++11
-?CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
