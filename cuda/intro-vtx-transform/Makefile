@@ -3,6 +3,11 @@ LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
 
+CC = gcc
+CUXX = $(CUDAPATH)/bin/nvcc
+GXX = g++
+PXX = pgc++
+
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
 CUDUMPFLAGS = --print-code
 # --print-line-info
@@ -25,15 +30,11 @@ CUFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_COMMON_NVCC_TRAN) \
 PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
  -acc -ta=tesla:cc30,nordc,keep -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
 
-CC = gcc
-CUXX = $(CUDAPATH)/bin/nvcc
-GXX = g++
-PXX = pgc++
 
 .SUFFIXES: .cu .cuh
 
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better
+	  vtx-xform-omp vtx-xform-better vtx-xform-s2
 
 
 LIBRARIES = -lrt -lpthread
@@ -78,7 +79,10 @@ all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 vtx-xform-size-oa: vtx-xform-size-oa.cc vtx-xform-size-oa.h vtx-xform-size-acc.o Makefile
 	$(PXX) $(PCFLAGS) $@.cc -o $@ vtx-xform-size-acc.o -L $(CUDAPATH)/lib64 -lcudart
 
-$(PGI_OBJ): %.o: %.cc  Makefile vtx-xform-s2.h
+HAVE_PGI:
+	$(PXX) -V
+
+$(PGI_OBJ): %.o: %.cc  Makefile vtx-xform-s2.h | HAVE_PGI
 	$(PXX) $(PCFLAGS) -c $*.cc
 
 %.o: %.cc Makefile
@@ -96,4 +100,4 @@ $(PGI_OBJ): %.o: %.cc  Makefile vtx-xform-s2.h
 
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin $(TARGETS)
+	/bin/rm -f *.o *.ptx *.sass *.bin *.gpu *.s *.cubin $(TARGETS)
