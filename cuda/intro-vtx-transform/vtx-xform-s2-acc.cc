@@ -1,5 +1,5 @@
 
-#include "vtx-xform-size-oa.h"
+#include "vtx-xform-s2.h"
 
 void
 acc_cuda_m(App* appptr)
@@ -10,11 +10,9 @@ acc_cuda_m(App* appptr)
   const int nv = app.num_vecs;
 #pragma acc parallel loop deviceptr(din,dout,app.d_out)
   for ( int i=0; i<nv; i++ )
-#pragma acc loop seq
     for ( int r=0; r<M; r++ )
       {
         Elt_Type sum = 0;
-#pragma acc loop seq
         for ( int c=0; c<N; c++ )
           sum += din[ i * N + c ] * app.matrix[r][c];
         dout[ i * M + r ] = sum;
