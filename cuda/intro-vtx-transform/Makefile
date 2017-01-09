@@ -28,7 +28,7 @@ CUFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_COMMON_NVCC_TRAN) \
  --ptxas-options=-v  --gpu-architecture=sm_30 -lineinfo
 
 PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
- -acc -ta=tesla:cc30,nordc,keep -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
+ -acc -ta=tesla:cc35,nordc,keep -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
 
 
 .SUFFIXES: .cu .cuh
@@ -69,7 +69,9 @@ default: vtx-xform-s2
 PGI_SRC = vtx-xform-s2-acc.cc vtx-xform-size-acc.cc
 PGI_OBJ = $(PGI_SRC:.cc=.o)
 
-vtx-xform-s2: vtx-xform-s2.o vtx-xform-s2-acc.o vtx-xform-s2-main.o
+SRCS_S2 = vtx-xform-s2.o vtx-xform-s2-acc.o vtx-xform-s2-main.o
+$(SRCS_S2): vtx-xform-s2.h
+vtx-xform-s2: $(SRCS_S2)
 	$(GXX) $(CFLAGS)  -o $@ $(LIBDIR) $^ $(LIBRARIES) \
 	$(FLAGS_FOR_GCC_LINKING_CUDART_PGI)
 
@@ -82,7 +84,7 @@ vtx-xform-size-oa: vtx-xform-size-oa.cc vtx-xform-size-oa.h vtx-xform-size-acc.o
 HAVE_PGI:
 	$(PXX) -V
 
-$(PGI_OBJ): %.o: %.cc  Makefile vtx-xform-s2.h | HAVE_PGI
+$(PGI_OBJ): %.o: %.cc  Makefile | HAVE_PGI
 	$(PXX) $(PCFLAGS) -c $*.cc
 
 %.o: %.cc Makefile
