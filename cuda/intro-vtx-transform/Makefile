@@ -26,8 +26,13 @@ CXX = $(CUDAPATH)/bin/nvcc
 
 .SUFFIXES: .cu .cuh
 
+all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
+ vtx-xform-local vtx-xform-sum vtx-xform-size
+
 TARGETS = vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better vtx-xform-size
+	  vtx-xform-omp vtx-xform-better
+
+default: $(TARGETS)
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  -std=c++11
@@ -35,12 +40,8 @@ CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
 
 LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
 
-#default: vtx-xform
-default: $(TARGETS)
-#default: vtx-xform-size
-
-all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
- vtx-xform-local vtx-xform-sum vtx-xform-size
+$(BUILD_CC_FILE_PATH):
+	;
 
 %.o: %.cc Makefile
 	$(CXX) $(CFLAGS) -s $*.cc
@@ -57,4 +58,4 @@ all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 
 
 clean:
-	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin $(TARGETS)
+	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin $(all)
