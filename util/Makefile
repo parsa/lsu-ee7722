@@ -23,7 +23,7 @@ OBJ_FILES = $(SRC_FILES:.cc=.o)
 .SUFFIXES: .cu .cuh
 
 COMMONFLAGS = -g -Xcompiler -Wall -Xcompiler -Wno-unused-function \
-  $(INCLUDE) $(OPT_FLAGS) -Xcompiler -Wno-parentheses
+  $(INCLUDE) $(OPT_FLAGS) -Xcompiler -Wno-parentheses --gpu-architecture=sm_35
 
 CXXFLAGS = $(COMMONFLAGS)
 
