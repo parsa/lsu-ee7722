@@ -180,6 +180,7 @@ struct Kernel_Info {
 class GPU_Info {
 public:
   GPU_Info() { num_kernels = 0; }
+  GPU_Info(int dev) { num_kernels = 0; get_gpu_info(dev); }
   int get_info(GPU_Info_Func k_ptr, const char *k_name)
   {
     ki[num_kernels].name = k_name;
@@ -194,7 +195,17 @@ public:
         cuda_prop.major == 1 ? 8 :
         cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
         cuda_prop.major == 3 ? 192 :
-        cuda_prop.major == 5 ? 128 : 0;
+        cuda_prop.major == 5 ? 128 :
+        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 64 : 128 ) : 0;
+
+      const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
+
+      dp_per_mp =
+        cuda_prop.major == 1 ? 1 :
+        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
+        cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
+        cuda_prop.major == 5 ? 4 :
+        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 32 : 4 ) : 0;
 
       chip_bw_Bps =
         2 * cuda_prop.memoryClockRate * 1000.0
@@ -214,8 +225,9 @@ public:
       return num_blocks;
     }
 
-  double chip_bw_Bps, chip_sp_flops;
-  int cc_per_mp;
+  double chip_bw_Bps;
+  double chip_sp_flops; // MADD counted as 1 FLOP.
+  int cc_per_mp, dp_per_mp;
   static const int max_kernels = 10;
   Kernel_Info ki[max_kernels];
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
@@ -236,36 +248,22 @@ gpu_info_print()
       exit(1);
     }
 
-  cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
 
   /// Print information about the available GPUs.
   //
   for ( int dev = 0; dev < device_count; dev++ )
   {
-    CE(cudaGetDeviceProperties(&cuda_prop,dev));
+    GPU_Info gpu_info(dev);
+    cudaDeviceProp& cuda_prop = gpu_info.cuda_prop;
+
     printf
       ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
        dev, cuda_prop.name, cuda_prop.clockRate/1e6,
        int(cuda_prop.totalGlobalMem >> 20));
 
-    const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
-
-    const int cc_per_mp =
-      cuda_prop.major == 1 ? 8 :
-      cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-      cuda_prop.major == 3 ? 192 :
-      cuda_prop.major == 5 ? 128 : 0;
-
-    const int dp_per_mp =
-      cuda_prop.major == 1 ? 1 :
-      cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
-      cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
-      cuda_prop.major == 5 ? 4 : 0;
-
-    const double mem_l2_gbs =
-      2 * cuda_prop.memoryClockRate * 1000.0
-      * ( cuda_prop.memoryBusWidth >> 3 )
-      * 1e-9;
+    const int cc_per_mp = gpu_info.cc_per_mp;
+    const int dp_per_mp = gpu_info.dp_per_mp;
+    const double mem_l2_gbs = gpu_info.chip_bw_Bps * 1e-8;
 
     printf
       ("GPU %d: L2: %d kiB   MEM<->L2: %.1f GB/s\n",
@@ -287,9 +285,11 @@ gpu_info_print()
        cuda_prop.maxThreadsPerBlock);
 
     printf
-      ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
+      ("GPU %d: SHARED: %5d B/BL  %5d B/MP  CONST: %5d B  # REGS: %5d\n",
        dev,
-       int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
+       int(cuda_prop.sharedMemPerBlock),
+       int(cuda_prop.sharedMemPerMultiprocessor),
+       int(cuda_prop.totalConstMem),
        cuda_prop.regsPerBlock
        );
 
