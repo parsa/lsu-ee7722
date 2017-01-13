@@ -98,6 +98,7 @@
 
 #include <gp/util-containers.h>
 #include <gp/coord-containers.h>
+//  #include <gp/cuda-gpu-info-choose.h>
 #include <gp/cuda-gpuinfo.h>
 #include "shapes.h"
 #include "links.cuh"
@@ -1148,7 +1149,7 @@ World::init(int argc, char **argv)
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
 

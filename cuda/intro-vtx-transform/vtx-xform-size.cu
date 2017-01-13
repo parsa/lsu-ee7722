@@ -418,7 +418,12 @@ mxv_vls()
   const int start = tid;
   const int stop = d_app.num_vecs;
   const int inc = num_threads;
+
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
 #undef USE_SHARED
+#else
+#define USE_SHARED
+#endif
   __shared__ float4 v0[1024];
 
   for ( int h=start; h<stop; h += inc )
@@ -592,7 +597,7 @@ print_gpu_and_kernel_info()
 
   // Choose GPU 0 because it's usually the better choice.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);

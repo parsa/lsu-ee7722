@@ -13,22 +13,8 @@
 #ifndef BALLS_CUH
 #define BALLS_CUH
 
-// Info about a specific kernel.
-//
-struct Kernel_Info {
-  void (*func_ptr)();           // Pointer to kernel function.
-  const char *name;                   // ASCII version of kernel name.
-  cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
-};
+#include <gp/cuda-gpuinfo.h>
 
-// Info about GPU and each kernel.
-//
-struct GPU_Info {
-  double bw_Bps;
-  static const int num_kernels_max = 4;
-  int num_kernels;
-  Kernel_Info ki[num_kernels_max];
-};
 
 enum Phys_Type { PT_Unset =0, PT_Ball=1, PT_Tile=2, PT_ENUM_SIZE=3 };
 
