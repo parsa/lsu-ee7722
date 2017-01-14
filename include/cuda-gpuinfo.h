@@ -263,7 +263,7 @@ gpu_info_print()
 
     const int cc_per_mp = gpu_info.cc_per_mp;
     const int dp_per_mp = gpu_info.dp_per_mp;
-    const double mem_l2_gbs = gpu_info.chip_bw_Bps * 1e-8;
+    const double mem_l2_gbs = gpu_info.chip_bw_Bps * 1e-9;
 
     printf
       ("GPU %d: L2: %d kiB   MEM<->L2: %.1f GB/s\n",
