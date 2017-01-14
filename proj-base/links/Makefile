@@ -21,6 +21,13 @@ COURSE_INCLUDE_DIR := $(firstword $(FOUND))
 INCLUDE = -I $(COURSE_INCLUDE_DIR)
 
 
+GPU_GET_PATH = $(COURSE_INCLUDE_DIR)/../util/gpu-get-cc
+
+BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
+DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+
+
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
 CUDUMPFLAGS = --print-code 
 # --print-line-info 
@@ -46,11 +53,11 @@ MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
 COMMONFLAGS = -g -Xcompiler -Wall -Xcompiler -Wno-unused-function \
   $(INCLUDE) $(MAGICKCXX) $(OPT_FLAGS) \
- -Xcompiler -Wno-parentheses
+ -Xcompiler -Wno-parentheses --gpu-architecture=$(GPU_ARCH)
 
 
 CUFLAGS = $(COMMONFLAGS) -Xcompiler --std=gnu++98 \
- -use_fast_math --gpu-architecture=sm_30
+ -use_fast_math 
 
 CXXFLAGS = $(COMMONFLAGS) -Xcompiler --std=c++11  -Xcompiler -fopenmp
 
@@ -61,7 +68,8 @@ PTXASFLAGS = -Xptxas --warn-on-local-memory-usage \
 LINKFLAGS = -Xcompiler -fopenmp
 
 LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags) 
+  $(shell Magick++-config --ldflags) -lnvidia-ml -lcuda
+
 LIBDIR  =
 
 default: links
@@ -96,7 +104,7 @@ endif
 %.o: %.cc Makefile $(INCLUDES)
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
-%.o: %.cu Makefile
+%.o: %.cu Makefile build-cc
 	$(CUXX) $(CUFLAGS) -c $*.cu
 	$(CUXX) $(CUFLAGS) --source-in-ptx -ptx $*.cu -o $*.ptx
 	$(CUXX) $(CUFLAGS) $(PTXASFLAGS) -cubin $*.cu -o $*.cubin

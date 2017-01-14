@@ -418,7 +418,12 @@ mxv_vls()
   const int start = tid;
   const int stop = d_app.num_vecs;
   const int inc = num_threads;
+
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
 #undef USE_SHARED
+#else
+#define USE_SHARED
+#endif
   __shared__ float4 v0[1024];
 
   for ( int h=start; h<stop; h += inc )
@@ -592,7 +597,7 @@ print_gpu_and_kernel_info()
 
   // Choose GPU 0 because it's usually the better choice.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
@@ -673,10 +678,10 @@ main(int argc, char **argv)
       exit(1);
     }
 
-  const int in_size_elts = app.num_vecs * N;
-  const int in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
-  const int out_size_elts = app.num_vecs * M;
-  const int out_size_bytes = out_size_elts * sizeof( app.h_out[0] );
+  const size_t in_size_elts = size_t(app.num_vecs) * N;
+  const size_t in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
+  const size_t out_size_elts = size_t(app.num_vecs) * M;
+  const size_t out_size_bytes = out_size_elts * sizeof( app.h_out[0] );
 
   const int overrun_size_elts = thd_per_block_goal * max(N,M);
   const int overrun_size_bytes = overrun_size_elts * sizeof( app.h_out[0] );
@@ -723,7 +728,7 @@ main(int argc, char **argv)
   const int64_t num_ops = int64_t(M) * N * app.num_vecs;  // Multiply-adds.
 
   // Amount of data in and out of GPU chip.
-  const int amt_data_bytes = in_size_bytes + out_size_bytes;
+  const int64_t amt_data_bytes = in_size_bytes + out_size_bytes;
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
 

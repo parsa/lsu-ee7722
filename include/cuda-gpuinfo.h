@@ -8,9 +8,12 @@
 #include <stdio.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <string.h>
+#include <nvml.h>
+#include <map>
 
 
- /// CUDA API Error-Checking Wrapper
+ /// CUDA Runtime API Error-Checking Wrapper
 ///
 #ifndef CE
 #define CE(call)                                                              \
@@ -23,6 +26,140 @@
      }                                                                        \
  }
 #endif
+
+ /// CUDA Device API Error Checking Wrapper
+#define CD(rv)                                                                \
+ {                                                                            \
+   const CUresult result = rv;                                                \
+   const char* err_str = NULL;                                                \
+   cuGetErrorString(result,&err_str);                                         \
+   if ( result != CUDA_SUCCESS )                                              \
+     {                                                                        \
+       fprintf                                                                \
+         (stderr,                                                             \
+          "Error %d for CUDA Driver API call: %s\n",                          \
+          result, err_str ?: "Could not find error description." );           \
+       exit(1);                                                               \
+     }}
+
+ /// CUDA Device management API Error Checking Wrapper
+#define CM(rv)                                                                \
+ ({                                                                           \
+   const nvmlReturn_t result = rv;                                            \
+   const char* const err_str = nvmlErrorString(result);                       \
+   if ( result != NVML_SUCCESS && result != NVML_ERROR_NOT_SUPPORTED )        \
+     {                                                                        \
+       fprintf                                                                \
+         (stderr,                                                             \
+          "Error %d for CUDA Management API call: %s\n",                      \
+          result, err_str ?: "Could not find error description." );           \
+       exit(1);                                                               \
+     } result; } )
+
+struct GPU_Choose_Info {
+  CUdevice cuda_device;
+  int cuda_device_index;
+  int cc_major, cc_minor;
+  bool display_absent;
+};
+
+inline GPU_Choose_Info
+gpu_choose(bool verbose)
+{
+  // Note: Avoid using cuda RT API since that is sensitive to
+  // build-time / run-time version number mismatches.
+
+  CM( nvmlInit() );
+  CD( cuInit(0) );
+
+  typedef std::pair<int,int> Bus_Dev;
+  std::map< Bus_Dev, nvmlDevice_t > pci_to_mlhandle;
+
+  uint n_device_count = 0;
+  CM( nvmlDeviceGetCount(&n_device_count) );
+
+  for ( uint dev = 0; dev < n_device_count; dev++ )
+    {
+      nvmlDevice_t handle;
+      CM( nvmlDeviceGetHandleByIndex(dev,&handle) );
+      nvmlPciInfo_t pci;
+      CM( nvmlDeviceGetPciInfo(handle,&pci) );
+      pci_to_mlhandle[Bus_Dev(pci.bus,pci.device)] = handle;
+    }
+
+  int device_count;
+  CD( cuDeviceGetCount(&device_count) );
+
+  GPU_Choose_Info info_best;
+  info_best.cuda_device_index = -1;
+
+  for ( int dev = 0; dev < device_count; dev ++ )
+    {
+      GPU_Choose_Info info;  info.cuda_device_index = dev;
+      int pci_bus_id = -1;
+      CD( cuDeviceGetAttribute
+          (&pci_bus_id,CU_DEVICE_ATTRIBUTE_PCI_BUS_ID,dev) );
+      int pci_dev_id = -1;
+      CD( cuDeviceGetAttribute
+          (&pci_dev_id,CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID,dev) );
+      CD( cuDeviceGetAttribute
+          (&info.cc_major,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,dev) );
+      CD( cuDeviceGetAttribute
+          (&info.cc_minor,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,dev) );
+
+      nvmlDevice_t handle = pci_to_mlhandle[Bus_Dev(pci_bus_id,pci_dev_id)];
+      char nvml_gpu_name[NVML_DEVICE_NAME_BUFFER_SIZE];
+      CM( nvmlDeviceGetName(handle,nvml_gpu_name, sizeof(nvml_gpu_name)-1) );
+
+      CD( cuDeviceGet(&info.cuda_device,dev) );
+
+      nvmlPciInfo_t pci;
+      CM( nvmlDeviceGetPciInfo(handle,&pci) );
+
+      char gpu_name[100];
+      CD( cuDeviceGetName(gpu_name,sizeof(gpu_name),info.cuda_device) );
+
+      nvmlEnableState_t display_mode;
+      const nvmlReturn_t dm_rv =
+        CM( nvmlDeviceGetDisplayMode(handle,&display_mode) );
+
+      nvmlEnableState_t is_active;
+      const nvmlReturn_t ia_rv =
+        CM( nvmlDeviceGetDisplayActive(handle,&is_active) );
+
+      info.display_absent =
+        ia_rv == NVML_SUCCESS && is_active == NVML_FEATURE_DISABLED;
+
+      if ( info_best.cuda_device_index < 0
+           || !info_best.display_absent
+           || info_best.cc_major < info.cc_major
+           || info_best.cc_major == info.cc_major
+           && info_best.cc_minor < info.cc_minor )
+        {
+          info_best = info;
+          if ( verbose ) printf("Best updated to:\n");
+        }
+
+      if ( !verbose ) continue;
+
+      printf ("CUDA name: %s  bus %x  dev %x  CC %d.%d\n",
+              gpu_name,pci_bus_id,pci_dev_id, info.cc_major, info.cc_minor);
+      printf ("NVML name: %s  busID %s  Domain %x  Active %s  Mode %s\n",
+              nvml_gpu_name, pci.busId, pci.domain,
+              ia_rv == NVML_ERROR_NOT_SUPPORTED ? "ns " :
+              is_active == NVML_FEATURE_DISABLED ? "dis" :
+              is_active == NVML_FEATURE_ENABLED ? "ena" : "???",
+              dm_rv == NVML_ERROR_NOT_SUPPORTED ? "ns " :
+              display_mode == NVML_FEATURE_DISABLED ? "dis" :
+              display_mode == NVML_FEATURE_ENABLED ? "ena" : "???");
+    }
+
+  CM( nvmlShutdown() );
+
+  return info_best;
+}
+
+inline int gpu_choose_index(){ return gpu_choose(false).cuda_device_index; }
 
 //
 // Collect GPU and Kernel Info
@@ -43,6 +180,7 @@ struct Kernel_Info {
 class GPU_Info {
 public:
   GPU_Info() { num_kernels = 0; }
+  GPU_Info(int dev) { num_kernels = 0; get_gpu_info(dev); }
   int get_info(GPU_Info_Func k_ptr, const char *k_name)
   {
     ki[num_kernels].name = k_name;
@@ -57,7 +195,17 @@ public:
         cuda_prop.major == 1 ? 8 :
         cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
         cuda_prop.major == 3 ? 192 :
-        cuda_prop.major == 5 ? 128 : 0;
+        cuda_prop.major == 5 ? 128 :
+        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 64 : 128 ) : 0;
+
+      const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
+
+      dp_per_mp =
+        cuda_prop.major == 1 ? 1 :
+        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
+        cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
+        cuda_prop.major == 5 ? 4 :
+        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 32 : 4 ) : 0;
 
       chip_bw_Bps =
         2 * cuda_prop.memoryClockRate * 1000.0
@@ -77,8 +225,9 @@ public:
       return num_blocks;
     }
 
-  double chip_bw_Bps, chip_sp_flops;
-  int cc_per_mp;
+  double chip_bw_Bps;
+  double chip_sp_flops; // MADD counted as 1 FLOP.
+  int cc_per_mp, dp_per_mp;
   static const int max_kernels = 10;
   Kernel_Info ki[max_kernels];
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
@@ -99,36 +248,22 @@ gpu_info_print()
       exit(1);
     }
 
-  cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
 
   /// Print information about the available GPUs.
   //
   for ( int dev = 0; dev < device_count; dev++ )
   {
-    CE(cudaGetDeviceProperties(&cuda_prop,dev));
+    GPU_Info gpu_info(dev);
+    cudaDeviceProp& cuda_prop = gpu_info.cuda_prop;
+
     printf
       ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
        dev, cuda_prop.name, cuda_prop.clockRate/1e6,
        int(cuda_prop.totalGlobalMem >> 20));
 
-    const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
-
-    const int cc_per_mp =
-      cuda_prop.major == 1 ? 8 :
-      cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-      cuda_prop.major == 3 ? 192 :
-      cuda_prop.major == 5 ? 128 : 0;
-
-    const int dp_per_mp =
-      cuda_prop.major == 1 ? 1 :
-      cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
-      cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
-      cuda_prop.major == 5 ? 4 : 0;
-
-    const double mem_l2_gbs =
-      2 * cuda_prop.memoryClockRate * 1000.0
-      * ( cuda_prop.memoryBusWidth >> 3 )
-      * 1e-9;
+    const int cc_per_mp = gpu_info.cc_per_mp;
+    const int dp_per_mp = gpu_info.dp_per_mp;
+    const double mem_l2_gbs = gpu_info.chip_bw_Bps * 1e-8;
 
     printf
       ("GPU %d: L2: %d kiB   MEM<->L2: %.1f GB/s\n",
@@ -150,9 +285,11 @@ gpu_info_print()
        cuda_prop.maxThreadsPerBlock);
 
     printf
-      ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
+      ("GPU %d: SHARED: %5d B/BL  %5d B/MP  CONST: %5d B  # REGS: %5d\n",
        dev,
-       int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
+       int(cuda_prop.sharedMemPerBlock),
+       int(cuda_prop.sharedMemPerMultiprocessor),
+       int(cuda_prop.totalConstMem),
        cuda_prop.regsPerBlock
        );
 

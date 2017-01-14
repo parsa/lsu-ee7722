@@ -6,6 +6,13 @@ CUDAPATH = /usr/local/cuda
 
 # -Xnvopencc -LIST:source=on
 
+GPU_GET_PATH = ../../util/gpu-get-cc
+
+BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
+DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+
+
 COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v \
    -Xcompiler -Wno-unused-function -use_fast_math
 OPTFLAGS = -O3
@@ -22,11 +29,11 @@ MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
 # Remove openmp, which doesn't play well with nvcc.
 MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
 
-CXXFLAGS = $(CFLAGS)  $(MAGICKCXX) -std=c++11
-CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
+CXXFLAGS = $(CFLAGS)  $(MAGICKCXX) -std=c++11 --gpu-architecture=$(GPU_ARCH)
+CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98 --gpu-architecture=$(GPU_ARCH)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags --libs)
+  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
 
 
 default: balls
@@ -34,7 +41,7 @@ default: balls
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
-.cu.o:
+%.o: %.cu build-cc
 	$(CXX) $(CUFLAGS) -c $*.cu
 
 # balls.o: demo-x-kernel.cu demo-x.cuh
@@ -47,5 +54,5 @@ balls: balls.cc shapes.h tiles.h Makefile balls.cuh balls-kernel.o
 
 
 clean:
-	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx balls balls-debug
+	/bin/rm -f build-cc  *.o *~ *.sass *.cubin *.ptx balls balls-debug
 

@@ -192,6 +192,7 @@ glStencilOp(SFAIL,DFAIL,DPASS);
 #include <gp/texture-util.h>
 #include <gp/cuda-util.h>
 #include <gp/coord-containers.h>
+#include <gp/cuda-gpuinfo.h>
 #include "shapes.h"
 #include "balls.cuh"
 
@@ -1120,60 +1121,14 @@ World::cuda_init()
   passes_curr = &passes_0;
   passes_next = &passes_1;
 
-  // Get information about GPU and its ability to run CUDA.
-  //
-  int device_count;
-  cudaGetDeviceCount(&device_count); // Get number of GPUs.
-  ASSERTS( device_count );
+  gpu_info_print();
+
+  const int chosen_dev = gpu_choose_index();
   GPU_Info gpu_info;
+  gpu_info.get_gpu_info(chosen_dev);
 
-  /// Print information about the available GPUs.
-  //
-  for ( int dev=0; dev<device_count; dev++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
+  printf("Using GPU %d\n",chosen_dev);
 
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
-
-      const int cc_per_mp =
-        cuda_prop.major == 1 ? 8 :
-        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-        cuda_prop.major == 3 ? 192 : 0;
-
-      const double chip_bw_Bps = gpu_info.bw_Bps =
-        2 * cuda_prop.memoryClockRate * 1000.0
-        * ( cuda_prop.memoryBusWidth >> 3 );
-      const double chip_sp_flops =
-        1000.0 * cc_per_mp * cuda_prop.clockRate
-        * cuda_prop.multiProcessorCount;
-
-      printf
-        ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  TH/BL: %4d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cc_per_mp,
-         cuda_prop.maxThreadsPerBlock);
-
-      printf
-        ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
-         "OP/ELT %.2f\n",
-         dev,
-         cuda_prop.l2CacheSize >> 10,
-         chip_bw_Bps * 1e-9,
-         chip_sp_flops * 1e-9,
-         4 * chip_sp_flops / chip_bw_Bps);
-    }
-
-  const int chosen_dev = 0;
   CE(cudaGLSetGLDevice(chosen_dev));
   CE(cudaGetDeviceProperties(&cuda_prop,chosen_dev));
 

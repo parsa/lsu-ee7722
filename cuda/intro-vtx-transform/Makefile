@@ -14,6 +14,12 @@ CUDUMPFLAGS = --print-code
 # --print-instruction-encoding
 # --print-life-ranges --life-range-mode wide
 
+GPU_GET_PATH = ../../util/gpu-get-cc
+
+BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
+DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+GPU_ARCHP := $(subst sm_,cc,$(GPU_ARCH))
 
 CFLAGS_GCC = -Wall -Wno-unused-function -Wno-strict-aliasing \
 	-fopenmp -O3 -g
@@ -25,11 +31,11 @@ CFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_GCC) -I$(CUDAPATH)/include
 
 CUFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_COMMON_NVCC_TRAN) \
  -Xcompiler -std=gnu++98 \
- --ptxas-options=-v  --gpu-architecture=sm_30 -lineinfo
+ --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH) -lineinfo
 
 PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
- -acc -ta=tesla:cc35,nordc,keep -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
-
+ -acc -ta=tesla:$(GPU_ARCHP),nordc,keep \
+ -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
 
 .SUFFIXES: .cu .cuh
 
@@ -87,11 +93,17 @@ HAVE_PGI:
 $(PGI_OBJ): %.o: %.cc  Makefile | HAVE_PGI
 	$(PXX) $(PCFLAGS) -c $*.cc
 
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
+
+$(BUILD_CC_FILE_PATH):
+	;
+
+
 %.o: %.cc Makefile
 	$(GXX) $(CFLAGS) -S $*.cc
 	$(GXX) $(CFLAGS) -c $*.s
 
-%.o: %.cu Makefile util.h
+%.o: %.cu Makefile util.h $(BUILD_CC_FILE_PATH)
 	$(CUXX) $(CUFLAGS) -c $*.cu
 	$(CUXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
 	$(CUXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
@@ -102,4 +114,6 @@ $(PGI_OBJ): %.o: %.cc  Makefile | HAVE_PGI
 
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.bin *.gpu *.s *.cubin $(TARGETS)
+	/bin/rm -f $(BUILD_CC_FILE_PATH) *.bin *.gpu \
+	*.o *.ptx *.sass *.cubin $(all)
+

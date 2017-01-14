@@ -1130,19 +1130,9 @@ cuda_get_attr_plat_pairs(GPU_Info *gpu_info)
 
   cudaError_t e1 = cudaSuccess;
 
-#define GET_INFO(proc_name) {                                                 \
-  const int idx = gpu_info->num_kernels++;                                    \
-  if ( idx >= gpu_info->num_kernels_max ) return e1;                          \
-  gpu_info->ki[idx].name = #proc_name;                                        \
-  gpu_info->ki[idx].func_ptr = (void(*)())proc_name;                          \
-  e1 = cudaFuncGetAttributes(&gpu_info->ki[idx].cfa,proc_name);               \
-  if ( e1 != cudaSuccess ) return e1; }
-
-  GET_INFO(pass_platform);
-  GET_INFO(pass_pairs);
-  GET_INFO(pass_sched);
-
-#undef GET_INFO
+  gpu_info->GET_INFO(pass_platform);
+  gpu_info->GET_INFO(pass_pairs);
+  gpu_info->GET_INFO(pass_sched);
 
   return e1;
 }
