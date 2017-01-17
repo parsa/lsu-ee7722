@@ -601,7 +601,7 @@ print_gpu_and_kernel_info()
 int
 was_main(int argc, char **argv)
 {
-  const char* const of_path = "/home/koppel/gp/gp/cuda/intro-vtx-transform/vtx-xform-s2-acc.so";
+  const char* const of_path = "./vtx-xform-s2-acc.so";
   void* const handle = dlopen(of_path,RTLD_LAZY);
   if ( !handle )
     {
