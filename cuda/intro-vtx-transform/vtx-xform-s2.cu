@@ -12,6 +12,7 @@
 #include <new>
 #include <cuda_runtime.h>
 #include <assert.h>
+#include <dlfcn.h>
 #include "util.h"
 
 #include "vtx-xform-s2.h"
@@ -600,6 +601,17 @@ print_gpu_and_kernel_info()
 int
 was_main(int argc, char **argv)
 {
+  const char* const of_path = "/home/koppel/gp/gp/cuda/intro-vtx-transform/vtx-xform-s2-acc.so";
+  void* const handle = dlopen(of_path,RTLD_LAZY);
+  if ( !handle )
+    {
+      printf("Could not link acc kernel:\n %s\n",dlerror());
+      exit(1);
+    }
+
+  typedef void (*AKFunc)(App*);
+  AKFunc acc_cuda_m_ptr = (AKFunc) dlsym(handle,"acc_cuda_m");
+
   const bool debug = false;
 
   // Get info about GPU and each kernel.
@@ -742,7 +754,7 @@ was_main(int argc, char **argv)
             //
             if ( kernel == 0 )
               {
-                acc_cuda_m(&app);
+                acc_cuda_m_ptr(&app);
               }
             else
               KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>

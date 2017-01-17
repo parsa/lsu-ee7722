@@ -2,7 +2,7 @@
 #include "vtx-xform-s2.h"
 #include <string.h>
 
-void
+extern "C" void
 acc_cuda_m(App* aptr)
 {
   // Make local copies because PGI gets confused by structure members.

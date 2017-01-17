@@ -43,7 +43,7 @@ struct App
   // Note: These "_f4" pointers only work when Elt_Type is a float.
 };
 
-void acc_cuda_m(App* appptr);
+extern "C" void acc_cuda_m(App* appptr);
 
 int was_main(int argc, char **argv);
 

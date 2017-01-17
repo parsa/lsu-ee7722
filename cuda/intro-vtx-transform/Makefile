@@ -42,8 +42,7 @@ PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
 	  vtx-xform-omp vtx-xform-better vtx-xform-s2
 
-
-LIBRARIES = -lrt -lpthread
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml -ldl
 ACCLIBRARIES =  -L/opt/pgi/linux86-64/16.10/lib \
   -Xlinker -rpath=/opt/pgi/linux86-64/16.10/lib \
  -laccapi -laccg -laccn -laccg2 -lcudadevice -lpgatm -lpthread -lnspgc -lpgc -lpgmp -lnuma
@@ -75,10 +74,11 @@ default: vtx-xform-s2
 PGI_SRC = vtx-xform-s2-acc.cc vtx-xform-size-acc.cc
 PGI_OBJ = $(PGI_SRC:.cc=.o)
 
-SRCS_S2 = vtx-xform-s2.o vtx-xform-s2-acc.o vtx-xform-s2-main.o
+SRCS_S2_LINK = vtx-xform-s2.o vtx-xform-s2-main.o 
+SRCS_S2 = $(SRCS_S2_LINK) vtx-xform-s2-acc.o 
 $(SRCS_S2): vtx-xform-s2.h
 vtx-xform-s2: $(SRCS_S2)
-	$(GXX) $(CFLAGS)  -o $@ $(LIBDIR) $^ $(LIBRARIES) \
+	$(GXX) $(CFLAGS)  -o $@ $(LIBDIR) $(SRCS_S2_LINK) $(LIBRARIES) \
 	$(FLAGS_FOR_GCC_LINKING_CUDART_PGI)
 
 all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
@@ -90,10 +90,14 @@ vtx-xform-size-oa: vtx-xform-size-oa.cc vtx-xform-size-oa.h vtx-xform-size-acc.o
 HAVE_PGI:
 	$(PXX) -V
 
-$(PGI_OBJ): %.o: %.cc  Makefile | HAVE_PGI
-	$(PXX) $(PCFLAGS) -c $*.cc
+vtx-xform-s2-acc.o: vtx-xform-s2-acc.cc Makefile | HAVE_PGI
+	$(PXX) $(PCFLAGS) -fPIC -c $<
+	ld -shared -o $*.so $@
+#	ar r vtx-xform-s2.so $*.so
 
-LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
+#$(PGI_OBJ): %.o: %.cc  Makefile | HAVE_PGI
+#	$(PXX) $(PCFLAGS) -c $*.cc
+
 
 $(BUILD_CC_FILE_PATH):
 	;
