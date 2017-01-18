@@ -78,7 +78,7 @@ SRCS_S2_LINK = vtx-xform-s2.o vtx-xform-s2-main.o
 SRCS_S2 = $(SRCS_S2_LINK) vtx-xform-s2-acc.o 
 $(SRCS_S2): vtx-xform-s2.h
 vtx-xform-s2: $(SRCS_S2)
-	$(GXX) $(CFLAGS)  -o $@ $(LIBDIR) $(SRCS_S2_LINK) $(LIBRARIES) \
+	$(GXX) $(CFLAGS)  -o $@ $(SRCS_S2_LINK) $(LIBRARIES) \
 	$(FLAGS_FOR_GCC_LINKING_CUDART_PGI)
 
 all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
