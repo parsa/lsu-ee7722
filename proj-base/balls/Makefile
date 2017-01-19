@@ -8,9 +8,14 @@ CUDAPATH = /usr/local/cuda
 
 GPU_GET_PATH = ../../util/gpu-get-cc
 
+.PHONY: default
+default: balls
+
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
 DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
 GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+build-cc:  # Let make know that build-cc now exists, though not by this rule.
+	;
 
 
 COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v \
@@ -35,8 +40,6 @@ CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98 --gpu-architecture=$(GPU_ARCH)
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
 
-
-default: balls
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
