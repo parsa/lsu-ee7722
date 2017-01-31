@@ -13,9 +13,13 @@
 #include <cuda_runtime.h>
 #include <assert.h>
 #include <dlfcn.h>
+#include <string>
+#include <openacc.h>
 #include "util.h"
 
 #include "vtx-xform-s2.h"
+
+using namespace std;
 
 #if N * 1024 * 4 < 32769
 #define SMALL
@@ -608,6 +612,34 @@ was_main(int argc, char **argv)
       printf("Could not link acc kernel:\n %s\n",dlerror());
       exit(1);
     }
+
+  string ldir = "/opt/pgi/linux86-64/16.10/lib";
+  const char *libs[] =
+    {
+//      "nspgc",
+      "pgc", "pgmp", "pgatm",
+      "accg", "accn", "accg2",
+      "accapi",
+      "cudadevice",
+      "numa"
+    };
+
+  if ( 0 )
+  for ( auto lname: libs )
+    {
+      // Even with this loop, need to provide list of libraries when
+      // linking main (not dynamically compiled) executable, so it's
+      // being left turned off.
+      string path = ldir + "/lib" + lname + ".so";
+      void* const handle = dlopen(path.c_str(),RTLD_LAZY | RTLD_GLOBAL);
+      if ( !handle )
+        {
+          printf("Could not link library %s:\n %s\n",path.c_str(),dlerror());
+          exit(1);
+        }
+    }
+
+  //  acc_init(acc_device_nvidia);
 
   typedef void (*AKFunc)(App*);
   AKFunc acc_cuda_m_ptr = (AKFunc) dlsym(handle,"acc_cuda_m");
