@@ -1,7 +1,10 @@
-INCLUDE =  -I../../include
-LIBDIR  =
 
 CUDAPATH = /usr/local/cuda
+PGIPATH = /opt/pgi/linux86-64/16.10
+
+INCLUDE =  -I../../include -I$(PGIPATH)/etc/include_acc
+LIBDIR  =
+
 
 CC = gcc
 CUXX = $(CUDAPATH)/bin/nvcc
@@ -30,8 +33,9 @@ CFLAGS_COMMON_NVCC_REC = -std=c++11 $(INCLUDE)
 CFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_GCC) -I$(CUDAPATH)/include
 
 CUFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_COMMON_NVCC_TRAN) \
- -Xcompiler -std=gnu++98 \
  --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH) -lineinfo
+# -Xcompiler -std=gnu++98 \
+
 
 PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
  -acc -ta=tesla:$(GPU_ARCHP),nordc,keep \
@@ -42,11 +46,11 @@ PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
 	  vtx-xform-omp vtx-xform-better vtx-xform-s2
 
-LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml -ldl
+LIBRARIES = -lrt -lpthread -lcuda  -lnvidia-ml -ldl
+
 ACCLIBRARIES =  -L/opt/pgi/linux86-64/16.10/lib \
   -Xlinker -rpath=/opt/pgi/linux86-64/16.10/lib \
- -laccapi -laccg -laccn -laccg2 -lcudadevice -lpgatm -lpthread -lnspgc -lpgc -lpgmp -lnuma
-
+ -laccapi -laccg -laccn -laccg2 -lcudadevice -lpgatm  -lpgc -lpgmp -lnuma
 
 # /opt/pgi/linux86-64/2016/cuda/8.0/bin/nvlink --arch=sm_60 -m64
  # -L/usr/local/cuda/lib64
