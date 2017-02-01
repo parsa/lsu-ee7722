@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void
+extern "C" void
 dots
-(int size, double *ax, double *ay,
- double v0, double v1, double v2, double *b)
+(int size, double* __restrict__ ax, double* __restrict__ ay,
+ double v0, double v1, double v2, double* __restrict__ b)
 {
+  b = (double*) __builtin_assume_aligned(b,32);
+  ax = (double*) __builtin_assume_aligned(ax,32);
+  ay = (double*) __builtin_assume_aligned(ay,32);
+
   for ( int i=0; i<size; i++ )
     {
       b[i] = v0 + v1 * ax[i] + v2 * ay[i];
