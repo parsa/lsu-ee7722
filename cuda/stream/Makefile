@@ -47,8 +47,8 @@ default: stream-cpu-only all
 all: stream stream-full stream-2
 
 stream-cpu-only: stream-cpu-only.cc Makefile
-	g++ -g --verbose-asm -O3 -fopenmp $< -S -o $@.s 
-	g++ -O3 -fopenmp $@.s -o $@
+	g++ -g -std=c++11 --verbose-asm -O3 -fopenmp $< -S -o $@.s 
+	g++ -O3 -std=c++11 -fopenmp $@.s -o $@
 
 $(BUILD_CC_FILE_PATH):
 	;
