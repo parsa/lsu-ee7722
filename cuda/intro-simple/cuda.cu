@@ -1,35 +1,28 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- /// Simple CUDA Example, without LSU ECE helper classes.
+ /// Simple, Self-Contained, One-File CUDA Example
 
-// How to Compile From Emacs
+ /// How to Compile from the Command Line
 //
-//  Within Emacs, as set up for class, compile by pressing [F9].
+//   nvcc -o cuda cuda.cu -O3 -Xcompiler -Wall
+
+ /// Documentation
 //
-// How to Compile from the Command Line
-//
-//   Simplest
-//     nvcc cuda.cu
-//
-//   Reasonable
-//     nvcc -o cuda cuda.cu  -O3 -g -Xcompiler -Wall
+//   CUDA: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
+//   C++:  http://en.cppreference.com/w/
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #include <cuda_runtime.h>
+#include <vector>
+using namespace std;
+
 
  /// Declaration of Kernel (Entry point for code running on GPU.)
-//
-__global__ void thread_main();
 //
 // Note: the attribute __global__ indicates that the procedure is
 // started by a kernel launch. A GPU-only procedure would use the
 // attribute __device__ and a CPU-only procedure would use the
 // attribute __host__.
-
-
-// This routine executes on the GPU.
 //
 __global__ void
 thread_main(int size, float *x, float *a, float *b)
@@ -52,24 +45,19 @@ thread_main(int size, float *x, float *a, float *b)
   //
   if ( idx >= size ) return;
 
+  a[idx] = idx + blockIdx.x;
+  b[idx] = float(blockIdx.x) / (idx+1);
+
   // Perform Computation
   //
   x[idx] = a[idx] + b[idx];
 }
 
 
- /// CUDA API Error-Checking Wrapper
-///
-#define CE(call) {                                                            \
-   const cudaError_t rv = call;                                               \
-   if ( rv != cudaSuccess ) {                                                 \
-     printf("CUDA error %d, %s\n",rv,cudaGetErrorString(rv));  exit(1);}}
-
-
 __host__ int
 main(int argc, char** argv)
 {
-  srand48(1);                   // Seed random number generator.
+  const int SIZE = 100000000;
 
   // Declare host arrays for inputs and output.
   //
@@ -77,54 +65,42 @@ main(int argc, char** argv)
   vector<float> b(SIZE);
   vector<float> x(SIZE);
 
+  // Compute size of each array.
+  //
+  const int array_size_chars = a.size() * sizeof(a[0]);
+
   // Allocate storage for GPU copy of data.
   //
-  // The returned addresses are in GPU global space. They are not
-  // valid addresses on the CPU.
+  // The address of the allocated storage is returned in the first
+  // argument, a_dev, etc. The addresses are in GPU global space and
+  // so they are not necessarily valid on the CPU.
   //
-  void *a_dev, b_dev, x_dev;
-  CE(cudaMalloc(&a_dev, host_array_size * sizeof(a[0]) ));
-  CE(cudaMalloc(&b_dev, host_array_size * sizeof(b[0]) ));
-  CE(cudaMalloc(&x_dev, host_array_size * sizeof(x[0]) ));
-
-  // Initialize input array.
-  //
-  float xi = drand48(), yi = drand48();
-  for ( int i=0; i<host_array_size; i++ )
-    {
-      a[i] = xi; b[i] = yi;
-      xi += 0.1; yi += 0.1;
-    }
-
-  // Move input arrays to GPU.
-  //
-  CE(cudaMemcpy(a_dev, a.data(), host_array_size * sizeof(a[0]),
-                cudaMemcpyHostToDevice));
-  CE(cudaMemcpy(b_dev, b.data(), host_array_size * sizeof(b[0]),
-                cudaMemcpyHostToDevice));
+  void *a_dev, *b_dev, *x_dev;
+  cudaMalloc( &a_dev, array_size_chars );
+  cudaMalloc( &b_dev, array_size_chars );
+  cudaMalloc( &x_dev, array_size_chars );
 
   // Specify Launch Configuration
   //
-  dim3 db, dg;
-  db.x = 64;          // Number of threads per block in x dimension.
-  db.y = db.z = 1;    // Number of threads per block in y and z dimensions.
+  const int db = 64;        // Number of threads per block.
 
   // Choose grid size so that there is at least one thread per array
   // element.
   //
-  dg.x = (SIZE + db.x - 1 ) / db.x;
-  dg.y = dg.z = 1;
+  const int dg = (SIZE + db - 1 ) / db;
 
   // Launch Kernel
   //
-  dots<<<dg,db>>>(SIZE, x.data(), a.data(), b.data());
+  thread_main<<<dg,db>>>(SIZE, x.data(), a.data(), b.data());
 
   // Copy data from GPU to CPU.
   //
-  CE(cudaMemcpy(x.data(), x_dev, host_array_size * sizeof(x[0]),
-                cudaMemcpyDeviceToHost));
+  cudaMemcpy( x.data(), x_dev, array_size_chars, cudaMemcpyDeviceToHost );
 
   printf("Finished with %d elements, element %d is %.5f\n",
-         host_array_size, argc, x[argc]);
-}
+         SIZE, argc, x[argc]);
 
+  cudaFree( a_dev );
+  cudaFree( b_dev );
+  cudaFree( x_dev );
+}

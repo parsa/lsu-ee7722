@@ -1,19 +1,25 @@
-#include <stdio.h>
-#include <vector>
-#include <cstdlib>
-#include <thread>
-using namespace std;
+/// LSU EE 7722 GPU Microarchitecture
+//
+ /// Simple, Self-Contained, One-File c++11 Threads Example
 
 // Very simple, completely self-contained, example of a multithreaded
 // program using the c++11 thread support library.
 
-// Thread Library Documentation: http://en.cppreference.com/w/cpp/thread
-
-// Compile command:  g++ thds.cc -o thds -O3 -Wall -std=c++11 -lpthread
+ /// How to Compile from the Command Line
 //
+//   Compile command:  g++ thds.cc -o thds -O3 -Wall -std=c++11 -lpthread
+
+ /// Documentation
+//
+//   Thread Library: http://en.cppreference.com/w/cpp/thread
 
 
-const int SIZE = 100000000;
+#include <stdio.h>
+#include <vector>
+#include <cstdlib>
+#include <thread>
+
+using namespace std;
 
 void
 thread_main(int tid, int nt, int size, float *x, float *a, float *b)
@@ -43,7 +49,11 @@ thread_main(int tid, int nt, int size, float *x, float *a, float *b)
 int
 main(int argc, char **argv)
 {
+  const int SIZE = 100000000;
+
   // Get number of threads to spawn from the command-line argument.
+  //
+  // If no argument given, use 4 as the default number of threads.
   //
   const int nthds = argc == 1 ? 4 : atoi(argv[1]);
 
@@ -71,7 +81,8 @@ main(int argc, char **argv)
   // Note: Print out the value to prevent optimizer from eliminating
   // code.
   //
-  printf("Value of element number %d is %f\n", argc, x[argc]);
+  printf("Using %d threads value of element number %d is %f\n",
+         nthds, argc, x[argc]);
 
   return 0;
 }
