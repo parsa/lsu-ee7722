@@ -31,19 +31,20 @@
 //   -- CC 2.0, 2.1
 //      Fermi
 //
-//   -- CC 3.0, 3.5
+//   -- CC 3.0, 3.1, 3.5, 3.7
 //      Kepler
 //      Product cycle ending.
-//      Currently the highest performance for scientific computation.
+//      Currently the highest performance for double-precision computation ..
+//      .. without an unlimited budget. (13 February 2017, 11:20:32 CST)
 //
 //   -- CC 5.2
 //      Maxwell
 //      Product cycle ending.
 //
-//   -- CC 6.X
+//   -- CC 6.0, 6.1
 //      Pascal
 //      Product cycle starting.
-//      Currently the highest performance for single-precision computation.
+//      If cost is no object, good double-precision and half-precision perf.
 
 
 
