@@ -1,4 +1,4 @@
-/// LSU EE 7722 (Spring 2016), GPU Microarchitecture
+/// LSU EE 7722 (Spring 2017), GPU Microarchitecture
 //
 // Simple CUDA Example, without LSU ECE helper classes.
 
@@ -11,6 +11,8 @@
 #include <ctype.h>
 #include <time.h>
 #include <new>
+#include <vector>
+using namespace std;
 
 #include <cuda_runtime.h>
 
@@ -20,7 +22,8 @@ typedef float Elt_Type;
 
 #define N 4
 
-struct Vector
+struct __builtin_align__(N*sizeof(Elt_Type)) __align__(N*sizeof(Elt_Type))
+Vector
 {
   Elt_Type a[N];
 };
@@ -29,7 +32,7 @@ struct App
 {
   int num_threads;
   Elt_Type matrix[N][N];
-  int array_size;
+  size_t array_size;
   Vector *v_in, *v_out;
   Vector *d_v_in, *d_v_out;
 };
@@ -44,7 +47,7 @@ void
 omp_start()
 {
 #pragma omp parallel for num_threads(app.num_threads)
-  for ( int h=0; h<app.num_threads; h++ )
+  for ( unsigned int h=0; h<app.array_size; h++ )
     {
       Vector p = app.v_in[h];
       Vector q;
@@ -88,11 +91,7 @@ cuda_thread_start()
 
   if ( tid >= d_app.num_threads ) return;
 
-  const int elt_per_thread = d_app.array_size / d_app.num_threads;
-  const int start = elt_per_thread * tid;
-  const int stop = start + elt_per_thread;
-
-  for ( int h=start; h<stop; h++ )
+  for ( int h=tid; h<d_app.array_size; h += d_app.num_threads )
     {
       Vector p = d_app.d_v_in[h];
       Vector q;
@@ -109,6 +108,13 @@ void
 print_gpu_and_kernel_info()
 {
   gpu_info_print();
+
+  // Determine which GPU to use. (For starters, if there's more than
+  // one, choose the one connected to the display.)
+  //
+  int dev = gpu_choose_index();
+  CE(cudaSetDevice(dev));
+  printf("Using GPU %d\n",dev);
 
   cudaFuncAttributes cfa_prob1; // Properties of code to run on device.
   CE( cudaFuncGetAttributes(&cfa_prob1,cuda_thread_start) );
@@ -129,14 +135,12 @@ int
 main(int argc, char **argv)
 {
   const int nt_raw = argc < 2 ? 1 : atoi(argv[1]);
-  const bool use_pthreads = nt_raw < 0;
   app.num_threads = abs(nt_raw);
 
-  if ( app.num_threads == 1 )
-    print_gpu_and_kernel_info();
+  print_gpu_and_kernel_info();
 
   app.array_size = argc < 3 ? 1 << 20 : int( atof(argv[2]) * (1<<20) );
-  const int array_size_bytes = app.array_size * sizeof(app.v_in[0]);
+  const size_t array_size_bytes = app.array_size * sizeof(app.v_in[0]);
 
   // Allocate storage for CPU copy of data.
   //
@@ -148,12 +152,11 @@ main(int argc, char **argv)
   CE( cudaMalloc( & app.d_v_in,  app.array_size * sizeof(Vector) ) );
   CE( cudaMalloc( & app.d_v_out, app.array_size * sizeof(Vector) ) );
 
-  printf("Preparing for %d threads %d elements.\n",
-         app.num_threads, app.array_size);
+  printf("Using  %zd elements.\n", app.array_size);
 
   // Initialize input array.
   //
-  for ( int i=0; i<app.array_size; i++ )
+  for ( size_t i=0; i<app.array_size; i++ )
     for ( int j=0; j<N; j++ ) app.v_in[i].a[j] = drand48();
 
   // Initialize transformation matrix.
@@ -162,33 +165,38 @@ main(int argc, char **argv)
     for ( int j=0; j<N; j++ )
       app.matrix[i][j] = drand48();
 
-  const double time_start = time_fp();
-  const bool use_omp = true;
-  printf("For %d elements...\n", app.array_size);
+  printf("For %zd elements...\n", app.array_size);
 
-  for ( int ntl = 0; ntl < 5; ntl++ )
+  const char* const names[] = { "OMP", "PTH", "CUDA" };
+
+  vector<pthread_t> ptid;
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+
+  // Copy input array from CPU to GPU.
+  //
+  CE( cudaMemcpy
+      ( app.d_v_in, app.v_in, array_size_bytes, cudaMemcpyHostToDevice ) );
+
+  for ( int i=0; i<3; i++ )
     {
-      app.num_threads = 1 << ntl;
-      for ( int i=0; i<3; i++ )
+      printf("Running %s...\n", names[i]);
+      for ( int ntl = 0; ntl < 7; ntl++ )
         {
-          const char *version = NULL;
+          const double time_start = time_fp();
+
+          app.num_threads = i < 2 ? 1 << ntl : 32 << ntl;
           switch ( i ) {
 
           case 0:
-            version = "omp";
             omp_start();
             break;
 
           case 1: // pthreads
             {
-              version = "pth";
-              pthread_t* const ptid = new pthread_t[app.num_threads];
-
-              pthread_attr_t attr;
-              pthread_attr_init(&attr);
-              pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
-
-              for ( int i=0; i<app.num_threads; i++ )
+              ptid.resize(app.num_threads);
+              for ( ptrdiff_t i=0; i<app.num_threads; i++ )
                 {
                   pthread_create(&ptid[i], &attr, pt_thread_start, (void*)i);
                 }
@@ -201,30 +209,20 @@ main(int argc, char **argv)
             break;
           case 2: // CUDA
             {
-              version = "cuda";
-              // Copy input array from CPU to GPU.
-              //
-              CE( cudaMemcpy
-                  ( app.d_v_in, app.v_in, array_size_bytes,
-                    cudaMemcpyHostToDevice ) );
-
               // Copy App structure to GPU.
               //
               CE( cudaMemcpyToSymbol
                   ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
-              const int threads_per_block = 256;
+              const int threads_per_block = min(app.num_threads,32);
               const int blocks_per_grid =
                 ( app.num_threads + threads_per_block-1 ) / threads_per_block;
 
               /// Kernel Launch
               cuda_thread_start <<< blocks_per_grid, threads_per_block >>>();
 
-              // Copy output array from GPU to CPU.
-              //
-              CE( cudaMemcpy
-                  ( app.v_out, app.d_v_out, array_size_bytes,
-                    cudaMemcpyDeviceToHost) );
+              CE( cudaStreamSynchronize( 0 ) );
+
             }
             break;
           }
@@ -233,8 +231,13 @@ main(int argc, char **argv)
           const double fp_op_count = app.array_size * ( 16 + 12 );
           const double elapsed_time = time_fp() - time_start;
 
-          printf("%4s  %4d thds  %7.3f us  Rate %.3f GFLOPS,  %.3f GB/s\n",
-                 version,
+          // Copy output array from GPU to CPU.
+          //
+          CE( cudaMemcpy
+              ( app.v_out, app.d_v_out, array_size_bytes,
+                cudaMemcpyDeviceToHost) );
+
+          printf(" %4d thds  %10.3f µs  Rate %7.3f GFLOPS,  %7.3f GB/s\n",
                  app.num_threads,
                  1e6 * elapsed_time,
                  1e-9 * fp_op_count / elapsed_time,
