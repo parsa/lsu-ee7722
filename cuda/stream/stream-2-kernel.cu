@@ -121,7 +121,8 @@ dots_iterate3()
 //
 
 __host__ cudaError_t
-kernels_get_attr(struct cudaFuncAttributes *attr, char **names, int max_count)
+kernels_get_attr
+(struct cudaFuncAttributes *attr,const char **names, int max_count)
 {
   struct cudaFuncAttributes *attr_stop = attr + max_count;
   cudaError_t er = cudaSuccess; // Tentative.

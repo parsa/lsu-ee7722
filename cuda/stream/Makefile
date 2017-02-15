@@ -46,37 +46,36 @@ default: stream-cpu-only all
 
 all: stream stream-full stream-2
 
-stream-cpu-only: stream-cpu-only.cc Makefile
-	g++ -g -std=c++11 --verbose-asm -O3 -fopenmp $< -S -o $@.s 
-	g++ -O3 -std=c++11 -fopenmp $@.s -o $@
+stream-cpu-only:%: %.cc Makefile
+	g++ -g -std=c++11 --verbose-asm -O3 -march=native -fopenmp \
+		 $< -S -o $@.s
+	g++ -O3 -march=native -std=c++11 -fopenmp $@.s -o $@
 
 $(BUILD_CC_FILE_PATH):
 	;
 
 %.o: %.cc Makefile
-#	$(CXX) $(CFLAGS) -S $<
 	$(CXX) $(CFLAGS) -c $<
 
-%.o: %.cu Makefile util.h $(BUILD_CC_FILE_PATH)
+%.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUXX) $(CUFLAGS) -c $*.cu
 	$(CUXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
 	$(CUXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 
-stream-full: stream-full.o
-	$(CUXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+stream-full:%: %.cu Makefile
+	$(CUXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 
-stream-2.o: stream-2.cc stream-2-kernel.cu stream-2.cuh Makefile
-stream-2-kernel.o: Makefile stream-2.cuh stream-2-kernel.cu
+stream-2.o: stream-2-kernel.cu stream-2.cuh
+stream-2-kernel.o: stream-2.cuh
+stream-kernel.o: stream.cuh
+stream.o: stream-kernel.cu
 
-stream.o: stream.cc stream-kernel.cu Makefile
-stream: stream.o stream-kernel.o
-	$(CUXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-stream-2: stream-2.o stream-2-kernel.o
-	$(CUXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+stream stream-2:%: %.o %-kernel.o
+	$(CUXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin stream stream-full stream-2
+	/bin/rm -f *.o *.s *.ptx *.sass *.cubin stream stream-full stream-2 \
+	stream-cpu-only
