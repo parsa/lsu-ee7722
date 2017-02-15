@@ -19,7 +19,7 @@ GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 
 COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
  --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH)  -g  \
-	-Xcompiler -fopenmp -Xcompiler -O3 -lineinfo
+	-Xcompiler -fopenmp -Xcompiler -O3 -Xcompiler -march=native -lineinfo
 
 CC = gcc
 CXX = $(CUDAPATH)/bin/nvcc
@@ -27,9 +27,9 @@ CXX = $(CUDAPATH)/bin/nvcc
 .SUFFIXES: .cu .cuh
 
 all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
- vtx-xform-local vtx-xform-sum vtx-xform-size
+ vtx-xform-local vtx-xform-size
 
-TARGETS = vtx-xform-size vtx-xform-sum	\
+TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
 	  vtx-xform-omp vtx-xform-better
 
 default: $(TARGETS)
@@ -53,7 +53,7 @@ $(BUILD_CC_FILE_PATH):
 	$(CXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
-%: %.o
+$(all):%: %.o
 	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
 
 
