@@ -33,7 +33,7 @@ struct App
   int num_threads;
   Elt_Type matrix[N][N];
   size_t array_size;
-  Vector *v_in, *v_out;
+  Vector *v_in, *v_out, *v_check;
   Vector *d_v_in, *d_v_out;
 };
 
@@ -146,6 +146,7 @@ main(int argc, char **argv)
   //
   app.v_in = new Vector[app.array_size];
   app.v_out = new Vector[app.array_size];
+  app.v_check = new Vector[app.array_size];
 
   // Allocate storage for GPU copy of data.
   //
@@ -164,6 +165,14 @@ main(int argc, char **argv)
   for ( int i=0; i<N; i++ )
     for ( int j=0; j<N; j++ )
       app.matrix[i][j] = drand48();
+
+  for ( size_t i=0; i<app.array_size; i++ )
+    for ( int r=0; r<N; r++ )
+      {
+        app.v_check[i].a[r] = 0;
+        for ( int c=0; c<N; c++ )
+          app.v_check[i].a[r] += app.matrix[r][c] * app.v_in[i].a[c];
+      }
 
   printf("For %zd elements...\n", app.array_size);
 
@@ -233,9 +242,27 @@ main(int argc, char **argv)
 
           // Copy output array from GPU to CPU.
           //
+          if ( i == 2 )
           CE( cudaMemcpy
               ( app.v_out, app.d_v_out, array_size_bytes,
                 cudaMemcpyDeviceToHost) );
+
+          int err_count = 0;
+          for ( size_t i=0; i<app.array_size; i++ )
+            for ( int r=0; r<N; r++ )
+                {
+                  if ( fabs( app.v_check[i].a[r] - app.v_out[i].a[r] ) > 1e-5 )
+                    {
+                      err_count++;
+                      if ( err_count < 5 )
+                        printf
+                          ("Error at vec %zd comp %d: %.7f != %.7f (correct)\n",
+                           i, r, app.v_out[i].a[r],
+                           app.v_check[i].a[r] );
+                    }
+                }
+            if ( err_count )
+              printf("Total errors %d\n", err_count);
 
           printf(" %4d thds  %10.3f µs  Rate %7.3f GFLOPS,  %7.3f GB/s\n",
                  app.num_threads,
