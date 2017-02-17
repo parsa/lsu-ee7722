@@ -18,6 +18,8 @@
 #include <vector>
 #include <cstdlib>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
@@ -30,10 +32,13 @@ time_fp()
 }
 
 struct App {
-  int nt;       // Number of threads.
-  int size;     // Array size.
-  float *a, *b; // Input arrays.
-  float *x;     // Output array
+  int nt;          // Number of threads.
+  int size;        // Array size.
+  float *a, *b;    // Input arrays.
+  float *x;        // Output array
+  bool thds_sync;  // If true, threads need to do their own synchronization.
+
+  // Homework 1: Feel free to add members to this structure.
 };
 
 
@@ -57,23 +62,27 @@ thread_main(int tid, App* app)
   // Initialize values.
   //
   if ( ( tid & 1 ) == 0 )
-    for ( int i=start; i<stop; i++ )
-      {
-        a[i] = i + nt;
-        b[i] = float(nt) / (i+1);
-      }
+    {
+      for ( int i=start; i<stop; i++ )
+        {
+          a[i] = i + nt;
+          b[i] = float(nt) / (i+1);
+        }
+    }
 
   // Perform computation.
   //
   if ( ( tid & 1 ) == 1 )
-    for ( int i=start; i<stop; i++ )
-      x[i] = a[i] + b[i];
+    {
+      for ( int i=start; i<stop; i++ )
+        x[i] = a[i] + b[i];
+    }
 }
 
 int
 main(int argc, char **argv)
 {
-  const int SIZE = 100000000;
+  const int SIZE = 10000000;
 
   // Get number of threads to spawn from the command-line argument.
   //
@@ -122,7 +131,12 @@ main(int argc, char **argv)
     };
 
   printf("Running parent-syncs version...\n");
+
+  // Set input and output arrays to zero.
+  //
   for ( auto v: { &a, &b, &x } ) for ( auto& xv: *v ) xv = 0;
+
+  app.thds_sync = false;
   const double ps_start = time_fp();
 
   // Create new threads by constructing std::thread objects.
@@ -145,8 +159,14 @@ main(int argc, char **argv)
   printf("... took %.6f ms\n",time_fp() - ps_start);
   check();
 
+
   printf("Running child-threads-sync version.\n");
+
+  // Set input and output arrays to zero.
+  //
   for ( auto v: { &a, &b, &x } ) for ( auto& xv: *v ) xv = 0;
+
+  app.thds_sync = true;
   const double cs_start = time_fp();
 
   // Declare an array of threads.
