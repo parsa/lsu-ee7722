@@ -39,11 +39,7 @@ App app;
 __constant__ App d_app;
 
 #define BLOCK_SIZE_MAX 1024
-__shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
-__shared__ Elt_Type wshared_sum[32];
 
-
-__device__ Elt_Type d_sum_sum_of_sq;
 
 __device__ Elt_Type
 reduce_thread()
@@ -132,6 +128,7 @@ reduce_per_blk_1thd()
   // CPU computes sum of G elements.
 
   const Elt_Type thd_sum = reduce_thread();
+  __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to thread 0.
   __syncthreads();
@@ -187,6 +184,7 @@ reduce_thd_tree_blk()
   //
 
   const Elt_Type thd_sum = reduce_thread();
+  __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to other threads.
   Elt_Type our_sum = thd_sum;
@@ -215,6 +213,8 @@ reduce_wp_lin_tree_blk()
   // other than the one after the thread's initial sum is written.
 
   const Elt_Type thd_sum = reduce_thread();
+
+  volatile __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to other threads.
   Elt_Type our_sum = thd_sum;
@@ -259,6 +259,8 @@ reduce_thd_tree_wp_tree_blk()
 {
   const Elt_Type thd_sum = reduce_thread();
 
+  volatile __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
+
   shared_sum[threadIdx.x] = thd_sum;
 
   Elt_Type our_sum = thd_sum;
@@ -280,6 +282,11 @@ reduce_thd_tree_wp_tree_blk()
 #if 1
 
   const int warp_num = threadIdx.x >> warp_lg;
+  volatile __shared__ Elt_Type wshared_sum[32];
+
+  // Note: Only needed if blockDim.x < 1024.
+  if ( warp_num == 0 ) wshared_sum[ threadIdx.x ] = 0;
+  __syncthreads();
 
   // Store per-warp sum in shared memory.
   //
@@ -301,7 +308,6 @@ reduce_thd_tree_wp_tree_blk()
             our_osum += wshared_sum[ threadIdx.x + dist ];
             wshared_sum[ threadIdx.x ] = our_osum;
           }
-
     }
 
 #else
@@ -330,6 +336,7 @@ extern "C" __global__ void
 reduce_method_5()
 {
   const Elt_Type thd_sum = reduce_thread();
+  __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to other threads.
   Elt_Type our_sum = thd_sum;
@@ -468,7 +475,8 @@ main(int argc, char **argv)
 
   // Initialize input array. Set overrun area to zero.
   //
-  for ( int i=0; i<app.array_size; i++ ) app.v_in[i] = 2 * drand48();
+  //  for ( int i=0; i<app.array_size; i++ ) app.v_in[i] = 2 * drand48();
+  for ( int i=0; i<app.array_size; i++ ) app.v_in[i] = 1;
   for ( int i=app.array_size+1; i<array_size_elts; i++ ) app.v_in[i] = 0;
 
   // Compute correct answer.
