@@ -36,7 +36,7 @@ default: $(TARGETS)
 
 CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
 CXXFLAGS = $(CFLAGS)  -std=c++11
-CUFLAGS = $(CFLAGS) -std c++11
+CUFLAGS = $(CFLAGS) -Xcompiler -ansi
 
 LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
 
