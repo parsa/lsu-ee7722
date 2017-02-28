@@ -90,8 +90,8 @@ endif
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
 balls: $(addsuffix .o,$(basename $(SRC_FILES)))
-	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $(LIBDIR) $^ $(LIBRARIES)
-	$(CUCC) $(CUFLAGS) -o $@-debug $(LIBDIR) $(^:.o=-debug.o) $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
 	/bin/rm -f build-cc *.s *.o *~ *.sass *.cubin *.ptx \
