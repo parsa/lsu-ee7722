@@ -1,61 +1,99 @@
 
-INCLUDE = -I/usr/X11R6/include/ -I/opt/local/include  \
-  -I../include -I../../include
 
-CUDAPATH = /usr/local/cuda
-
-# -Xnvopencc -LIST:source=on
-
-GPU_GET_PATH = ../../util/gpu-get-cc
+SRC_FILES = balls-kernel.cu balls.cc
 
 .PHONY: default
 default: balls
 
+GP_ROOT =  ../..
+
+CUDAPATH = /usr/local/cuda
+CUDUMP = $(CUDAPATH)/bin/nvdisasm
+CUDUMPFLAGS = --print-line-info --print-code 
+# -Xnvopencc -LIST:source=on
+
+CUCC = $(CUDAPATH)/bin/nvcc
+CXX = g++
+
+INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
+
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+
+GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
+
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
 DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
 GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
-build-cc:  # Let make know that build-cc now exists, though not by this rule.
-	;
 
+# Optimization Flag (Omitted from debug builds by make rules.)
+#
+OPT_FLAG = -O3
 
-COMPILERFLAGS = -Xcompiler -Wall --ptxas-options=-v \
-   -Xcompiler -Wno-unused-function -use_fast_math
-OPTFLAGS = -O3
+# Recognized both by nvcc and g++
+#
+IDENTICAL_FLAGS = -g $(INCLUDE)
 
-CC = gcc
-CXX = $(CUDAPATH)/bin/nvcc 
+# Used both by nvcc and g++, but requires an -Xcompiler prefix for nvcc
+#
+COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
-.SUFFIXES: .cu .cuh
+# Used only by nvcc.
+#
+CUCC_ONLY_FLAGS = --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH) -std c++11 
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g -Xcompiler -Wno-strict-aliasing \
-  -Xcompiler -Wno-parentheses 
+# Used only by g++
+#
+CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
 
-MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
-# Remove openmp, which doesn't play well with nvcc.
-MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
+COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
-CXXFLAGS = $(CFLAGS)  $(MAGICKCXX) -std=c++11 --gpu-architecture=$(GPU_ARCH)
-CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98 --gpu-architecture=$(GPU_ARCH)
+CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
+CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
 
+build-cc:  # Let make know that build-cc now exists, though not by this rule.
+	;
 
-.cc.o:
-	$(CXX) $(CXXFLAGS) -c $*.cc
+# Include dependencies that were created by %.d rules.
+#
+ifneq ($(MAKECMDGOALS),clean)
+-include $(SRC_FILES:=.d)
+endif
 
-%.o: %.cu build-cc
-	$(CXX) $(CUFLAGS) -c $*.cu
+# Prepare file holding dependencies, to be included in this file.
+#
+%.cc.d: %.cc
+	@set -e; rm -f $@; \
+         $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
 
-# balls.o: demo-x-kernel.cu demo-x.cuh
-balls-kernel.o: Makefile balls.cuh balls-kernel.cu
+%.cu.d: %.cu
+	@set -e; rm -f $@; \
+         $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
 
+%.o: %.cc Makefile
+	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
+	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $*.s
+	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
 
-balls: balls.cc shapes.h tiles.h Makefile balls.cuh balls-kernel.o
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $@.cc balls-kernel.o -o $@ $(LIBRARIES)
-	$(CXX) $(CXXFLAGS) $@.cc -o $@-debug balls-kernel.o $(LIBRARIES)
+%.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
+	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
+	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin && \
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
+balls: $(addsuffix .o,$(basename $(SRC_FILES)))
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-debug $(LIBDIR) $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
-	/bin/rm -f build-cc  *.o *~ *.sass *.cubin *.ptx balls balls-debug
-
+	/bin/rm -f build-cc *.s *.o *~ *.sass *.cubin *.ptx \
+	*.d *.d.[0-9][0-9][0-9][0-9][0-9] \
+	balls balls-debug
