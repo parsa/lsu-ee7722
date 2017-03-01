@@ -46,10 +46,6 @@ COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
-
-
 SRC_FILES = matrix-mult.cc matrix-mult-kernel.cu
 
 all = matrix-mult

@@ -47,8 +47,7 @@ COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
 
 all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
  vtx-xform-local vtx-xform-size
@@ -60,7 +59,6 @@ TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
 
 default: $(TARGETS)
 
-LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
 
 $(BUILD_CC_FILE_PATH):
 	;
