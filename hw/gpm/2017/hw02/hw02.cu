@@ -44,6 +44,10 @@ const int N = 16;
 //
 typedef float Elt_Type;
 
+const char* elt_type_str(float f){ return "float"; }
+const char* elt_type_str(double f){ return "double"; }
+const char* elt_type_str(int f){ return "int"; }
+
 struct App
 {
   // Number of input and output matrices.
@@ -101,7 +105,7 @@ mxm_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 }
 
 
-template<int thds_per_mat = 8>
+template<int thds_per_mat>
 __global__ void
 mxm_g_split(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 {
@@ -237,8 +241,10 @@ main(int argc, char **argv)
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
 
   printf
-    ("Matrix size: %d x %d, %d matrices.  Launching %d blocks of %d thds.\n",
-     N, N, app.n_mats, num_blocks, thd_per_block_goal);
+    ("Input is %d  %d x %d matrices of %s, total size %zd bytes (%.1f MiB).\n",
+     app.n_mats, N, N,
+     elt_type_str(Elt_Type(1)), in_size_bytes,
+     double(in_size_bytes)/(size_t(1)<<20));
 
 #define IDX(i,r,c) ((i) * nsq + (r) * N + (c))
 
