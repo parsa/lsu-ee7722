@@ -3,119 +3,110 @@
 ##  Makefile for Links Demo
 ##
 
-OPT_FLAGS = -O3
+GP_ROOT =  ../..
 
-# Uncomment the line below for GPU optimization.
-#
-# OPT_FLAGS = -G
-
+.PHONY:  clean
+default: links
 
 CUDAPATH = /usr/local/cuda
+CUDUMP = $(CUDAPATH)/bin/nvdisasm
+CUDUMPFLAGS = --print-code
+# --print-line-info
+# --print-instruction-encoding
+# --print-life-ranges --life-range-mode wide
 
-COURSE_INCLUDE_DIR_POSSIBILITIES = ../include ../../include ../../../include
+CUCC = $(CUDAPATH)/bin/nvcc
+CXX = g++
 
-FOUND := $(foreach dir, $(COURSE_INCLUDE_DIR_POSSIBILITIES), \
-           $(shell test -e $(dir) && echo $(dir)))
-COURSE_INCLUDE_DIR := $(firstword $(FOUND))
+INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
 
-INCLUDE = -I $(COURSE_INCLUDE_DIR)
-
-
-GPU_GET_PATH = $(COURSE_INCLUDE_DIR)/../util/gpu-get-cc
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
 DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
 GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 
+# Optimization Flag (Omitted from debug builds by make rules.)
+#
+OPT_FLAG = -O3
 
-CUDUMP = $(CUDAPATH)/bin/nvdisasm
-CUDUMPFLAGS = --print-code 
-# --print-line-info 
-# --print-instruction-encoding
-# --print-life-ranges --life-range-mode wide
+# Recognized both by nvcc and g++
+#
+IDENTICAL_FLAGS = -g $(INCLUDE)
 
-CUXX = $(CUDAPATH)/bin/nvcc
+# Used both by nvcc and g++, but requires an -Xcompiler prefix for nvcc
+#
+COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
-CXX = $(CUXX)
+# Used only by nvcc.
+#
+CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
 
-LINKS_CC_SRC = links.cc
-LINKS_CU_SRC = links-kernel.cu
-
-SRC_FILES = $(LINKS_CC_SRC)
-CU_SRC_FILES = $(LINKS_CU_SRC)
-OBJ_FILES = $(SRC_FILES:.cc=.o) $(CU_SRC_FILES:.cu=.o)
-
-.SUFFIXES: .cu .cuh
-
-MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
-# Remove openmp, which doesn't play well with nvcc.
-MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
-
-COMMONFLAGS = -g -Xcompiler -Wall -Xcompiler -Wno-unused-function \
-  $(INCLUDE) $(MAGICKCXX) $(OPT_FLAGS) \
- -Xcompiler -Wno-parentheses --gpu-architecture=$(GPU_ARCH)
-
-
-CUFLAGS = $(COMMONFLAGS) -Xcompiler --std=gnu++98 \
- -use_fast_math 
-
-CXXFLAGS = $(COMMONFLAGS) -Xcompiler --std=c++11  -Xcompiler -fopenmp
-
+# Used by the CUDA compiler (ptxas)
+#
 PTXASFLAGS = -Xptxas --warn-on-local-memory-usage \
- -Xptxas --warn-on-spills  \
-  --verbose 
+	 -Xptxas --warn-on-spills --ptxas-options=-v -lineinfo
 
-LINKFLAGS = -Xcompiler -fopenmp
+# Used only by g++
+#
+CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
 
-LIBRARIES =  -lX11 -lXi -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags) -lnvidia-ml -lcuda
+COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
-LIBDIR  =
+CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
+CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-default: links
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
+  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
 
+SRC_FILES = links.cc links-kernel.cu
+all := links
 
-INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
-	        gl-buffer.h texture-util.h 
+links: $(addsuffix .o,$(basename $(SRC_FILES)))
 
-INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
-	 shapes.h Makefile
+$(BUILD_CC_FILE_PATH):
+	;
 
-# Include dependencies that were created by %.d rule.
+# Include dependencies that were created by %.d rules.
 #
 ifneq ($(MAKECMDGOALS),clean)
--include $(SRC_FILES:.cc=.d) $(CU_SRC_FILES:.cu=.d)
+-include $(SRC_FILES:=.d)
 endif
 
 # Prepare file holding dependencies, to be included in this file.
 #
-%.d: %.cc
+%.cc.d: %.cc
 	@set -e; rm -f $@; \
-         $(CXX) -M $(CUFLAGS) $< > $@.$$$$; \
-         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-         rm -f $@.$$$$
+	 $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rxm -f $@.$$$$
 
-%.d: %.cu
+%.cu.d: %.cu
 	@set -e; rm -f $@; \
-         $(CUXX) -M $(CUFLAGS) $< > $@.$$$$; \
-         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-         rm -f $@.$$$$
+	 $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
 
-%.o: %.cc Makefile $(INCLUDES)
-	$(CXX) $(CXXFLAGS) -c $*.cc
+%.o: %.cc Makefile
+	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
+	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $*.s
+	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
 
-%.o: %.cu Makefile build-cc
-	$(CUXX) $(CUFLAGS) -c $*.cu
-	$(CUXX) $(CUFLAGS) --source-in-ptx -ptx $*.cu -o $*.ptx
-	$(CUXX) $(CUFLAGS) $(PTXASFLAGS) -cubin $*.cu -o $*.cubin
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
+%.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
+	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
+	$(CUCC) $(CUFLAGS) $(PTXASFLAGS) -cubin $*.cu -o $*.cubin && \
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
-
-links: $(OBJ_FILES)
-	$(CUXX) $(CUFLAGS) $(OBJ_FILES)  $(LINKFLAGS) \
-	-o $@ $(LIBDIR)  $(LIBRARIES) 
-
+$(all):%: %.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
-	/bin/rm -f links links-debug *.d *.o *~ *.sass *.ptx *.cubin 
+	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin \
+	$(all) $(all:=-debug) *.s *.d *.d.[0-9][0-9][0-9][0-9][0-9]
+
 

@@ -98,4 +98,4 @@ $(all):%: %.o
 
 clean:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *el.sass *.cubin *.d \
-	$(all) $(all:=-debug) *.s
+	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]
