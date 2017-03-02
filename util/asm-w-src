@@ -5,8 +5,17 @@
 
 %file_info = ();
 
+$comment_prefix = '#';
+$comment_unchanged = 1;
+
 while ( <STDIN> )
   {
+    	if ( /\.arch arm/ && $. < 100 && $comment_unchanged )
+          {
+            $comment_unchanged = 0;
+            $comment_prefix = '@';
+          }
+
     if ( /^\s*\.file (\d+)\s+\"(.*)\"/ )
       {
         $file_info{$1} = { name => $2 };
@@ -27,8 +36,8 @@ while ( <STDIN> )
         my $flno = "$fi->{name}:$lno";
         die "Line $flno is out of range.\n" if $lno > $fi->{content};
         chomp;
-        print "$_  # $flno\n";
-        print "# $fi->{content}->[$lno-1]";
+        print "$_  $comment_prefix $flno\n";
+        print "$comment_prefix $fi->{content}->[$lno-1]";
         next;
       }
     print $_;
