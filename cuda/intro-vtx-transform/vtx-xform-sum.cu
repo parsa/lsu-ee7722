@@ -440,9 +440,11 @@ main(int argc, char **argv)
   const int thd_per_block = argc < 3 ? 1024 : atoi(argv[2]);
   const int num_threads = num_blocks * thd_per_block;
 
-  // Examine argument 3, size of array in MiB. Fractional values okay.
+  // Examine argument 3, size of array in elements. Fractional values okay.
   //
-  app.array_size = argc < 4 ? 1 << 24 : int( atof(argv[3]) * (1<<24) );
+  const double arg3 = argc < 4 ? 1 << 24 : int( atof(argv[3]) * (1<<24) );
+
+  app.array_size = arg3 <= 0 ? max(1.0,-arg3) * num_threads : arg3;
 
   const int sum_array_size = num_threads;
 
@@ -542,7 +544,7 @@ main(int argc, char **argv)
         const double err_s = elapsed_times[hsamp+1]-elapsed_time_s;
         const double err = err_s/elapsed_time_s;
 
-        printf("%-27s   %8.0f µs min, err %5.1f µs %3.1f%%.\n",
+        printf("%-27s   %8.2f µs min, err %5.3f µs %3.1f%%.\n",
                info.ki[kernel].name,
                elapsed_time_s * 1e6, err_s * 1e6, 100 * err);
 
