@@ -65,22 +65,6 @@ __constant__ App d_app;
 
 typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 
-void
-omp_start(int num_threads)
-{
-#pragma omp parallel for num_threads(num_threads)
-  for ( int h=0; h<app.num_vecs; h++ )
-    {
-      for ( int r=0; r<M; r++ )
-        {
-          Elt_Type elt = 0;
-          for ( int c=0; c<N; c++ )
-            elt += app.matrix[r][c] * app.h_in[ h * N + c ];
-          app.h_out[ h * M + r ] = elt;
-        }
-    }
-}
-
 
 extern "C" __global__ void
 mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
