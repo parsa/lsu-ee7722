@@ -1,6 +1,6 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 1 - Spring 2017
+ ///  Homework 1 SOLUTION -- Spring 2017
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2017/hw01.pdf
 
@@ -38,7 +38,10 @@ struct App {
   float *x;        // Output array
   bool thds_sync;  // If true, threads need to do their own synchronization.
 
-  // Homework 1: Feel free to add members to this structure.
+  /// SOLUTION
+  vector<bool> idone;
+  vector<mutex> mutices;
+  vector<condition_variable> cv;
 };
 
 
@@ -55,9 +58,13 @@ thread_main(int tid, App* app)
 
   // Using arguments determine which section of the array to work on.
   //
-  const int elt_per_thd = size / nt;
-  const int start = tid * elt_per_thd;
+  /// SOLUTION
+  const int elt_per_thd = 2*size / nt;
+  const int start = (tid/2) * elt_per_thd;
   const int stop = start + elt_per_thd;
+
+  unique_lock<mutex> lk(app->mutices[tid/2],defer_lock);
+  if ( app->thds_sync ) lk.lock();
 
   // Initialize values.
   //
@@ -68,7 +75,17 @@ thread_main(int tid, App* app)
           a[i] = i + nt;
           b[i] = float(nt) / (i+1);
         }
+      if ( app->thds_sync )
+        {
+          app->idone[tid/2] = true;
+          lk.unlock();
+          app->cv[tid/2].notify_one();
+        }
     }
+
+
+  if ( app->thds_sync && ( tid & 1 ) == 1 )
+    app->cv[tid/2].wait(lk,[&]{return app->idone[tid/2];});
 
   // Perform computation.
   //
@@ -103,6 +120,10 @@ main(int argc, char **argv)
   app.a = a.data();
   app.b = b.data();
   app.x = x.data();
+
+  app.mutices = move(vector<mutex>(nthds/2));
+  app.idone = move(vector<bool>(nthds/2,false));
+  app.cv = move(vector<condition_variable>(nthds/2));
 
   for ( int i=0; i<SIZE; i++ )
     xcheck[i] = float(i + nthds) + float(nthds) / (i+1);
