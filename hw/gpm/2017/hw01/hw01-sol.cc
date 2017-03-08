@@ -18,8 +18,7 @@
 #include <vector>
 #include <cstdlib>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
+#include <future>
 
 using namespace std;
 
@@ -39,9 +38,7 @@ struct App {
   bool thds_sync;  // If true, threads need to do their own synchronization.
 
   /// SOLUTION
-  vector<bool> idone;
-  vector<mutex> mutices;
-  vector<condition_variable> cv;
+  vector<promise<void> > promises;
 };
 
 
@@ -63,8 +60,7 @@ thread_main(int tid, App* app)
   const int start = (tid/2) * elt_per_thd;
   const int stop = start + elt_per_thd;
 
-  unique_lock<mutex> lk(app->mutices[tid/2],defer_lock);
-  if ( app->thds_sync ) lk.lock();
+  auto& promise = app->promises[tid/2];
 
   // Initialize values.
   //
@@ -75,22 +71,16 @@ thread_main(int tid, App* app)
           a[i] = i + nt;
           b[i] = float(nt) / (i+1);
         }
-      if ( app->thds_sync )
-        {
-          app->idone[tid/2] = true;
-          lk.unlock();
-          app->cv[tid/2].notify_one();
-        }
+
+      if ( app->thds_sync ) promise.set_value();
     }
-
-
-  if ( app->thds_sync && ( tid & 1 ) == 1 )
-    app->cv[tid/2].wait(lk,[&]{return app->idone[tid/2];});
 
   // Perform computation.
   //
   if ( ( tid & 1 ) == 1 )
     {
+      if ( app->thds_sync ) promise.get_future().wait();
+
       for ( int i=start; i<stop; i++ )
         x[i] = a[i] + b[i];
     }
@@ -121,9 +111,7 @@ main(int argc, char **argv)
   app.b = b.data();
   app.x = x.data();
 
-  app.mutices = move(vector<mutex>(nthds/2));
-  app.idone = move(vector<bool>(nthds/2,false));
-  app.cv = move(vector<condition_variable>(nthds/2));
+  app.promises = move(vector<promise<void> >(nthds/2));
 
   for ( int i=0; i<SIZE; i++ )
     xcheck[i] = float(i + nthds) + float(nthds) / (i+1);
