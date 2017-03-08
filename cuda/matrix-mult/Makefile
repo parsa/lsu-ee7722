@@ -88,9 +88,9 @@ endif
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
-	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin && \
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 $(all):%: %.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
