@@ -54,7 +54,7 @@ CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
+  $(shell Magick++-config --ldflags) -lnvidia-ml -lcuda
 
 ALL_MAIN = demo-1-simple.cc \
     demo-1c-coord.cc demo-2-springs.cc demo-3-balls.cc \
@@ -104,9 +104,9 @@ endif
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
-	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin && \
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 $(all):%: %.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
