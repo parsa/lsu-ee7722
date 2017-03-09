@@ -1153,7 +1153,7 @@ World::cuda_init()
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
 

@@ -270,7 +270,7 @@ print_gpu_and_kernel_info()
 
   // Choose GPU 0 because it's usually the better choice.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
