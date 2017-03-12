@@ -1,52 +1,66 @@
 
-CUDAPATH = /usr/local/cuda
 PGIPATH = /opt/pgi/linux86-64/16.10
 
-INCLUDE =  -I../../include -I$(PGIPATH)/etc/include_acc
-LIBDIR  =
 
-
-CC = gcc
-CUXX = $(CUDAPATH)/bin/nvcc
 GXX = g++
-PXX = pgc++
+PXX = $(PGIPATH)/bin/pgc++
 
+GP_ROOT =  ../..
+
+
+CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
 CUDUMPFLAGS = --print-code
 # --print-line-info
 # --print-instruction-encoding
 # --print-life-ranges --life-range-mode wide
 
-GPU_GET_PATH = ../../util/gpu-get-cc
+CUCC = $(CUDAPATH)/bin/nvcc
+CXX = g++
+
+INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include \
+	-I$(PGIPATH)/etc/include_acc
+
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
 DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
 GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 GPU_ARCHP := $(subst sm_,cc,$(GPU_ARCH))
 
-CFLAGS_GCC = -Wall -Wno-unused-function -Wno-strict-aliasing \
-	-fopenmp -O3 -g
-CFLAGS_COMMON_NVCC_TRAN = $(foreach f,$(CFLAGS_GCC),-Xcompiler $f)
+# Optimization Flag (Omitted from debug builds by make rules.)
+#
+OPT_FLAG = -O3
 
-CFLAGS_COMMON_NVCC_REC = -std=c++11 $(INCLUDE)
+# Recognized both by nvcc and g++
+#
+IDENTICAL_FLAGS = -g $(INCLUDE)
 
-CFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_GCC) -I$(CUDAPATH)/include
+# Used both by nvcc and g++, but requires an -Xcompiler prefix for nvcc
+#
+COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
-CUFLAGS = $(CFLAGS_COMMON_NVCC_REC) $(CFLAGS_COMMON_NVCC_TRAN) \
- --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH) -lineinfo
-# -Xcompiler -std=gnu++98 \
+# Used only by nvcc.
+#
+CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
+   --ptxas-options=-v -lineinfo
 
+# Used only by g++
+#
+CXX_ONLY_FLAGS = -std=c++11
 
-PCFLAGS = $(INCLUDE) $(CFLAGS_COMMON_NVCC_REC) \
+COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
+
+CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
+CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
+
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml -ldl
+
+PCFLAGS = $(INCLUDE) -g \
  -acc -ta=tesla:$(GPU_ARCHP),nordc,keep \
  -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
 
-.SUFFIXES: .cu .cuh
-
-TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better vtx-xform-s2
-
-LIBRARIES = -lrt -lpthread -lcuda  -lnvidia-ml -ldl
 
 ACCLIBRARIES =  -L/opt/pgi/linux86-64/16.10/lib \
   -Xlinker -rpath=/opt/pgi/linux86-64/16.10/lib \
@@ -59,6 +73,15 @@ ACCLIBRARIES =  -L/opt/pgi/linux86-64/16.10/lib \
 # /opt/pgi/linux86-64/16.10/lib/trace_init.o
 # /usr/lib/gcc/x86_64-redhat-linux/6.3.1/crtbegin.o
 # /opt/pgi/linux86-64/16.10/lib/initmp.o
+
+todo= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
+ vtx-xform-local vtx-xform-size vtx-xform-s2
+
+SRC_FILES = $(todo:=.cu)
+
+TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
+	  vtx-xform-omp vtx-xform-better vtx-xform-s2
+
 
 # /opt/pgi/linux86-64/16.10/lib/acc_init_link_cuda.o
  # -laccapi -laccg
@@ -82,14 +105,12 @@ SRCS_S2_LINK = vtx-xform-s2.o vtx-xform-s2-main.o
 SRCS_S2 = $(SRCS_S2_LINK) vtx-xform-s2-acc.o 
 $(SRCS_S2): vtx-xform-s2.h
 vtx-xform-s2: $(SRCS_S2)
-	$(GXX) $(CFLAGS)  -o $@ $(SRCS_S2_LINK) $(LIBRARIES) \
+	$(GXX) $(CXXFLAGS)  -o $@ $(SRCS_S2_LINK) $(LIBRARIES) \
 	$(FLAGS_FOR_GCC_LINKING_CUDART_PGI)
 
 all: vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
  vtx-xform-local vtx-xform-sum
 
-vtx-xform-size-oa: vtx-xform-size-oa.cc vtx-xform-size-oa.h vtx-xform-size-acc.o Makefile
-	$(PXX) $(PCFLAGS) $@.cc -o $@ vtx-xform-size-acc.o -L $(CUDAPATH)/lib64 -lcudart
 
 HAVE_PGI:
 	$(PXX) -V
@@ -99,29 +120,52 @@ vtx-xform-s2-acc.o: vtx-xform-s2-acc.cc Makefile | HAVE_PGI
 	ld -shared -o $*.so $@
 #	ar r vtx-xform-s2.so $*.so
 
-#$(PGI_OBJ): %.o: %.cc  Makefile | HAVE_PGI
-#	$(PXX) $(PCFLAGS) -c $*.cc
+
 
 
 $(BUILD_CC_FILE_PATH):
 	;
 
+# Include dependencies that were created by %.d rules.
+#
+ifneq ($(MAKECMDGOALS),clean)
+-include $(SRC_FILES:=.d)
+endif
+
+# Prepare file holding dependencies, to be included in this file.
+#
+%.cc.d: %.cc
+	@set -e; rm -f $@; \
+         $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
+
+%.cu.d: %.cu
+	@set -e; rm -f $@; \
+         $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
+
 
 %.o: %.cc Makefile
-	$(GXX) $(CFLAGS) -S $*.cc
-	$(GXX) $(CFLAGS) -c $*.s
+	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
+	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $*.s
+	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
 
-%.o: %.cu Makefile util.h $(BUILD_CC_FILE_PATH)
-	$(CUXX) $(CUFLAGS) -c $*.cu
-	$(CUXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
-	$(CUXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
+%.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
+	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
-%: %.o
-	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
-
+$(all):%: %.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
-	/bin/rm -f $(BUILD_CC_FILE_PATH) *.bin *.gpu \
-	*.o *.ptx *.sass *.cubin $(all)
+	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
+	*.bin *.gpu \
+	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]
 

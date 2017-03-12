@@ -9,4 +9,4 @@ __host__ void dots_launch(dim3 dg, dim3 db);
 __host__ void dots_iterate_launch(dim3 dg, dim3 db, int kernel);
 
 __host__ cudaError_t
-kernels_get_attr(struct cudaFuncAttributes *attrs, char **names, int max);
+kernels_get_attr(struct cudaFuncAttributes *attrs, const char **names, int max);

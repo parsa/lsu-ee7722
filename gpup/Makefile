@@ -3,150 +3,116 @@
 ##  Makefile for Classroom Demos
 ##
 
+GP_ROOT =  ..
 
-COURSE_INCLUDE_DIR = ../include
+.PHONY: ALL_TARGETS clean
+default: ALL_TARGETS
+
 CUDAPATH = /usr/local/cuda
-
-
-
-OPT_FLAGS =  -O3
-
-CXX = g++
-
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
-CUDUMPFLAGS = --print-code 
-# --print-line-info 
+CUDUMPFLAGS = --print-code
+# --print-line-info
 # --print-instruction-encoding
 # --print-life-ranges --life-range-mode wide
 
+CUCC = $(CUDAPATH)/bin/nvcc
+CXX = g++
 
-CUXX = $(CUDAPATH)/bin/nvcc
+INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
 
-.SUFFIXES: .cu .cuh
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
-INCLUDE = -I$(COURSE_INCLUDE_DIR)
+BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
+DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 
-PACKAGE_CXXFLAGS = $(shell Magick++-config --cppflags --cxxflags)
+# Optimization Flag (Omitted from debug builds by make rules.)
+#
+OPT_FLAG = -O3
 
-CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) -std=gnu++11 \
-         -Wno-parentheses \
-	 -I$(CUDAPATH)/include \
-	 -g -Wall -Wno-strict-aliasing
+# Recognized both by nvcc and g++
+#
+IDENTICAL_FLAGS = -g $(INCLUDE)
 
-LINKFLAGS = $(OPTFLAGS)
+# Used both by nvcc and g++, but requires an -Xcompiler prefix for nvcc
+#
+COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
-LIBRARIES =  -lX11  -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags) 
-LIBDIR  =
+# Used only by nvcc.
+#
+CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
+   --ptxas-options=-v -lineinfo
 
-default: all
-#default: demo-11-a-comp-shader
+# Used only by g++
+#
+CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
 
+COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
-ALL = demo-1c-coord demo-2-springs demo-3-balls demo-4-simple-ogl	\
-      demo-5-more-ogl demo-6-lighting demo-7-vtx-arrays			\
-      demo-8-texture demo-9-shader demo-1d-objects demo-10-shader	\
-      demo-11-a-comp-shader demo-cuda-01-simple demo-cuda-02-basics	\
-      demo-cuda-03-shared-mem demo-cuda-04-acc-pat demo-0-coor
+CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
+CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-all: demo-1-simple $(ALL)
+LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
+  $(shell Magick++-config --ldflags) -lnvidia-ml -lcuda
 
+ALL_MAIN = demo-1-simple.cc \
+    demo-1c-coord.cc demo-2-springs.cc demo-3-balls.cc \
+    demo-4-simple-ogl.cc demo-5-more-ogl.cc demo-6-lighting.cc \
+    demo-7-vtx-arrays.cc demo-8-texture.cc demo-9-shader.cc \
+    demo-1d-objects.cc demo-10-shader.cc demo-11-a-comp-shader.cc \
+    demo-cuda-01-simple.cu demo-cuda-02-basics.cu \
+    demo-cuda-03-shared-mem.cu demo-cuda-04-acc-pat.cc demo-0-coor.cc
 
-INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
-	        gl-buffer.h texture-util.h cuda-util.h
+SRC_FILES = $(ALL_MAIN) demo-cuda-04-acc-pat-cuda.cu
 
-INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \
-	 shapes.h Makefile
+all := $(basename $(ALL_MAIN))
 
+demo-cuda-04-acc-pat: demo-cuda-04-acc-pat-cuda.o
 
-CUFLAGS = -g $(OPT_FLAGS) -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- -Xcompiler -Wno-parentheses -Xcompiler -std=gnu++98 \
- --ptxas-options=-v  -use_fast_math --gpu-architecture=sm_30 \
- $(INCLUDE) -Xcompiler -fopenmp
+ALL_TARGETS: $(all)
 
-%.o: %.cc Makefile $(INCLUDES)
-	$(CXX) $(CXXFLAGS) -c $*.cc
+$(BUILD_CC_FILE_PATH):
+	;
 
-%.o: %.cu Makefile
-	$(CUXX) $(CUFLAGS) -c $*.cu
-	$(CUXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
+# Include dependencies that were created by %.d rules.
+#
+ifneq ($(MAKECMDGOALS),clean)
+-include $(SRC_FILES:=.d)
+endif
+
+# Prepare file holding dependencies, to be included in this file.
+#
+%.cc.d: %.cc
+	@set -e; rm -f $@; \
+	 $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
+
+%.cu.d: %.cu
+	@set -e; rm -f $@; \
+	 $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
+
+%.o: %.cc Makefile
+	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
+	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $*.s
+	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
+
+%.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
+	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
-demo-1-simple.o:  $(INCLUDES) demo-1-simple-graphics.cc
-demo-1-simple: demo-1-simple.o 
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-1c-coord.o:  $(INCLUDES) demo-1c-coord-graphics.cc
-demo-1c-coord: demo-1c-coord.o 
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-1d-objects.o:  $(INCLUDES) demo-1d-objects-graphics.cc
-demo-1d-objects: demo-1d-objects.o 
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-2-springs.o: $(INCLUDES) demo-2-springs-graphics.cc
-demo-2-springs: demo-2-springs.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-2-live.o: $(INCLUDES) demo-2-live-graphics.cc shapes.h
-demo-2-live: demo-2-live.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-3-balls.o: $(INCLUDES)
-demo-3-balls: demo-3-balls.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-
-demo-4-simple-ogl.o: $(INCLUDES)
-demo-4-simple-ogl: demo-4-simple-ogl.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-
-demo-5-more-ogl.o: $(INCLUDES)
-demo-5-more-ogl: demo-5-more-ogl.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-6-lighting.o: $(INCLUDES)
-demo-6-lighting: demo-6-lighting.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-7-vtx-arrays.o: $(INCLUDES)
-demo-7-vtx-arrays: demo-7-vtx-arrays.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-8-texture.o: $(INCLUDES)
-demo-8-texture: demo-8-texture.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-9-shader.o: $(INCLUDES)
-demo-9-shader: demo-9-shader.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-10-shader.o: $(INCLUDES)
-demo-10-shader: demo-10-shader.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-11-a-comp-shader.o: $(INCLUDES)
-demo-11-a-comp-shader: demo-11-a-comp-shader.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-11-comp-shader.o: $(INCLUDES)
-demo-11-comp-shader: demo-11-comp-shader.o
-	$(CXX) $(LINKFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-demo-cuda-01-simple: demo-cuda-01-simple.o
-	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
-
-demo-cuda-02-basics: demo-cuda-02-basics.o
-	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
-
-demo-cuda-03-shared-mem: demo-cuda-03-shared-mem.o
-	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
-
-demo-cuda-04-acc-pat: demo-cuda-04-acc-pat.o demo-cuda-04-acc-pat-cuda.o
-	$(CUXX) $(CUFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES)
+$(all):%: %.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
-	/bin/rm -f  *.o *~ *.sass *.cubin *.ptx *.html $(ALL)
+	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
+	$(all) $(all:=-debug) *.s
 

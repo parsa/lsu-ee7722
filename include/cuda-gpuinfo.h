@@ -213,6 +213,9 @@ public:
       chip_sp_flops =
         1000.0 * cc_per_mp * cuda_prop.clockRate
         * cuda_prop.multiProcessorCount;
+      chip_dp_flops =
+        1000.0 * dp_per_mp * cuda_prop.clockRate
+        * cuda_prop.multiProcessorCount;
     }
 
   int get_max_active_blocks_per_mp
@@ -227,6 +230,7 @@ public:
 
   double chip_bw_Bps;
   double chip_sp_flops; // MADD counted as 1 FLOP.
+  double chip_dp_flops; // MADD counted as 1 FLOP.
   int cc_per_mp, dp_per_mp;
   static const int max_kernels = 10;
   Kernel_Info ki[max_kernels];

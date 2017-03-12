@@ -1,0 +1,44 @@
+#!/usr/bin/perl -W
+
+# Insert lines of source after ".loc" lines to make assembler more readable.
+# Intended to be used as a filter.
+
+%file_info = ();
+
+$comment_prefix = '#';
+$comment_unchanged = 1;
+
+while ( <STDIN> )
+  {
+    	if ( /\.arch arm/ && $. < 100 && $comment_unchanged )
+          {
+            $comment_unchanged = 0;
+            $comment_prefix = '@';
+          }
+
+    if ( /^\s*\.file (\d+)\s+\"(.*)\"/ )
+      {
+        $file_info{$1} = { name => $2 };
+      }
+    elsif ( /^\s*\.loc (\d+) (\d+)/ )
+      {
+        my $fi = $file_info{$1};
+        my $lno = $2;
+        die "Could not find info for line \"$_\"\n" unless $fi;
+        unless ( exists $fi->{content} )
+          {
+            my $n = $fi->{name};
+            die unless $n;
+            open SRC, $n or die "Could not open source file \"$n\"\n";
+            $fi->{content} = [ <SRC> ];
+            close SRC;
+          }
+        my $flno = "$fi->{name}:$lno";
+        die "Line $flno is out of range.\n" if $lno > $fi->{content};
+        chomp;
+        print "$_  $comment_prefix $flno\n";
+        print "$comment_prefix $fi->{content}->[$lno-1]";
+        next;
+      }
+    print $_;
+  }

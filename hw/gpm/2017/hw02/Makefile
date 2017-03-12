@@ -1,21 +1,24 @@
+### LSU EE 7722 (Spring 2017), GPU Microarchitecture
+##
+##  Makefile for Homework 2
+##
 
-
-SRC_FILES = balls-kernel.cu balls.cc
+SRC_FILES = hw02.cu
 
 .PHONY: default
-default: balls
+default: hw02
 
-GP_ROOT =  ../..
+GP_ROOT =  ../../../..
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
 CUDUMPFLAGS = --print-line-info --print-code 
-# -Xnvopencc -LIST:source=on
+# --print-life-ranges --life-range-mode wide
 
 CUCC = $(CUDAPATH)/bin/nvcc
 CXX = g++
 
-INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
+INCLUDE =  -I$(GP_ROOT)/include
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 
@@ -35,25 +38,26 @@ IDENTICAL_FLAGS = -g $(INCLUDE)
 
 # Used both by nvcc and g++, but requires an -Xcompiler prefix for nvcc
 #
-COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
+COMMON_FLAGS = -Wall -Wno-parentheses -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH) -std c++11 
+CUCC_ONLY_FLAGS = -std c++11 --ptxas-options=-v  --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
+CXX_ONLY_FLAGS = -std=c++11
+
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
-
 CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
+LIBRARIES = -lrt -lpthread  -lcuda -lnvidia-ml
 
-build-cc:  # Let make know that build-cc now exists, though not by this rule.
+default: hw02
+
+$(BUILD_CC_FILE_PATH):
 	;
 
 # Include dependencies that were created by %.d rules.
@@ -85,15 +89,16 @@ endif
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
+	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin && \
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
-balls: $(addsuffix .o,$(basename $(SRC_FILES)))
+hw02: $(addsuffix .o,$(basename $(SRC_FILES)))
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
+
 clean:
-	/bin/rm -f build-cc *.s *.o *~ *.sass *.cubin *.ptx \
-	*.d *.d.[0-9][0-9][0-9][0-9] \
-	balls balls-debug
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw02 hw02-debug hw02sol *.s \
+	build-cc \
+	*.d *.d.[0-9][0-9][0-9][0-9][0-9]

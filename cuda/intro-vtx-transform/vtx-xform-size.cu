@@ -595,7 +595,8 @@ print_gpu_and_kernel_info()
 
   gpu_info_print();
 
-  // Choose GPU 0 because it's usually the better choice.
+  // Determine which GPU to use. (For starters, if there's more than
+  // one, choose the one connected to the display.)
   //
   int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));

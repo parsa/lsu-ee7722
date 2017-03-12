@@ -187,6 +187,18 @@ cuda_thread_super_simple(int *output_data, int *input_data)
   output_data[tid] = my_element + our_data[threadIdx ^ 1];
 
 
+  /// Bad use of shared memory.
+  //
+  //  Bank conflicts.
+
+  __shared__ int another_array[512 * 32];
+
+  // All threads in a block will write to same bank.
+  // This will slow down execution by a factor of 32.
+  //
+  another_array[ threadIdx.x * 32 ] = my_element;
+
+
 }
 #endif
 
@@ -295,7 +307,7 @@ cuda_init()
   // Choose GPU 0 because we don't have time to provide a way to let
   // the user choose.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   gpu_info.get_gpu_info(dev);

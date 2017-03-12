@@ -1,63 +1,110 @@
 
-INCLUDE =  -I../../include
-LIBDIR  =
+GP_ROOT =  ../..
+
+.PHONY: all
+default: all
+
 
 CUDAPATH = /usr/local/cuda
-
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
 CUDUMPFLAGS = --print-code 
 # --print-line-info 
 # --print-instruction-encoding
 # --print-life-ranges --life-range-mode wide
 
+CUCC = $(CUDAPATH)/bin/nvcc
+CXX = g++
 
-# -Xnvopencc -LIST:source=on
+INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
 
-# --use_fast_math  bug:
-#   Execution problem occurs with --use_fast_math and certain data placement.
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
-COMPILERFLAGS = -Xcompiler -Wall -Xcompiler -Wno-unused-function \
- --ptxas-options=-v  --gpu-architecture=sm_20  -g -O3 
+BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
+DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 
-CC = gcc
-CXX = $(CUDAPATH)/bin/nvcc
+# Optimization Flag (Omitted from debug builds by make rules.)
+#
+OPT_FLAG = -O3
 
-.SUFFIXES: .cu .cuh
+# Recognized both by nvcc and g++
+#
+IDENTICAL_FLAGS = -g $(INCLUDE)
+
+# Used both by nvcc and g++, but requires an -Xcompiler prefix for nvcc
+#
+COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
+
+# Used only by nvcc.
+#
+CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
+   --ptxas-options=-v -lineinfo
+
+# Used only by g++
+#
+CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
+
+COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
+
+CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
+CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
+
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
+
+SRC_MAIN = stream.cc stream-full.cu stream-2.cc stream-cpu-only.cc
+
+SRC_FILES = $(SRC_MAIN) stream-2-kernel.cu stream-kernel.cu
+
+stream: stream-kernel.o
+stream-2: stream-2-kernel.o
+
+TARGETS = $(basename $(SRC_MAIN))
+
+all: $(TARGETS)
 
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE) -g  -Xcompiler -Wno-strict-aliasing
-CXXFLAGS = $(CFLAGS)  -std=c++11
-CUFLAGS = $(CFLAGS) -Xcompiler -std=gnu++98
-LIBRARIES =   
 
+$(BUILD_CC_FILE_PATH):
+	;
 
-default: all
+# Include dependencies that were created by %.d rules.
+#
+ifneq ($(MAKECMDGOALS),clean)
+-include $(SRC_FILES:=.d)
+endif
 
-all: stream stream-full stream-2
+# Prepare file holding dependencies, to be included in this file.
+#
+%.cc.d: %.cc
+	@set -e; rm -f $@; \
+         $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
 
-.cc.o:
-	$(CXX) $(CXXFLAGS) -c $*.cc
+%.cu.d: %.cu
+	@set -e; rm -f $@; \
+         $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+         rm -f $@.$$$$
 
-.cu.o: Makefile
-	$(CXX) $(CUFLAGS) -c $*.cu
-	$(CXX) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CXX) $(CUFLAGS) -cubin $*.cu -o $*.cubin
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
+%.o: %.cc Makefile
+	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
+	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $*.s
+	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
 
+%.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
+	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
+	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin && \
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
-stream-full: stream-full.o
-	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-
-stream-2.o: stream-2.cc stream-2-kernel.cu stream-2.cuh Makefile
-stream-2-kernel.o: Makefile stream-2.cuh stream-2-kernel.cu
-
-stream.o: stream.cc stream-kernel.cu Makefile
-stream: stream.o stream-kernel.o
-	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
-
-stream-2: stream-2.o stream-2-kernel.o
-	$(CXX) $(COMPILERFLAGS) -o $@ $(LIBDIR) $^ $(LIBRARIES) 
+$(TARGETS):%: %.o
+	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin stream stream-full stream-2
+	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
+	$(TARGETS) $(TARGETS:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]

@@ -10,33 +10,23 @@
 #include <ctype.h>
 #include <time.h>
 #include <new>
+#include <vector>
+#include <algorithm>
 #include <cuda_runtime.h>
 #include "util.h"
+using namespace std;
 
-#define N 4
-
-// Make it easy to switch between float and double for vertex and matrix
-// elements.
+// Make it easy to switch between different types for array elements.
+// Note: Using a float can cause rounding errors in reduce_iter_atomic_grid.
 //
-typedef float Elt_Type;
+typedef int Elt_Type;
 
-struct __align__(16) Vertex
-{
-  Elt_Type __align__(16) a[N];
-};
-
-struct __align__(16) V4 {
-  Elt_Type x, y, z, w;
-};
 
 struct App
 {
-  int num_threads;
-  Elt_Type matrix[N][N];
-  int array_size;  // Number of vertices.
-  Vertex *v_in, *v_out;
-  Vertex *d_v_in, *d_v_out;
-  V4 * d_v4_in;
+  int array_size;
+  Elt_Type *v_in;
+  Elt_Type *d_v_in;
 
   Elt_Type *thd_sum;
   Elt_Type *d_thd_sum;
@@ -49,59 +39,67 @@ App app;
 __constant__ App d_app;
 
 #define BLOCK_SIZE_MAX 1024
-__shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
-__shared__ Elt_Type wshared_sum[32];
 
-extern "C" __global__ void reduce_method_0();
-extern "C" __global__ void reduce_method_1();
-extern "C" __global__ void reduce_method_2();
-extern "C" __global__ void reduce_method_3();
-extern "C" __global__ void reduce_method_4();
-
-__device__ Elt_Type d_sum_sum_of_sq;
 
 __device__ Elt_Type
-cuda_vtx_xform()
+reduce_thread()
 {
   // Compute an id number that will be in the range from 0 to num_threads-1.
   //
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int num_threads = blockDim.x * gridDim.x;
+
+  // Unroll degree.
+  const int deg = 8;
 
   // Compute element number to start at.
   //
-  const int start = tid;
-  const int stop = d_app.array_size;
-  const int inc = d_app.num_threads;
+  const int wp_lg = 5;
+  const int wp_msk = ( 1 << wp_lg ) - 1;
+  const int lane = tid & wp_msk;
 
-  Elt_Type sum_sum_of_sq = 0;
+  const int start = ( tid - lane ) * deg + lane;
+  const int stop = d_app.array_size;
+  const int inc = num_threads * deg;
+
+  Elt_Type thd_sum = 0;
 
   for ( int h=start; h<stop; h += inc )
-    {
-      V4 p2 = d_app.d_v4_in[h];
-      Vertex p;
-      p.a[0] = p2.x; p.a[1] = p2.y; p.a[2] = p2.z; p.a[3] = p2.w;
-      Vertex q;
-      for ( int i=0; i<N; i++ )
-        {
-          q.a[i] = 0;
-          for ( int j=0; j<N; j++ ) q.a[i] += d_app.matrix[i][j] * p.a[j];
-        }
-      d_app.d_v_out[h] = q;
+    for ( int i=0; i<deg; i++ )
+      thd_sum += d_app.d_v_in[h+(i<<wp_lg)];
 
-      //  Compute the magnitude squared of q and update "sum" variable.
-      //
-      Elt_Type sum_of_sq = 0;
-      for ( int i=0; i<N; i++ ) sum_of_sq += q.a[i] * q.a[i];
+  return thd_sum;
+}
 
-      sum_sum_of_sq += sum_of_sq;
-    }
+extern "C" __global__ void
+reduce_iter_atomic_grid()
+{
+  // Compute an id number that will be in the range from 0 to num_threads-1.
+  //
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int num_threads = blockDim.x * gridDim.x;
 
-  return sum_sum_of_sq;
+  // Unroll degree.
+  const int deg = 8;
+
+  // Compute element number to start at.
+  //
+  const int wp_lg = 5;
+  const int wp_msk = ( 1 << wp_lg ) - 1;
+  const int lane = tid & wp_msk;
+
+  const int start = ( tid - lane ) * deg + lane;
+  const int stop = d_app.array_size;
+  const int inc = num_threads * deg;
+
+  for ( int h=start; h<stop; h += inc )
+    for ( int i=0; i<deg; i++ )
+      atomicAdd( &d_app.d_thd_sum[blockIdx.x], d_app.d_v_in[h+(i<<wp_lg)] );
 }
 
 
 extern "C" __global__ void
-reduce_method_0()
+reduce_per_thd()
 {
   // No reduction performed by GPU.
   //
@@ -112,14 +110,14 @@ reduce_method_0()
   //        G is number of blocks (gridDim.x)
   //        Total number of threads is BG.
 
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   d_app.d_thd_sum[tid] = thd_sum;
 }
 
 extern "C" __global__ void
-reduce_method_1()
+reduce_per_blk_1thd()
 {
   // Linear reduction by one thread per block.
   //
@@ -129,7 +127,8 @@ reduce_method_1()
   // G CPU threads each compute sum of B elements.
   // CPU computes sum of G elements.
 
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
+  __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to thread 0.
   __syncthreads();
@@ -145,11 +144,11 @@ reduce_method_1()
 }
 
 extern "C" __global__ void
-reduce_atomic_sum_block()
+reduce_thd_atomic_blk()
 {
   // Use an atomic add operating on a shared variable.
 
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
   __shared__ Elt_Type our_sum;
 
   if ( threadIdx.x == 0 ) our_sum = 0;
@@ -164,18 +163,18 @@ reduce_atomic_sum_block()
 }
 
 extern "C" __global__ void
-reduce_atomic_sum_grid()
+reduce_thd_atomic_grd()
 {
   // Use an atomic add operating on a global variable.
 
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
 
   atomicAdd( &d_app.d_thd_sum[0], thd_sum );
 
 }
 
 extern "C" __global__ void
-reduce_method_2()
+reduce_thd_tree_blk()
 {
   // Use a reduction tree.
   //
@@ -184,7 +183,8 @@ reduce_method_2()
   // we need to synchronize each iteration.
   //
 
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
+  __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to other threads.
   Elt_Type our_sum = thd_sum;
@@ -205,14 +205,16 @@ reduce_method_2()
 }
 
 extern "C" __global__ void
-reduce_method_3()
+reduce_wp_lin_tree_blk()
 {
   // A mixture of a linear sum and a tree reduction, chosen so
   // that only a single warp of threads participates.  Since only
   // a single warp is executing, no synchronizations are necessary
   // other than the one after the thread's initial sum is written.
 
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
+
+  volatile __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to other threads.
   Elt_Type our_sum = thd_sum;
@@ -253,9 +255,11 @@ reduce_method_3()
 }
 
 extern "C" __global__ void
-reduce_method_4()
+reduce_thd_tree_wp_tree_blk()
 {
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
+
+  volatile __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;
 
@@ -266,6 +270,8 @@ reduce_method_4()
   const int half_warp_size = warp_size >> 1;
   const int lane = threadIdx.x & ( warp_size - 1 );
 
+  // Each warp computes a sum of its elements using a reduction tree.
+  //
   for ( int dist = half_warp_size;  dist;  dist >>= 1 )
     if ( lane < dist )
       {
@@ -276,9 +282,15 @@ reduce_method_4()
 #if 1
 
   const int warp_num = threadIdx.x >> warp_lg;
+  volatile __shared__ Elt_Type wshared_sum[32];
 
-  if ( !lane )
-    wshared_sum[ warp_num ] = our_sum;
+  // Note: Only needed if blockDim.x < 1024.
+  if ( warp_num == 0 ) wshared_sum[ threadIdx.x ] = 0;
+  __syncthreads();
+
+  // Store per-warp sum in shared memory.
+  //
+  if ( !lane ) wshared_sum[ warp_num ] = our_sum;
 
   __syncthreads();
 
@@ -286,16 +298,16 @@ reduce_method_4()
 
   if ( threadIdx.x < half_warp_size )
     {
+      // Use a reduction tree for the per-warp sums.
+
       our_osum = wshared_sum[ threadIdx.x ];
 
       for ( int dist = half_warp_size;  dist;  dist >>= 1 )
         if ( lane < dist )
           {
             our_osum += wshared_sum[ threadIdx.x + dist ];
-            if ( dist > 1 )
-              wshared_sum[ threadIdx.x ] = our_osum;
+            wshared_sum[ threadIdx.x ] = our_osum;
           }
-
     }
 
 #else
@@ -323,7 +335,8 @@ reduce_method_4()
 extern "C" __global__ void
 reduce_method_5()
 {
-  const Elt_Type thd_sum = cuda_vtx_xform();
+  const Elt_Type thd_sum = reduce_thread();
+  __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;  // Make sum available to other threads.
   Elt_Type our_sum = thd_sum;
@@ -378,13 +391,14 @@ print_gpu_and_kernel_info()
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
-  info.GET_INFO(reduce_method_0);
-  info.GET_INFO(reduce_method_1);
-  info.GET_INFO(reduce_atomic_sum_block);
-  info.GET_INFO(reduce_atomic_sum_grid);
-  info.GET_INFO(reduce_method_2);
-  info.GET_INFO(reduce_method_3);
-  info.GET_INFO(reduce_method_4);
+  info.GET_INFO(reduce_per_thd);
+  info.GET_INFO(reduce_per_blk_1thd);
+  info.GET_INFO(reduce_iter_atomic_grid);
+  info.GET_INFO(reduce_thd_atomic_blk);
+  info.GET_INFO(reduce_thd_atomic_grd);
+  info.GET_INFO(reduce_thd_tree_blk);
+  info.GET_INFO(reduce_wp_lin_tree_blk);
+  info.GET_INFO(reduce_thd_tree_wp_tree_blk);
   //  info.GET_INFO(reduce_method_5);
 
   // Print information about kernel.
@@ -409,27 +423,32 @@ print_gpu_and_kernel_info()
 int
 main(int argc, char **argv)
 {
-  // Examine argument 1, block count.
-  //
-  const int arg1_int = argc < 2 ? 3 * 16 : atoi(argv[1]);
-  const int num_blocks = abs(arg1_int);
-
   // Get info about GPU and each kernel.
   //
   GPU_Info info = print_gpu_and_kernel_info();
+  const int num_mp = info.cuda_prop.multiProcessorCount;
+
+  // Examine argument 1, block count, default is number of MPs.
+  //
+  const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
+  const int num_blocks =
+     arg1_int == 0 ? num_mp :
+     arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
 
   // Examine argument 2, number of threads per block.
   //
   const int thd_per_block = argc < 3 ? 1024 : atoi(argv[2]);
-  app.num_threads = num_blocks * thd_per_block;
+  const int num_threads = num_blocks * thd_per_block;
 
-  // Examine argument 3, size of array in MiB. Fractional values okay.
+  // Examine argument 3, size of array in elements. Fractional values okay.
   //
-  app.array_size = argc < 4 ? 1 << 20 : int( atof(argv[3]) * (1<<20) );
+  const double arg3 = argc < 4 ? 1 << 24 : int( atof(argv[3]) * (1<<24) );
 
-  const int sum_array_size = app.num_threads;
+  app.array_size = arg3 <= 0 ? max(1.0,-arg3) * num_threads : arg3;
 
-  if ( app.num_threads <= 0 || app.array_size <= 0 )
+  const int sum_array_size = num_threads;
+
+  if ( num_threads <= 0 || app.array_size <= 0 )
     {
       printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK] "
              "[DATA_SIZE_MiB]\n",
@@ -437,145 +456,119 @@ main(int argc, char **argv)
       exit(1);
     }
 
-  const int array_size_bytes = app.array_size * sizeof(app.v_in[0]);
+  const int max_unroll_deg = 32;
+  const int overrun_elts = 32 * max_unroll_deg;
+  const int array_size_elts = app.array_size + overrun_elts;
+  const int array_size_bytes = array_size_elts * sizeof(app.v_in[0]);
 
   // Allocate storage for CPU copy of data.
   //
-  app.v_in = new Vertex[app.array_size];
-  app.v_out = new Vertex[app.array_size];
+  app.v_in = new Elt_Type[array_size_elts];
 
   // Allocate storage for GPU copy of data.
   //
-  CE( cudaMalloc( &app.d_v_in,  app.array_size * sizeof(Vertex) ) );
-  CE( cudaMalloc( &app.d_v_out, app.array_size * sizeof(Vertex) ) );
-  app.d_v4_in = (V4*) app.d_v_in;
+  CE( cudaMalloc( &app.d_v_in,  array_size_bytes ) );
 
-  //  Allocate storage on CPU and GPU for the minimum magnitude (sq) and
-  //  its index.
+  //  Allocate storage on CPU and GPU for the sums. The number of elements
+  //  used for the sum can vary.
   //
   app.thd_sum = new Elt_Type[sum_array_size];
-  CE( cudaMalloc( &app.d_thd_sum, sum_array_size * sizeof(Elt_Type) ) );
+  CE( cudaMalloc( &app.d_thd_sum, sum_array_size * sizeof(app.d_thd_sum[0]) ) );
 
-  // Initialize device memory to zeros. Helps catch bugs.
+  // Initialize input array. Set overrun area to zero.
   //
-  CE( cudaMemset( app.d_thd_sum, 0, sum_array_size*sizeof(Elt_Type) ) );
-
-  // Initialize input array.
-  //
-  for ( int i=0; i<app.array_size; i++ )
-    for ( int j=0; j<N; j++ ) app.v_in[i].a[j] = drand48();
-
-  // Initialize transformation matrix.
-  //
-  for ( int i=0; i<N; i++ )
-    for ( int j=0; j<N; j++ )
-      app.matrix[i][j] = drand48();
+  //  for ( int i=0; i<app.array_size; i++ ) app.v_in[i] = 2 * drand48();
+  for ( int i=0; i<app.array_size; i++ ) app.v_in[i] = 1;
+  for ( int i=app.array_size+1; i<array_size_elts; i++ ) app.v_in[i] = 0;
 
   // Compute correct answer.
   double cpu_grand_sum = 0;
 
-  for ( int h=0; h<app.array_size; h++ )
-    {
-      Vertex p = app.v_in[h];
-      Vertex q;
-      for ( int i=0; i<N; i++ )
-        {
-          q.a[i] = 0;
-          for ( int j=0; j<N; j++ ) q.a[i] += app.matrix[i][j] * p.a[j];
-        }
-      Elt_Type sos = 0; for(int i=0; i<N; i++ ) sos+= q.a[i]*q.a[i];
-      cpu_grand_sum += sos;
-    }
+  for ( int h=0; h<app.array_size; h++ ) cpu_grand_sum += app.v_in[h];
 
-    {
-      // Prepare events used for timing.
-      //
-      cudaEvent_t gpu_start_ce, gpu_stop_ce;
-      CE(cudaEventCreate(&gpu_start_ce));
-      CE(cudaEventCreate(&gpu_stop_ce));
+  {
+    // Prepare events used for timing.
+    //
+    cudaEvent_t gpu_start_ce, gpu_stop_ce;
+    CE(cudaEventCreate(&gpu_start_ce));
+    CE(cudaEventCreate(&gpu_stop_ce));
 
-      // Copy input array from CPU to GPU.
-      //
-      CE( cudaMemcpy
-          ( app.d_v_in, app.v_in, array_size_bytes, cudaMemcpyHostToDevice ) );
+    // Copy input array from CPU to GPU.
+    //
+    CE( cudaMemcpy
+        ( app.d_v_in, app.v_in, array_size_bytes, cudaMemcpyHostToDevice ) );
 
-      // Copy App structure to GPU.
-      //
-      CE( cudaMemcpyToSymbol
-          ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
+    // Copy App structure to GPU.
+    //
+    CE( cudaMemcpyToSymbol
+        ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
-      // Launch kernel multiple times and keep track of the best time.
-      printf("Launching with %d blocks of %d threads ...\n",
-             num_blocks, thd_per_block);
+    // Launch kernel multiple times and keep track of the best time.
+    printf("Launching with %d blocks of %d threads for %d elts ...\n",
+           num_blocks, thd_per_block, app.array_size);
 
-      for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
-        {
-          const int samples = 10;
-          double elapsed_time_s = 86400; // Reassigned to minimum run time.
-          double elapsed_time_sum = 0;
+    for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
+      {
+        const int sum_array_used = kernel == 0 ? num_threads : num_blocks;
+        const int samples = 20;
+        const int hsamp = samples/2;
+        vector<double> elapsed_times;
 
-          for ( int s=0; s<samples; s++ )
-            {
+        for ( int s=0; s<samples; s++ )
+          {
+            CE(cudaMemset(app.d_thd_sum,0,sizeof(Elt_Type)*sum_array_used));
 
-              CE(cudaMemset(app.d_thd_sum,0,sizeof(Elt_Type)*sum_array_size));
+            // Measure execution time starting "now", which is after data
+            // set to GPU.
+            //
+            CE(cudaEventRecord(gpu_start_ce,0));
 
-              // Measure execution time starting "now", which is after data
-              // set to GPU.
-              //
-              CE(cudaEventRecord(gpu_start_ce,0));
+            // Launch Kernel
+            //
+            info.ki[kernel].func_ptr<<<num_blocks,thd_per_block>>>();
 
-              // Launch Kernel
-              //
-              info.ki[kernel].func_ptr<<<num_blocks,thd_per_block>>>();
+            // Stop measuring execution time now, which is before is data
+            // returned from GPU.
+            //
+            CE(cudaEventRecord(gpu_stop_ce,0));
+            CE(cudaEventSynchronize(gpu_stop_ce));
+            float cuda_time_ms = -1.1;
+            CE(cudaEventElapsedTime(&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
 
-              // Stop measuring execution time now, which is before is data
-              // returned from GPU.
-              //
-              CE(cudaEventRecord(gpu_stop_ce,0));
-              CE(cudaEventSynchronize(gpu_stop_ce));
-              float cuda_time_ms = -1.1;
-              CE(cudaEventElapsedTime(&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
+            const double this_elapsed_time_s = cuda_time_ms * 0.001;
+            elapsed_times.push_back( this_elapsed_time_s );
+          }
 
-              const double this_elapsed_time_s = cuda_time_ms * 0.001;
-              if ( s ) elapsed_time_sum += this_elapsed_time_s;
-              elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);
-            }
+        sort(elapsed_times.begin(),elapsed_times.end());
+        const double elapsed_time_s = elapsed_times[hsamp];
+        const double err_s = elapsed_times[hsamp+1]-elapsed_time_s;
+        const double err = err_s/elapsed_time_s;
 
-          printf("%-26s   %11.3f µs min, %11.3f µs avg.\n",
-                 info.ki[kernel].name,
-                 elapsed_time_s * 1e6,
-                 elapsed_time_sum * 1e6 / (samples-1));
+        printf("%-27s   %8.2f µs min, err %5.3f µs %3.1f%%.\n",
+               info.ki[kernel].name,
+               elapsed_time_s * 1e6, err_s * 1e6, 100 * err);
 
-          //  Copy back per-thread sums.
-          //
-          CE( cudaMemcpy
-              ( app.thd_sum, app.d_thd_sum,
-                sizeof(Elt_Type) * sum_array_size, cudaMemcpyDeviceToHost) );
+        //  Copy back per-thread sums.
+        //
+        CE( cudaMemcpy
+            ( app.thd_sum, app.d_thd_sum,
+              sizeof(Elt_Type) * sum_array_used, cudaMemcpyDeviceToHost) );
 
-          const int sum_array_used = kernel == 0 ? app.num_threads : num_blocks;
+        // Find the sum of each thread or block's sum.
+        //
+        double grand_sum = 0;
+        for ( int i=0; i<sum_array_used; i++ )
+          grand_sum += app.thd_sum[i];
 
-          // Find the sum of each thread or block's sum.
-          //
-          Elt_Type grand_sum = 0;
-          for ( int i=0; i<sum_array_used; i++ )
-            grand_sum += app.thd_sum[i];
-
-          Elt_Type diff = fabs(grand_sum-cpu_grand_sum) / app.array_size;
-          const bool correct = diff < 1e-5;
-          if ( !correct )
+        double diff = fabs(grand_sum-cpu_grand_sum) / app.array_size;
+        const bool correct = diff <= 1e-5;
+        if ( !correct )
           printf
-            ("Sum is %s,  %.1f %s %.1f (correct)\n",
+            ("Kernel above sum is %s,  %.1f %s %.1f (correct)\n",
              correct ? "correct" : "**wrong**",
              grand_sum,
              grand_sum == cpu_grand_sum ? "==" : diff < 1e-5 ? "~" : "!=",
-             cpu_grand_sum
-             );
-        }
-    }
-
-  // Copy output array from GPU to CPU.
-  //
-  CE( cudaMemcpy
-      ( app.v_out, app.d_v_out, array_size_bytes, cudaMemcpyDeviceToHost) );
-  
+             cpu_grand_sum);
+      }
+  }
 }

@@ -66,12 +66,12 @@
  /// CUDA Address Spaces
  //
 
- /// Global
+ /// Global Address Space
  //
  //  Works like "regular" memory on CPU, but it's usually separated.
  //  Uses the same hardware as OpenGL buffer objects.
 
- /// Constant
+ /// Constant Address Space
  //
  //  Limited amount of storage, read-only on GPU.
  //  Probably uses the same hardware as OpenGL uniforms.

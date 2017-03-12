@@ -74,7 +74,7 @@ public:
 
     const int max_routines = 10;
     cudaFuncAttributes attr_dots[max_routines];
-    char *names[max_routines+1];
+    const char *names[max_routines+1];
     CE(kernels_get_attr(attr_dots,names,max_routines));
     printf("CUDA Routine Resource Usage:\n");
     for ( int i=0; names[i]; i++ )
@@ -192,10 +192,6 @@ public:
 
   void start()
   {
-    // Run kernel in a variety of configurations.
-    //
-    const int max_block_size = cuda_prop->maxThreadsPerBlock;
-
     // Vary number of blocks per multiprocessor.
     //
     int bl_per_mp[] = {1,2,4,8};
@@ -243,8 +239,6 @@ public:
 
     for ( int cpu_round=0; cpu_round<cpu_rounds; cpu_round++ )
       {
-        const double wall_all_start = time_wall_fp();
-
         a.to_cuda(); // Move input array to CUDA.
 
         // Launch Kernel  (Actually, call code in stream-kernel.cu to launch).
