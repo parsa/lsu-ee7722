@@ -21,7 +21,8 @@ main(int argc, char **argv)
     }
 
   pStringF correct_contents
-    ("Compiled for CUDA CC %d.%d",info.cc_major,info.cc_minor);
+    ("Compiled for CUDA CC %d.%d  CUDA Version %d",
+     info.cc_major,info.cc_minor,info.cuda_version);
 
   const char* const path = argv[1];
   ifstream curr_file(path);

@@ -60,6 +60,7 @@ struct GPU_Choose_Info {
   CUdevice cuda_device;
   int cuda_device_index;
   int cc_major, cc_minor;
+  int cuda_version;
   bool display_absent;
 };
 
@@ -129,6 +130,8 @@ gpu_choose(bool verbose)
 
       info.display_absent =
         ia_rv == NVML_SUCCESS && is_active == NVML_FEATURE_DISABLED;
+
+      info.cuda_version = CUDA_VERSION;
 
       if ( info_best.cuda_device_index < 0
            || !info_best.display_absent
