@@ -916,7 +916,7 @@ bool
 RT_Info::need_run_get(const char* kernel_name)
 {
   if ( ! need_run_get_call_count++ ) return true;
-  if ( !this ) return false;
+  if ( !rt_info ) return false;
   if ( !event_tracing_user_on ) return false;
 
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
@@ -934,7 +934,7 @@ NPerf_kernel_et_get(const char* kernel_name)
 double
 RT_Info::kernel_et_get(const char *kernel_name)
 {
-  if ( !this ) return -1;
+  if ( !rt_info ) return -1;
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
   if ( !ki ) return -1;
   if ( ki->call_count_lite == 0 ) return -1;
@@ -945,7 +945,7 @@ RT_Info::kernel_et_get(const char *kernel_name)
 NPerf_Metric_Value
 RT_Info::metric_value_get(const char *metric_name, const char* kernel_name)
 {
-  if ( !this ) return NPerf_Metric_Value(NPerf_Status_Off);
+  if ( !rt_info ) return NPerf_Metric_Value(NPerf_Status_Off);
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
   if ( !ki ) return NPerf_Metric_Value(NPerf_Status_Kernel_Not_Found);
   auto mii = metrics.metric_info.find(metric_name);
