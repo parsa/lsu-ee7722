@@ -12,6 +12,7 @@
 #include <new>
 #include <cuda_runtime.h>
 #include <assert.h>
+#include <nperf.h>
 #include "util.h"
 
 #define N 16
@@ -645,9 +646,20 @@ main(int argc, char **argv)
 {
   const bool debug = false;
 
+  // Must be called before any CUDA API calls.
+  NPerf_init();
+
   // Get info about GPU and each kernel.
   //
   GPU_Info info = print_gpu_and_kernel_info();
+
+  // Collect performance data using a wrapper to NVIDIA CUPTI event
+  // counter API.
+  //
+  NPerf_metric_collect("inst_executed");
+  //
+  // Note: The more metrics that are collected, the more times a kernel
+  // will need to be run.
 
   const int num_mp = info.cuda_prop.multiProcessorCount;
 
@@ -678,6 +690,11 @@ main(int argc, char **argv)
              argv[0]);
       exit(1);
     }
+
+  // Don't collect performance data if we are varying warps. Why?
+  // Because it takes too long.
+  if ( vary_warps )
+    NPerf_metrics_off();
 
   const size_t in_size_elts = size_t(app.num_vecs) * N;
   const size_t in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
@@ -782,8 +799,9 @@ main(int argc, char **argv)
 
             // Launch Kernel
             //
-            KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
-              (app.d_out,app.d_in);
+            for ( NPerf_data_reset(); NPerf_need_run_get(); )
+              KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
+                (app.d_out,app.d_in);
 
             // Stop measuring execution time now, which is before is data
             // returned from GPU.
@@ -793,7 +811,9 @@ main(int argc, char **argv)
             float cuda_time_ms = -1.1;
             CE(cudaEventElapsedTime(&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
 
-            const double this_elapsed_time_s = cuda_time_ms * 0.001;
+            const double this_elapsed_time_s =
+              NPerf_metrics_collection_get()
+              ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
             const double thpt_compute_gflops =
               num_ops / this_elapsed_time_s * 1e-9;
@@ -846,12 +866,14 @@ main(int argc, char **argv)
 
               } else {
 
-              printf("K %-15s %2d wp  %11.3f µs  %8.3f GFLOPS  %8.3f GB/s\n",
-                     info.ki[kernel].name,
-                     (thd_per_block + 31 ) >> 5,
-                     this_elapsed_time_s * 1e6,
-                     thpt_compute_gflops, thpt_data_gbps);
-
+              printf
+                ("%-15s %2d wp  %11.3f µs  %8.3f GFLOPS  %8.3f GB/s  "
+                 "%5.2f I/F\n",
+                 info.ki[kernel].name,
+                 (thd_per_block + 31 ) >> 5,
+                 this_elapsed_time_s * 1e6,
+                 thpt_compute_gflops, thpt_data_gbps,
+                 NPerf_metric_value_get("inst_executed") * 32 / num_ops);
             }
 
             elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);

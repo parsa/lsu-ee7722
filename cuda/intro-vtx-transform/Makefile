@@ -13,6 +13,14 @@ CUCC = $(CUDAPATH)/bin/nvcc
 CXX = g++
 
 INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
+
+# Include the course libraries. So far a CUPTI interface.
+#
+DUMMY:= $(shell $(MAKE) -C $(GP_ROOT)/lib)
+LIBRARIES += $(shell $(GP_ROOT)/lib/ld-flags)
+INCLUDE += -I$(GP_ROOT)/lib
+
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
@@ -47,7 +55,6 @@ COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
 
 all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
  vtx-xform-local vtx-xform-size
