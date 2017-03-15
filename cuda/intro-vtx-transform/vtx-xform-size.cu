@@ -355,7 +355,7 @@ mxv_sh_ochunk()
 }
 
 extern "C" __global__ void
-mxv_1()
+mxv_vec_ld()
 {
   // Compute an id number that will be in the range from 0 to num_threads-1.
   //
@@ -373,7 +373,8 @@ mxv_1()
       Elt_Type vin[N];
       for ( int c=0; c<N; c += 4 )
         {
-          float4 f4 = d_app.d_in_f4[ ( h * N + c ) >> 2 ];
+          // float4 f4 = d_app.d_in_f4[ ( h * N + c ) >> 2 ];
+          float4 f4 = d_app.d_in_f4[ h * ( N >> 2 ) + ( c >> 2 )];
           vin[c] = f4.x;
           vin[c+1] = f4.y;
           vin[c+2] = f4.z;
@@ -609,8 +610,8 @@ print_gpu_and_kernel_info()
   info.GET_INFO(mxv_o_lbuf);
   info.GET_INFO(mxv_o_per_thd);
 
-#if N / 4 == (N+3)/4 
-  info.GET_INFO(mxv_1);
+#if N / 4 == (N+3)/4
+  info.GET_INFO(mxv_vec_ld);
 #endif
 #if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
   info.GET_INFO(mxv_vls);
@@ -657,6 +658,7 @@ main(int argc, char **argv)
   // counter API.
   //
   NPerf_metric_collect("inst_executed");
+  NPerf_metric_collect("gld_efficiency");
   //
   // Note: The more metrics that are collected, the more times a kernel
   // will need to be run.
@@ -867,13 +869,15 @@ main(int argc, char **argv)
               } else {
 
               printf
-                ("%-15s %2d wp  %11.3f µs  %8.3f GFLOPS  %8.3f GB/s  "
-                 "%5.2f I/F\n",
+                ("%-15s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
+                 "%5.2f I/F  %5.1f%%\n",
                  info.ki[kernel].name,
                  (thd_per_block + 31 ) >> 5,
                  this_elapsed_time_s * 1e6,
                  thpt_compute_gflops, thpt_data_gbps,
-                 NPerf_metric_value_get("inst_executed") * 32 / num_ops);
+                 NPerf_metric_value_get("inst_executed") * 32 / num_ops,
+                 NPerf_metric_value_get("gld_efficiency")
+                 );
             }
 
             elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);
