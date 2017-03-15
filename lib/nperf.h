@@ -9,7 +9,9 @@ typedef enum
     NPerf_Status_Off,
     NPerf_Status_Kernel_Not_Found,
     NPerf_Status_Metric_Not_Found,
+    NPerf_Status_Bad_Data,
     NPerf_Status_Insufficient_Launches,
+    NPerf_Status_Error_Other,
     NPerf_Status_ENUME_SIZE }
   NPerf_Status;
 

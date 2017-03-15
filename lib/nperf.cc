@@ -78,7 +78,7 @@ const CUdevice device_null = -1;
 class NPerf_Metric_Value {
 public:
   NPerf_Metric_Value():status(NPerf_Status_Status_Unset),d(0){};
-  NPerf_Metric_Value(NPerf_Status s):status(s),d(0){};
+  NPerf_Metric_Value(NPerf_Status s):status(s),d(-int(s)){};
   NPerf_Status status;
   CUpti_MetricValueKind kind;
   CUpti_MetricValue metric_value;
@@ -766,7 +766,7 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
           uint64_t val_sum = 0;
           for ( auto v : vals ) val_sum += v;
           const uint64_t val_norm =
-            val_sum * num_total_instances / num_instances;
+            val_sum / num_instances * num_total_instances;
           md.event_info_live[event_ids[j]].value = val_norm;
         }
 #undef SZ
@@ -979,12 +979,17 @@ RT_Info::metric_value_get(const char *metric_name, const char* kernel_name)
 
   const int64_t et_ns =
     ki->elapsed_time_lite_ns / max(1,ki->call_count_lite);
+  
+  CUptiResult rv = cuptiMetricGetValue
+    (dev, mi.met_id,
+     sizeof(md.event_ids[0])*num_events, md.event_ids.data(),
+     sizeof(md.values[0])*num_events, md.values.data(),
+     et_ns, &npv.metric_value);
 
-  CU( cuptiMetricGetValue
-      (dev, mi.met_id,
-       sizeof(md.event_ids[0])*num_events, md.event_ids.data(),
-       sizeof(md.values[0])*num_events, md.values.data(),
-       et_ns, &npv.metric_value) );
+  if ( rv == CUPTI_ERROR_INVALID_METRIC_VALUE )
+    return NPerf_Metric_Value(NPerf_Status_Bad_Data);
+  if ( rv != CUPTI_SUCCESS )
+    return NPerf_Metric_Value(NPerf_Status_Error_Other);
 
   switch ( mi.kind ) {
   case CUPTI_METRIC_VALUE_KIND_DOUBLE:
