@@ -124,7 +124,7 @@ mxm_volk(Elt_Type* __restrict__ dout)
 
   // Storage for buffering N by CS submatrix of matrix A.
   //
-  __shared__ Elt_Type mat_a[MpB][N][CS];
+  __shared__ Elt_Type mat_a[N][MpB][CS];
 
   for ( int h=start; h<stop; h += inc )
     {
@@ -138,7 +138,7 @@ mxm_volk(Elt_Type* __restrict__ dout)
           // Write shared memory with an N by CS submatrix of A.
           //
           for ( int rr = 0; rr<N; rr += RS )
-            mat_a[h0][rr + r0][c0] =
+            mat_a[rr + r0][h0][c0] =
               d_app.d_a[ idx( h, rr + r0, cc + c0 ) ];
 
           if ( N > 32 ) __syncthreads();
@@ -148,7 +148,7 @@ mxm_volk(Elt_Type* __restrict__ dout)
               const int r = cc + rb;  // Row in matrix B, column in mat A.
               Elt_Type elt_rb_cb = d_app.d_b[ idx( h, r, cb ) ];
               for ( int ra=0; ra<N; ra++ )
-                elt[ra] += mat_a[h0][ra][rb] * elt_rb_cb;
+                elt[ra] += mat_a[ra][h0][rb] * elt_rb_cb;
             }
 
           if ( N > 32 ) __syncthreads();
@@ -203,7 +203,7 @@ mxm_tpc(Elt_Type* __restrict__ dout)
 
   // Storage for buffering N by CS submatrix of matrix A.
   //
-  __shared__ Elt_Type mat_a[MpB][N][CS];
+  __shared__ Elt_Type mat_a[N][MpB][CS];
 
   for ( int h=start; h<stop; h += inc )
     {
@@ -217,7 +217,7 @@ mxm_tpc(Elt_Type* __restrict__ dout)
           // Write shared memory with an N by CS submatrix of A.
           //
           for ( int rr = 0; rr<N; rr += RS )
-            mat_a[h0][rr + r0][c0] =
+            mat_a[rr + r0][h0][c0] =
               d_app.d_a[ idx( h, rr + r0, cc + c0 ) ];
 
           if ( N > 32 ) __syncthreads();
@@ -227,7 +227,7 @@ mxm_tpc(Elt_Type* __restrict__ dout)
               const int r = cc + rb;  // Row in matrix B, column in mat A.
               Elt_Type elt_rb_cb = d_app.d_b[ idx( h, r, cb ) ];
               for ( int ra=0; ra<N; ra++ )
-                elt[ra] += mat_a[h0][ra][rb] * elt_rb_cb;
+                elt[ra] += mat_a[ra][h0][rb] * elt_rb_cb;
             }
 
           if ( N > 32 ) __syncthreads();
