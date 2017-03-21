@@ -242,6 +242,7 @@ class RT_Info {
 public:
   RT_Info(){
     cupti_inited = false;
+    cupti_on = false;
     stop_tracing = false;
     event_tracing_user_on = true;
     context = NULL;
@@ -258,6 +259,7 @@ public:
   };
   static int need_run_get_call_count;
   bool cupti_inited;      // True if CUPTI successfully initialized.
+  bool cupti_on; // True if user wants CUPTI instrumentation. 
   bool event_callbacks_inited;
   bool stop_tracing;      // True if tracing was started unnecessarily.
   int call_trace_start, call_trace_count, call_trace_end;
@@ -787,9 +789,18 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
 
 
 void
-NPerf_init()
+NPerf_init(bool turn_on)
 {
+  assert( !rt_info || rt_info->cupti_on == turn_on ); // Pending testing.
   if ( rt_info ) return;
+
+  rt_info = new RT_Info;
+  rt_info->call_trace_start = 0;
+  rt_info->call_trace_end = rt_info->call_trace_start + 1;
+
+  rt_info->cupti_on = turn_on;
+
+  if ( !rt_info->cupti_on ) return;
 
   // The code below must execute as early as possible, including
   // before any--ANY--CUDA API routines are called.
@@ -797,14 +808,6 @@ NPerf_init()
   CU(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DEVICE));
   CU(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL));
   CU(cuptiActivityRegisterCallbacks(cb_buffer_requested,cb_buffer_completed));
-
-  // Note: It is possible that tracing is not wanted for this
-  // processor, however since we don't know the processor number yet
-  // we start tracing just in case we do need it.
-  //
-  rt_info = new RT_Info;
-  rt_info->call_trace_start = 0;
-  rt_info->call_trace_end = rt_info->call_trace_start + 1;
 
   CUptiResult cuptierr = cuptiSubscribe
     (&rt_info->subscriber,(CUpti_CallbackFunc)traceCallback, (void*)rt_info);
@@ -876,6 +879,7 @@ bool
 RT_Info::metric_add(string name)
 {
   if ( !rt_info ) return false;
+  if ( !rt_info->cupti_on ) return false;
   if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
   CUpti_MetricID met_id;
   CUptiResult rv = cuptiMetricGetIdFromName(dev,name.c_str(),&met_id);
@@ -917,6 +921,7 @@ RT_Info::need_run_get(const char* kernel_name)
 {
   if ( ! need_run_get_call_count++ ) return true;
   if ( !rt_info ) return false;
+  if ( !rt_info->cupti_on ) return false;
   if ( !event_tracing_user_on ) return false;
 
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
@@ -945,7 +950,8 @@ RT_Info::kernel_et_get(const char *kernel_name)
 NPerf_Metric_Value
 RT_Info::metric_value_get(const char *metric_name, const char* kernel_name)
 {
-  if ( !rt_info ) return NPerf_Metric_Value(NPerf_Status_Off);
+  if ( !rt_info || !rt_info->cupti_on )
+    return NPerf_Metric_Value(NPerf_Status_Off);
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
   if ( !ki ) return NPerf_Metric_Value(NPerf_Status_Kernel_Not_Found);
   auto mii = metrics.metric_info.find(metric_name);

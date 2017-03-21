@@ -15,7 +15,7 @@ typedef enum
     NPerf_Status_ENUME_SIZE }
   NPerf_Status;
 
-void NPerf_init();
+void NPerf_init(bool turn_on = true);
 void NPerf_atend();
 
 int NPerf_min_launches_get(); 
