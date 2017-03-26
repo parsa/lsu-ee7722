@@ -1,6 +1,6 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 2 - Spring 2017
+ ///  Homework 2  SOLUTION  - Spring 2017
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2017/hw02.pdf
 
@@ -116,16 +116,37 @@ mxm_g_split(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 
   auto idx = [](int i,int r,int c) { return i * N*N + r * N + c; };
 
-  const int start = tid;
+  /// SOLUTION 
+  //
+  //  Account for the number of threads cooperating on a matrix when
+  //  computing starting matrix number and increment.
+  //
+  const int start = tid / thds_per_mat;
   const int stop = d_app.n_mats;
-  const int inc = num_threads;
+  const int inc = num_threads / thds_per_mat;
+
+  /// SOLUTION
+  //
+  //  Find the first column that this thread will access.
+  //
+  const int c0 = threadIdx.x % thds_per_mat;
+  //
+  //  This thread will compute the following columns of the
+  //  output matrix:
+  //
+  //  c0,  c0 + thds_per_mat,  c0 + 2 * thds_per_mat, ...
 
   for ( int h=start; h<stop; h += inc )
     {
       for ( int r=0; r<N; r++ )
         {
-          for ( int c=0; c<N; c++ )
+          // Note: Loop bounds are compile-time constants to make it
+          // easier for the compiler to unroll the loop. (In other words,
+          // avoid a loop like "for ( int c=c0; c<N; c += thds_per_mat )."
+          //
+          for ( int cc=0; cc<N; cc += thds_per_mat )
             {
+              const int c = cc + c0;
               Elt_Type elt_rc = 0;
               for ( int k=0; k<N; k++ )
                 elt_rc += din[ idx( h, r, k ) ] * din[ idx( h, k, c ) ];
@@ -155,7 +176,9 @@ print_gpu_and_kernel_info()
   /// Homework 2: Add mxm_g_split specializations as needed.
   //
   info.GET_INFO(mxm_g_split<1>);
+  info.GET_INFO(mxm_g_split<4>);
   info.GET_INFO(mxm_g_split<8>);
+  info.GET_INFO(mxm_g_split<16>);
 
   // Print information about kernel.
   //
