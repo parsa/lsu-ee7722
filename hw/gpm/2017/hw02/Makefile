@@ -3,10 +3,10 @@
 ##  Makefile for Homework 2
 ##
 
-SRC_FILES = hw02.cu
+SRC_FILES = hw02.cu hw02-sol.cu
 
 .PHONY: default
-default: hw02
+default: hw02 hw02-sol
 
 GP_ROOT =  ../../../..
 
@@ -89,11 +89,11 @@ endif
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
-	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin && \
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
+	$(CUCC) $(CUFLAGS) -cubin $*.cu -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
-hw02: $(addsuffix .o,$(basename $(SRC_FILES)))
+hw02 hw02-sol:%: %.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
