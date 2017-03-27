@@ -99,6 +99,6 @@ hw02 hw02-sol:%: %.o
 
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin hw02 hw02-debug hw02sol *.s \
-	build-cc \
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw02 hw02-debug hw02-sol *.s \
+	build-cc hw02-sol-debug \
 	*.d *.d.[0-9][0-9][0-9][0-9][0-9]
