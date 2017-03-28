@@ -558,29 +558,41 @@ print_gpu_and_kernel_info()
 
   gpu_info_print();
 
-  // Choose GPU 0 because it's usually the better choice.
-  //
-  int dev = 0;
+  int dev = gpu_choose_index();
+
+  acc_init(acc_device_nvidia);
+  acc_set_device_num(dev,acc_device_nvidia);
+
+  int dev_check = -1;
+  CE(cudaGetDevice(&dev_check));
+
+  printf("Trying to use GPU %d, am using %d\n",dev,dev_check);
+#if 0
   CE(cudaSetDevice(dev));
-  printf("Using GPU %d\n",dev);
+#endif
   info.get_gpu_info(dev);
 
   info.GET_INFO(mxv_g_only);
   info.GET_INFO(mxv_i_lbuf);
+
+#if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
+  info.GET_INFO(mxv_vls);
+#endif
+
+
+#if 0
   info.GET_INFO(mxv_o_lbuf);
   info.GET_INFO(mxv_o_per_thd);
 
 #if N / 4 == (N+3)/4 
   info.GET_INFO(mxv_1);
 #endif
-#if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
-  info.GET_INFO(mxv_vls);
-#endif
   info.GET_INFO(mxv_sh);
   info.GET_INFO(mxv_sh_ochunk);
 
 #ifdef SMALL
   info.GET_INFO(mxv_sh_easy);
+#endif
 #endif
 
   // Print information about kernel.
@@ -638,8 +650,6 @@ was_main(int argc, char **argv)
           exit(1);
         }
     }
-
-  //  acc_init(acc_device_nvidia);
 
   typedef void (*AKFunc)(App*);
   AKFunc acc_cuda_m_ptr = (AKFunc) dlsym(handle,"acc_cuda_m");

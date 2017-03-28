@@ -118,6 +118,7 @@ HAVE_PGI:
 vtx-xform-s2-acc.o: vtx-xform-s2-acc.cc Makefile | HAVE_PGI
 	$(PXX) $(PCFLAGS) -fPIC -c $<
 	ld -shared -o $*.so $@
+	$(CUDUMP) $(CUDUMPFLAGS) vtx-xform-s2-acc.n001.bin > vtx-xform-s2-acc.n001.sass
 #	ar r vtx-xform-s2.so $*.so
 
 
