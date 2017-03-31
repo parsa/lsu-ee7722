@@ -6,7 +6,7 @@
 SRC_FILES = hw03.cu hw03-sol.cu
 
 .PHONY: default
-default: hw03
+default: hw03 hw03-sol
 
 GP_ROOT =  ../../../..
 
@@ -109,7 +109,7 @@ hw03 hw03-sol:%: %.o
 
 
 clean:
-	/bin/rm -f *.o *.ptx *.sass *.cubin hw03 hw03-debug hw03sol *.s \
-	hw03-cuda-debug hw03-sol-cuda-debug \
+	/bin/rm -f *.o *.ptx *.sass *.cubin hw03 hw03-debug hw03-sol *.s \
+	hw03-cuda-debug hw03-sol-cuda-debug hw03-sol-debug \
 	build-cc \
 	*.d *.d.[0-9][0-9][0-9][0-9][0-9] *.d *.d.[0-9][0-9][0-9][0-9]
