@@ -1,6 +1,6 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 3 - Spring 2017
+ ///  SOLUTION -- Homework 3 - Spring 2017 
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2017/hw03.pdf
 
@@ -39,7 +39,7 @@ time_fp()
 
 // Matrix dimension. (Matrix size will be N by N.)
 //
-const int N = 8;
+const int N = 16;
 
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
@@ -171,9 +171,13 @@ mxm_tpc(Elt_Type* __restrict__ dout)
   //
   auto idx = [](int i,int r,int c) { return i * N*N + r * N + c; };
 
-  const int start = tid / N;
+  /// SOLUTION
+
+  const int thd_p_mat = N * thd_p_col;
+
+  const int start = tid / thd_p_mat;
   const int stop = d_app.n_mats;
-  const int inc = num_threads / N;
+  const int inc = num_threads / thd_p_mat;
 
   // Chunk Size: Number of columns of matrix A to load into shared memory.
   //
@@ -181,7 +185,7 @@ mxm_tpc(Elt_Type* __restrict__ dout)
 
   // Column in matrix B assigned to this thread.
   //
-  const int cb = threadIdx.x % N;
+  const int cb = ( threadIdx.x / thd_p_col ) % N;
 
   // Column offset to load when populating shared memory.
   //
@@ -189,52 +193,51 @@ mxm_tpc(Elt_Type* __restrict__ dout)
 
   // First row to load when populating shared memory.
   //
-  const int r0 = ( threadIdx.x % N ) / CS;
+  const int r0 = ( threadIdx.x % thd_p_mat ) / CS;;
 
-  // 
   //
-  const int h0 = threadIdx.x / N;
+  const int h0 = threadIdx.x / thd_p_mat;
 
   // Number of times per matrix that shared memory will have to be loaded.
   //
-  const int RS = N / CS;
+  const int RS = thd_p_mat / CS;
 
-  const int MpB = 32 * 32 / N;    // Matrices per block.
+  const int MpB = 32 * 32 / thd_p_mat;   // Matrices per block.
+
+  const int ra0 = threadIdx.x % thd_p_col;
 
   // Storage for buffering N by CS submatrix of matrix A.
   //
-  __shared__ Elt_Type mat_a[N][MpB][CS];
+  __shared__ Elt_Type mat_a[MpB][N][CS];
 
   for ( int h=start; h<stop; h += inc )
     {
-      // Storage for column of output matrix.
+      // Storage for N/thd_p_col rows of a column of output matrix.
       //
-      Elt_Type elt[N];
+      Elt_Type elt[N/thd_p_col];
       for ( auto& e: elt ) e = 0;
 
       for ( int cc=0; cc<N; cc += CS )
         {
           // Write shared memory with an N by CS submatrix of A.
           //
-          for ( int rr = 0; rr<N; rr += RS )
-            mat_a[rr + r0][h0][c0] =
-              d_app.d_a[ idx( h, rr + r0, cc + c0 ) ];
+          if ( RS <= N || r0 < N )
+            for ( int rr = 0; rr<N; rr += RS )
+              mat_a[h0][rr + r0][c0] = d_app.d_a[ idx( h, rr + r0, cc + c0 ) ];
 
-          if ( N > 32 ) __syncthreads();
+          if ( thd_p_mat > 32 ) __syncthreads();
 
           for ( int rb=0; rb<CS; rb++ )
             {
               const int r = cc + rb;  // Row in matrix B, column in mat A.
               Elt_Type elt_rb_cb = d_app.d_b[ idx( h, r, cb ) ];
-              for ( int ra=0; ra<N; ra++ )
-                elt[ra] += mat_a[ra][h0][rb] * elt_rb_cb;
+              for ( int ra=0; ra<N; ra += thd_p_col )
+                elt[ra/thd_p_col] += mat_a[h0][ra0+ra][rb] * elt_rb_cb;
             }
-
-          if ( N > 32 ) __syncthreads();
-
+          if ( thd_p_mat > 32 ) __syncthreads();
         }
-      for ( int r=0; r<N; r++ )
-        dout[ idx( h, r, cb ) ] = elt[r];
+      for ( int r=0; r<N; r += thd_p_col )
+        dout[ idx( h, ra0+r, cb ) ] = elt[r/thd_p_col];
     }
 }
 
@@ -595,13 +598,14 @@ main(int argc, char **argv)
                      string(int(comm_frac*max_st_len),'=').c_str());
 
               printf("%2d %2d wp  %6.0f µs  %4.0f GF  %4.0f GB/s "
-                     "%5.2f I/F  %4.1f wp/c  %3.0f%%  %4.1f\n",
+                     "%5.2f I/F  %4.1f wp/c  %3.0f%%  %4.1f %4.1f\n",
                      num_wps, act_wps,
                      this_elapsed_time_s * 1e6,
                      thpt_compute_gflops, thpt_data_gbps,
                      NPerf_metric_value_get("inst_executed") * 32 / num_madds,
                      NPerf_metric_value_get("eligible_warps_per_cycle"),
                      NPerf_metric_value_get("gld_efficiency"),
+                     NPerf_metric_value_get("shared_store_transactions_per_request"),
                      NPerf_metric_value_get("shared_load_transactions_per_request"));
 
 
@@ -609,7 +613,7 @@ main(int argc, char **argv)
 
               printf
                 ("%-10s %2d wp  %7.0f µs  %4.0f GF  %4.0f (%4.0f) GB/s  "
-                 "%5.2f I/F  %5.1f%% %4.1f\n",
+                 "%5.2f I/F  %5.1f%% %4.1f %4.1f\n",
                  info.ki[kernel].name,
                  (thd_per_block + 31 ) >> 5,
                  this_elapsed_time_s * 1e6,
@@ -620,7 +624,7 @@ main(int argc, char **argv)
                  //  NPerf_metric_value_get("gld_efficiency"),
                  //  NPerf_metric_value_get("gst_efficiency"),
                  NPerf_metric_value_get("eligible_warps_per_cycle"),
-                 //  NPerf_metric_value_get("shared_load_transactions_per_request"),
+                 NPerf_metric_value_get("shared_load_transactions_per_request"),
                  NPerf_metric_value_get("shared_store_transactions_per_request")
                  );
 
