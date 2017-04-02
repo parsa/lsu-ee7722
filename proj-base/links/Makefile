@@ -80,7 +80,7 @@ endif
 	@set -e; rm -f $@; \
 	 $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
 	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	 rxm -f $@.$$$$
+	 rm -f $@.$$$$
 
 %.cu.d: %.cu
 	@set -e; rm -f $@; \
