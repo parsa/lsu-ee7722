@@ -373,7 +373,7 @@ public:
     pCM_Struc_Info* const si = struc_info.pushi();
     si->elt_size = elt_size;
     si->offset_aos = offset_aos;
-    si->soa_cpu_base = -1;
+    si->soa_cpu_base = uint(-1);
     si->soa_elt_idx = ((void**)soa_elt_ptr) - ((void**)&sample_soa);
   }
   void realloc(size_t nelem)
