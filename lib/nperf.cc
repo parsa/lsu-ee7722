@@ -371,6 +371,7 @@ private:
 public:
   bool metric_add(string metric_name);
   double kernel_et_get(const char *kernel_name);
+  int kernel_nlaunches_get(const char *kernel_name);
   bool need_run_get(const char *kernel_name);
   NPerf_Metric_Value
   metric_value_get(const char *metric_name, const char *kernel_name);
@@ -931,6 +932,21 @@ RT_Info::need_run_get(const char* kernel_name)
   if ( ki->md.set_rounds == 0 ) return true;
   return false;
 }
+
+int
+NPerf_kernel_nlaunches_get(const char *kernel_name)
+{ return rt_info->kernel_nlaunches_get(kernel_name); }
+
+int
+RT_Info::kernel_nlaunches_get(const char *kernel_name)
+{
+  if ( !rt_info ) return -1;
+  RTI_Kernel_Info* const ki = kernel_get(kernel_name);
+  if ( !ki ) return -1;
+  if ( ki->call_count_lite == 0 ) return -1;
+  return ki->call_count;
+}
+
 
 double
 NPerf_kernel_et_get(const char* kernel_name)
