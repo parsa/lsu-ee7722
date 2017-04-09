@@ -940,10 +940,9 @@ NPerf_kernel_nlaunches_get(const char *kernel_name)
 int
 RT_Info::kernel_nlaunches_get(const char *kernel_name)
 {
-  if ( !rt_info ) return -1;
+  if ( !rt_info ) return 1;
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
-  if ( !ki ) return -1;
-  if ( ki->call_count_lite == 0 ) return -1;
+  if ( !ki ) return 1;
   return ki->call_count;
 }
 
@@ -1075,7 +1074,7 @@ NPerf_min_launches_get()
 bool
 NPerf_metrics_collection_get()
 {
-  if ( !rt_info ) NPerf_init();
+  if ( !rt_info || !rt_info->cupti_on ) return false;
   return rt_info->tracing_get();
 }
 bool
