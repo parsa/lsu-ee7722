@@ -327,7 +327,7 @@ main(int argc, char **argv)
                 1e9 * thpt_compute_gflops / rate;
               const double comm_frac =
                 1e9 * thpt_data_gbps / info.chip_bw_Bps;
-              const int max_st_len = 52;
+              const int max_st_len = 40;
 
               // Number of warps, rounded up.
               //
@@ -414,10 +414,11 @@ main(int argc, char **argv)
           int errs = 0;
           for ( int i=0; i<app.nbins; i++ )
             {
-              if ( histo[i] == histo_check[i] * nlaunches ) continue;
+              const int bin_scaled = histo[i] / nlaunches;
+              if ( bin_scaled == histo_check[i] ) continue;
               errs++;
               if ( errs < 5 ) printf("Error at %d  %d != %d (correct)\n",
-                                     i, histo[i], histo_check[i]);
+                                     i, bin_scaled, histo_check[i]);
             }
 
         }
