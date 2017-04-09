@@ -211,6 +211,9 @@ public:
   int call_count_lite;          // Data collected when no events traced.
   int64_t elapsed_time_lite_ns;
 
+  // Data collected from replay callbacks.
+  int replay_num_launches;
+
   CUfunction cu_function;
 
 public:
@@ -611,6 +614,17 @@ rt_info_handle_kernel(RT_Info *rt_info, Version_ActivityKernel *kernel)
 
 }
 
+const bool replay_use = true;
+
+void
+replay_callback(const char *kname, int num_replays, void *data)
+{
+  RTI_Kernel_Info* const ki = (RTI_Kernel_Info*) data;
+  // Yes, I know it's global but I'd prefer that it not always be.
+  RT_Info* const rt_info = ki->rti;
+  ki->replay_num_launches++;
+}
+
 void
 RT_Info::on_api_enter(CUpti_CallbackData *cbdata)
 {
@@ -637,23 +651,39 @@ RT_Info::on_api_enter(CUpti_CallbackData *cbdata)
   const bool rt_info_metrics =
     metrics.eg_sets && ki.call_count_lite >= md.set_rounds;
 
+  ki.replay_num_launches = 0;
+
   if ( rt_info_metrics )
     {
-      CU( cuptiSetEventCollectionMode
-          (context, CUPTI_EVENT_COLLECTION_MODE_KERNEL) );
+      if ( replay_use )
+        {
+          CU( cuptiEnableKernelReplayMode(context) );
+          CU( cuptiKernelReplaySubscribeUpdate(replay_callback,&ki) );
+        }
+      else
+        CU( cuptiSetEventCollectionMode
+            (context, CUPTI_EVENT_COLLECTION_MODE_KERNEL) );
 
       assert( !metrics.eg_curr );
-      CUpti_EventGroupSet* const egs =
-        metrics.eg_curr = &metrics.eg_sets->sets[md.set_next];
 
-      for ( uint i=0; i<egs->numEventGroups; i++ )
+      const int eg_start = replay_use ? 0 : md.set_next;
+      const int eg_stop = replay_use ? metrics.eg_sets->numSets : eg_start + 1;
+
+      metrics.eg_curr = &metrics.eg_sets->sets[eg_start];
+
+      for ( int egi = eg_start; egi < eg_stop; egi++ )
         {
-          int all = 1;
-          CU( cuptiEventGroupSetAttribute
-              ( egs->eventGroups[i],
-                CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES,
-                sizeof(all), &all));
-          CU( cuptiEventGroupEnable(egs->eventGroups[i]) );
+          CUpti_EventGroupSet* const egs = &metrics.eg_sets->sets[egi];
+
+          for ( uint i=0; i<egs->numEventGroups; i++ )
+            {
+              int all = 1;
+              CU( cuptiEventGroupSetAttribute
+                  ( egs->eventGroups[i],
+                    CUPTI_EVENT_GROUP_ATTR_PROFILE_ALL_DOMAIN_INSTANCES,
+                    sizeof(all), &all));
+              CU( cuptiEventGroupEnable(egs->eventGroups[i]) );
+            }
         }
     }
 
@@ -677,10 +707,12 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
   event_tracing_active = false;
   uint64_t event_tracing_stop_timestamp;
   CU( cuptiDeviceGetTimestamp(context, &event_tracing_stop_timestamp) );
-  const int64_t elapsed =
+  const int64_t elapsed_raw =
     event_tracing_stop_timestamp - event_tracing_start_timestamp;
 
   RTI_Kernel_Info& ki = rt_info->kernel_info_fh[hfunc];
+
+  const int64_t elapsed = elapsed_raw / max(1,ki.replay_num_launches);
 
   ki.elapsed_time_ns += elapsed;
   ki.call_count++;
@@ -720,8 +752,6 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
       ki.api_blocks_per_mp_avg =
         double(ki.api_block_count) / numMultiprocessors;
       ki.api_blocks_per_mp = 0.999 + ki.api_blocks_per_mp_avg;
-      // This value may be overwritten by event data showing a
-      // measured number of warps per sm.
       ki.warps_per_sm_per_launch =
         ki.api_warps_per_block * ki.api_blocks_per_mp;
     }
@@ -729,54 +759,64 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
   if ( !metrics.eg_curr ) return;
 
   Metrics_Data &md = ki.md;
-  CUpti_EventGroupSet* const egs = metrics.eg_curr;
+
+  const int eg_start = replay_use ? 0 : md.set_next;
+  const int eg_stop = replay_use ? metrics.eg_sets->numSets : eg_start + 1;
   metrics.eg_curr = NULL;
 
-  for ( uint i=0; i<egs->numEventGroups; i++ )
+  for ( int egi = eg_start; egi < eg_stop; egi++ )
     {
-      CUpti_EventGroup eg = egs->eventGroups[i];
-#define SZ(v) size_t v##_sz=sizeof(v);
-      auto ga = [&](CUpti_EventGroupAttribute attr)
-        {
-          int val;
-          size_t val_sz = sizeof(val);
-          CU( cuptiEventGroupGetAttribute ( eg, attr, &val_sz, &val ) );
-          assert( val_sz == sizeof(val) );
-          return val;
-        };
+      CUpti_EventGroupSet* const egs = &metrics.eg_sets->sets[egi];
 
-      const int group_domain = ga(CUPTI_EVENT_GROUP_ATTR_EVENT_DOMAIN_ID);
-      int num_total_instances; SZ(num_total_instances);
-      CU( cuptiDeviceGetEventDomainAttribute
-          ( dev, group_domain,
-            CUPTI_EVENT_DOMAIN_ATTR_TOTAL_INSTANCE_COUNT,
-            &num_total_instances_sz, &num_total_instances ) );
-      const int num_instances = ga(CUPTI_EVENT_GROUP_ATTR_INSTANCE_COUNT);
-      const int num_events = ga(CUPTI_EVENT_GROUP_ATTR_NUM_EVENTS);
-      CUpti_EventID event_ids[num_events];
-      SZ(event_ids);
-      CU( cuptiEventGroupGetAttribute
-          ( eg,
-            CUPTI_EVENT_GROUP_ATTR_EVENTS,
-            &event_ids_sz, &event_ids[0] ) );
-      for ( int j=0; j<num_events; j++ )
+      for ( uint i=0; i<egs->numEventGroups; i++ )
         {
-          uint64_t vals[num_instances];
-          SZ(vals);
-          CU( cuptiEventGroupReadEvent
-              ( eg, CUPTI_EVENT_READ_FLAG_NONE,
-                event_ids[j], &vals_sz, &vals[0] ) );
-          uint64_t val_sum = 0;
-          for ( auto v : vals ) val_sum += v;
-          const uint64_t val_norm =
-            val_sum / num_instances * num_total_instances;
-          md.event_info_live[event_ids[j]].value = val_norm;
-        }
+          CUpti_EventGroup eg = egs->eventGroups[i];
+#define SZ(v) size_t v##_sz=sizeof(v);
+          auto ga = [&](CUpti_EventGroupAttribute attr)
+            {
+              int val;
+              size_t val_sz = sizeof(val);
+              CU( cuptiEventGroupGetAttribute ( eg, attr, &val_sz, &val ) );
+              assert( val_sz == sizeof(val) );
+              return val;
+            };
+
+          const int group_domain = ga(CUPTI_EVENT_GROUP_ATTR_EVENT_DOMAIN_ID);
+          int num_total_instances; SZ(num_total_instances);
+          CU( cuptiDeviceGetEventDomainAttribute
+              ( dev, group_domain,
+                CUPTI_EVENT_DOMAIN_ATTR_TOTAL_INSTANCE_COUNT,
+                &num_total_instances_sz, &num_total_instances ) );
+          const int num_instances = ga(CUPTI_EVENT_GROUP_ATTR_INSTANCE_COUNT);
+          const int num_events = ga(CUPTI_EVENT_GROUP_ATTR_NUM_EVENTS);
+          CUpti_EventID event_ids[num_events];
+          SZ(event_ids);
+          CU( cuptiEventGroupGetAttribute
+              ( eg,
+                CUPTI_EVENT_GROUP_ATTR_EVENTS,
+                &event_ids_sz, &event_ids[0] ) );
+          for ( int j=0; j<num_events; j++ )
+            {
+              uint64_t vals[num_instances];
+              SZ(vals);
+              CU( cuptiEventGroupReadEvent
+                  ( eg, CUPTI_EVENT_READ_FLAG_NONE,
+                    event_ids[j], &vals_sz, &vals[0] ) );
+              uint64_t val_sum = 0;
+              for ( auto v : vals ) val_sum += v;
+              const uint64_t val_norm =
+                val_sum / num_instances * num_total_instances;
+              md.event_info_live[event_ids[j]].value = val_norm;
+            }
 #undef SZ
-      CU( cuptiEventGroupDisable( eg ) );
+          CU( cuptiEventGroupDisable( eg ) );
+        }
     }
 
-  if ( ++md.set_next == int(metrics.eg_sets->numSets) )
+  if ( replay_use )
+    CU( cuptiDisableKernelReplayMode(context) );
+
+  if ( replay_use || ++md.set_next == int(metrics.eg_sets->numSets) )
     {
       for ( auto elt : md.event_info_live )
         md.event_info[elt.first].value += elt.second.value;
