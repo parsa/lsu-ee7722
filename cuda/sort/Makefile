@@ -2,14 +2,16 @@
 GP_ROOT =  ../..
 
 .PHONY: default
-default: sort
+default: radix-sort
 
-SRC_FILES = scan.cc scan-kernel.cu sort.cc sort-kernel.cu
+SRC_FILES = scan.cc scan-kernel.cu sort.cc sort-kernel.cu \
+	radix-sort.cc radix-sort-kernel.cu
 
-all = sort scan
+all = sort scan radix-sort
 
 scan: scan-kernel.o
 sort: sort-kernel.o sort.o
+radix-sort: radix-sort-kernel.o radix-sort.o
 
 
 CUDAPATH = /usr/local/cuda
@@ -54,8 +56,7 @@ COMMON_FLAGS = -Wall -Wno-parentheses -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++11 --ptxas-options=-v \
-  --gpu-architecture=$(GPU_ARCH)
+CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
