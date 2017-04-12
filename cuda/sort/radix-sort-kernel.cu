@@ -7,9 +7,10 @@
 // Values are set by cuda calls, they don't automatically take values
 // of variables in the C program with the same name.
 //
-__constant__ int block_lg;
-__constant__ int array_size, array_size_lg;
-__constant__ int *scan_in, *scan_out;
+
+__constant__ Radix_Sort_GPU_Constants dapp;
+
+__constant__ int *scan_out;
 __constant__ int *scan_r2;
 
 extern __shared__ int s[];
@@ -18,11 +19,6 @@ __constant__ int *sort_in, *sort_out, *sort_out_b;
 __constant__ int *sort_tile_histo;
 __constant__ int *sort_histo;
 
-__constant__ int sort_bin_mask;
-__constant__ int sort_bin_size, sort_bin_count;
-__constant__ int sort_all_bin_count, sort_all_bin_lg;
-__constant__ int sort_bin_lg;
-
 template <int BLOCK_LG, int BIN_LG>
 __global__ void radix_sort_1_pass_1(int bin_idx, bool first_iter);
 __global__ void radix_sort_1_pass_2(int bin_idx, bool last_iter);
@@ -30,22 +26,18 @@ __global__ void radix_sort_1_pass_2(int bin_idx, bool last_iter);
 __host__ void
 kernels_get_attr(GPU_Info *gpu_info)
 {
-  CU_SYM(block_lg);
-  CU_SYM(array_size); CU_SYM(array_size_lg);
-  CU_SYM(scan_in); CU_SYM(scan_out);
+  CU_SYM(dapp);
+  CU_SYM(scan_out);
   CU_SYM(scan_r2);
 
   CU_SYM(sort_in); CU_SYM(sort_out); CU_SYM(sort_out_b);
   CU_SYM(sort_tile_histo);
   CU_SYM(sort_histo);
 
-  CU_SYM(sort_bin_mask);
-  CU_SYM(sort_bin_size); CU_SYM(sort_bin_count);
-  CU_SYM(sort_all_bin_count); CU_SYM(sort_all_bin_lg);
-  CU_SYM(sort_bin_lg);
-
 #define GETATTR(func) gpu_info->GET_INFO(func)
   GETATTR((radix_sort_1_pass_1<6,4>));
+  GETATTR((radix_sort_1_pass_1<7,4>));
+  GETATTR((radix_sort_1_pass_1<8,4>));
   GETATTR(radix_sort_1_pass_2);
 #undef GETATTR
 }
@@ -54,7 +46,7 @@ kernels_get_attr(GPU_Info *gpu_info)
 // This routine executes on the CPU.
 //
 __host__ int
-sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
+sort_launch(dim3 dg, dim3 db, int array_size, int array_size_lg)
 {
   const int bin_lg = 4;
   const int bin_size = 1 << bin_lg;
@@ -108,7 +100,7 @@ const int debug_sort = false;
 
 
 __device__ void
-sort_block_1_bit_split(int bit_low, int bit_count)
+sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
 {
   // Number of elements operated on per thread.
   //
@@ -207,7 +199,7 @@ radix_sort_1_pass_1(int bin_idx, bool first_iter)
   int block_size = 1 << BLOCK_LG;
   int bin_size = 1 << BIN_LG;
   int elt_per_tile = block_size * elt_per_thread;
-  int tiles_per_array = div_ceil(array_size,elt_per_tile);
+  int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
   int tile_start = tiles_per_block * blockIdx.x;
   int tile_stop = min( tiles_per_array, tile_start + tiles_per_block);
@@ -227,14 +219,14 @@ radix_sort_1_pass_1(int bin_idx, bool first_iter)
 template <int BLOCK_LG, int BIN_LG> __device__ void
 radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 {
-  int start_bit = bin_idx * sort_bin_lg;
+  int start_bit = bin_idx * dapp.sort_bin_lg;
   int elt_per_thread = 4;
   int block_size = 1 << BLOCK_LG;
   int bin_size = 1 << BIN_LG;
   int elt_per_tile = elt_per_thread * block_size;
   int idx_block_start = elt_per_tile * tile_idx;
 
-  int idx_block_stop = min( array_size, idx_block_start + elt_per_tile );
+  int idx_block_stop = min( dapp.array_size, idx_block_start + elt_per_tile );
   int idx_start = idx_block_start + threadIdx.x;
 
   int sbase_1_bit_split_end = elt_per_tile + block_size + 1;
@@ -252,7 +244,7 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 
   // Sort based upon current bin (digit position)
   //
-  sort_block_1_bit_split(start_bit,sort_bin_lg);
+  sort_block_1_bit_split(start_bit,dapp.sort_bin_lg,BLOCK_LG);
 
   // Write sorted elements to global memory and prepare for histogram.
   //
@@ -265,7 +257,7 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 
       // Extract digit and write to shared memory.
       //
-      int digit = ( s[sidx] >> start_bit ) & sort_bin_mask;
+      int digit = ( s[sidx] >> start_bit ) & dapp.sort_bin_mask;
       s[sidx] = digit;
     }
 
@@ -329,12 +321,13 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
 {
   int elt_per_thread = 4;
   int elt_per_tile = elt_per_thread * blockDim.x;
-  int tiles_per_array = div_ceil(array_size,elt_per_tile);
+  int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
 
   int tile_start = tiles_per_block * blockIdx.x;
   int tile_stop = min( tiles_per_array, tile_start + tiles_per_block );
 
+  const int sort_bin_size = dapp.sort_bin_size;
   int pfe_tile_sbase = 0;
   int pfi_tile_sbase = 1;
   int pf_offset_sbase_base = pfi_tile_sbase + sort_bin_size;
@@ -353,11 +346,11 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
 
   if ( threadIdx.x == 0 ) sv[ pfe_tile_sbase ] = 0;
 
-  if ( threadIdx.x < sort_bin_size )
+  if ( threadIdx.x < dapp.sort_bin_size )
     {
       // Code only correct for sort_bin_size <= 32.
 
-      int idx_for_us = blockIdx.x * sort_bin_size + threadIdx.x;
+      int idx_for_us = blockIdx.x * dapp.sort_bin_size + threadIdx.x;
       int pidx_stop = gridDim.x * sort_bin_size;
 
       // Compute Global Histogram
@@ -382,7 +375,7 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
       sv[ pfi_tile_sbase + threadIdx.x ] = global_bin_sum;
       int global_bin_prefix = global_bin_sum;
 
-      for ( int i=0; i<sort_bin_lg; i++ )
+      for ( int i=0; i<dapp.sort_bin_lg; i++ )
         {
           int dist = 1 << i;
           int sum_0 = dist <= threadIdx.x
@@ -433,23 +426,23 @@ radix_sort_1_pass_2_tile
 {
   const int elt_per_thread = 4;
   int elt_per_tile = elt_per_thread * blockDim.x;
-  int tiles_per_array = div_ceil(array_size,elt_per_tile);
+  int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
   int idx_tile_start = tile_idx * elt_per_tile;
 
-  int start_bit = bin_idx * sort_bin_lg;
+  int start_bit = bin_idx * dapp.sort_bin_lg;
 
   int pfe_tile_sbase = 0;
   int pfi_tile_sbase = 1;
-  int pf_offset_sbase_base = pfi_tile_sbase + sort_bin_size;
-  int pf_offset_sbase = pf_offset_sbase_base + sort_bin_size - 1;
+  int pf_offset_sbase_base = pfi_tile_sbase + dapp.sort_bin_size;
+  int pf_offset_sbase = pf_offset_sbase_base + dapp.sort_bin_size - 1;
 
   for ( int i=0; i<elt_per_thread; i++ )
     {
       int local_idx = threadIdx.x + i * blockDim.x;
       int idx = idx_tile_start + local_idx;
       uint key = sort_out_b[idx];
-      uint digit = ( key >> start_bit ) & sort_bin_mask;
+      uint digit = ( key >> start_bit ) & dapp.sort_bin_mask;
       int local_offset = s[ pf_offset_sbase + digit ];
       int key_digit_rank = local_idx - local_offset;
       int idx_digit_index = s[ pfe_tile_sbase + digit ] + key_digit_rank;

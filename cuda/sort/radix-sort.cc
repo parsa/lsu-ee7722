@@ -20,6 +20,8 @@ public:
   GPU_Info gpu_info;
   cudaEvent_t cuda_start_ce, cuda_stop_ce;
 
+  Radix_Sort_GPU_Constants dapp;
+
   // Data Arrays.
   //
   // These classes automatically allocate storage on both CPU and GPU
@@ -32,7 +34,6 @@ public:
   pCUDA_Memory<int> sort_tile_histo;  // First elt in tile with dig val.
   PSList<Sort_Elt,Sort_Elt> sort_check;
 
-  pCUDA_Memory<int> scan_in;
   pCUDA_Memory<int> scan_out;
   pCUDA_Memory<int> scan_r2;
 
@@ -80,14 +81,15 @@ public:
     //
     array_size = 1 << array_size_lg;
 
+    dapp.array_size = array_size;
+    dapp.array_size_lg = array_size_lg;
+
     printf("List size %d ( 0x%x )\n", array_size, array_size );
 
     sort_in.alloc(array_size);
     sort_out.alloc(array_size);
     sort_out_b.alloc(array_size);
 
-    scan_in.alloc(array_size);
-    scan_in.ptrs_to_cuda("scan_in");
     scan_out.alloc(array_size);
     scan_out.ptrs_to_cuda("scan_out");
 
@@ -120,11 +122,6 @@ public:
         sort_check.insert(sort_in[i],sort_in[i]);
       }
     sort_check.sort();
-
-    // Send values of array size variables to CUDA.
-    //
-    TO_DEV(array_size);  TO_DEV(array_size_lg);
-
   }
 
   void check_sort(int block_size, int limit)
@@ -248,18 +245,18 @@ public:
 
   void start()
   {
-    run_sort(6,16,4);
-    run_sort(7,16,4);
-    run_sort(8,16,4);
+    run_sort(6,16);
+    run_sort(7,16);
+    run_sort(8,16);
   }
 
-  void run_sort(int block_lg, int bl_per_mp = 1, int version = 2)
+  void run_sort(int block_lg, int bl_per_mp = 1)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
     const int gpu_rounds = 1;
 
-    Kernel_Info& ki = gpu_info.ki[version];
+    Kernel_Info& ki = gpu_info.ki[0];
     cudaFuncAttributes& cfa = ki.cfa;
     cudaDeviceProp& cuda_prop = gpu_info.cuda_prop;
 
@@ -285,20 +282,22 @@ public:
       dg.x = grid_size_max;
     dg.y = dg.z = 1;
 
-    TO_DEV(block_lg);
-
     int sort_bin_lg = 4;
     int sort_bin_size = 1 << sort_bin_lg;
     int sort_bin_mask = sort_bin_size - 1;
     int sort_bin_count = ( sizeof(Sort_Elt) * 8 ) >> sort_bin_lg;
-    TO_DEV(sort_bin_lg);
-    TO_DEV(sort_bin_size);
-    TO_DEV(sort_bin_mask);
-    TO_DEV(sort_bin_count);
+#define CPY(m) dapp.m = m;
+    CPY(sort_bin_lg);
+    CPY(sort_bin_size);
+    CPY(sort_bin_mask);
+    CPY(sort_bin_count);
     int sort_all_bin_count = sort_bin_count * dg.x;
     int sort_all_bin_lg = lg( sort_all_bin_count );
-    TO_DEV(sort_all_bin_count);
-    TO_DEV(sort_all_bin_lg);
+    CPY(sort_all_bin_count);
+    CPY(sort_all_bin_lg);
+#undef CPY
+
+    TO_DEV(dapp);
 
     scan_r2.realloc(array_size);
     scan_r2.ptrs_to_cuda("scan_r2");
@@ -313,9 +312,9 @@ public:
     const int block_per_mp =
       0.999 + double(dg.x)/cuda_prop.multiProcessorCount;
     const int dynamic_sm_bytes =
-      sort_launch(dg0,db,version,array_size,array_size_lg); // Hack.
+      sort_launch(dg0,db,array_size,array_size_lg); // Hack.
     const int active_bl_per_mp_max =
-      gpu_info.get_max_active_blocks_per_mp(version,db.x,dynamic_sm_bytes);
+      gpu_info.get_max_active_blocks_per_mp(0,db.x,dynamic_sm_bytes);
     const int warps_per_block = (31 + db.x ) >> 5;
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     // Ignoring memory and regs.
@@ -353,7 +352,7 @@ public:
         CE(cudaEventRecord(cuda_start_ce));
 
         for ( int i=0; i<gpu_rounds; i++ )
-          sort_launch(dg,db,version,array_size,array_size_lg);
+          sort_launch(dg,db,array_size,array_size_lg);
 
         CE(cudaEventRecord(cuda_stop_ce));
 
@@ -374,7 +373,7 @@ public:
         scan_out.from_cuda();
         scan_r2.from_cuda();
 
-        if ( version == 4 ) for ( int tile = 0; tile < 4; tile ++ )
+        for ( int tile = 0; tile < 4; tile ++ )
           {
             printf("T %2d: ",tile);
             const int idx_base = tile * sort_bin_size;
@@ -408,7 +407,7 @@ public:
                comp_ratios.get_key(t_compute.elements>>1)
                );
 #endif
-        check_sort(db.x,version==4?array_size:4*db.x);
+        check_sort(db.x,array_size);
 
       }
   }
