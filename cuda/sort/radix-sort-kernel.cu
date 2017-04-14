@@ -19,9 +19,10 @@ __constant__ int *sort_in, *sort_out, *sort_out_b;
 __constant__ int *sort_tile_histo;
 __constant__ int *sort_histo;
 
-template <int BLOCK_LG, int BIN_LG>
-__global__ void radix_sort_1_pass_1(int bin_idx, bool first_iter);
-__global__ void radix_sort_1_pass_2(int bin_idx, bool last_iter);
+template <int BLOCK_LG, int RADIX_LG>
+__global__ void radix_sort_1_pass_1(int digit_pos, bool first_iter);
+template <int RADIX_LG>
+__global__ void radix_sort_1_pass_2(int digit_pos, bool last_iter);
 
 __host__ void
 kernels_get_attr(GPU_Info *gpu_info)
@@ -38,7 +39,7 @@ kernels_get_attr(GPU_Info *gpu_info)
   GETATTR((radix_sort_1_pass_1<6,4>));
   GETATTR((radix_sort_1_pass_1<7,4>));
   GETATTR((radix_sort_1_pass_1<8,4>));
-  GETATTR(radix_sort_1_pass_2);
+  GETATTR(radix_sort_1_pass_2<4>);
 #undef GETATTR
 }
 
@@ -48,38 +49,39 @@ kernels_get_attr(GPU_Info *gpu_info)
 __host__ int
 sort_launch(dim3 dg, dim3 db, int array_size, int array_size_lg)
 {
-  const int bin_lg = 4;
-  const int bin_size = 1 << bin_lg;
+  const int radix_lg = 4;
+  const int radix = 1 << radix_lg;
   int elt_per_thread = 4;
-  int size_per_elt_1 = 4 + 2; // Assuming sort_bin_size < block_size
+  int size_per_elt_1 = 4 + 2; // Assuming sort_radix < block_size
   int shared_size_pass_1 = db.x * size_per_elt_1 * elt_per_thread
-    + 4 * bin_size * 4;
-  int shared_size_pass_2 = ( 3 * bin_size + 1 ) * 4;
-  int bins = int( ceil( 32.0 / bin_lg ) );
-  int bin_idx_start = 0;
-  int bin_idx_stop = bins;
+    + 4 * radix * 4;
+  int shared_size_pass_2 = ( 3 * radix + 1 ) * 4;
+  int ndigits = int( ceil( 32.0 / radix_lg ) );
+  int digit_pos_start = 0;
+  int digit_pos_stop = ndigits;
   if ( !dg.x ) return shared_size_pass_1;
-  for ( int bin_idx = bin_idx_start; bin_idx < bin_idx_stop; bin_idx++ )
+  for ( int digit_pos = digit_pos_start;
+        digit_pos < digit_pos_stop;  digit_pos++ )
     {
-      const bool first_iter = bin_idx == bin_idx_start;
+      const bool first_iter = digit_pos == digit_pos_start;
       switch(db.x){
       case 64:
-        radix_sort_1_pass_1<6,bin_lg><<<dg,db,shared_size_pass_1>>>
-          (bin_idx,first_iter);
+        radix_sort_1_pass_1<6,radix_lg><<<dg,db,shared_size_pass_1>>>
+          (digit_pos,first_iter);
         break;
       case 128:
         radix_sort_1_pass_1
-          <7,bin_lg><<<dg,db,shared_size_pass_1>>>
-          (bin_idx,first_iter);
+          <7,radix_lg><<<dg,db,shared_size_pass_1>>>
+          (digit_pos,first_iter);
         break;
       case 256:
         radix_sort_1_pass_1
-          <8,bin_lg><<<dg,db,shared_size_pass_1>>>
-          (bin_idx,first_iter);
+          <8,radix_lg><<<dg,db,shared_size_pass_1>>>
+          (digit_pos,first_iter);
         break;
       }
-      radix_sort_1_pass_2<<<dg,db,shared_size_pass_2>>>
-        (bin_idx,bin_idx+1==bin_idx_stop);
+      radix_sort_1_pass_2<radix_lg><<<dg,db,shared_size_pass_2>>>
+        (digit_pos,digit_pos+1==digit_pos_stop);
     }
   return 0;
 }
@@ -185,19 +187,19 @@ sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
 }
 
 
-template <int BLOCK_LG, int BIN_LG>
+template <int BLOCK_LG, int RADIX_LG>
 __device__ void radix_sort_1_pass_1_tile
-(int bin_idx, int tile_idx, bool first_iter);
+(int digit_pos, int tile_idx, bool first_iter);
 
 #define SH_GLOBAL_HISTO(elt) s[ ghisto_sbase + (elt) ]
 #define SH_TILE_HISTO(idx) s[ thisto_sbase + (idx) ]
 
-template <int BLOCK_LG, int BIN_LG> __global__ void
-radix_sort_1_pass_1(int bin_idx, bool first_iter)
+template <int BLOCK_LG, int RADIX_LG> __global__ void
+radix_sort_1_pass_1(int digit_pos, bool first_iter)
 {
   int elt_per_thread = 4;
   int block_size = 1 << BLOCK_LG;
-  int bin_size = 1 << BIN_LG;
+  int radix = 1 << RADIX_LG;
   int elt_per_tile = block_size * elt_per_thread;
   int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
@@ -206,23 +208,24 @@ radix_sort_1_pass_1(int bin_idx, bool first_iter)
   int sbase_1_bit_split_end = elt_per_tile + block_size + 1;
   int ghisto_sbase = sbase_1_bit_split_end;
 
-  if ( threadIdx.x < bin_size ) SH_GLOBAL_HISTO( threadIdx.x ) = 0;
+  if ( threadIdx.x < radix ) SH_GLOBAL_HISTO( threadIdx.x ) = 0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
-    radix_sort_1_pass_1_tile<BLOCK_LG,BIN_LG>(bin_idx,tile_idx,first_iter);
+    radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>(digit_pos,tile_idx,first_iter);
 
-  if ( threadIdx.x >= bin_size ) return;
-  int histo_idx = blockIdx.x * bin_size + threadIdx.x;
+  if ( threadIdx.x >= radix ) return;
+  int histo_idx = blockIdx.x * radix + threadIdx.x;
   sort_histo[ histo_idx ] = SH_GLOBAL_HISTO( threadIdx.x );
 }
 
-template <int BLOCK_LG, int BIN_LG> __device__ void
-radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
+template <int BLOCK_LG, int RADIX_LG> __device__ void
+radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
 {
-  int start_bit = bin_idx * dapp.sort_bin_lg;
+  int start_bit = digit_pos * RADIX_LG;
   int elt_per_thread = 4;
   int block_size = 1 << BLOCK_LG;
-  int bin_size = 1 << BIN_LG;
+  int radix = 1 << RADIX_LG;
+  const int digit_mask = radix - 1;
   int elt_per_tile = elt_per_thread * block_size;
   int idx_block_start = elt_per_tile * tile_idx;
 
@@ -231,20 +234,20 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 
   int sbase_1_bit_split_end = elt_per_tile + block_size + 1;
   int ghisto_sbase = sbase_1_bit_split_end;
-  int runend_sbase = ghisto_sbase + bin_size;
-  int thisto_sbase = runend_sbase + bin_size;
+  int runend_sbase = ghisto_sbase + radix;
+  int thisto_sbase = runend_sbase + radix;
 
   int *sort_src = first_iter ? sort_in : sort_out;
 
-  // Load Elements
+  // Load Element Keys
   //
   for ( int sidx = threadIdx.x, i = 0;
         i < elt_per_thread; i++, sidx += block_size )
     s[sidx] = sort_src[ idx_block_start + sidx ];
 
-  // Sort based upon current bin (digit position)
+  // Sort based upon current digit position
   //
-  sort_block_1_bit_split(start_bit,dapp.sort_bin_lg,BLOCK_LG);
+  sort_block_1_bit_split(start_bit,RADIX_LG,BLOCK_LG);
 
   // Write sorted elements to global memory and prepare for histogram.
   //
@@ -257,15 +260,15 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 
       // Extract digit and write to shared memory.
       //
-      int digit = ( s[sidx] >> start_bit ) & dapp.sort_bin_mask;
+      int digit = ( s[sidx] >> start_bit ) & digit_mask;
       s[sidx] = digit;
     }
 
-  if ( threadIdx.x == 0 ) s[elt_per_tile] = bin_size;
+  if ( threadIdx.x == 0 ) s[elt_per_tile] = radix;
 
   // Initialize histogram for this tile to zero.
   //
-  if ( threadIdx.x < bin_size )
+  if ( threadIdx.x < radix )
     SH_TILE_HISTO( threadIdx.x ) = 0;
 
   __syncthreads();
@@ -305,19 +308,20 @@ radix_sort_1_pass_1_tile(int bin_idx, int tile_idx, bool first_iter)
 
   __syncthreads();
 
-  if ( threadIdx.x >= bin_size ) return;
+  if ( threadIdx.x >= radix ) return;
 
   // Write out tile histogram.
   //
-  int thisto_idx = tile_idx * bin_size + threadIdx.x;
+  int thisto_idx = tile_idx * radix + threadIdx.x;
   sort_tile_histo[ thisto_idx ] = SH_TILE_HISTO( threadIdx.x );
 }
 
 __device__ void radix_sort_1_pass_2_tile
-(int bin_idx, int tile_idx, bool last_iter);
+(int radix_lg, int digit_pos, int tile_idx, bool last_iter);
 
+template <int RADIX_LG>
 __global__ void
-radix_sort_1_pass_2(int bin_idx, bool last_iter)
+radix_sort_1_pass_2(int digit_pos, bool last_iter)
 {
   int elt_per_thread = 4;
   int elt_per_tile = elt_per_thread * blockDim.x;
@@ -327,10 +331,10 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
   int tile_start = tiles_per_block * blockIdx.x;
   int tile_stop = min( tiles_per_array, tile_start + tiles_per_block );
 
-  const int sort_bin_size = dapp.sort_bin_size;
+  const int sort_radix = 1 << RADIX_LG;
   int pfe_tile_sbase = 0;
   int pfi_tile_sbase = 1;
-  int pf_offset_sbase_base = pfi_tile_sbase + sort_bin_size;
+  int pf_offset_sbase_base = pfi_tile_sbase + sort_radix;
   int pfe_tile_sidx = pfe_tile_sbase + threadIdx.x;
 
   volatile int *sv = &s[ 0 ];
@@ -346,12 +350,12 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
 
   if ( threadIdx.x == 0 ) sv[ pfe_tile_sbase ] = 0;
 
-  if ( threadIdx.x < dapp.sort_bin_size )
+  if ( threadIdx.x < sort_radix )
     {
-      // Code only correct for sort_bin_size <= 32.
+      // Code only correct for sort_radix <= 32.
 
-      int idx_for_us = blockIdx.x * dapp.sort_bin_size + threadIdx.x;
-      int pidx_stop = gridDim.x * sort_bin_size;
+      int idx_for_us = blockIdx.x * sort_radix + threadIdx.x;
+      int pidx_stop = gridDim.x * sort_radix;
 
       // Compute Global Histogram
       //
@@ -359,11 +363,11 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
       // of value threadIdx.x.
       //
       // Eg: Array:  123, 121, 373, 932, 863, 113
-      //     Based on bin_idx, operating on least-significant digit.
+      //     Based on digit_pos, operating on least-significant digit.
       //     threadIdx.x = 3
       //     Then =>  global_bin_sum = 4
       //
-      for ( int idx = threadIdx.x; idx < pidx_stop; idx += sort_bin_size )
+      for ( int idx = threadIdx.x; idx < pidx_stop; idx += sort_radix )
         {
           if ( idx == idx_for_us ) overhead_bin_sum = global_bin_sum;
           global_bin_sum += sort_histo[idx];
@@ -375,7 +379,7 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
       sv[ pfi_tile_sbase + threadIdx.x ] = global_bin_sum;
       int global_bin_prefix = global_bin_sum;
 
-      for ( int i=0; i<dapp.sort_bin_lg; i++ )
+      for ( int i=0; i< RADIX_LG; i++ )
         {
           int dist = 1 << i;
           int sum_0 = dist <= threadIdx.x
@@ -391,16 +395,16 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
   __syncthreads();
 
   volatile int *tile_offsets = &s[pf_offset_sbase_base];
-  if ( threadIdx.x < sort_bin_size ) tile_offsets[threadIdx.x]=0;
+  if ( threadIdx.x < sort_radix ) tile_offsets[threadIdx.x]=0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
     {
       int count;
-      if ( threadIdx.x < sort_bin_size )
+      if ( threadIdx.x < sort_radix )
         {
-          int bo_idx = tile_idx * sort_bin_size + threadIdx.x;
+          int bo_idx = tile_idx * sort_radix + threadIdx.x;
           count = sort_tile_histo[ bo_idx ];
-          int to_idx = sort_bin_size + threadIdx.x;
+          int to_idx = sort_radix + threadIdx.x;
           int offset = count;
           tile_offsets[ to_idx ] = offset;
           tile_offsets[ to_idx ] = offset += tile_offsets[ to_idx - 1 ];
@@ -414,15 +418,15 @@ radix_sort_1_pass_2(int bin_idx, bool last_iter)
             }
         }
       __syncthreads();
-      radix_sort_1_pass_2_tile(bin_idx,tile_idx,last_iter);
+      radix_sort_1_pass_2_tile(RADIX_LG,digit_pos,tile_idx,last_iter);
       __syncthreads();
-      if ( threadIdx.x < sort_bin_size ) sv[ pfe_tile_sidx ] += count;
+      if ( threadIdx.x < sort_radix ) sv[ pfe_tile_sidx ] += count;
     }
 }
 
 __device__ void
 radix_sort_1_pass_2_tile
-(int bin_idx, int tile_idx, bool last_iter)
+(int radix_lg, int digit_pos, int tile_idx, bool last_iter)
 {
   const int elt_per_thread = 4;
   int elt_per_tile = elt_per_thread * blockDim.x;
@@ -430,19 +434,21 @@ radix_sort_1_pass_2_tile
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
   int idx_tile_start = tile_idx * elt_per_tile;
 
-  int start_bit = bin_idx * dapp.sort_bin_lg;
+  const int sort_radix = 1 << radix_lg;
+  const int digit_mask = sort_radix - 1;
+  int start_bit = digit_pos * radix_lg;
 
   int pfe_tile_sbase = 0;
   int pfi_tile_sbase = 1;
-  int pf_offset_sbase_base = pfi_tile_sbase + dapp.sort_bin_size;
-  int pf_offset_sbase = pf_offset_sbase_base + dapp.sort_bin_size - 1;
+  int pf_offset_sbase_base = pfi_tile_sbase + sort_radix;
+  int pf_offset_sbase = pf_offset_sbase_base + sort_radix - 1;
 
   for ( int i=0; i<elt_per_thread; i++ )
     {
       int local_idx = threadIdx.x + i * blockDim.x;
       int idx = idx_tile_start + local_idx;
       uint key = sort_out_b[idx];
-      uint digit = ( key >> start_bit ) & dapp.sort_bin_mask;
+      uint digit = ( key >> start_bit ) & digit_mask;
       int local_offset = s[ pf_offset_sbase + digit ];
       int key_digit_rank = local_idx - local_offset;
       int idx_digit_index = s[ pfe_tile_sbase + digit ] + key_digit_rank;

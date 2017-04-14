@@ -282,19 +282,13 @@ public:
       dg.x = grid_size_max;
     dg.y = dg.z = 1;
 
-    int sort_bin_lg = 4;
-    int sort_bin_size = 1 << sort_bin_lg;
-    int sort_bin_mask = sort_bin_size - 1;
-    int sort_bin_count = ( sizeof(Sort_Elt) * 8 ) >> sort_bin_lg;
+    int sort_radix_lg = 4;
+    int sort_radix = 1 << sort_radix_lg;
+    int sort_bin_mask = sort_radix - 1;
 #define CPY(m) dapp.m = m;
-    CPY(sort_bin_lg);
-    CPY(sort_bin_size);
+    CPY(sort_radix_lg);
+    CPY(sort_radix);
     CPY(sort_bin_mask);
-    CPY(sort_bin_count);
-    int sort_all_bin_count = sort_bin_count * dg.x;
-    int sort_all_bin_lg = lg( sort_all_bin_count );
-    CPY(sort_all_bin_count);
-    CPY(sort_all_bin_lg);
 #undef CPY
 
     TO_DEV(dapp);
@@ -303,7 +297,7 @@ public:
     scan_r2.ptrs_to_cuda("scan_r2");
 
     int prefix_sum_array_size =
-      int(ceil(sort_bin_size * array_size / ( 4.0 * dg.x )));
+      int(ceil(sort_radix * array_size / ( 4.0 * dg.x )));
     sort_histo.realloc(prefix_sum_array_size);
     sort_histo.ptrs_to_cuda("sort_histo");
     sort_tile_histo.realloc(prefix_sum_array_size);
@@ -376,7 +370,7 @@ public:
         for ( int tile = 0; tile < 4; tile ++ )
           {
             printf("T %2d: ",tile);
-            const int idx_base = tile * sort_bin_size;
+            const int idx_base = tile * sort_radix;
             for ( int i=0; i<8; i++ )
               {
                 printf("%4d  ",sort_tile_histo[idx_base +i]);
