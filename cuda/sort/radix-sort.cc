@@ -4,10 +4,12 @@
 
 #define NO_OPENGL
 #include <stdio.h>
+#include <assert.h>
 #include <gp/misc.h>
 #include <gp/cuda-util.h>
 #include "radix-sort.cuh"
-
+#include <vector>
+using namespace std;
 
 class Sort {
 public:
@@ -15,7 +17,7 @@ public:
   Sort(int argc, char **argv){ init(argc,argv); }
 
   GPU_Info gpu_info;
-  cudaEvent_t cuda_start_ce, cuda_stop_ce;
+  vector<cudaEvent_t> cuda_ces;
 
   Radix_Sort_GPU_Constants dapp;
 
@@ -34,6 +36,7 @@ public:
   pCUDA_Memory<int> scan_out;
   pCUDA_Memory<int> scan_r2;
 
+  int grid_size;
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
 
@@ -49,8 +52,9 @@ public:
 
     // Prepare events used for timing.
     //
-    CE(cudaEventCreate(&cuda_start_ce));
-    CE(cudaEventCreate(&cuda_stop_ce));
+    const int max_digits = sizeof(Sort_Elt) * 8;
+    cuda_ces.resize(max_digits);
+    for ( auto& e: cuda_ces ) CE(cudaEventCreate(&e));
 
     // Print information about kernel.
     //
@@ -71,7 +75,16 @@ public:
 
     srand48(1);                   // Seed random number generator.
 
-    array_size_lg = argc > 1 ? atoi(argv[1]) : 20;
+    const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
+
+    // Examine argument 1, block count, default is number of MPs.
+    //
+    const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
+    grid_size =
+      arg1_int == 0 ? num_mp :
+      arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
+
+    array_size_lg = argc > 2 ? atoi(argv[2]) : 20;
 
     //
     // Initialize Array Shape Variables
@@ -81,7 +94,13 @@ public:
     dapp.array_size = array_size;
     dapp.array_size_lg = array_size_lg;
 
-    printf("List size %d ( 0x%x )\n", array_size, array_size );
+    const int ref_block_size = 256;
+    const int ref_num_tiles =
+      div_ceil( array_size, ref_block_size * elt_per_thread );
+    const double ref_tiles_per_block = double(ref_num_tiles) / grid_size;
+
+    printf("List size %d ( 0x%x )  Tiles / %d-thd Bl %.1f\n",
+           array_size, array_size, ref_block_size, ref_tiles_per_block );
 
     sort_in.alloc(array_size);
     sort_out.alloc(array_size);
@@ -242,16 +261,15 @@ public:
 
   void start()
   {
-    run_sort(6,16);
-    run_sort(7,16);
-    run_sort(8,16);
+    run_sort(6);
+    run_sort(7);
+    run_sort(8);
   }
 
-  void run_sort(int block_lg, int bl_per_mp = 1)
+  void run_sort(int block_lg)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
-    const int gpu_rounds = 1;
     const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
 
     Kernel_Info& ki = gpu_info.ki[0];
@@ -260,20 +278,11 @@ public:
 
     if ( block_size > cfa.maxThreadsPerBlock ) return;
 
-    const int grid_size_max = div_ceil( array_size, block_size );
-
-    // Prepare for the number of blocks to array_size / block_size.
-    //
-    const int grid_size =
-      bl_per_mp ? min( grid_size_max, num_mp * bl_per_mp ) : grid_size_max;
-
     int sort_radix_lg = 4;
     int sort_radix = 1 << sort_radix_lg;
-    int sort_bin_mask = sort_radix - 1;
 #define CPY(m) dapp.m = m;
     CPY(sort_radix_lg);
     CPY(sort_radix);
-    CPY(sort_bin_mask);
 #undef CPY
 
     TO_DEV(dapp);
@@ -288,53 +297,90 @@ public:
     sort_tile_histo.realloc(prefix_sum_array_size);
     sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
 
+    const int elt_per_tile = block_size * elt_per_thread;
+    const int num_tiles = div_ceil( array_size, elt_per_tile );
+    const int key_size_bits = 8 * sizeof(Sort_Elt);
+    const int ndigits = div_ceil( key_size_bits, sort_radix_lg );
+
+    const int size_per_elt_1 = 4 + 2; // Assuming sort_radix < block_size
+    const int shared_size_pass_1 = elt_per_tile * size_per_elt_1
+      + 4 * sort_radix * sizeof(int);
+    const int shared_size_pass_2 = ( 3 * sort_radix + 1 ) * sizeof(int);
+
+    const int keys_xfer_per_round = 4;
+    const size_t comm_keys_bytes =
+      num_tiles * elt_per_tile * sizeof(Sort_Elt)
+      * ndigits * keys_xfer_per_round;
+
+    const int histo_xfer_per_round = 2;
+    const size_t comm_histo_bytes =
+      ( num_tiles + 1 ) * sort_radix * sizeof(int)
+      * ndigits * histo_xfer_per_round;
+
+    const size_t comm_bytes = comm_keys_bytes + comm_histo_bytes;
+
+    const size_t work_per_thread =
+      array_size * 8 * sizeof(Sort_Elt) / ( block_size * grid_size );
     const int block_per_mp = div_ceil( grid_size, num_mp );
-    const int dynamic_sm_bytes =
-      sort_launch(0,block_size,array_size,array_size_lg); // Hack.
+    const int dynamic_sm_bytes = shared_size_pass_1;
     const int active_bl_per_mp_max =
       gpu_info.get_max_active_blocks_per_mp(0,block_size,dynamic_sm_bytes);
     const int warps_per_block = (31 + block_size ) >> 5;
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
-    printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %.2f,  Active WP, %2d   %s\n",
+    printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %.2f,  Active WP, %2d\n",
            grid_size, block_size,
            double(block_size)/cuda_prop.multiProcessorCount,
-           active_wp,
-           ki.name
-           );
+           active_wp);
 
     for ( int cpu_round=0; cpu_round<cpu_rounds; cpu_round++ )
       {
-
         // Zero result array and send to GPU, to detect
         // skipped-element errors occurring after a prior invocation
         // wrote the correct results.
         //
-        for ( int i=0; i<array_size; i++ )
-          sort_out_b[i] = sort_out[i] = 0;
+        for ( int i=0; i<array_size; i++ ) sort_out_b[i] = sort_out[i] = 0;
         sort_out.to_cuda();
         sort_out_b.to_cuda();
 
         sort_in.to_cuda(); // Move input array to CUDA.
 
-        // Launch Kernel  (Actually, call code in stream-kernel.cu to launch).
-        //
-        CE(cudaEventRecord(cuda_start_ce));
-
-        for ( int i=0; i<gpu_rounds; i++ )
-          sort_launch(grid_size,block_size,array_size,array_size_lg);
-
-        CE(cudaEventRecord(cuda_stop_ce));
-
-        // When execution reaches this point kernel has completed.
+        uint next_ce_idx = 0;
+        for ( int digit_pos = 0; digit_pos < ndigits;  digit_pos++ )
+          {
+            const bool first_iter = digit_pos == 0;
+            const bool last_iter = digit_pos + 1 == ndigits;
+            CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
+            sort_launch_pass_1
+              ( grid_size, block_size, shared_size_pass_1,
+                digit_pos, first_iter );
+            CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
+            sort_launch_pass_2
+              ( grid_size, block_size, shared_size_pass_2,
+                digit_pos, last_iter );
+          }
+        CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
+        assert( next_ce_idx <= cuda_ces.size() );
 
         // Retrieve data from CUDA.
         //
         sort_out.from_cuda();
 
-        float cuda_time_ms;
-        CE(cudaEventElapsedTime(&cuda_time_ms,cuda_start_ce,cuda_stop_ce));
+        double pass_1_time_s = 0;
+        double pass_2_time_s = 0;
+
+        for ( int pos = 0; pos < ndigits;  pos++ )
+          {
+            float cuda_time_ms;
+            int p1_idx = pos * 2;
+            CE(cudaEventElapsedTime
+               ( &cuda_time_ms, cuda_ces[p1_idx], cuda_ces[p1_idx+1]) );
+            pass_1_time_s += cuda_time_ms * 1e-3;
+            CE(cudaEventElapsedTime
+               ( &cuda_time_ms, cuda_ces[p1_idx+1], cuda_ces[p1_idx+2]) );
+            pass_2_time_s += cuda_time_ms * 1e-3;
+          }
 
         if ( cpu_round + 1 < cpu_rounds ) continue;
 
@@ -355,34 +401,21 @@ public:
             printf("\n");
           }
 
-        const double computation_insn = // Currently bogus!!
-          gpu_rounds * double(array_size) * ( 0 + 3.0 );
+        const double rs_time_s = pass_1_time_s + pass_2_time_s;
+        const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;
 
-        const double peak_insn =
-          cuda_time_ms * 1e-3 * gpu_info.chip_sp_flops;
+        printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
+               "Data Thpt %.1f GB/s\n",
+               pass_1_time_s * 1e3,
+               pass_2_time_s * 1e3,
+               rs_time_s * 1e3,
+               array_size / ( rs_time_s * 1e9 ),
+               thpt_data_gbps);
 
-        printf("CUDA Time %7.3f ms  Throughput %7.3f G elt/s  Eff %.4f  "
-               "Eff ac %.4f\n",
-               cuda_time_ms,
-               array_size / ( cuda_time_ms * 1e6 ),
-               computation_insn / peak_insn,
-               0.0
-               );
-
-#if 0
-        printf("CUDA Time %6.3f ms  Throughput %7.3f GFlop/s  Cycles %d  "
-               "Comp %.3f\n",
-               cuda_time_ms,
-               computation_flops / ( cuda_time_ms * 1e6 ),
-               t_all[0],
-               comp_ratios.get_key(t_compute.elements>>1)
-               );
-#endif
         check_sort(block_size,array_size);
 
       }
   }
-
 
 };
 

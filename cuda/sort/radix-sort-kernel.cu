@@ -52,46 +52,35 @@ kernels_get_attr(GPU_Info *gpu_info)
 
 // This routine executes on the CPU.
 //
-__host__ int
-sort_launch(int dg, int db, int array_size, int array_size_lg)
+__host__ void
+sort_launch_pass_1
+(int dg, int db, int sm_bytes, int digit_pos, bool first_iter)
 {
   const int radix_lg = 4;
-  const int radix = 1 << radix_lg;
-  int elt_per_thread = 4;
-  int size_per_elt_1 = 4 + 2; // Assuming sort_radix < block_size
-  int shared_size_pass_1 = db * size_per_elt_1 * elt_per_thread
-    + 4 * radix * 4;
-  int shared_size_pass_2 = ( 3 * radix + 1 ) * 4;
-  const int key_size_bits = 8 * sizeof(Sort_Elt);
-  int ndigits = div_ceil( key_size_bits, radix_lg );
-  int digit_pos_start = 0;
-  int digit_pos_stop = ndigits;
-  if ( !dg ) return shared_size_pass_1;
-  for ( int digit_pos = digit_pos_start;
-        digit_pos < digit_pos_stop;  digit_pos++ )
-    {
-      const bool first_iter = digit_pos == digit_pos_start;
-      switch(db){
-      case 64:
-        radix_sort_1_pass_1<6,radix_lg><<<dg,db,shared_size_pass_1>>>
-          (digit_pos,first_iter);
-        break;
-      case 128:
-        radix_sort_1_pass_1
-          <7,radix_lg><<<dg,db,shared_size_pass_1>>>
-          (digit_pos,first_iter);
-        break;
-      case 256:
-        radix_sort_1_pass_1
-          <8,radix_lg><<<dg,db,shared_size_pass_1>>>
-          (digit_pos,first_iter);
-        break;
-      }
-      radix_sort_1_pass_2<radix_lg><<<dg,db,shared_size_pass_2>>>
-        (digit_pos,digit_pos+1==digit_pos_stop);
-    }
-  return 0;
+# define LAUNCH(BLG) \
+  case 1<<BLG: \
+  radix_sort_1_pass_1<BLG,radix_lg><<<dg,db,sm_bytes>>>(digit_pos,first_iter); \
+  break;
+
+  switch ( db ){
+    LAUNCH(6);
+    LAUNCH(7);
+    LAUNCH(8);
+  default:
+    assert( false );
+  }
+
+# undef LAUNCH
 }
+
+__host__ void
+sort_launch_pass_2
+(int dg, int db, int sm_bytes, int digit_pos, bool last_iter)
+{
+  const int radix_lg = 4;
+  radix_sort_1_pass_2<radix_lg><<<dg,db,sm_bytes>>>(digit_pos,last_iter);
+}
+
 
 #ifdef DEBUG_SORT
 const int debug_sort = true;
@@ -113,7 +102,6 @@ __device__ void radix_sort_1_pass_1_tile
 template <int BLOCK_LG, int RADIX_LG> __global__ void
 radix_sort_1_pass_1(int digit_pos, bool first_iter)
 {
-  int elt_per_thread = 4;
   int block_size = 1 << BLOCK_LG;
   int radix = 1 << RADIX_LG;
   int elt_per_tile = block_size * elt_per_thread;
@@ -139,7 +127,6 @@ template <int BLOCK_LG, int RADIX_LG> __device__ void
 radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
 {
   int start_bit = digit_pos * RADIX_LG;
-  int elt_per_thread = 4;
   int block_size = 1 << BLOCK_LG;
   int radix = 1 << RADIX_LG;
   const int digit_mask = radix - 1;
@@ -236,11 +223,8 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
 __device__ void
 sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
 {
-  // Number of elements operated on per thread.
-  //
-  const int elt_per_thread = 4;
-
-  int elt_per_block = elt_per_thread * blockDim.x;
+  const int block_size = 1 << block_lg;
+  int elt_per_block = elt_per_thread * block_size;
 
   // Indices into shared memory for prefix sum.
   // pfe: Exclusive prefix. (Sum of smaller element values.)
@@ -300,7 +284,7 @@ sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
 
       __syncthreads();
 
-      const int all_threads_num_ones = s[ pfe_base_rd + blockDim.x ];
+      const int all_threads_num_ones = s[ pfe_base_rd + block_size ];
       const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
       const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
 
@@ -326,7 +310,6 @@ template <int RADIX_LG>
 __global__ void
 radix_sort_1_pass_2(int digit_pos, bool last_iter)
 {
-  int elt_per_thread = 4;
   int elt_per_tile = elt_per_thread * blockDim.x;
   int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
@@ -431,7 +414,6 @@ __device__ void
 radix_sort_1_pass_2_tile
 (int radix_lg, int digit_pos, int tile_idx, bool last_iter)
 {
-  const int elt_per_thread = 4;
   int elt_per_tile = elt_per_thread * blockDim.x;
   int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
