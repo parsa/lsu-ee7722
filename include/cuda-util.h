@@ -387,9 +387,6 @@ public:
         alloc(nelem);
         return;
       }
-    return;
-    pCM::realloc(nelem);
-    cuda_mem_all.realloc(nelem);
   }
 
   void alloc(size_t nelements){ pCM::alloc(nelements); }
