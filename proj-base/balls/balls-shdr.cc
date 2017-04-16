@@ -35,6 +35,7 @@ struct Coord_Norm
   vec3 norm_o;
 };
 
+#ifdef _VERTEX_SHADER_
 Coord_Norm
 vs_sphere_coord_norm_get()
 {
@@ -49,6 +50,7 @@ vs_sphere_coord_norm_get()
   cn.norm_o = norm;
   return cn;
 }
+#endif
 
 
 ///
