@@ -13,9 +13,15 @@ __constant__ Radix_Sort_GPU_Constants dapp;
 __constant__ int *scan_out;
 __constant__ int *scan_r2;
 
-extern __shared__ int s[];
+extern __shared__ Sort_Elt s[];
 
-__constant__ int *sort_in, *sort_out, *sort_out_b;
+__device__ int lg_ceil(uint n)
+{
+  if ( n == 0 ) return 0;
+  return 32 - __clz(n-1);
+}
+
+__constant__ Sort_Elt *sort_in, *sort_out, *sort_out_b;
 __constant__ int *sort_tile_histo;
 __constant__ int *sort_histo;
 
@@ -47,24 +53,25 @@ kernels_get_attr(GPU_Info *gpu_info)
 // This routine executes on the CPU.
 //
 __host__ int
-sort_launch(dim3 dg, dim3 db, int array_size, int array_size_lg)
+sort_launch(int dg, int db, int array_size, int array_size_lg)
 {
   const int radix_lg = 4;
   const int radix = 1 << radix_lg;
   int elt_per_thread = 4;
   int size_per_elt_1 = 4 + 2; // Assuming sort_radix < block_size
-  int shared_size_pass_1 = db.x * size_per_elt_1 * elt_per_thread
+  int shared_size_pass_1 = db * size_per_elt_1 * elt_per_thread
     + 4 * radix * 4;
   int shared_size_pass_2 = ( 3 * radix + 1 ) * 4;
-  int ndigits = int( ceil( 32.0 / radix_lg ) );
+  const int key_size_bits = 8 * sizeof(Sort_Elt);
+  int ndigits = div_ceil( key_size_bits, radix_lg );
   int digit_pos_start = 0;
   int digit_pos_stop = ndigits;
-  if ( !dg.x ) return shared_size_pass_1;
+  if ( !dg ) return shared_size_pass_1;
   for ( int digit_pos = digit_pos_start;
         digit_pos < digit_pos_stop;  digit_pos++ )
     {
       const bool first_iter = digit_pos == digit_pos_start;
-      switch(db.x){
+      switch(db){
       case 64:
         radix_sort_1_pass_1<6,radix_lg><<<dg,db,shared_size_pass_1>>>
           (digit_pos,first_iter);
@@ -86,105 +93,14 @@ sort_launch(dim3 dg, dim3 db, int array_size, int array_size_lg)
   return 0;
 }
 
-__device__ int lg_ceil(uint n)
-{
-  if ( n == 0 ) return 0;
-  return 32 - __clz(n-1);
-}
-
-__device__ int div_ceil(int a, int b){ return ( a + b - 1 ) / b; }
-
 #ifdef DEBUG_SORT
 const int debug_sort = true;
 #else
 const int debug_sort = false;
 #endif
 
-
 __device__ void
-sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
-{
-  // Number of elements operated on per thread.
-  //
-  const int elt_per_thread = 4;
-
-  int elt_per_block = elt_per_thread * blockDim.x;
-
-  // Indices into shared memory for prefix sum.
-  // pfe: Exclusive prefix. (Sum of smaller element values.)
-  // pfi: Inclusive prefix. (Sum of this element and smaller element values.)
-  //
-  int pfe_base_rd = elt_per_block;
-  int pfi_base_rd = elt_per_block + 1;
-
-  // Sort Elements From LSB to MSB.
-  //
-  for ( int bit_pos=bit_low; bit_pos<bit_low+bit_count; bit_pos++ )
-    {
-      const uint bit_mask = 1 << bit_pos;
-
-      // Storage for thread's keys.
-      //
-      int keys[elt_per_thread];
-
-      __syncthreads();
-
-      // Initialize data for prefix sum of bit bit_pos, and make copy of key.
-      //
-      int my_ones_write = 0;
-
-      for ( int i = 0; i < elt_per_thread; i++ )
-        {
-          //  const int sidx = threadIdx.x + i * blockDim.x;
-          const int sidx = threadIdx.x * elt_per_thread + i;
-
-          // Make a copy of key.
-          //
-          const int key = s[ sidx ];
-          keys[i] = key;
-          if ( key & bit_mask ) my_ones_write++;
-        }
-
-      s[ pfi_base_rd + threadIdx.x ] = my_ones_write;
-      if ( threadIdx.x == 0 ) s[ pfe_base_rd ] = 0;
-
-      uint my_prefix = my_ones_write;
-
-      // Compute a prefix sum of vectors.
-      for ( int tree_level = 0; tree_level < block_lg; tree_level++ )
-        {
-          int dist = 1 << tree_level;
-          int idx_neighbor = threadIdx.x - dist;
-          __syncthreads();
-          uint neighbor_prefix =
-            threadIdx.x >= dist ? s[ pfi_base_rd + idx_neighbor ] : 0;
-
-          my_prefix += neighbor_prefix;
-          __syncthreads();
-          s[ pfi_base_rd + threadIdx.x ] = my_prefix;
-        }
-
-      // At this point my_prefix contains exclusive prefix of each group.
-
-      __syncthreads();
-
-      const int all_threads_num_ones = s[ pfe_base_rd + blockDim.x ];
-      const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
-      const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
-
-      int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
-      int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;
-
-      for ( int i = 0;  i < elt_per_thread;  i++ )
-        {
-          const int key = keys[i];
-          const int new_idx = key & bit_mask ? idx_one_me++ : idx_zero_me++;
-          s[ new_idx ] = key;
-        }
-
-    }
-  __syncthreads();
-}
+sort_block_1_bit_split(int bit_low, int bit_count, int block_lg);
 
 
 template <int BLOCK_LG, int RADIX_LG>
@@ -214,6 +130,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
     radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>(digit_pos,tile_idx,first_iter);
 
   if ( threadIdx.x >= radix ) return;
+
   int histo_idx = blockIdx.x * radix + threadIdx.x;
   sort_histo[ histo_idx ] = SH_GLOBAL_HISTO( threadIdx.x );
 }
@@ -237,7 +154,7 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   int runend_sbase = ghisto_sbase + radix;
   int thisto_sbase = runend_sbase + radix;
 
-  int *sort_src = first_iter ? sort_in : sort_out;
+  Sort_Elt *sort_src = first_iter ? sort_in : sort_out;
 
   // Load Element Keys
   //
@@ -295,8 +212,8 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   for ( int i = 0; i < elt_per_thread; i++ )
     {
       int sidx = threadIdx.x + i * block_size;
-      int digit = s[sidx];                        // Our digit.
-      int digit_0 = sidx > 0 ? s[sidx-1] : -1;    // Previous guy's digit.
+      int digit = s[sidx];                             // Our digit.
+      int digit_0 = sidx > 0 ? int(s[sidx-1]) : -1;    // Previous guy's digit.
       if ( digit != digit_0 )
         {
           int run_end_sidx = s[ runend_sbase + digit ];
@@ -315,6 +232,92 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   int thisto_idx = tile_idx * radix + threadIdx.x;
   sort_tile_histo[ thisto_idx ] = SH_TILE_HISTO( threadIdx.x );
 }
+
+__device__ void
+sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
+{
+  // Number of elements operated on per thread.
+  //
+  const int elt_per_thread = 4;
+
+  int elt_per_block = elt_per_thread * blockDim.x;
+
+  // Indices into shared memory for prefix sum.
+  // pfe: Exclusive prefix. (Sum of smaller element values.)
+  // pfi: Inclusive prefix. (Sum of this element and smaller element values.)
+  //
+  int pfe_base_rd = elt_per_block;
+  int pfi_base_rd = elt_per_block + 1;
+
+  // Sort Elements From LSB to MSB.
+  //
+  for ( int bit_pos=bit_low; bit_pos<bit_low+bit_count; bit_pos++ )
+    {
+      const uint bit_mask = 1 << bit_pos;
+
+      // Storage for thread's keys.
+      //
+      Sort_Elt keys[elt_per_thread];
+
+      __syncthreads();
+
+      // Initialize data for prefix sum of bit bit_pos, and make copy of key.
+      //
+      int my_ones_write = 0;
+
+      for ( int i = 0; i < elt_per_thread; i++ )
+        {
+          //  const int sidx = threadIdx.x + i * blockDim.x;
+          const int sidx = threadIdx.x * elt_per_thread + i;
+
+          // Make a copy of key.
+          //
+          const Sort_Elt key = s[ sidx ];
+          keys[i] = key;
+          if ( key & bit_mask ) my_ones_write++;
+        }
+
+      s[ pfi_base_rd + threadIdx.x ] = my_ones_write;
+      if ( threadIdx.x == 0 ) s[ pfe_base_rd ] = 0;
+
+      uint my_prefix = my_ones_write;
+
+      // Compute a prefix sum of vectors.
+      for ( int tree_level = 0; tree_level < block_lg; tree_level++ )
+        {
+          int dist = 1 << tree_level;
+          int idx_neighbor = threadIdx.x - dist;
+          __syncthreads();
+          uint neighbor_prefix =
+            threadIdx.x >= dist ? s[ pfi_base_rd + idx_neighbor ] : 0;
+
+          my_prefix += neighbor_prefix;
+          __syncthreads();
+          s[ pfi_base_rd + threadIdx.x ] = my_prefix;
+        }
+
+      // At this point my_prefix contains exclusive prefix of each group.
+
+      __syncthreads();
+
+      const int all_threads_num_ones = s[ pfe_base_rd + blockDim.x ];
+      const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
+      const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
+
+      int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
+      int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;
+
+      for ( int i = 0;  i < elt_per_thread;  i++ )
+        {
+          const int key = keys[i];
+          const int new_idx = key & bit_mask ? idx_one_me++ : idx_zero_me++;
+          s[ new_idx ] = key;
+        }
+
+    }
+  __syncthreads();
+}
+
 
 __device__ void radix_sort_1_pass_2_tile
 (int radix_lg, int digit_pos, int tile_idx, bool last_iter);
@@ -337,7 +340,7 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
   int pf_offset_sbase_base = pfi_tile_sbase + sort_radix;
   int pfe_tile_sidx = pfe_tile_sbase + threadIdx.x;
 
-  volatile int *sv = &s[ 0 ];
+  volatile int *sv = &((int*)s)[ 0 ];
 
   // Sum of all histogram bins for our digit value (threadIdx.x)
   //
@@ -394,7 +397,7 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
 
   __syncthreads();
 
-  volatile int *tile_offsets = &s[pf_offset_sbase_base];
+  volatile int *tile_offsets = &((int*)s)[pf_offset_sbase_base];
   if ( threadIdx.x < sort_radix ) tile_offsets[threadIdx.x]=0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )

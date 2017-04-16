@@ -5,15 +5,13 @@
 
 #include <gp/cuda-gpuinfo.h>
 
-struct pCUDA_Func_Attributes {
-  const char *name;
-  cudaError_t err;
-  cudaFuncAttributes attr;
-};
+typedef unsigned Sort_Elt;
+
+inline __device__ __host__
+int div_ceil(int a, int b){ return ( a + b - 1 ) / b; }
 
 __host__ void kernels_get_attr(GPU_Info *gpu_info);
-__host__ int sort_launch
-(dim3 dg, dim3 db, int array_size, int array_size_lg);
+__host__ int sort_launch(int dg, int db, int array_size, int array_size_lg);
 
 struct Radix_Sort_GPU_Constants
 {

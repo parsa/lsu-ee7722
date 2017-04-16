@@ -9,9 +9,6 @@
 #include "radix-sort.cuh"
 
 
-typedef unsigned Sort_Elt;
-
-
 class Sort {
 public:
 
@@ -255,6 +252,7 @@ public:
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
     const int gpu_rounds = 1;
+    const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
 
     Kernel_Info& ki = gpu_info.ki[0];
     cudaFuncAttributes& cfa = ki.cfa;
@@ -262,25 +260,12 @@ public:
 
     if ( block_size > cfa.maxThreadsPerBlock ) return;
 
-    // Specify Launch Configuration
-    //
-    dim3 db, dg;
-    dim3 dg0; dg0.x = dg0.y = dg0.z = 0;
-
-    // Specify block size.  (Block size is db.x * db.y * db.z )
-    //
-    db.x = block_size;
-    db.y = db.z = 1;
-
-    const int grid_size_max = int(ceil(double(array_size) / db.x));
+    const int grid_size_max = div_ceil( array_size, block_size );
 
     // Prepare for the number of blocks to array_size / block_size.
     //
-    if ( bl_per_mp )
-      dg.x = min(grid_size_max,cuda_prop.multiProcessorCount * bl_per_mp);
-    else
-      dg.x = grid_size_max;
-    dg.y = dg.z = 1;
+    const int grid_size =
+      bl_per_mp ? min( grid_size_max, num_mp * bl_per_mp ) : grid_size_max;
 
     int sort_radix_lg = 4;
     int sort_radix = 1 << sort_radix_lg;
@@ -297,35 +282,27 @@ public:
     scan_r2.ptrs_to_cuda("scan_r2");
 
     int prefix_sum_array_size =
-      int(ceil(sort_radix * array_size / ( 4.0 * dg.x )));
+      int(ceil(sort_radix * array_size / ( 4.0 * grid_size )));
     sort_histo.realloc(prefix_sum_array_size);
     sort_histo.ptrs_to_cuda("sort_histo");
     sort_tile_histo.realloc(prefix_sum_array_size);
     sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
 
-    const int block_per_mp =
-      0.999 + double(dg.x)/cuda_prop.multiProcessorCount;
+    const int block_per_mp = div_ceil( grid_size, num_mp );
     const int dynamic_sm_bytes =
-      sort_launch(dg0,db,array_size,array_size_lg); // Hack.
+      sort_launch(0,block_size,array_size,array_size_lg); // Hack.
     const int active_bl_per_mp_max =
-      gpu_info.get_max_active_blocks_per_mp(0,db.x,dynamic_sm_bytes);
-    const int warps_per_block = (31 + db.x ) >> 5;
+      gpu_info.get_max_active_blocks_per_mp(0,block_size,dynamic_sm_bytes);
+    const int warps_per_block = (31 + block_size ) >> 5;
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
-    // Ignoring memory and regs.
     const int active_wp = active_bl_per_mp * warps_per_block;
 
     printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %.2f,  Active WP, %2d   %s\n",
-           dg.x, db.x,
-           double(dg.x)/cuda_prop.multiProcessorCount,
+           grid_size, block_size,
+           double(block_size)/cuda_prop.multiProcessorCount,
            active_wp,
            ki.name
            );
-
-    if ( int(dg.x) > cuda_prop.maxGridSize[0] )
-      {
-        printf("*** Maximum grid size exceeded, doing nothing. Sorry.\n");
-        return;
-      }
 
     for ( int cpu_round=0; cpu_round<cpu_rounds; cpu_round++ )
       {
@@ -346,7 +323,7 @@ public:
         CE(cudaEventRecord(cuda_start_ce));
 
         for ( int i=0; i<gpu_rounds; i++ )
-          sort_launch(dg,db,array_size,array_size_lg);
+          sort_launch(grid_size,block_size,array_size,array_size_lg);
 
         CE(cudaEventRecord(cuda_stop_ce));
 
@@ -401,7 +378,7 @@ public:
                comp_ratios.get_key(t_compute.elements>>1)
                );
 #endif
-        check_sort(db.x,array_size);
+        check_sort(block_size,array_size);
 
       }
   }
