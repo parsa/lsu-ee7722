@@ -296,6 +296,12 @@ public:
     return kernel_info_name[string(kernel_name)];
   }
 
+  const char* kernel_last_name_get()
+    {
+      if ( !kernel_last ) return NULL;
+      return kernel_last->func_name_demangled;
+    }
+
   CUdevice dev;                 // Device on which info being collected.
   CUcontext context;            // Make sure that only one context used.
 
@@ -621,7 +627,6 @@ replay_callback(const char *kname, int num_replays, void *data)
 {
   RTI_Kernel_Info* const ki = (RTI_Kernel_Info*) data;
   // Yes, I know it's global but I'd prefer that it not always be.
-  RT_Info* const rt_info = ki->rti;
   ki->replay_num_launches++;
 }
 
@@ -952,6 +957,10 @@ RT_Info::metric_data_status(const char *kernel_name)
 NPerf_Status
 NPerf_metric_data_status(const char* kernel_name)
 { return rt_info->metric_data_status(kernel_name); }
+
+const char*
+NPerf_kernel_last_name_get()
+{ return rt_info->kernel_last_name_get(); }
 
 bool
 NPerf_need_run_get(const char* kernel_name)

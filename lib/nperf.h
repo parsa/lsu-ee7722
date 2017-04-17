@@ -29,6 +29,7 @@ bool NPerf_metrics_off();
 bool NPerf_metric_collect(const char *name);
 NPerf_Status NPerf_metric_data_status(const char* kernel_name = NULL);
 bool NPerf_need_run_get(const char* kernel_name = NULL);
+const char* NPerf_kernel_last_name_get();
 double NPerf_kernel_et_get(const char *kernel_name = NULL);
 int NPerf_kernel_nlaunches_get(const char *kernel_name = NULL);
 double NPerf_metric_value_get
