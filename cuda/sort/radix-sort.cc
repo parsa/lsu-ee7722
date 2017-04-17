@@ -44,7 +44,11 @@ public:
   void init(int argc, char **argv)
   {
     // Must be called before any CUDA API calls.
-    NPerf_init();
+#   ifdef __P_CUDA_DEBUG__
+    NPerf_init(false);
+#   else
+    NPerf_init(true);
+#   endif
 
     gpu_info_print();
 
@@ -292,7 +296,6 @@ public:
 
     Kernel_Info& ki = gpu_info.ki[0];
     cudaFuncAttributes& cfa = ki.cfa;
-    cudaDeviceProp& cuda_prop = gpu_info.cuda_prop;
 
     if ( block_size > cfa.maxThreadsPerBlock ) return;
 
@@ -347,10 +350,8 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
-    printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %.2f,  Active WP, %2d\n",
-           grid_size, block_size,
-           double(block_size)/cuda_prop.multiProcessorCount,
-           active_wp);
+    printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %2d,  Active WP %2d\n",
+           grid_size, block_size, active_bl_per_mp, active_wp);
 
     for ( int cpu_round=0; cpu_round<cpu_rounds; cpu_round++ )
       {
@@ -391,8 +392,8 @@ public:
         //
         sort_out.from_cuda();
 
-        double pass_1_time_s = 0;
-        double pass_2_time_s = 0;
+        double pass_1_ce_time_s = 0;
+        double pass_2_ce_time_s = 0;
 
         for ( int pos = 0; pos < ndigits;  pos++ )
           {
@@ -400,17 +401,24 @@ public:
             int p1_idx = pos * 2;
             CE(cudaEventElapsedTime
                ( &cuda_time_ms, cuda_ces[p1_idx], cuda_ces[p1_idx+1]) );
-            pass_1_time_s += cuda_time_ms * 1e-3;
+            pass_1_ce_time_s += cuda_time_ms * 1e-3;
             CE(cudaEventElapsedTime
                ( &cuda_time_ms, cuda_ces[p1_idx+1], cuda_ces[p1_idx+2]) );
-            pass_2_time_s += cuda_time_ms * 1e-3;
+            pass_2_ce_time_s += cuda_time_ms * 1e-3;
           }
 
         if ( cpu_round + 1 < cpu_rounds ) continue;
 
-        const double pass_1_ts = NPerf_kernel_et_get(kname_1) * ndigits;
-        const double pass_2_ts = NPerf_kernel_et_get(kname_2) * ndigits;
-        const double rs_ts = pass_1_ts + pass_2_ts;
+        const double pass_1_np_time_s = NPerf_kernel_et_get(kname_1) * ndigits;
+        const double pass_2_np_time_s = NPerf_kernel_et_get(kname_2) * ndigits;
+
+        const bool nperf_avail = NPerf_metrics_collection_get();
+
+        const double pass_1_time_s =
+          nperf_avail ? pass_1_np_time_s : pass_1_ce_time_s;
+        const double pass_2_time_s =
+          nperf_avail ? pass_2_np_time_s : pass_2_ce_time_s;
+        const double rs_time_s = pass_1_time_s + pass_2_time_s;
 
         sort_tile_histo.from_cuda();
         sort_histo.from_cuda();
@@ -429,34 +437,31 @@ public:
             printf("\n");
           }
 
-        const double rs_time_s = pass_1_time_s + pass_2_time_s;
         const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;
-        const double thpt_data_gbps2 = comm_bytes / rs_ts * 1e-9;
 
         printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
                "Data Thpt %.1f GB/s\n",
-               pass_1_ts * 1e3,
-               pass_2_ts * 1e3,
-               rs_ts * 1e3,
-               array_size / ( rs_ts * 1e9 ),
-               thpt_data_gbps2);
-        for ( auto ker : { kname_1, kname_2 } )
-          {
-            const bool pass_1 = ker == kname_1;
-            const size_t work_per_round =
-              pass_1 ? work_per_round_pass_1
-              : work_per_round_pass_2;
-            printf
-              ("Wp/Cy %4.1f  Eff Ld %5.1f%% St %5.1f%%  "
-               "Sh Eff %5.1f%%  I/W %3.0f\n",
-               NPerf_metric_value_get("eligible_warps_per_cycle",ker),
-               NPerf_metric_value_get("gld_efficiency",ker),
-               NPerf_metric_value_get("gst_efficiency",ker),
-               NPerf_metric_value_get("shared_efficiency", ker),
-               NPerf_metric_value_get("inst_executed", ker) * 32
-               / work_per_round );
+               pass_1_time_s * 1e3, pass_2_time_s * 1e3, rs_time_s * 1e3,
+               array_size / ( rs_time_s * 1e9 ),
+               thpt_data_gbps);
+        if ( nperf_avail )
+          for ( auto ker : { kname_1, kname_2 } )
+            {
+              const bool pass_1 = ker == kname_1;
+              const size_t work_per_round =
+                pass_1 ? work_per_round_pass_1
+                : work_per_round_pass_2;
+              printf
+                ("Wp/Cy %4.1f  Eff Ld %5.1f%% St %5.1f%%  "
+                 "Sh Eff %5.1f%%  I/W %3.0f\n",
+                 NPerf_metric_value_get("eligible_warps_per_cycle",ker),
+                 NPerf_metric_value_get("gld_efficiency",ker),
+                 NPerf_metric_value_get("gst_efficiency",ker),
+                 NPerf_metric_value_get("shared_efficiency", ker),
+                 NPerf_metric_value_get("inst_executed", ker) * 32
+                 / work_per_round );
 
-          }
+            }
 
         check_sort(block_size,array_size);
 
