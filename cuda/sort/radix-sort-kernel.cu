@@ -108,11 +108,7 @@ sort_block_1_bit_split
 template <int BLOCK_LG, int RADIX_LG>
 __device__ void radix_sort_1_pass_1_tile
 (int digit_pos, int tile_idx, bool first_iter,
-Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
-
-#define SH_GLOBAL_HISTO(elt) p1s.ghisto[ elt ]
-#define SH_TILE_HISTO(idx) p1s.thisto[ idx ]
-
+ Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
 template <int BLOCK_LG, int RADIX_LG> __global__ void
 radix_sort_1_pass_1(int digit_pos, bool first_iter)
@@ -126,7 +122,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
   int tile_start = tiles_per_block * blockIdx.x;
   int tile_stop = min( tiles_per_array, tile_start + tiles_per_block);
 
-  if ( threadIdx.x < radix ) SH_GLOBAL_HISTO( threadIdx.x ) = 0;
+  if ( threadIdx.x < radix ) p1s.ghisto[ threadIdx.x ] = 0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
     radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>
@@ -135,7 +131,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
   if ( threadIdx.x >= radix ) return;
 
   int histo_idx = blockIdx.x * radix + threadIdx.x;
-  sort_histo[ histo_idx ] = SH_GLOBAL_HISTO( threadIdx.x );
+  sort_histo[ histo_idx ] = p1s.ghisto[ threadIdx.x ];
 }
 
 template <int BLOCK_LG, int RADIX_LG> __device__ void
@@ -185,7 +181,7 @@ radix_sort_1_pass_1_tile
   // Initialize histogram for this tile to zero.
   //
   if ( threadIdx.x < radix )
-    SH_TILE_HISTO( threadIdx.x ) = 0;
+    p1s.thisto[ threadIdx.x ] = 0;
 
   __syncthreads();
 
@@ -217,8 +213,8 @@ radix_sort_1_pass_1_tile
         {
           int run_end_sidx = p1s.runend[ digit ];
           int count = run_end_sidx - sidx + 1;
-          SH_GLOBAL_HISTO( digit ) += count;     // Histogram for block.
-          SH_TILE_HISTO( digit ) = count;        // Histogram for tile.
+          p1s.ghisto[ digit ] += count;     // Histogram for block.
+          p1s.thisto[ digit ] = count;        // Histogram for tile.
         }
     }
 
@@ -229,7 +225,7 @@ radix_sort_1_pass_1_tile
   // Write out tile histogram.
   //
   int thisto_idx = tile_idx * radix + threadIdx.x;
-  sort_tile_histo[ thisto_idx ] = SH_TILE_HISTO( threadIdx.x );
+  sort_tile_histo[ thisto_idx ] = p1s.thisto[ threadIdx.x ];
 }
 
 template <int block_lg, int RADIX_LG>
