@@ -313,17 +313,18 @@ public:
     scan_r2.realloc(array_size);
     scan_r2.ptrs_to_cuda("scan_r2");
 
-    int prefix_sum_array_size =
-      int(ceil(sort_radix * array_size / ( 4.0 * grid_size )));
-    sort_histo.realloc(prefix_sum_array_size);
-    sort_histo.ptrs_to_cuda("sort_histo");
-    sort_tile_histo.realloc(prefix_sum_array_size);
-    sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
-
     const int elt_per_tile = block_size * elt_per_thread;
     const int num_tiles = div_ceil( array_size, elt_per_tile );
     const int key_size_bits = 8 * sizeof(Sort_Elt);
     const int ndigits = div_ceil( key_size_bits, sort_radix_lg );
+
+    const size_t thisto_array_size_bytes = sizeof(int) * sort_radix * num_tiles;
+    const size_t bhisto_array_size_bytes = sizeof(int) * sort_radix * grid_size;
+
+    sort_histo.realloc(bhisto_array_size_bytes);
+    sort_histo.ptrs_to_cuda("sort_histo");
+    sort_tile_histo.realloc(thisto_array_size_bytes);
+    sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
 
     const int shared_size_pass_1 = 0;
     const int shared_size_pass_2 = ( 3 * sort_radix + 1 ) * sizeof(int);
