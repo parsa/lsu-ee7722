@@ -88,9 +88,9 @@ const int debug_sort = true;
 const int debug_sort = false;
 #endif
 
+template <int BLOCK_LG, int RADIX_LG>
 __device__ void
-sort_block_1_bit_split(int bit_low, int bit_count, int block_lg);
-
+sort_block_1_bit_split(int bit_low, int bit_count);
 
 template <int BLOCK_LG, int RADIX_LG>
 __device__ void radix_sort_1_pass_1_tile
@@ -151,7 +151,7 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
 
   // Sort based upon current digit position
   //
-  sort_block_1_bit_split(start_bit,RADIX_LG,BLOCK_LG);
+  sort_block_1_bit_split<BLOCK_LG,RADIX_LG>(start_bit,RADIX_LG);
 
   // Write sorted elements to global memory and prepare for histogram.
   //
@@ -220,18 +220,19 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   sort_tile_histo[ thisto_idx ] = SH_TILE_HISTO( threadIdx.x );
 }
 
+template <int block_lg, int RADIX_LG>
 __device__ void
-sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
+sort_block_1_bit_split(int bit_low, int bit_count)
 {
   const int block_size = 1 << block_lg;
-  int elt_per_block = elt_per_thread * block_size;
+  const int elt_per_tile = elt_per_thread * block_size;
 
   // Indices into shared memory for prefix sum.
   // pfe: Exclusive prefix. (Sum of smaller element values.)
   // pfi: Inclusive prefix. (Sum of this element and smaller element values.)
   //
-  int pfe_base_rd = elt_per_block;
-  int pfi_base_rd = elt_per_block + 1;
+  int pfe_base_rd = elt_per_tile;
+  int pfi_base_rd = elt_per_tile + 1;
 
   // Sort Elements From LSB to MSB.
   //
@@ -251,7 +252,6 @@ sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
 
       for ( int i = 0; i < elt_per_thread; i++ )
         {
-          //  const int sidx = threadIdx.x + i * blockDim.x;
           const int sidx = threadIdx.x * elt_per_thread + i;
 
           // Make a copy of key.
@@ -285,7 +285,7 @@ sort_block_1_bit_split(int bit_low, int bit_count, int block_lg)
       __syncthreads();
 
       const int all_threads_num_ones = s[ pfe_base_rd + block_size ];
-      const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
+      const int idx_one_tid_0 = elt_per_tile - all_threads_num_ones;
       const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
 
       int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;

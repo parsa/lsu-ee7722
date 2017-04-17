@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <gp/misc.h>
 #include <gp/cuda-util.h>
+#include <nperf.h>
 #include "radix-sort.cuh"
 #include <vector>
 using namespace std;
@@ -42,6 +43,9 @@ public:
 
   void init(int argc, char **argv)
   {
+    // Must be called before any CUDA API calls.
+    NPerf_init();
+
     gpu_info_print();
 
     const int dev = gpu_choose_index();
@@ -49,6 +53,20 @@ public:
     printf("Using GPU %d\n",dev);
     gpu_info.get_gpu_info(dev);
     kernels_get_attr(&gpu_info);
+
+    // Collect performance data using a wrapper to NVIDIA CUPTI event
+    // counter API.
+    //
+    NPerf_metric_collect("inst_executed");
+    NPerf_metric_collect("eligible_warps_per_cycle");
+    NPerf_metric_collect("gld_efficiency");
+    NPerf_metric_collect("gst_efficiency");
+    NPerf_metric_collect("shared_load_transactions_per_request");
+    NPerf_metric_collect("shared_store_transactions_per_request");
+    NPerf_metric_collect("shared_efficiency");
+    //
+    // Note: The more metrics that are collected, the more times a kernel
+    // will need to be run.
 
     // Prepare events used for timing.
     //
@@ -346,6 +364,10 @@ public:
 
         sort_in.to_cuda(); // Move input array to CUDA.
 
+        NPerf_data_reset();
+        const char* kname_1 = NULL;
+        const char* kname_2 = NULL;
+
         uint next_ce_idx = 0;
         for ( int digit_pos = 0; digit_pos < ndigits;  digit_pos++ )
           {
@@ -355,10 +377,12 @@ public:
             sort_launch_pass_1
               ( grid_size, block_size, shared_size_pass_1,
                 digit_pos, first_iter );
+            kname_1 = NPerf_kernel_last_name_get();
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_2
               ( grid_size, block_size, shared_size_pass_2,
                 digit_pos, last_iter );
+            kname_2 = NPerf_kernel_last_name_get();
           }
         CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
         assert( next_ce_idx <= cuda_ces.size() );
@@ -384,6 +408,10 @@ public:
 
         if ( cpu_round + 1 < cpu_rounds ) continue;
 
+        const double pass_1_ts = NPerf_kernel_et_get(kname_1) * ndigits;
+        const double pass_2_ts = NPerf_kernel_et_get(kname_2) * ndigits;
+        const double rs_ts = pass_1_ts + pass_2_ts;
+
         sort_tile_histo.from_cuda();
         sort_histo.from_cuda();
         sort_out_b.from_cuda();
@@ -403,6 +431,7 @@ public:
 
         const double rs_time_s = pass_1_time_s + pass_2_time_s;
         const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;
+        const double thpt_data_gbps2 = comm_bytes / rs_ts * 1e-9;
 
         printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
                "Data Thpt %.1f GB/s\n",
@@ -411,6 +440,29 @@ public:
                rs_time_s * 1e3,
                array_size / ( rs_time_s * 1e9 ),
                thpt_data_gbps);
+        printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
+               "Data Thpt %.1f GB/s\n",
+               pass_1_ts * 1e3,
+               pass_2_ts * 1e3,
+               rs_ts * 1e3,
+               array_size / ( rs_ts * 1e9 ),
+               thpt_data_gbps2);
+        for ( auto ker : { kname_1, kname_2 } )
+          {
+            printf
+              ("Wp/Cy %4.1f  Eff Ld %5.1f%% St %5.1f%%  "
+               "Sh l/r %5.2f s/r %5.2f  %5.1f%%\n",
+               NPerf_metric_value_get("eligible_warps_per_cycle",ker),
+               NPerf_metric_value_get("gld_efficiency",ker),
+               NPerf_metric_value_get("gst_efficiency",ker),
+               NPerf_metric_value_get
+               ("shared_load_transactions_per_request", ker),
+               NPerf_metric_value_get
+               ("shared_store_transactions_per_request", ker),
+               NPerf_metric_value_get("shared_efficiency", ker)
+               );
+
+          }
 
         check_sort(block_size,array_size);
 
