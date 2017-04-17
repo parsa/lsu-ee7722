@@ -13,8 +13,6 @@ __constant__ Radix_Sort_GPU_Constants dapp;
 __constant__ int *scan_out;
 __constant__ int *scan_r2;
 
-extern __shared__ Sort_Elt s[];
-
 __device__ int lg_ceil(uint n)
 {
   if ( n == 0 ) return 0;
@@ -45,6 +43,8 @@ kernels_get_attr(GPU_Info *gpu_info)
   GETATTR((radix_sort_1_pass_1<6,4>));
   GETATTR((radix_sort_1_pass_1<7,4>));
   GETATTR((radix_sort_1_pass_1<8,4>));
+  GETATTR((radix_sort_1_pass_1<9,4>));
+  GETATTR((radix_sort_1_pass_1<10,4>));
   GETATTR(radix_sort_1_pass_2<4>);
 #undef GETATTR
 }
@@ -53,19 +53,20 @@ kernels_get_attr(GPU_Info *gpu_info)
 // This routine executes on the CPU.
 //
 __host__ void
-sort_launch_pass_1
-(int dg, int db, int sm_bytes, int digit_pos, bool first_iter)
+sort_launch_pass_1(int dg, int db, int digit_pos, bool first_iter)
 {
   const int radix_lg = 4;
 # define LAUNCH(BLG) \
   case 1<<BLG: \
-  radix_sort_1_pass_1<BLG,radix_lg><<<dg,db,sm_bytes>>>(digit_pos,first_iter); \
+  radix_sort_1_pass_1<BLG,radix_lg><<<dg,db>>>(digit_pos,first_iter); \
   break;
 
   switch ( db ){
     LAUNCH(6);
     LAUNCH(7);
     LAUNCH(8);
+    LAUNCH(9);
+    LAUNCH(10);
   default:
     assert( false );
   }
@@ -88,20 +89,35 @@ const int debug_sort = true;
 const int debug_sort = false;
 #endif
 
+template<int BLOCK_LG, int RADIX_LG>
+struct Pass_1_Stuff
+{
+  Sort_Elt keys[elt_per_thread+(elt_per_thread<<BLOCK_LG)];
+  int prefix[4 + (1<<BLOCK_LG)];
+  int runend[1<<RADIX_LG];
+  int thisto[1<<RADIX_LG];
+  int ghisto[1<<RADIX_LG];
+};
+
 template <int BLOCK_LG, int RADIX_LG>
 __device__ void
-sort_block_1_bit_split(int bit_low, int bit_count);
+sort_block_1_bit_split
+(int bit_low, int bit_count,
+ Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
 template <int BLOCK_LG, int RADIX_LG>
 __device__ void radix_sort_1_pass_1_tile
-(int digit_pos, int tile_idx, bool first_iter);
+(int digit_pos, int tile_idx, bool first_iter,
+Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
-#define SH_GLOBAL_HISTO(elt) s[ ghisto_sbase + (elt) ]
-#define SH_TILE_HISTO(idx) s[ thisto_sbase + (idx) ]
+#define SH_GLOBAL_HISTO(elt) p1s.ghisto[ elt ]
+#define SH_TILE_HISTO(idx) p1s.thisto[ idx ]
+
 
 template <int BLOCK_LG, int RADIX_LG> __global__ void
 radix_sort_1_pass_1(int digit_pos, bool first_iter)
 {
+  __shared__ Pass_1_Stuff<BLOCK_LG,RADIX_LG> p1s;
   int block_size = 1 << BLOCK_LG;
   int radix = 1 << RADIX_LG;
   int elt_per_tile = block_size * elt_per_thread;
@@ -109,13 +125,12 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
   int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
   int tile_start = tiles_per_block * blockIdx.x;
   int tile_stop = min( tiles_per_array, tile_start + tiles_per_block);
-  int sbase_1_bit_split_end = elt_per_tile + block_size + 1;
-  int ghisto_sbase = sbase_1_bit_split_end;
 
   if ( threadIdx.x < radix ) SH_GLOBAL_HISTO( threadIdx.x ) = 0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
-    radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>(digit_pos,tile_idx,first_iter);
+    radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>
+      (digit_pos,tile_idx,first_iter,p1s);
 
   if ( threadIdx.x >= radix ) return;
 
@@ -124,7 +139,9 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
 }
 
 template <int BLOCK_LG, int RADIX_LG> __device__ void
-radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
+radix_sort_1_pass_1_tile
+(int digit_pos, int tile_idx,
+ bool first_iter, Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s)
 {
   int start_bit = digit_pos * RADIX_LG;
   int block_size = 1 << BLOCK_LG;
@@ -136,22 +153,17 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   int idx_block_stop = min( dapp.array_size, idx_block_start + elt_per_tile );
   int idx_start = idx_block_start + threadIdx.x;
 
-  int sbase_1_bit_split_end = elt_per_tile + block_size + 1;
-  int ghisto_sbase = sbase_1_bit_split_end;
-  int runend_sbase = ghisto_sbase + radix;
-  int thisto_sbase = runend_sbase + radix;
-
   Sort_Elt *sort_src = first_iter ? sort_in : sort_out;
 
   // Load Element Keys
   //
   for ( int sidx = threadIdx.x, i = 0;
         i < elt_per_thread; i++, sidx += block_size )
-    s[sidx] = sort_src[ idx_block_start + sidx ];
+    p1s.keys[sidx] = sort_src[ idx_block_start + sidx ];
 
   // Sort based upon current digit position
   //
-  sort_block_1_bit_split<BLOCK_LG,RADIX_LG>(start_bit,RADIX_LG);
+  sort_block_1_bit_split<BLOCK_LG,RADIX_LG>(start_bit,RADIX_LG,p1s);
 
   // Write sorted elements to global memory and prepare for histogram.
   //
@@ -160,15 +172,15 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
     {
       // Write element.
       //
-      sort_out_b[idx] = s[sidx];
+      sort_out_b[idx] = p1s.keys[sidx];
 
       // Extract digit and write to shared memory.
       //
-      int digit = ( s[sidx] >> start_bit ) & digit_mask;
-      s[sidx] = digit;
+      int digit = ( p1s.keys[sidx] >> start_bit ) & digit_mask;
+      p1s.keys[sidx] = digit;
     }
 
-  if ( threadIdx.x == 0 ) s[elt_per_tile] = radix;
+  if ( threadIdx.x == 0 ) p1s.keys[elt_per_tile] = radix;
 
   // Initialize histogram for this tile to zero.
   //
@@ -182,14 +194,14 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   for ( int i = 0; i < elt_per_thread; i++ )
     {
       int sidx = threadIdx.x + i * block_size;
-      int digit = s[sidx];      // Our digit.
-      int digit_1 = s[sidx+1];  // Next guy's digit.
+      int digit = p1s.keys[sidx];      // Our digit.
+      int digit_1 = p1s.keys[sidx+1];  // Next guy's digit.
 
       // If "next guy's" digit is different then sidx is highest index
       // for digit.
       //
       if ( digit != digit_1 )
-        s[ runend_sbase + digit ] = sidx;
+        p1s.runend[ digit ] = sidx;
     }
 
   __syncthreads();
@@ -199,14 +211,14 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
   for ( int i = 0; i < elt_per_thread; i++ )
     {
       int sidx = threadIdx.x + i * block_size;
-      int digit = s[sidx];                             // Our digit.
-      int digit_0 = sidx > 0 ? int(s[sidx-1]) : -1;    // Previous guy's digit.
+      int digit = p1s.keys[sidx];                      // Our digit.
+      int digit_0 = sidx > 0 ? int(p1s.keys[sidx-1]) : -1; // Previous guy's digit.
       if ( digit != digit_0 )
         {
-          int run_end_sidx = s[ runend_sbase + digit ];
+          int run_end_sidx = p1s.runend[ digit ];
           int count = run_end_sidx - sidx + 1;
           SH_GLOBAL_HISTO( digit ) += count;     // Histogram for block.
-          SH_TILE_HISTO( digit ) = count;      // Histogram for tile.
+          SH_TILE_HISTO( digit ) = count;        // Histogram for tile.
         }
     }
 
@@ -222,17 +234,11 @@ radix_sort_1_pass_1_tile(int digit_pos, int tile_idx, bool first_iter)
 
 template <int block_lg, int RADIX_LG>
 __device__ void
-sort_block_1_bit_split(int bit_low, int bit_count)
+sort_block_1_bit_split
+(int bit_low, int bit_count, Pass_1_Stuff<block_lg,RADIX_LG>& p1s)
 {
   const int block_size = 1 << block_lg;
   const int elt_per_tile = elt_per_thread * block_size;
-
-  // Indices into shared memory for prefix sum.
-  // pfe: Exclusive prefix. (Sum of smaller element values.)
-  // pfi: Inclusive prefix. (Sum of this element and smaller element values.)
-  //
-  int pfe_base_rd = elt_per_tile;
-  int pfi_base_rd = elt_per_tile + 1;
 
   // Sort Elements From LSB to MSB.
   //
@@ -256,13 +262,13 @@ sort_block_1_bit_split(int bit_low, int bit_count)
 
           // Make a copy of key.
           //
-          const Sort_Elt key = s[ sidx ];
+          const Sort_Elt key = p1s.keys[ sidx ];
           keys[i] = key;
           if ( key & bit_mask ) my_ones_write++;
         }
 
-      s[ pfi_base_rd + threadIdx.x ] = my_ones_write;
-      if ( threadIdx.x == 0 ) s[ pfe_base_rd ] = 0;
+      p1s.prefix[ threadIdx.x + 1 ] = my_ones_write;
+      if ( threadIdx.x == 0 ) p1s.prefix[ 0 ] = 0;
 
       uint my_prefix = my_ones_write;
 
@@ -273,20 +279,20 @@ sort_block_1_bit_split(int bit_low, int bit_count)
           int idx_neighbor = threadIdx.x - dist;
           __syncthreads();
           uint neighbor_prefix =
-            threadIdx.x >= dist ? s[ pfi_base_rd + idx_neighbor ] : 0;
+            threadIdx.x >= dist ? p1s.prefix[ idx_neighbor + 1 ] : 0;
 
           my_prefix += neighbor_prefix;
           __syncthreads();
-          s[ pfi_base_rd + threadIdx.x ] = my_prefix;
+          p1s.prefix[ threadIdx.x + 1 ] = my_prefix;
         }
 
       // At this point my_prefix contains exclusive prefix of each group.
 
       __syncthreads();
 
-      const int all_threads_num_ones = s[ pfe_base_rd + block_size ];
+      const int all_threads_num_ones = p1s.prefix[ block_size ];
       const int idx_one_tid_0 = elt_per_tile - all_threads_num_ones;
-      const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
+      const int smaller_tids_num_ones = p1s.prefix[ threadIdx.x ];
 
       int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
       int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;
@@ -295,13 +301,15 @@ sort_block_1_bit_split(int bit_low, int bit_count)
         {
           const int key = keys[i];
           const int new_idx = key & bit_mask ? idx_one_me++ : idx_zero_me++;
-          s[ new_idx ] = key;
+          p1s.keys[ new_idx ] = key;
         }
 
     }
   __syncthreads();
 }
 
+
+extern __shared__ Sort_Elt s[];
 
 __device__ void radix_sort_1_pass_2_tile
 (int radix_lg, int digit_pos, int tile_idx, bool last_iter);

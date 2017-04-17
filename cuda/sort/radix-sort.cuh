@@ -14,8 +14,7 @@ int div_ceil(int a, int b){ return ( a + b - 1 ) / b; }
 __host__ void kernels_get_attr(GPU_Info *gpu_info);
 
 __host__ void
-sort_launch_pass_1
-(int dg, int db, int sm_bytes, int digit_pos, bool first_iter);
+sort_launch_pass_1(int dg, int db, int digit_pos, bool first_iter);
 __host__ void
 sort_launch_pass_2
 (int dg, int db, int sm_bytes, int digit_pos, bool last_iter);

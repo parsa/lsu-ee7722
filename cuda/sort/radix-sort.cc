@@ -286,6 +286,8 @@ public:
     run_sort(6);
     run_sort(7);
     run_sort(8);
+    run_sort(9);
+    run_sort(10);
   }
 
   void run_sort(int block_lg)
@@ -323,9 +325,7 @@ public:
     const int key_size_bits = 8 * sizeof(Sort_Elt);
     const int ndigits = div_ceil( key_size_bits, sort_radix_lg );
 
-    const int size_per_elt_1 = 4 + 2; // Assuming sort_radix < block_size
-    const int shared_size_pass_1 = elt_per_tile * size_per_elt_1
-      + 4 * sort_radix * sizeof(int);
+    const int shared_size_pass_1 = 0;
     const int shared_size_pass_2 = ( 3 * sort_radix + 1 ) * sizeof(int);
 
     const int keys_xfer_per_round = 4;
@@ -376,8 +376,7 @@ public:
             const bool last_iter = digit_pos + 1 == ndigits;
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_1
-              ( grid_size, block_size, shared_size_pass_1,
-                digit_pos, first_iter );
+              ( grid_size, block_size, digit_pos, first_iter );
             kname_1 = NPerf_kernel_last_name_get();
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_2
