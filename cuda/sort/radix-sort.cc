@@ -337,8 +337,8 @@ public:
 
     const size_t comm_bytes = comm_keys_bytes + comm_histo_bytes;
 
-    const size_t work_per_thread =
-      array_size * 8 * sizeof(Sort_Elt) / ( block_size * grid_size );
+    const size_t work_per_round_pass_1 = array_size * sort_radix_lg;
+    const size_t work_per_round_pass_2 = array_size;
     const int block_per_mp = div_ceil( grid_size, num_mp );
     const int dynamic_sm_bytes = shared_size_pass_1;
     const int active_bl_per_mp_max =
@@ -435,13 +435,6 @@ public:
 
         printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
                "Data Thpt %.1f GB/s\n",
-               pass_1_time_s * 1e3,
-               pass_2_time_s * 1e3,
-               rs_time_s * 1e3,
-               array_size / ( rs_time_s * 1e9 ),
-               thpt_data_gbps);
-        printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
-               "Data Thpt %.1f GB/s\n",
                pass_1_ts * 1e3,
                pass_2_ts * 1e3,
                rs_ts * 1e3,
@@ -449,18 +442,19 @@ public:
                thpt_data_gbps2);
         for ( auto ker : { kname_1, kname_2 } )
           {
+            const bool pass_1 = ker == kname_1;
+            const size_t work_per_round =
+              pass_1 ? work_per_round_pass_1
+              : work_per_round_pass_2;
             printf
               ("Wp/Cy %4.1f  Eff Ld %5.1f%% St %5.1f%%  "
-               "Sh l/r %5.2f s/r %5.2f  %5.1f%%\n",
+               "Sh Eff %5.1f%%  I/W %3.0f\n",
                NPerf_metric_value_get("eligible_warps_per_cycle",ker),
                NPerf_metric_value_get("gld_efficiency",ker),
                NPerf_metric_value_get("gst_efficiency",ker),
-               NPerf_metric_value_get
-               ("shared_load_transactions_per_request", ker),
-               NPerf_metric_value_get
-               ("shared_store_transactions_per_request", ker),
-               NPerf_metric_value_get("shared_efficiency", ker)
-               );
+               NPerf_metric_value_get("shared_efficiency", ker),
+               NPerf_metric_value_get("inst_executed", ker) * 32
+               / work_per_round );
 
           }
 
