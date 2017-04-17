@@ -45,6 +45,7 @@ OPT_FLAG = -O3
 ## CUDA Debug Flags
 #
 CUDA_DEBUG_FLAGS = -G -lineinfo -D__P_CUDA_DEBUG__
+CUDA_DEBUG_CXX_FLAGS = -D__P_CUDA_DEBUG__
 
 # Recognized both by nvcc and g++
 #
@@ -95,8 +96,11 @@ endif
 	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
 	$(CXX) $(CXXFLAGS) -c $*.s
 	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
+	$(CXX) $(CXXFLAGS) $(CUDA_DEBUG_CXX_FLAGS) -c $*.cc -o $*-cuda-debug.o
+
 
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
+	$(CUCC) $(CUFLAGS) $(CUDA_DEBUG_FLAGS) -c $*.cu -o $*-cuda-debug.o
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
 	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
@@ -106,9 +110,12 @@ endif
 $(all):%: %.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) $(CUDA_DEBUG_FLAGS) -o $@-cuda-debug \
+	  $(^:.o=-cuda-debug.o) $(LIBRARIES)
+
 
 clean:
 	/bin/rm -f *.o *.ptx *.sass *.cubin *.s \
-	$(all) $(all:=-debug) \
+	$(all) $(all:=-debug) $(all:=-cuda-debug) \
 	build-cc \
 	*.d *.d.[0-9][0-9][0-9][0-9][0-9] *.d *.d.[0-9][0-9][0-9][0-9]
