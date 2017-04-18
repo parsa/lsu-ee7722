@@ -65,9 +65,8 @@ public:
     NPerf_metric_collect("eligible_warps_per_cycle");
     NPerf_metric_collect("gld_efficiency");
     NPerf_metric_collect("gst_efficiency");
-    NPerf_metric_collect("shared_load_transactions_per_request");
-    NPerf_metric_collect("shared_store_transactions_per_request");
     NPerf_metric_collect("shared_efficiency");
+    NPerf_metric_collect("issue_slot_utilization");
     //
     // Note: The more metrics that are collected, the more times a kernel
     // will need to be run.
@@ -329,17 +328,26 @@ public:
     const int shared_size_pass_1 = 0;
     const int shared_size_pass_2 = ( 3 * sort_radix + 1 ) * sizeof(int);
 
-    const int keys_xfer_per_round = 4;
-    const size_t comm_keys_bytes =
-      num_tiles * elt_per_tile * sizeof(Sort_Elt)
-      * ndigits * keys_xfer_per_round;
+    const size_t size_keys_bytes = num_tiles * elt_per_tile * sizeof(Sort_Elt);
 
-    const int histo_xfer_per_round = 2;
+    const size_t comm_keys_bytes_pass_1 = size_keys_bytes * ndigits * 2;
+    const size_t comm_keys_bytes_pass_2 = size_keys_bytes * ndigits * 2;
+    const size_t comm_keys_bytes =
+      comm_keys_bytes_pass_1 + comm_keys_bytes_pass_2;
+
+    const size_t size_histo_bytes =
+      ( num_tiles + 1 ) * sort_radix * sizeof(int);
+
+    const size_t comm_histo_bytes_pass_1 = size_histo_bytes * ndigits;
+    const size_t comm_histo_bytes_pass_2 = size_histo_bytes * ndigits;
     const size_t comm_histo_bytes =
-      ( num_tiles + 1 ) * sort_radix * sizeof(int)
-      * ndigits * histo_xfer_per_round;
+      comm_histo_bytes_pass_1 + comm_histo_bytes_pass_2;
 
     const size_t comm_bytes = comm_keys_bytes + comm_histo_bytes;
+    const size_t comm_bytes_pass_1 =
+      comm_keys_bytes_pass_1 + comm_histo_bytes_pass_1;
+    const size_t comm_bytes_pass_2 =
+      comm_keys_bytes_pass_2 + comm_histo_bytes_pass_2;
 
     const size_t work_per_round_pass_1 = array_size * sort_radix_lg;
     const size_t work_per_round_pass_2 = array_size;
@@ -449,18 +457,22 @@ public:
             {
               const bool pass_1 = ker == kname_1;
               const size_t work_per_round =
-                pass_1 ? work_per_round_pass_1
-                : work_per_round_pass_2;
+                pass_1 ? work_per_round_pass_1 : work_per_round_pass_2;
+              const size_t comm_bytes =
+                pass_1 ? comm_bytes_pass_1 : comm_bytes_pass_2;
+              const double time_s = pass_1 ? pass_1_time_s : pass_2_time_s;
               printf
-                ("Wp/Cy %4.1f  Eff Ld %5.1f%% St %5.1f%%  "
-                 "Sh Eff %5.1f%%  I/W %3.0f\n",
+                ("Wp/Cy %4.1f  Eff Ld %3.0f%% St %3.0f%%  "
+                 "Sh Eff %3.0f%%  I/W %2.0f  IS Util %5.1f%% %.1f GB/s\n",
                  NPerf_metric_value_get("eligible_warps_per_cycle",ker),
                  NPerf_metric_value_get("gld_efficiency",ker),
                  NPerf_metric_value_get("gst_efficiency",ker),
                  NPerf_metric_value_get("shared_efficiency", ker),
-                 NPerf_metric_value_get("inst_executed", ker) * 32
-                 / work_per_round );
-
+                 NPerf_metric_value_get("inst_executed", ker)
+                 * 32 / work_per_round,
+                 NPerf_metric_value_get("issue_slot_utilization", ker),
+                 comm_bytes * 1e-9 / time_s
+                 );
             }
 
         check_sort(block_size,array_size);
