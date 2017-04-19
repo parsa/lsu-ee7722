@@ -322,9 +322,6 @@ public:
     sort_tile_histo.realloc(thisto_array_size_bytes);
     sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
 
-    const int shared_size_pass_1 = 0;
-    const int shared_size_pass_2 = ( 3 * sort_radix + 1 ) * sizeof(int);
-
     const size_t size_keys_bytes = num_tiles * elt_per_tile * sizeof(Sort_Elt);
 
     const size_t comm_keys_bytes_pass_1 = size_keys_bytes * ndigits * 2;
@@ -349,9 +346,8 @@ public:
     const size_t work_per_round_pass_1 = array_size * sort_radix_lg;
     const size_t work_per_round_pass_2 = array_size;
     const int block_per_mp = div_ceil( grid_size, num_mp );
-    const int dynamic_sm_bytes = shared_size_pass_1;
     const int active_bl_per_mp_max =
-      gpu_info.get_max_active_blocks_per_mp(0,block_size,dynamic_sm_bytes);
+      gpu_info.get_max_active_blocks_per_mp(0,block_size,0);
     const int warps_per_block = (31 + block_size ) >> 5;
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
@@ -386,8 +382,7 @@ public:
             kname_1 = NPerf_kernel_last_name_get();
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_2
-              ( grid_size, block_size, sort_radix_lg, shared_size_pass_2,
-                digit_pos, last_iter );
+              ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
             kname_2 = NPerf_kernel_last_name_get();
           }
         CE(cudaEventRecord(cuda_ces[next_ce_idx++]));

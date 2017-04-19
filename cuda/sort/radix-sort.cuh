@@ -18,7 +18,7 @@ sort_launch_pass_1
 (int dg, int db, int radix_lg, int digit_pos, bool first_iter);
 __host__ void
 sort_launch_pass_2
-(int dg, int db, int radix_lg, int sm_bytes, int digit_pos, bool last_iter);
+(int dg, int db, int radix_lg, int digit_pos, bool last_iter);
 
 struct Radix_Sort_GPU_Constants
 {

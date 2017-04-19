@@ -86,11 +86,11 @@ sort_launch_pass_1(int dg, int db, int radix_lg, int digit_pos, bool first_iter)
 
 __host__ void
 sort_launch_pass_2
-(int dg, int db, int radix_lg, int sm_bytes, int digit_pos, bool last_iter)
+(int dg, int db, int radix_lg, int digit_pos, bool last_iter)
 {
 #define LAUNCH(RD_LG) \
   case RD_LG: \
-    radix_sort_1_pass_2<RD_LG><<<dg,db,sm_bytes>>>(digit_pos,last_iter); \
+    radix_sort_1_pass_2<RD_LG><<<dg,db>>>(digit_pos,last_iter); \
     break;
 
   switch ( radix_lg ) {
@@ -324,11 +324,6 @@ sort_block_1_bit_split
 }
 
 
-extern __shared__ Sort_Elt s[];
-
-__device__ void radix_sort_1_pass_2_tile
-(int radix_lg, int digit_pos, int tile_idx, bool last_iter);
-
 template <int RADIX_LG>
 __global__ void
 radix_sort_1_pass_2(int digit_pos, bool last_iter)
@@ -341,12 +336,10 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
   int tile_stop = min( tiles_per_array, tile_start + tiles_per_block );
 
   const int sort_radix = 1 << RADIX_LG;
-  int pfe_tile_sbase = 0;
-  int pfi_tile_sbase = 1;
-  int pf_offset_sbase_base = pfi_tile_sbase + sort_radix;
-  int pfe_tile_sidx = pfe_tile_sbase + threadIdx.x;
+  const int digit_mask = sort_radix - 1;
+  const int start_bit = digit_pos * RADIX_LG;
 
-  volatile int *sv = &((int*)s)[ 0 ];
+  volatile __shared__ int g_prefix[ sort_radix + 1 ];
 
   // Sum of all histogram bins for our digit value (threadIdx.x)
   //
@@ -357,7 +350,7 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
   //
   int overhead_bin_sum = 0;
 
-  if ( threadIdx.x == 0 ) sv[ pfe_tile_sbase ] = 0;
+  if ( threadIdx.x == 0 ) g_prefix[ 0 ] = 0;
 
   if ( threadIdx.x < sort_radix )
     {
@@ -385,25 +378,38 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
       // Compute Global Prefix Sum
       //
       //
-      sv[ pfi_tile_sbase + threadIdx.x ] = global_bin_sum;
+
+      g_prefix[ 1 + threadIdx.x ] = global_bin_sum;
+      //
+      // At this point g_prefix holds a global histogram.
+
       int global_bin_prefix = global_bin_sum;
 
-      for ( int i=0; i< RADIX_LG; i++ )
+      for ( int i=0; i<RADIX_LG; i++ )
         {
           int dist = 1 << i;
           int sum_0 = dist <= threadIdx.x
-            ? sv[ pfi_tile_sbase + threadIdx.x - dist ] : 0;
-          sv[ pfi_tile_sbase + threadIdx.x ] = global_bin_prefix += sum_0;
+            ? g_prefix[ 1 + threadIdx.x - dist ] : 0;
+          g_prefix[ 1 + threadIdx.x ] = global_bin_prefix += sum_0;
         }
 
-      // Initialize Tile Prefix Sum
+      // Now, g_prefix holds a global prefix sum.
       //
-      sv[ pfe_tile_sidx ] += overhead_bin_sum;
+      // E.g., g_prefix[3] is the location where the first key having
+      // digit value 3 in the entire array is to be written. That key
+      // is probably being handled by block 0.
+
+      g_prefix[ threadIdx.x ] += overhead_bin_sum;
+      //
+      // Now, g_prefix holds a prefix sum for this block.
+      //
+      // E.g., g_prefix[3] is the location where the first key having
+      // digit value 3 in this block is to be written.
     }
 
   __syncthreads();
 
-  volatile int *tile_offsets = &((int*)s)[pf_offset_sbase_base];
+  volatile __shared__ int tile_offsets[ 2 * sort_radix ];
   if ( threadIdx.x < sort_radix ) tile_offsets[threadIdx.x]=0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
@@ -422,49 +428,39 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
           tile_offsets[ to_idx ] = offset += tile_offsets[ to_idx - 8 ];
           if ( debug_sort && last_iter )
             {
-              scan_out[bo_idx] = sv[ pfe_tile_sidx ];
+              scan_out[bo_idx] = g_prefix[ threadIdx.x ];
               scan_r2[bo_idx] = tile_offsets[ to_idx - 1];
             }
         }
+
       __syncthreads();
-      radix_sort_1_pass_2_tile(RADIX_LG,digit_pos,tile_idx,last_iter);
+
+      int idx_tile_start = tile_idx * elt_per_tile;
+
+      for ( int i=0; i<elt_per_thread; i++ )
+        {
+          int tile_elt_rank = threadIdx.x + i * blockDim.x;
+          int idx = idx_tile_start + tile_elt_rank;
+          Sort_Elt key = sort_out_b[idx];
+          uint digit = ( key >> start_bit ) & digit_mask;
+          int tile_digit_rank = tile_offsets[ sort_radix + digit - 1 ];
+          int key_digit_rank = tile_elt_rank - tile_digit_rank;
+          int idx_digit_index = g_prefix[ digit ] + key_digit_rank;
+
+          if ( debug_sort && last_iter )
+            sort_out[idx] = ( idx_digit_index << 12 ) + tile_digit_rank;
+          else
+            sort_out[idx_digit_index] = key;
+
+        }
+
       __syncthreads();
-      if ( threadIdx.x < sort_radix ) sv[ pfe_tile_sidx ] += count;
-    }
-}
 
-__device__ void
-radix_sort_1_pass_2_tile
-(int radix_lg, int digit_pos, int tile_idx, bool last_iter)
-{
-  int elt_per_tile = elt_per_thread * blockDim.x;
-  int tiles_per_array = div_ceil(dapp.array_size,elt_per_tile);
-  int tiles_per_block = div_ceil(tiles_per_array,gridDim.x);
-  int idx_tile_start = tile_idx * elt_per_tile;
-
-  const int sort_radix = 1 << radix_lg;
-  const int digit_mask = sort_radix - 1;
-  int start_bit = digit_pos * radix_lg;
-
-  int pfe_tile_sbase = 0;
-  int pfi_tile_sbase = 1;
-  int pf_offset_sbase_base = pfi_tile_sbase + sort_radix;
-  int pf_offset_sbase = pf_offset_sbase_base + sort_radix - 1;
-
-  for ( int i=0; i<elt_per_thread; i++ )
-    {
-      int tile_elt_rank = threadIdx.x + i * blockDim.x;
-      int idx = idx_tile_start + tile_elt_rank;
-      uint key = sort_out_b[idx];
-      uint digit = ( key >> start_bit ) & digit_mask;
-      int tile_digit_rank = s[ pf_offset_sbase + digit ];
-      int key_digit_rank = tile_elt_rank - tile_digit_rank;
-      int idx_digit_index = s[ pfe_tile_sbase + digit ] + key_digit_rank;
-
-      if ( debug_sort && last_iter )
-        sort_out[idx] = ( idx_digit_index << 12 ) + tile_digit_rank;
-      else
-        sort_out[idx_digit_index] = key;
-
+      if ( threadIdx.x < sort_radix ) g_prefix[ threadIdx.x ] += count;
+      //
+      // Now, g_prefix holds a prefix sum for the next tile.
+      //
+      // E.g., g_prefix[3] is the location where the first key having
+      // digit value 3 in the next tile is to be written.
     }
 }
