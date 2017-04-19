@@ -45,7 +45,13 @@ kernels_get_attr(GPU_Info *gpu_info)
   GETATTR((radix_sort_1_pass_1<8,4>));
   GETATTR((radix_sort_1_pass_1<9,4>));
   GETATTR((radix_sort_1_pass_1<10,4>));
+  GETATTR((radix_sort_1_pass_1<6,8>));
+  GETATTR((radix_sort_1_pass_1<7,8>));
+  GETATTR((radix_sort_1_pass_1<8,8>));
+  GETATTR((radix_sort_1_pass_1<9,8>));
+  GETATTR((radix_sort_1_pass_1<10,8>));
   GETATTR(radix_sort_1_pass_2<4>);
+  GETATTR(radix_sort_1_pass_2<8>);
 #undef GETATTR
 }
 
@@ -53,33 +59,46 @@ kernels_get_attr(GPU_Info *gpu_info)
 // This routine executes on the CPU.
 //
 __host__ void
-sort_launch_pass_1(int dg, int db, int digit_pos, bool first_iter)
+sort_launch_pass_1(int dg, int db, int radix_lg, int digit_pos, bool first_iter)
 {
-  const int radix_lg = 4;
-# define LAUNCH(BLG) \
+# define LAUNCH_RD(BLG,RD_LG) \
   case 1<<BLG: \
-  radix_sort_1_pass_1<BLG,radix_lg><<<dg,db>>>(digit_pos,first_iter); \
+  radix_sort_1_pass_1<BLG,RD_LG><<<dg,db>>>(digit_pos,first_iter); \
   break;
 
-  switch ( db ){
-    LAUNCH(6);
-    LAUNCH(7);
-    LAUNCH(8);
-    LAUNCH(9);
-    LAUNCH(10);
-  default:
-    assert( false );
+#define LAUNCH_BLKS(RD_LG)                                                    \
+  case RD_LG: switch ( db ){                                                  \
+    LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                                   \
+    LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);              \
+  default: assert( false );                                                   \
+  } break;
+
+  switch ( radix_lg ) {
+    LAUNCH_BLKS(4);
+    LAUNCH_BLKS(8);
+    default: assert( false );
   }
 
-# undef LAUNCH
+
+# undef LAUNCH_RD
+# undef LAUNCH_BLKS
 }
 
 __host__ void
 sort_launch_pass_2
-(int dg, int db, int sm_bytes, int digit_pos, bool last_iter)
+(int dg, int db, int radix_lg, int sm_bytes, int digit_pos, bool last_iter)
 {
-  const int radix_lg = 4;
-  radix_sort_1_pass_2<radix_lg><<<dg,db,sm_bytes>>>(digit_pos,last_iter);
+#define LAUNCH(RD_LG) \
+  case RD_LG: \
+    radix_sort_1_pass_2<RD_LG><<<dg,db,sm_bytes>>>(digit_pos,last_iter); \
+    break;
+
+  switch ( radix_lg ) {
+    LAUNCH(4);
+    LAUNCH(8);
+    default: assert( false );
+  }
+#undef LAUNCH
 }
 
 
@@ -434,16 +453,16 @@ radix_sort_1_pass_2_tile
 
   for ( int i=0; i<elt_per_thread; i++ )
     {
-      int local_idx = threadIdx.x + i * blockDim.x;
-      int idx = idx_tile_start + local_idx;
+      int tile_elt_rank = threadIdx.x + i * blockDim.x;
+      int idx = idx_tile_start + tile_elt_rank;
       uint key = sort_out_b[idx];
       uint digit = ( key >> start_bit ) & digit_mask;
-      int local_offset = s[ pf_offset_sbase + digit ];
-      int key_digit_rank = local_idx - local_offset;
+      int tile_digit_rank = s[ pf_offset_sbase + digit ];
+      int key_digit_rank = tile_elt_rank - tile_digit_rank;
       int idx_digit_index = s[ pfe_tile_sbase + digit ] + key_digit_rank;
 
       if ( debug_sort && last_iter )
-        sort_out[idx] = ( idx_digit_index << 12 ) + local_offset;
+        sort_out[idx] = ( idx_digit_index << 12 ) + tile_digit_rank;
       else
         sort_out[idx_digit_index] = key;
 

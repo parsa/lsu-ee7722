@@ -282,14 +282,12 @@ public:
 
   void start()
   {
-    run_sort(6);
-    run_sort(7);
-    run_sort(8);
-    run_sort(9);
-    run_sort(10);
+    for ( int b=6; b<=10; b++ )
+      for ( int r: {4} )
+        run_sort(b,r);
   }
 
-  void run_sort(int block_lg)
+  void run_sort(int block_lg, int sort_radix_lg)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
@@ -300,7 +298,6 @@ public:
 
     if ( block_size > cfa.maxThreadsPerBlock ) return;
 
-    int sort_radix_lg = 4;
     int sort_radix = 1 << sort_radix_lg;
 #define CPY(m) dapp.m = m;
     CPY(sort_radix_lg);
@@ -385,11 +382,11 @@ public:
             const bool last_iter = digit_pos + 1 == ndigits;
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_1
-              ( grid_size, block_size, digit_pos, first_iter );
+              ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
             kname_1 = NPerf_kernel_last_name_get();
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_2
-              ( grid_size, block_size, shared_size_pass_2,
+              ( grid_size, block_size, sort_radix_lg, shared_size_pass_2,
                 digit_pos, last_iter );
             kname_2 = NPerf_kernel_last_name_get();
           }
