@@ -11,6 +11,7 @@
 #include <string.h>
 #include <nvml.h>
 #include <map>
+#include <vector>
 
 
  /// CUDA Runtime API Error-Checking Wrapper
@@ -194,6 +195,7 @@ public:
   GPU_Info(int dev) { num_kernels = 0; get_gpu_info(dev); }
   Kernel_Info& get_info(GPU_Info_Func k_ptr, const char *k_name)
   {
+    ki.push_back(Kernel_Info());
     ki[num_kernels].name = k_name;
     ki[num_kernels].func_ptr = k_ptr;
     ki[num_kernels].block_size_okay_user_func = NULL;
@@ -244,8 +246,7 @@ public:
   double chip_sp_flops; // MADD counted as 1 FLOP.
   double chip_dp_flops; // MADD counted as 1 FLOP.
   int cc_per_mp, dp_per_mp;
-  static const int max_kernels = 10;
-  Kernel_Info ki[max_kernels];
+  std::vector<Kernel_Info> ki;
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
   int num_kernels;
 };
