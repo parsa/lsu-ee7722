@@ -10,6 +10,7 @@
 #include <nperf.h>
 #include "radix-sort.cuh"
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 class Sort {
@@ -40,6 +41,15 @@ public:
   int grid_size;
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
+
+  // Variables below are valid only during the current run.
+  //
+  int thisto_array_size_elts;
+  int bhisto_array_size_elts;
+
+  // Shadow Sort
+  vector<Sort_Elt> ss_keys_1, ss_keys_2;
+  vector<int> ss_thisto, ss_bhisto;
 
   void init(int argc, char **argv)
   {
@@ -154,11 +164,142 @@ public:
           }
         else
           {
-            sort_in[i] = random();
+            sort_in[i] = random() | 1;
           }
         sort_check.insert(sort_in[i],sort_in[i]);
       }
     sort_check.sort();
+  }
+
+  void shadow_sort_init(int block_size)
+  {
+    if ( ss_keys_1.size() != size_t(array_size) )
+      {
+        ss_keys_1.resize(array_size);
+        ss_keys_2.resize(array_size);
+      }
+
+    for ( int i=0; i<array_size; i++ ) ss_keys_2[i] = sort_in[i];
+    ss_thisto.resize(dapp.thisto_array_size_elts);
+    ss_bhisto.resize(dapp.bhisto_array_size_elts);
+
+  }
+
+  void shadow_sort_advance(int digit_pos)
+  {
+    const int bit_pos = digit_pos * dapp.radix_lg;
+    const int elt_per_tile = dapp.elt_per_tile;
+    const int radix = dapp.radix;
+    const Sort_Elt ss_digit_mask = radix - 1;
+    const Sort_Elt digit_mask = ss_digit_mask << bit_pos;
+    const int tiles_per_block = div_ceil(dapp.num_tiles,grid_size);
+    ss_keys_1 = ss_keys_2;
+    Sort_Elt* const all_keys = ss_keys_1.data();
+    int* const all_thisto = ss_thisto.data();
+    int* const all_bhisto = ss_bhisto.data();
+    for ( auto& e: ss_bhisto ) e = 0;
+
+    for ( int tile_idx = 0; tile_idx < dapp.num_tiles; tile_idx++ )
+      {
+        Sort_Elt* const keys = all_keys + tile_idx * elt_per_tile;
+        stable_sort( keys, keys + elt_per_tile,
+                     [&] (Sort_Elt a, Sort_Elt b)
+                     { return ( a & digit_mask ) < ( b & digit_mask ); } );
+        int* const thisto = all_thisto + tile_idx * radix;
+        int* const bhisto =
+          all_bhisto + (tile_idx/tiles_per_block) * radix;
+        for ( int d=0; d<radix; d++ ) thisto[d] = 0;
+        for ( int i=0; i<elt_per_tile; i++ )
+          thisto[ keys[i] >> bit_pos & ss_digit_mask ]++;
+        for ( int d=0; d<radix; d++ ) bhisto[d] += thisto[d];
+      }
+    vector<int> ghisto(radix);
+    for ( auto& e: ghisto ) e = 0;
+    for ( int i=0; i<grid_size; i++ )
+      for ( int d=0; d<radix; d++ )
+        ghisto[d] += ss_bhisto[i*radix+d];
+    vector<int> psum(radix);
+    psum[0] = 0;
+    for ( int d=1; d<radix; d++ ) psum[d] = psum[d-1] + ghisto[d-1];
+    const Sort_Elt ss_unused_key = 0;
+    for ( auto& e: ss_keys_2 ) e = ss_unused_key;
+    for ( int idx = 0;  idx < array_size;  idx++ )
+      {
+        Sort_Elt key = ss_keys_1[idx];
+        Sort_Elt digit = key >> bit_pos & ss_digit_mask;
+        const int idx_next = psum[digit]++;
+        assert( ss_keys_2[idx_next] == ss_unused_key );
+        ss_keys_2[idx_next] = key;
+      }
+  }
+
+  void shadow_sort_check_pass_1(int digit_pos)
+  {
+    sort_tile_histo.from_cuda();
+    sort_histo.from_cuda();
+    sort_out_b.from_cuda();
+
+    int terr_count = 0;
+    int berr_count = 0;
+    int serr_count = 0;
+
+    for ( int i = 0;  i < dapp.thisto_array_size_elts;  i++ )
+      {
+        if ( sort_tile_histo[i] == ss_thisto[i] ) continue;
+        if ( terr_count++ > 10 ) continue;
+        printf("D%dp1,  Digit %3d,  Tile %4d error: "
+               "%3d != %3d (correct)\n",
+               digit_pos,  i % dapp.radix, i / dapp.radix,
+               sort_tile_histo[i], ss_thisto[i]);
+      }
+    for ( int i = 0;  i < dapp.bhisto_array_size_elts;  i++ )
+      {
+        if ( sort_histo[i] == ss_bhisto[i] ) continue;
+        if ( berr_count++ > 10 ) continue;
+        printf("D%dp1,  Digit %3d,  Block %4d error: "
+               "%3d != %3d (correct)\n",
+               digit_pos,  i % dapp.radix, i / dapp.radix,
+               sort_histo[i], ss_bhisto[i]);
+      }
+    for ( int i=0; i<array_size; i++ )
+      {
+        if ( sort_out_b[i] == ss_keys_1[i] ) continue;
+        if ( serr_count++ > 10 ) continue;
+        printf("D%dp1,  TPos %3d,  Tile %4d error: "
+               "%#11x != %#11x (correct)\n",
+               digit_pos,  i % dapp.elt_per_tile, i / dapp.elt_per_tile,
+               sort_out_b[i], ss_keys_1[i]);
+
+      }
+
+    assert( terr_count == 0 );
+    assert( berr_count == 0 );
+    assert( serr_count == 0 );
+  }
+
+  void shadow_sort_check_pass_2(int digit_pos)
+  {
+    sort_out.from_cuda();
+
+    int serr_count = 0;
+    const int tiles_per_block = div_ceil(dapp.num_tiles,grid_size);
+    const int elt_per_block = tiles_per_block * dapp.elt_per_tile;
+
+    for ( int i=0; i<array_size; i++ )
+      {
+        if ( sort_out[i] == ss_keys_2[i] ) continue;
+        if ( serr_count++ > 10 ) continue;
+        printf("D%dp2, B %2d  TPos %3d,  Tile %4d  %3d error: "
+               "%#11x != %#11x (cor)\n",
+               digit_pos, i/elt_per_block,
+               i % dapp.elt_per_tile,
+               i / dapp.elt_per_tile,
+               i / dapp.elt_per_tile % tiles_per_block,
+               sort_out[i], ss_keys_2[i]);
+
+      }
+
+    assert( serr_count == 0 );
   }
 
   void check_sort(int block_size, int limit)
@@ -205,72 +346,6 @@ public:
         break;
       }
 
-#ifdef DEBUG_SORT
-    int next_prefix = 0;
-    int oerr_count = 5;
-    int tile_count = array_size / ( 4 * block_size );
-    for ( int bin =0; bin<16; bin++ )
-      {
-        for ( int tile=0; tile<tile_count; tile++ )
-          {
-            const int prefix = scan_out[tile * 16 + bin];
-            const int count = sort_tile_histo[tile * 16 + bin];
-            if ( prefix != next_prefix )
-              {
-                if ( oerr_count-- > 0 )
-                printf("Wrong next prefix at tile %d, bin %d: %d != %d\n",
-                       tile, bin, next_prefix, prefix);
-              }
-            next_prefix = prefix + count;
-          }
-      }
-
-    PStack<int> expected_new_idx;
-    int idx = 0;
-    oerr_count = 5;
-    int derr_count = 5;
-    for ( int tile=0; tile<tile_count; tile++ )
-      {
-        for ( int bin =0; bin<16; bin++ )
-          {
-            const int prefix = scan_out[tile * 16 + bin];
-            const int offset_local_c = scan_r2[tile * 16 + bin];
-            const int count = sort_tile_histo[tile * 16 + bin];
-            for ( int i = 0; i < count; i++ )
-              {
-                const uint val = sort_out[idx++];
-                const int digit = -1;
-                const int digit_idx = val & 0xfff;
-                const int local_offset = val & 0xfff;
-                const int new_idx = val >> 12;
-                const int expect = prefix + i;
-                if ( local_offset != offset_local_c )
-                  if ( derr_count-- > 0 )
-                    printf("Wrong local offset at tile %d, bin %d, i %d: "
-                           "idx %d:  %d != %d (c)\n",
-                           tile, bin, i, idx-1, local_offset, offset_local_c);
-#if 0
-                if ( digit_idx != i )
-                  if ( derr_count-- > 0 )
-                    printf("Wrong bin idx at tile %d, bin %d: idx %d:  %d != %d (c)\n",
-                           tile, bin, idx-1, digit_idx, i);
-                if ( digit >= 0 && digit != bin )
-                  if ( derr_count-- > 0 )
-                    printf("Wrong bin at tile %d, bin %d: idx %d:  %d != %d (c)\n",
-                           tile, bin, idx-1, digit, bin);
-#endif
-
-                if ( new_idx != expect )
-                  {
-                    if ( oerr_count-- > 0 )
-                      printf("Wrong idx at tile %d, bin %d: idx %d:  %d != %d (c)\n",
-                             tile, bin, idx-1, new_idx, expect);
-                  }
-              }
-          }
-      }
-#endif
-
     for ( int i=0; i<limit; i++ )
       {
         if ( sort_out_use[i] == sort_check_short[i] ) continue;
@@ -283,7 +358,7 @@ public:
   void start()
   {
     for ( int b=6; b<=10; b++ )
-      for ( int r: {4} )
+      for ( int r: {4,6,8} )
         run_sort(b,r);
   }
 
@@ -298,31 +373,34 @@ public:
 
     if ( block_size > cfa.maxThreadsPerBlock ) return;
 
-    int sort_radix = 1 << sort_radix_lg;
-#define CPY(m) dapp.m = m;
-    CPY(sort_radix_lg);
-    CPY(sort_radix);
-#undef CPY
+    const int sort_radix = 1 << sort_radix_lg;
 
-    TO_DEV(dapp);
+    dapp.radix_lg = sort_radix_lg;
+    dapp.radix = sort_radix;
 
     scan_r2.realloc(array_size);
     scan_r2.ptrs_to_cuda("scan_r2");
 
-    const int elt_per_tile = block_size * elt_per_thread;
-    const int num_tiles = div_ceil( array_size, elt_per_tile );
+    dapp.elt_per_tile = block_size * elt_per_thread;
+    const int num_tiles = dapp.num_tiles =
+      div_ceil( array_size, dapp.elt_per_tile );
     const int key_size_bits = 8 * sizeof(Sort_Elt);
     const int ndigits = div_ceil( key_size_bits, sort_radix_lg );
 
-    const size_t thisto_array_size_bytes = sizeof(int) * sort_radix * num_tiles;
-    const size_t bhisto_array_size_bytes = sizeof(int) * sort_radix * grid_size;
+    dapp.thisto_array_size_elts = sort_radix * num_tiles;
+    dapp.bhisto_array_size_elts = sort_radix * grid_size;
+    const size_t thisto_array_size_bytes =
+      sizeof(sort_tile_histo[0]) * dapp.thisto_array_size_elts;
+    const size_t bhisto_array_size_bytes =
+      sizeof(sort_histo[0]) * dapp.bhisto_array_size_elts;
 
     sort_histo.realloc(bhisto_array_size_bytes);
     sort_histo.ptrs_to_cuda("sort_histo");
     sort_tile_histo.realloc(thisto_array_size_bytes);
     sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
 
-    const size_t size_keys_bytes = num_tiles * elt_per_tile * sizeof(Sort_Elt);
+    const size_t size_keys_bytes =
+      num_tiles * dapp.elt_per_tile * sizeof(Sort_Elt);
 
     const size_t comm_keys_bytes_pass_1 = size_keys_bytes * ndigits * 2;
     const size_t comm_keys_bytes_pass_2 = size_keys_bytes * ndigits * 2;
@@ -352,11 +430,17 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
-    printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %2d,  Active WP %2d\n",
-           grid_size, block_size, active_bl_per_mp, active_wp);
+    printf("Radix Lg %2d,  Grid Sz %3d,  Block Sz %3d,  BL/MP %2d,  "
+           "Active WP %2d\n",
+           sort_radix_lg, grid_size, block_size, active_bl_per_mp, active_wp);
+
+    TO_DEV(dapp);
+    const bool ss_check = true;
 
     for ( int cpu_round=0; cpu_round<cpu_rounds; cpu_round++ )
       {
+        if ( ss_check ) shadow_sort_init(block_size);
+
         // Zero result array and send to GPU, to detect
         // skipped-element errors occurring after a prior invocation
         // wrote the correct results.
@@ -376,14 +460,22 @@ public:
           {
             const bool first_iter = digit_pos == 0;
             const bool last_iter = digit_pos + 1 == ndigits;
+
+            if ( ss_check ) shadow_sort_advance(digit_pos);
+
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_1
               ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
             kname_1 = NPerf_kernel_last_name_get();
+
+            if ( ss_check ) shadow_sort_check_pass_1(digit_pos);
+
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             sort_launch_pass_2
               ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
             kname_2 = NPerf_kernel_last_name_get();
+
+            if ( ss_check ) shadow_sort_check_pass_2(digit_pos);
           }
         CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
         assert( next_ce_idx <= cuda_ces.size() );
@@ -426,15 +518,20 @@ public:
         scan_out.from_cuda();
         scan_r2.from_cuda();
 
+        assert( is_sorted( ss_keys_2.begin(), ss_keys_2.end() ) );
+
         for ( int tile = 0; tile < 4; tile ++ )
           {
+            int bin_sum = 0;
             printf("T %2d: ",tile);
             const int idx_base = tile * sort_radix;
             for ( int i=0; i<8; i++ )
               {
                 printf("%4d  ",sort_tile_histo[idx_base +i]);
               }
-            printf("\n");
+            for ( int i=0; i<sort_radix; i++ )
+              bin_sum += sort_tile_histo[ idx_base + i ];
+            printf("  Sum = %d\n",bin_sum);
           }
 
         const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;

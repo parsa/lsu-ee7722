@@ -25,8 +25,13 @@ struct Radix_Sort_GPU_Constants
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
 
-  int sort_radix_lg;
-  int sort_radix;
+  int elt_per_tile;
+  int num_tiles;
+  int thisto_array_size_elts;
+  int bhisto_array_size_elts;
+
+  int radix_lg;
+  int radix;
 };
 
 
