@@ -10,17 +10,17 @@ $comment_unchanged = 1;
 
 while ( <STDIN> )
   {
-    	if ( /\.arch arm/ && $. < 100 && $comment_unchanged )
-          {
-            $comment_unchanged = 0;
-            $comment_prefix = '@';
-          }
+    if ( /\.arch arm/ && $. < 100 && $comment_unchanged )
+      {
+        $comment_unchanged = 0;
+        $comment_prefix = '@';
+      }
 
-    if ( /^\s*\.file (\d+)\s+\"(.*)\"/ )
+    if ( /^\s*\.file\s+(\d+)\s+\"(.*)\"/ )
       {
         $file_info{$1} = { name => $2 };
       }
-    elsif ( /^\s*\.loc (\d+) (\d+)/ )
+    elsif ( /^\s*\.loc\s+(\d+)\s+(\d+)/ )
       {
         my $fi = $file_info{$1};
         my $lno = $2;
