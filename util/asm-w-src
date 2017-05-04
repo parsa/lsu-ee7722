@@ -5,6 +5,9 @@
 
 %file_info = ();
 
+$demangle_prog = '/bin/c++filt';
+$have_demang = -x $demangle_prog;
+
 $comment_prefix = '#';
 $comment_unchanged = 1;
 
@@ -16,7 +19,14 @@ while ( <STDIN> )
         $comment_prefix = '@';
       }
 
-    if ( /^\s*\.file\s+(\d+)\s+\"(.*)\"/ )
+    if ( $have_demang && /^(\s*call\s+)([_A-Za-z0-9]+)/ )
+      {
+        my $name = $2;
+        my $demang = `$demangle_prog $2`;  chomp( $demang );
+        print "${comment_prefix}${1}$demang\n"
+          if $demang && $demang ne $name;
+      }
+    elsif ( /^\s*\.file\s+(\d+)\s+\"(.*)\"/ )
       {
         $file_info{$1} = { name => $2 };
       }
