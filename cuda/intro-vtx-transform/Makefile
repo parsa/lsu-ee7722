@@ -62,9 +62,12 @@ all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 SRC_FILES = $(all:=.cu)
 
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better
+	  vtx-xform-omp vtx-xform-better vtx-xform-phi
 
 default: $(TARGETS)
+
+vtx-xform-phi:
+	/bin/test -d /dev/mic && $(MAKE) -f Makefile-phi || echo No Phi
 
 
 $(BUILD_CC_FILE_PATH):
@@ -108,5 +111,6 @@ $(all):%: %.o
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
+	$(MAKE) -f Makefile-phi clean
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
 	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]
