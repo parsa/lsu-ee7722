@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
 
@@ -9,8 +9,8 @@
 layout ( location = 1 ) uniform vec4 color_front;
 layout ( location = 2 ) uniform vec4 color_back;
 
-// A bit vector indicating which lights are on.
-layout ( location = 6 ) uniform int lighting_options;
+// A bit vector indicating which lights are on, etc.
+layout ( location = 6 ) uniform ivec2 lighting_options_segs;
 
 // Use this variable to debug your code. Press 'y' to toggle tryout.x
 // and 'Y' to toggle debug_bool.y (between true and false).
@@ -45,7 +45,11 @@ out Data_to_GS
   vec4 ctr;
   vec3 norm, binorm;
 
-  // Any changes here must also be made to the fragment shader input.
+  // For shadow volumes
+  bool endpoint;
+  vec4 pt_b, pt_B, pt_n, pt_N;
+
+  // Any changes here must also be made to the geometry shader input.
 };
 
 void
@@ -81,6 +85,56 @@ vs_main_2()
   binorm = cross(tan,norm);
 }
 
+void
+vs_main_2_sv()
+{
+  iid = gl_InstanceID;
+
+  const int n_segs = lighting_options_segs.y;
+  const int i = gl_VertexID;
+  t = i * delta_tee;
+  const float t2 = t * t;
+  const float t3 = t2 * t;
+
+  // Cubic Hermite interpolation.
+  // Compute point along core of link.
+  //
+  ctr.xyz =
+    ( 2*t3 - 3*t2 + 1 ) * pos1[iid].xyz + (-2*t3 + 3*t2 ) * pos2[iid].xyz
+    + (t3 - 2*t2 + t ) * v1[iid].xyz - (t3 - t2 ) * v2[iid].xyz;
+  ctr.w = 1;
+
+  // Compute direction of link at this point.
+  //
+  vec3 tan_raw =
+    ( 6*t2 - 6*t ) * pos1[iid].xyz + (-6*t2 + 6*t ) * pos2[iid].xyz
+    + (3*t2 - 4*t + 1 ) * v1[iid].xyz - (3*t2 - 2*t ) * v2[iid].xyz;
+
+  vec4 l_pos = gl_ModelViewMatrixInverse * gl_LightSource[0].position;
+  vec3 l_to_c = ctr.xyz - l_pos.xyz;
+  float len_lc = length(l_to_c);
+  float len_lc_sq = dot(l_to_c,l_to_c);
+  vec3 dir_lc = normalize(l_to_c);
+  const float rad = tex_rad[iid].z;
+  float limb_dist = sqrt( len_lc_sq - rad * rad );
+  float cos_beta = limb_dist / len_lc;
+  float sin_beta = rad / len_lc;
+  vec3 vec_r1 = normalize( cross( l_to_c, tan_raw ) );
+
+  endpoint = i == 0 || i == n_segs;
+
+  vec3 l_to_n = limb_dist * ( cos_beta * dir_lc + sin_beta * vec_r1 );
+  vec3 l_to_b = limb_dist * ( cos_beta * dir_lc - sin_beta * vec_r1 );
+  mat4 mvp = gl_ModelViewProjectionMatrix;
+  float far = 1000;
+
+  pt_n = mvp * ( l_pos + vec4(l_to_n,0) );
+  pt_b = mvp * ( l_pos + vec4(l_to_b,0) );
+  pt_N = mvp * ( l_pos + far * vec4(l_to_n,0) );
+  pt_B = mvp * ( l_pos + far * vec4(l_to_b,0) );
+
+}
+
 #endif
 
 
@@ -95,6 +149,11 @@ in Data_to_GS
   float t;
   vec4 ctr;
   vec3 norm, binorm;
+
+  // For shadow volumes
+  bool endpoint;
+  vec4 pt_b, pt_B, pt_n, pt_N;
+
 } In[];
 
 out Data_to_FS
@@ -147,6 +206,62 @@ gs_main_2()
   EndPrimitive();
 }
 
+void
+gs_main_2_sv()
+{
+  vec4 pt_n0 = In[0].pt_n;
+  vec4 pt_n1 = In[1].pt_n;
+  vec4 pt_b0 = In[0].pt_b;
+  vec4 pt_b1 = In[1].pt_b;
+
+  vec4 pt_N0 = In[0].pt_N;
+  vec4 pt_N1 = In[1].pt_N;
+  vec4 pt_B0 = In[0].pt_B;
+  vec4 pt_B1 = In[1].pt_B;
+
+  bool first = In[0].endpoint;
+  bool last = In[1].endpoint;
+
+  if ( last )
+    {
+      gl_Position = pt_N0; EmitVertex();
+      gl_Position = pt_n0; EmitVertex();
+      gl_Position = pt_N1; EmitVertex();
+      gl_Position = pt_n1; EmitVertex();
+      gl_Position = pt_B1; EmitVertex();
+      gl_Position = pt_b1; EmitVertex();
+      gl_Position = pt_B0; EmitVertex();
+      gl_Position = pt_b0; EmitVertex();
+      EndPrimitive();
+      return;
+    }
+
+  if ( first )
+    {
+      gl_Position = pt_B1; EmitVertex();
+      gl_Position = pt_b1; EmitVertex();
+      gl_Position = pt_B0; EmitVertex();
+      gl_Position = pt_b0; EmitVertex();
+      gl_Position = pt_N0; EmitVertex();
+      gl_Position = pt_n0; EmitVertex();
+      gl_Position = pt_N1; EmitVertex();
+      gl_Position = pt_n1; EmitVertex();
+      EndPrimitive();
+      return;
+    }
+
+  gl_Position = pt_N0; EmitVertex();
+  gl_Position = pt_n0; EmitVertex();
+  gl_Position = pt_N1; EmitVertex();
+  gl_Position = pt_n1; EmitVertex();
+  EndPrimitive();
+  gl_Position = pt_B1; EmitVertex();
+  gl_Position = pt_b1; EmitVertex();
+  gl_Position = pt_B0; EmitVertex();
+  gl_Position = pt_b0; EmitVertex();
+  EndPrimitive();
+}
+
 
 #endif
 
@@ -185,6 +300,13 @@ fs_main()
   gl_FragDepth = gl_FragCoord.z;
 }
 
+void
+fs_main_sv()
+{
+  vec4 color2 = gl_FrontFacing ? vec4(0.8,0,0,1) : vec4(0,0,0,0);
+  gl_FragColor = color2;
+  gl_FragDepth = gl_FragCoord.z;
+}
 
 ///
 /// Routine used by Either Vertex or Fragment Shader
@@ -200,6 +322,7 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_er)
   vec3 nspc_color = color.rgb * gl_LightModel.ambient.rgb;
   vec3 spec_color = vec3(0);
   vec3 normal_e = normalize(normal_e);
+  int lighting_options = lighting_options_segs.x;
 
   for ( int i=0; i<2; i++ )
     {

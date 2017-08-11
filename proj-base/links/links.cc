@@ -399,9 +399,10 @@ public:
 
   void render_link_start();
   void render_link_gather(Link *link);
-  void render_link_render();
+  void render_link_render(bool shadow_volumes = false);
+  void render_link_render_sv(){ render_link_render(true); };
 
-  pShader *sp_set_2;
+  pShader *sp_set_2, *sp_set_2_sv;
   GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
   double world_time_link_update;
 
@@ -577,17 +578,10 @@ World::render_objects(Render_Option option)
       sphere.render_bunch_render_sv();
       sp_fixed->use();
 
+      render_link_start();
       for ( Link *link: links )
-        {
-          if ( link->snapped ) continue;
-          if ( !link->is_renderable ) continue;
-          if ( !link->is_simulatable ) continue; // Should check if straight.
-          Ball *const ball1 = link->ball1;
-          Ball *const ball2 = link->ball2;
-          cyl.render_shadow_volume
-            (ball1->position,0.3*ball1->radius,
-             ball2->position-ball1->position);
-        }
+        if ( link->is_renderable ) render_link_gather(link);
+      render_link_render_sv();
     }
   else
     {
@@ -1228,6 +1222,12 @@ World::init(int argc, char **argv)
      "vs_main_2(); ",     // Name of vertex shader main routine.
      "gs_main_2();",      // Name of geometry shader main routine.
      "fs_main();"       // Name of fragment shader main routine.
+     );
+  sp_set_2_sv = new pShader
+    (links_shader_code_path,
+     "vs_main_2_sv(); ",     // Name of vertex shader main routine.
+     "gs_main_2_sv();",      // Name of geometry shader main routine.
+     "fs_main_sv();"       // Name of fragment shader main routine.
      );
 
   ball_setup_3();
@@ -2063,7 +2063,7 @@ World::render_link_gather(Link *link)
 
 
 void
-World::render_link_render()
+World::render_link_render(bool shadow_volumes)
 {
   // Perform a rendering pass to render all the links collected
   // by the routine render_link_2.
@@ -2074,12 +2074,12 @@ World::render_link_render()
   const bool first_render = world_time_link_update != world_time;
   world_time_link_update = world_time;
 
-  sp_set_2->use();
+  if ( shadow_volumes ) sp_set_2_sv->use(); else sp_set_2->use();
 
   // Number of segments used to construct link.  Each segment is
   // approximately a cylinder.
   //
-  const int segments = opt_segments;
+  const int segments = shadow_volumes ? max(2,opt_segments/4) : opt_segments;
 
   // Number of sides of each cylinder.
   //
@@ -2113,7 +2113,7 @@ World::render_link_render()
   glGetBooleanv(GL_LIGHT0,&l0);
   glGetBooleanv(GL_LIGHT1,&l1);
   int light_state = l0 | (l1<<1);
-  glUniform1i(6, light_state);
+  glUniform2i(6, light_state, segments );
   glUniform2i(3, opt_tryout1, opt_tryout2);
 
   glDrawArraysInstanced
