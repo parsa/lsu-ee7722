@@ -142,9 +142,9 @@ Sphere::render()
   if ( !default_orientation ) glMultTransposeMatrixf(rotation_matrix);
 
   points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(pVect),0);
   glEnableClientState(GL_VERTEX_ARRAY);
-  glNormalPointer(GL_FLOAT,0,0);
+  glNormalPointer(GL_FLOAT,sizeof(pVect),0);
   glEnableClientState(GL_NORMAL_ARRAY);
   tex_coord_bo.bind();
   if ( opt_texture )
@@ -203,7 +203,7 @@ Sphere::render_simple(float radiusp, pVect position)
   glScalef(radius,radius,radius);
 
   points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(pVect),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
@@ -264,7 +264,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   glMultTransposeMatrixf(transform);
 
   shadow_volume_points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(pVect),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);

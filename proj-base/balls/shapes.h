@@ -184,7 +184,7 @@ Sphere::render_bunch_render()
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
   points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   tex_coord_bo.bind();
   glTexCoordPointer(2,GL_FLOAT,0,0);
@@ -224,9 +224,9 @@ Sphere::render()
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
   points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
-  glNormalPointer(GL_FLOAT,0,0);
+  glNormalPointer(GL_FLOAT,sizeof(points_bo[0]),0);
   glEnableClientState(GL_NORMAL_ARRAY);
   tex_coord_bo.bind();
   glTexCoordPointer(2,GL_FLOAT,0,0);
@@ -282,7 +282,7 @@ Sphere::render_simple(float radiusp, pVect position)
   glScalef(radius,radius,radius);
 
   points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
@@ -349,7 +349,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   glMultTransposeMatrixf(transform);
 
   shadow_volume_points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(shadow_volume_points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
@@ -372,7 +372,7 @@ Sphere::render_bunch_render_sv()
   glDisable(GL_CULL_FACE);
 
   shadow_volume_points_bo.bind();
-  glVertexPointer(3,GL_FLOAT,0,0);
+  glVertexPointer(3,GL_FLOAT,sizeof(shadow_volume_points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArraysInstanced
     (GL_QUAD_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
