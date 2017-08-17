@@ -2,9 +2,10 @@
 ##
 ##  Makefile for cpu-only demo programs.
 ##
-## $Id:$
+##
 
-COURSE_INCLUDE_DIR = ../include
+GP_ROOT =  ..
+COURSE_INCLUDE_DIR = $(GP_ROOT)/include
 
 INCLUDE = -I$(COURSE_INCLUDE_DIR)
 LIBDIR  =
@@ -20,9 +21,11 @@ else
 CFLAGSMAGIK := $(CFLAGSMAGIK_MAYBE) -DMAGICK
 endif
 
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+
 default: $(PROG_NAMES)
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3  $(CFLAGSMAGIK)
+CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3  $(CFLAGSMAGIK)  -march=native
 COMPILERFLAGS = -Wall 
 CC = gcc
 CXX = g++
@@ -37,9 +40,9 @@ $(PROG_NAMES): %: %.o Makefile
 	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
 
 .cc.o:
-	$(CXX) $(CFLAGS) -fverbose-asm -S $*.cc
+	$(CXX) $(CFLAGS) -fverbose-asm -S $*.cc -o - | $(ASM_WSRC) > $*.s
 	$(CXX) $(CFLAGS) -c $*.s
 
 clean:
-	/bin/rm -f *.s  *.o *~ *.sass *.cubin *.ptx *.html
+	/bin/rm -f *.s  *.o *~ *.sass *.cubin *.ptx *.html $(PROG_NAMES)
 
