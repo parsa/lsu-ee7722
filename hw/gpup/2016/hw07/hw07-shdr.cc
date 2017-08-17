@@ -196,7 +196,6 @@ fs_main_phong()
   //
   gl_FragDepth = gl_FragCoord.z;
 }
-#endif
 
 
 vec4
@@ -242,3 +241,5 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_er)
 
   return vec4(nspc_color+spec_color,1);
 }
+
+#endif
