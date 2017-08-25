@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
 
