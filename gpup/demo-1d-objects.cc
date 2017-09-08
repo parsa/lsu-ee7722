@@ -1,10 +1,8 @@
-/// LSU EE 4702-1 (Fall 2012), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
  /// Demonstration of transforms.
  //
-
-// $Id:$
 
 /// Purpose
 //
@@ -208,10 +206,16 @@ new_prism(int num_sides, int texid)
   for ( int side = 0; side < num_sides; side++ )
     {
       Card2* const c = new Card2(card_width,card_height);
-      prism->contents += c;  // Add card to prism's contents.
+
       c->texid = texid;      // Specify texture used to decorate card.
       c->color = pColor(0.9,0.9,0.9);
+
+      // Specify transform from card's coordinate system to prism's system.
+      //
       c->transform = position_side_i;
+
+      prism->contents.push_back( c );  // Add card to prism's contents.
+
       position_side_i = rotate * position_side_i;
     }
   return prism;
@@ -228,7 +232,7 @@ new_tower
   for ( int i=0; i<layers; i++ )
     {
       Group* const p = new_prism(num_sides, texid);
-      tower->contents += p;
+      tower->contents.push_back( p );
       p->transform =
         pMatrix_Translate(0,card_height*i,0)
         * pMatrix_Rotation(pVect(0,1,0),i*M_PI/10);
