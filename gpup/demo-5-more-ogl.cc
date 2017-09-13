@@ -53,7 +53,7 @@
 //
         glMatrixMode( matrix_name );
 //
-//       where matrix-name can be
+//       where matrix_name can be
 //
        glMatrixMode( GL_MODELVIEW );
        glMatrixMode( GL_PROJECTION );
@@ -119,7 +119,34 @@
        //
        glPopMatrix();
 
- /// Vertex Attribute: glNormal
+
+/// Vertex Attributes
+//
+//  :Def: Attribute
+//
+//  Data associated with a vertex. Also called associated data.
+//
+//  Attributes include
+//:
+//    - Vertex coordinate.
+        glVertex3f(1,2,3);
+//
+//    - Vertex color.
+        glColor3fv(color_orange);
+//
+//    - Vertex "normal".
+        glNormal(1,0,0);
+
+ /// Vertex Attributes
+
+ //  Older versions of OpenGL defined 16 attributes ..
+ //  .. each with a specific purpose.
+ //
+ //  Current versions of OpenGL define only a few attributes ..
+ //  .. such as coordinates.
+ //  The user is free to define others (to be used by user-written code).
+
+ /// glNormal
  //
  //  A normal is one of the 16 "classic" attributes of a vertex.
  //
@@ -400,7 +427,7 @@ World::render()
   glTranslatef(sphere_location.x,sphere_location.y,sphere_location.z);
   glScalef(sphere_size,sphere_size,sphere_size);
 
-  // Construct color objects using hex RGB codes. See coord.h.
+  // Construct color objects using hex RGB codes. See coord.h and colors.h.
   //
   const pColor lsu_spirit_purple(0x580da6);
   const pColor lsu_spirit_gold(0xf9b237);
