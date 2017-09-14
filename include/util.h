@@ -112,7 +112,7 @@ class pFrame_Timer {
 public:
   pFrame_Timer():inited(false),work_description(NULL)
   {
-    query_timer_id[0] = 0;
+    query_objects[0] = 0;
     query_pending = false;
     frame_group_size = 5;
     frame_rate = 0;
@@ -169,8 +169,13 @@ private:
   double cpu_frac, gpu_frac, cuda_frac, phys_frac;
   double time_render_start;
   double time_phys_start;
-  GLuint query_timer_id[2];
-  int query_timer_idx;
+  union {
+    struct { GLuint query_objects[8]; };
+    struct { GLuint qo_timer[2],
+        qo_vtx_sub[2], qo_vtx_inv[2], qo_frag_inv[2]; };
+  };
+  int qa_idx;
+  GLint qv_vtx_sub, qv_vtx_inv, qv_frag_inv;
   bool query_pending;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
@@ -186,8 +191,8 @@ pFrame_Timer::init()
   inited = true;
   frame_inside = false;
   phys_inside = false;
-  glGenQueries(2,query_timer_id);
-  query_timer_idx = 0;
+  glGenQueries(sizeof(query_objects)/sizeof(query_objects[0]),query_objects);
+  qa_idx = 0;
   frame_group_start_time = time_wall_fp();
   var_reset();
   frame_rate_group_start();
@@ -300,8 +305,13 @@ pFrame_Timer::frame_start()
   assert( !frame_inside );
   frame_inside = true;
   pError_Check();
-  if ( query_timer_id[0] )
-    glBeginQuery(GL_TIME_ELAPSED,query_timer_id[query_timer_idx]);
+  if ( query_objects[0] )
+    {
+      glBeginQuery(GL_TIME_ELAPSED,qo_timer[qa_idx]);
+      glBeginQuery(GL_VERTICES_SUBMITTED_ARB,qo_vtx_sub[qa_idx]);
+      glBeginQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB,qo_vtx_inv[qa_idx]);
+      glBeginQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB,qo_frag_inv[qa_idx]);
+    }
   pError_Check();
   time_render_start = time_wall_fp();
   if ( !phys_timed ) frame_rate_group_start_check();
@@ -311,15 +321,21 @@ void
 pFrame_Timer::frame_end()
 {
   const double time_render_elapsed = time_wall_fp() - time_render_start;
-  if ( query_timer_id[0] )
+  if ( query_objects[0] )
     {
       glEndQuery(GL_TIME_ELAPSED);
-      query_timer_idx = 1 - query_timer_idx;
+      glEndQuery(GL_VERTICES_SUBMITTED_ARB);
+      glEndQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB);
+      glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
+
+      qa_idx = 1 - qa_idx;
       if ( query_pending )
         {
           int timer_val = 0;
-          glGetQueryObjectiv
-            (query_timer_id[query_timer_idx],GL_QUERY_RESULT,&timer_val);
+          glGetQueryObjectiv(qo_timer[qa_idx],GL_QUERY_RESULT,&timer_val);
+          glGetQueryObjectiv(qo_vtx_sub[qa_idx],GL_QUERY_RESULT,&qv_vtx_sub);
+          glGetQueryObjectiv(qo_vtx_inv[qa_idx],GL_QUERY_RESULT,&qv_vtx_inv);
+          glGetQueryObjectiv(qo_frag_inv[qa_idx],GL_QUERY_RESULT,&qv_frag_inv);
           gpu_tsum_ns += timer_val;
         }
       query_pending = true;
@@ -338,7 +354,7 @@ pFrame_Timer::frame_end()
     frame_rate_text += "--";
 
   frame_rate_text += "  GPU.GL ";
-  if ( query_timer_id )
+  if ( query_objects[0] )
     frame_rate_text.sprintf
       ("%6.3f ms (%4.1f%%)", 1000 * gpu_tlast, 100 * gpu_frac);
   else
@@ -370,6 +386,11 @@ pFrame_Timer::frame_end()
         ("  %s %7.3f %s (%4.1f%%)", ti->label.s,
          fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
     }
+  frame_rate_text.sprintf
+    ("\n Vertices: %d   M Fragments: %.6f   Frag/Vtx: %.1f",
+     qv_vtx_inv, qv_frag_inv * 1e-6,
+     double(qv_frag_inv)/max(1,qv_vtx_inv));
+
 }
 
 #endif
