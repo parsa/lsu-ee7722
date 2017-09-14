@@ -704,8 +704,15 @@ private:
     glutInit(&argc, argv);
     lglext_ptr_init();
 
+    // Set window size to half the height of the display and
+    // to a 4:3 aspect ratio.
+    //
+    const int screen_ht = glutGet(GLUT_SCREEN_HEIGHT);
+    const int req_ht = screen_ht / 2;
+    const int req_wd = req_ht * 4 / 3; // 4:3 aspect ratio.
+
     glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL );
-    glutInitWindowSize(854,480);
+    glutInitWindowSize(req_wd,req_ht);
 
     pStringF title("OpenGL Demo - %s",exe_file_name);
 
