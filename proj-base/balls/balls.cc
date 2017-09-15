@@ -437,7 +437,7 @@ public:
 
   static void render_w(void *moi){ ((World*)moi)->render(); }
   void render();
-  void render_objects(bool attempt_occlusion_test);
+  void render_objects();
   void render_shadow_volumes(pCoor light_pos);
   void cb_keyboard();
 
@@ -571,9 +571,8 @@ public:
 
   // Pre-Computed Spheres
   //
-  Sphere sphere;
   Sphere* spheres;
-  Sphere sphere_lite;
+  int opt_sphere_lod;
   int sphere_lod_max;
   int sphere_lod_min;
   double sphere_delta_lod, sphere_lod_factor, sphere_lod_offset;
@@ -846,10 +845,6 @@ World::init()
   drip_location = pCoor(30,20,60);
 
   ball_countdown = 0.1;
-  sphere.init(40);
-  sphere.tri_count = &tri_count;
-  sphere_lite.init(4);
-  sphere_lite.tri_count = &tri_count;
 
   // Initialize spheres with varying levels of detail (lod).
   // For performance reasons, sphere with lowest lod that provides
@@ -860,6 +855,9 @@ World::init()
   sphere_count = 16;
   sphere_delta_lod = ( sphere_lod_max - sphere_lod_min ) / (sphere_count-1);
   spheres = new Sphere[sphere_count];
+  opt_sphere_lod = sphere_count / 2;
+  variable_control.insert
+    (opt_sphere_lod,"Sphere Level of Detail",1,0,sphere_count-1);
 
   for ( int i=0; i<sphere_count; i++ )
     {
@@ -3382,6 +3380,7 @@ World::sphere_get(Ball *ball)
 void
 World::balls_render_instances()
 {
+  Sphere& sphere = spheres[opt_sphere_lod];
   sphere.render_bunch_gather(world_time);
   for ( Phys *phys; eye_dist.iterate(phys); )
     {
@@ -3463,6 +3462,7 @@ World::render_shadow_volumes(pCoor light_pos)
 
   // Render balls' shadow volumes.
   //
+  Sphere& sphere = spheres[opt_sphere_lod];
   sphere.render_bunch_gather_sv();
 
   for ( Ball *ball; balls_iterate(ball); )
@@ -3492,7 +3492,7 @@ World::render_shadow_volumes(pCoor light_pos)
 }
 
 void
-World::render_objects(bool attempt_ot)
+World::render_objects()
 {
   // Render objects normally.
 
@@ -3716,12 +3716,12 @@ World::render()
   Ball& ball = *ball_first();
   ogl_helper.fbprintf
     ("Balls %4d   Tiles %3d  Last Ball Pos  "
-     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
+     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %s\n",
      physs.occ(),
      tile_manager.occ(),
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z,
-     tri_count);
+     commaize(tri_count).c_str());
 
   const bool blink_visible = int64_t(time_now*3) & 1;
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
@@ -3886,7 +3886,7 @@ World::render()
       glEnable(GL_LIGHT1);
       glEnable(GL_LIGHT0);
 
-      render_objects(true);
+      render_objects();
     }
   else
     {
@@ -3901,9 +3901,8 @@ World::render()
       glDisable(GL_LIGHT0);
 
       // Send balls, tiles, and platform to opengl.
-      // Do occlusion test too.
       //
-      render_objects(true);
+      render_objects();
 
       //
       // Second pass, add on light0.
@@ -3932,9 +3931,9 @@ World::render()
       //
       glDepthFunc(GL_LEQUAL);  // Depth by default is GL_LESS.
 
-      // Render, but don't do occlusion test again.
+      // Render.
       //
-      render_objects(false);
+      render_objects();
 
       //
       // Third pass, add on light1.
@@ -3949,7 +3948,7 @@ World::render()
       glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
       glStencilFunc(GL_EQUAL,0,-1); // ref, mask
 
-      render_objects(false);
+      render_objects();
     }
 
   // Maybe render platform normals.
@@ -4063,7 +4062,7 @@ World::cb_keyboard()
   }
 
   variables_update();
-  sphere.bunch_invalidate();
+  spheres[opt_sphere_lod].bunch_invalidate();
 
   // Update eye_direction based on keyboard command.
   //
