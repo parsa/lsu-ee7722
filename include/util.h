@@ -317,6 +317,27 @@ pFrame_Timer::frame_start()
   if ( !phys_timed ) frame_rate_group_start_check();
 }
 
+inline string
+commaize(int64_t i)
+{
+  if ( abs(i) < 10000 ) return to_string(i);
+  bool n = i < 0;
+  int64_t a = n ? -i : i;
+  string as = to_string(a);
+  string is = n ? "-" : "";
+  int gpos = as.size() % 3 ?: 3;
+  for ( char c: as )
+    {
+      // 3 999;  2 99;  1 9;
+      is += c;
+      gpos--;
+      if ( gpos == 0 ) { is += ","; gpos = 3; }
+    }
+  assert( is.back() == ',' );
+  is.pop_back();
+  return move(is);
+}
+
 void
 pFrame_Timer::frame_end()
 {
@@ -387,8 +408,9 @@ pFrame_Timer::frame_end()
          fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
     }
   frame_rate_text.sprintf
-    ("\n Vertices: %d   M Fragments: %.6f   Frag/Vtx: %.1f",
-     qv_vtx_inv, qv_frag_inv * 1e-6,
+    ("\n Vertices: %s   Fragments: %s   Frag/Vtx: %.1f",
+     commaize(qv_vtx_inv).c_str(),
+     commaize(qv_frag_inv).c_str(),
      double(qv_frag_inv)/max(1,qv_vtx_inv));
 
 }
