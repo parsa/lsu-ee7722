@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -152,8 +152,7 @@ public:
   bool gpu_buffer_stale;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
-  float *coords;
-  int coords_size;
+  vector<float> sphere_coords;
 
   int opt_slices;
   pCoor sphere_location;
@@ -181,7 +180,6 @@ void
 World::init()
 {
   frame_timer.work_unit_set("Steps / s");
-  coords = NULL;
   gpu_buffer = 0;
   gpu_buffer_stale = true;
 
@@ -358,15 +356,10 @@ World::render()
   glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE, lsu_spirit_purple);
   glEnable(GL_COLOR_MATERIAL);
 
-  if ( coords == NULL )
+  if ( sphere_coords.empty() )
     {
       /// Initialize array coords with sphere's coordinates.
       // 
-
-      // Declare a self-resizing stack for collecting coordinates.
-      // See code in include/misc.h.
-      //
-      PStack<float> sphere_coords;
 
       const double delta_eta = M_PI / opt_slices;
 
@@ -385,15 +378,15 @@ World::render()
 
           // Vertex 1
           //
-          sphere_coords += slice_r1;  // x
-          sphere_coords += y1;        // y
-          sphere_coords += 0;         // z
+          sphere_coords.push_back( slice_r1 );  // x
+          sphere_coords.push_back( y1 );        // y
+          sphere_coords.push_back( 0 );         // z
 
           // Vertex 2
           //
-          sphere_coords += slice_r0;
-          sphere_coords += y0;
-          sphere_coords += 0;
+          sphere_coords.push_back( slice_r0 );
+          sphere_coords.push_back( y0 );
+          sphere_coords.push_back( 0 );
 
           for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
             {
@@ -401,23 +394,19 @@ World::render()
 
               // Vertex 3  (Used for three triangles.)
               //
-              sphere_coords += slice_r1 * cos(theta1);  // x
-              sphere_coords += y1;                      // y
-              sphere_coords += slice_r1 * sin(theta1);  // z
+              sphere_coords.push_back( slice_r1 * cos(theta1) );  // x
+              sphere_coords.push_back( y1 );                      // y
+              sphere_coords.push_back( slice_r1 * sin(theta1) );  // z
 
               // Vertex 4  (Used for three triangles.)
               //
-              sphere_coords += slice_r0 * cos(theta1);
-              sphere_coords += y0;
-              sphere_coords += slice_r0 * sin(theta1);
+              sphere_coords.push_back( slice_r0 * cos(theta1) );
+              sphere_coords.push_back( y0 );
+              sphere_coords.push_back( slice_r0 * sin(theta1) );
             }
 
         }
 
-      // Move coordinates from sphere_coords object to array coords.
-      //
-      coords_size = sphere_coords.occ();
-      coords = sphere_coords.take_storage();  // Return storage. See misc.h
     }
 
   ///
@@ -430,6 +419,7 @@ World::render()
 
   // Size of vertex coordinate or normal.
   const int pf_bytes_per_vec3 = 3 * sizeof(float);
+  const int coords_size = sphere_coords.size();
 
   switch ( opt_method ) {
 
@@ -445,10 +435,10 @@ World::render()
       glColor3fv(lsu_spirit_gold);
       for ( int i=0; i<coords_size; i+=3 )
         {
-          glNormal3fv( &coords[i] );
-          glVertex3fv( &coords[i + ( i & 1 ? 6 : 0 ) ] );
-          glVertex3fv( &coords[i + 3] );
-          glVertex3fv( &coords[i + ( i & 1 ? 0 : 6 ) ] );
+          glNormal3fv( &sphere_coords[i] );
+          glVertex3fv( &sphere_coords[i + ( i & 1 ? 6 : 0 ) ] );
+          glVertex3fv( &sphere_coords[i + 3] );
+          glVertex3fv( &sphere_coords[i + ( i & 1 ? 0 : 6 ) ] );
         }
       glEnd();
 
@@ -476,8 +466,8 @@ World::render()
       glColor3fv(lsu_spirit_gold);
       for ( int i=0; i<coords_size; i+=3 )
         {
-          glNormal3fv( &coords[i] );
-          glVertex3fv( &coords[i] );
+          glNormal3fv( &sphere_coords[i] );
+          glVertex3fv( &sphere_coords[i] );
         }
       glEnd();
 
@@ -512,7 +502,7 @@ World::render()
 
       /// Specify pointer to the array of vertices.
       //
-      glVertexPointer( 3, GL_FLOAT, 3*sizeof(float), coords);
+      glVertexPointer( 3, GL_FLOAT, 3*sizeof(float), sphere_coords.data());
       //               N  Type      Stride           Pointer
       //
       // Args: N: 
@@ -529,7 +519,7 @@ World::render()
       // Ditto for normals.
       //
       glEnableClientState(GL_NORMAL_ARRAY);
-      glNormalPointer( GL_FLOAT, 0,       coords);
+      glNormalPointer( GL_FLOAT, 0,       sphere_coords.data());
       //               Type      Stride   Pointer
       //
       // Fewer arguments than glNormalPointer because normals always have
@@ -607,7 +597,7 @@ World::render()
           glBufferData
             (GL_ARRAY_BUFFER,           // Kind of buffer object.
              coords_size*sizeof(float), // Amount of data (bytes) to copy.
-             coords,                    // Pointer to data to copy.
+             sphere_coords.data(),      // Pointer to data to copy.
              GL_STATIC_DRAW);           // Hint about who, when, how accessed.
 
           // Tell GL that subsequent array pointers refer to host storage.
@@ -674,7 +664,8 @@ World::render()
 
   if ( opt_recompute )
     {
-      free( coords );  coords = NULL;  gpu_buffer_stale = true;
+      sphere_coords.clear();
+      gpu_buffer_stale = true;
     }
 
   glPopMatrix();
@@ -731,7 +722,7 @@ World::cb_keyboard()
 
   if ( opt_slices != slices_prev )
     {
-      free(coords); coords = NULL;
+      sphere_coords.clear();
       gpu_buffer_stale = true;
     }
 
@@ -770,6 +761,8 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
+  popengl_helper.ogl_debug_set(true);
+
   World world(popengl_helper);
 
   // Specify default frame update rate.
