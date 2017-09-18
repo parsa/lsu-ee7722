@@ -370,8 +370,6 @@ World::render()
           const double slice_r0 = sin(eta),  slice_r1 = sin(eta1);
           const double delta_theta = delta_eta * slice_r1;
 
-          /// Note "+=" means append to array.
-
           // Add first two vertices of triangle strip.
           // Note that a vertex is added to list one coordinate at a time.
           //
