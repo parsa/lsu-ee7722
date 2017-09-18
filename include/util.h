@@ -170,12 +170,14 @@ private:
   double time_render_start;
   double time_phys_start;
   union {
-    struct { GLuint query_objects[8]; };
+    struct { GLuint query_objects[12]; };
     struct { GLuint qo_timer[2],
-        qo_vtx_sub[2], qo_vtx_inv[2], qo_frag_inv[2]; };
+        qo_vtx_sub[2], qo_vtx_inv[2], qo_frag_inv[2], qo_clp_pin[2],
+        qo_clp_pout[2];
+    };
   };
   int qa_idx;
-  GLint qv_vtx_sub, qv_vtx_inv, qv_frag_inv;
+  GLint qv_vtx_sub, qv_vtx_inv, qv_clp_pin, qv_clp_pout, qv_frag_inv;
   bool query_pending;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
@@ -310,6 +312,8 @@ pFrame_Timer::frame_start()
       glBeginQuery(GL_TIME_ELAPSED,qo_timer[qa_idx]);
       glBeginQuery(GL_VERTICES_SUBMITTED_ARB,qo_vtx_sub[qa_idx]);
       glBeginQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB,qo_vtx_inv[qa_idx]);
+      glBeginQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB,qo_clp_pin[qa_idx]);
+      glBeginQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB,qo_clp_pout[qa_idx]);
       glBeginQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB,qo_frag_inv[qa_idx]);
     }
   pError_Check();
@@ -347,6 +351,8 @@ pFrame_Timer::frame_end()
       glEndQuery(GL_TIME_ELAPSED);
       glEndQuery(GL_VERTICES_SUBMITTED_ARB);
       glEndQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB);
+      glEndQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB);
+      glEndQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB);
       glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
 
       qa_idx = 1 - qa_idx;
@@ -356,6 +362,8 @@ pFrame_Timer::frame_end()
           glGetQueryObjectiv(qo_timer[qa_idx],GL_QUERY_RESULT,&timer_val);
           glGetQueryObjectiv(qo_vtx_sub[qa_idx],GL_QUERY_RESULT,&qv_vtx_sub);
           glGetQueryObjectiv(qo_vtx_inv[qa_idx],GL_QUERY_RESULT,&qv_vtx_inv);
+          glGetQueryObjectiv(qo_clp_pin[qa_idx],GL_QUERY_RESULT,&qv_clp_pin);
+          glGetQueryObjectiv(qo_clp_pout[qa_idx],GL_QUERY_RESULT,&qv_clp_pout);
           glGetQueryObjectiv(qo_frag_inv[qa_idx],GL_QUERY_RESULT,&qv_frag_inv);
           gpu_tsum_ns += timer_val;
         }
@@ -408,8 +416,11 @@ pFrame_Timer::frame_end()
          fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
     }
   frame_rate_text.sprintf
-    ("\n Vertices: %s   Fragments: %s   Frag/Vtx: %.1f",
+    ("\n Vertices: %s   Clip Prim: in %s  out %s   "
+     "Fragments: %s   Frag/Vtx: %.1f",
      commaize(qv_vtx_inv).c_str(),
+     commaize(qv_clp_pin).c_str(),
+     commaize(qv_clp_pout).c_str(),
      commaize(qv_frag_inv).c_str(),
      double(qv_frag_inv)/max(1,qv_vtx_inv));
 
