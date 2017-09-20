@@ -434,8 +434,8 @@ World::render()
         {
           glNormal3fv( sphere_coords[i] );
           glVertex3fv( sphere_coords[i + 0] );
-          glVertex3fv( sphere_coords[i + 1] );
-          glVertex3fv( sphere_coords[i + 2] );
+          glVertex3fv( sphere_coords[i + 1 + ( i & 1 ) ] );
+          glVertex3fv( sphere_coords[i + 2 - ( i & 1 ) ] );
         }
       glEnd();
 
