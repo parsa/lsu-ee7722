@@ -573,6 +573,32 @@ World::render()
       // The intent is to keep chunks of storage on GPU where they
       // can be re-used.
 
+#ifdef XXX
+      /// Steps:
+      //
+      //  - Get a buffer object name.
+      //    Just do this once.
+
+      glGenBuffers(n, &gpu_buffer);
+
+
+      //  - Copy data from CPU into buffer object.
+      //    Do this whenever data changes.
+
+      glBufferData
+        (GL_ARRAY_BUFFER,   // Kind of buffer object.
+         n_bytes ,          // Amount of data (bytes) to copy.
+         data_ptr,          // Pointer to data to copy.
+         GL_STATIC_DRAW);   // Hint about who, when, how accessed.
+
+      //   - Use buffer object in place of a CPU (client) array.
+      //     Do this each time a command, like glVertexPointer, reads
+      //      array data.
+
+      glBindBuffer(GL_ARRAY_BUFFER, gpu_buffer);
+
+#endif
+
       // Performance factors to show in green text.
       //
       pf_vertices = coords_size;
