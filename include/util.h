@@ -542,27 +542,6 @@ public:
   float inc_factor_def;
 };
 
-const void* const all_glut_fonts[] =
-  { GLUT_STROKE_ROMAN,
-    GLUT_STROKE_MONO_ROMAN,
-    GLUT_BITMAP_9_BY_15,
-    GLUT_BITMAP_8_BY_13,
-    GLUT_BITMAP_TIMES_ROMAN_10,
-    GLUT_BITMAP_TIMES_ROMAN_24,
-    GLUT_BITMAP_HELVETICA_10,
-    GLUT_BITMAP_HELVETICA_12,
-    GLUT_BITMAP_HELVETICA_18 };
-
-const void* const glut_fonts[] =
-  { 
-    GLUT_BITMAP_TIMES_ROMAN_24,
-    GLUT_BITMAP_HELVETICA_18,
-    GLUT_BITMAP_TIMES_ROMAN_10,
-    GLUT_BITMAP_HELVETICA_10,
-    GLUT_BITMAP_HELVETICA_12,
-    GLUT_BITMAP_8_BY_13,
-    GLUT_BITMAP_9_BY_15
- };
 
 class pOpenGL_Helper {
 public:
@@ -574,7 +553,6 @@ public:
     animation_frame_rate = 60;
     animation_record = false;
     user_text_reprint_called = false;
-    glut_font_idx = 0;
     opengl_helper_self_ = this;
     width = height = 0;
     frame_period = -1; // No timer callback.
@@ -680,7 +658,7 @@ public:
   bool keyboard_shift, keyboard_control, keyboard_alt;
   int keyboard_x, keyboard_y;  // Mouse location when key pressed.
 
-  PStack<pString> user_frame_text;
+  vector<pString> user_frame_text;
 
   // Print text in frame buffer, starting at upper left.
   // Arguments same as printf.
@@ -688,46 +666,99 @@ public:
   void fbprintf(const char* fmt, ...)
   {
     va_list ap;
-    pString& str = *user_frame_text.pushi();
+    user_frame_text.emplace_back();
+    pString& str = user_frame_text.back();
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
 
     if ( user_text_reprint_called ) return;
 
-    if ( !frame_print_calls ) glWindowPos2i(10,height-20);
     frame_print_calls++;
+    glut_stroke_print(str.s);
+  }
 
-    glutBitmapString((void*)glut_fonts[glut_font_idx],(unsigned char*)str.s);
+  void glut_stroke_window_change()
+  {
+    const float win_ht_lines = height / ( px_per_point * font_size_pt );
+    height_mx = win_ht_lines * glut_font_height;
+    width_mx = height_mx / height * width;
+    const float stroke_width_pt = font_size_pt / 20.0f;
+    glut_stroke_width_px = std::max(1.0f,stroke_width_pt * px_per_point);
+    glut_stroke_sx = 2/width_mx;
+    glut_stroke_sy = 2/height_mx;
+  }
+
+  void glut_stroke_frame_start()
+  {
+    const float ex = glutStrokeWidth(glut_fontid,'X');
+    for ( auto& e: glut_stroke_mv ) e = 0;
+    for ( int i: {0,5,10,15} ) glut_stroke_mv[i] = 1;
+    glut_stroke_mv[3] = ex - width_mx/2;
+    glut_stroke_mv[7] = height_mx/2-glut_font_height*1.5;
+    glut_stroke_line_first = height_mx/2-glut_font_height*1.5;
+    glut_stroke_line_last = -height_mx/2+glut_font_height*0.5;
+  }
+
+  void glut_stroke_goto_line(float line)
+    {
+      glut_stroke_mv[7] =
+        ( line>=0 ? glut_stroke_line_first : glut_stroke_line_last )
+        - line * glut_font_height;
+    }
+
+  void glut_stroke_print(const char *s)
+  {
+    if ( s[0] == 0 ) return;
+    const char *sp = s;
+    int nlines = 0;
+    while ( char c = *sp++ ) if ( c == '\n' ) nlines++;
+    assert ( sp[-1] == 0 );
+    if ( sp[-2] != '\n' ) nlines++;
+
+    const bool en_lighting = glIsEnabled(GL_LIGHTING);
+    const bool en_depth = glIsEnabled(GL_DEPTH_TEST);
+    int shade_model;
+    glGetIntegerv(GL_SHADE_MODEL,&shade_model);
+    glDisable(GL_LIGHTING);
+    glShadeModel(GL_FLAT);
+    glDisable(GL_DEPTH_TEST);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadTransposeMatrixf(glut_stroke_mv);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glScalef(glut_stroke_sx,glut_stroke_sy,1);
+    glColor3f(0,1,0);
+    glLineWidth(glut_stroke_width_px);
+    glutStrokeString(glut_fontid,(unsigned char*)s);
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    if ( en_lighting ) glEnable(GL_LIGHTING);
+    if ( en_depth ) glEnable(GL_DEPTH_TEST);
+    glShadeModel(shade_model);
+    glut_stroke_mv[7] -= glut_font_height * nlines;
+
   }
 
   void user_text_reprint()
   {
     user_text_reprint_called = true;
-    glDisable(GL_DEPTH_TEST);
-    glWindowPos2i(10,height-20);
-    while ( pString* const str = user_frame_text.iterate() )
-      glutBitmapString
-        ((void*)glut_fonts[glut_font_idx],(unsigned char*)str->s);  
-    user_frame_text.reset();
+    glut_stroke_goto_line(0);
+    pString all;
+    for ( auto& s: user_frame_text ) all += s;
+    glut_stroke_print(all.s);
+    user_frame_text.clear();
 
     const int64_t now = int64_t( time_wall_fp() * 2 );
     if ( now & 1 && animation_record )
       {
-        glWindowPos2i(10,10);
-        glutBitmapString
-          ((void*)glut_fonts[glut_font_idx], (unsigned char*)"REC");
+        glut_stroke_goto_line(-1);
+        glut_stroke_print("REC");
       }
-
-    glEnable(GL_DEPTH_TEST);
-  }
-
-  void cycle_font()
-  {
-    const int font_cnt = sizeof(glut_fonts) / sizeof(glut_fonts[0]);
-    glut_font_idx++;
-    if ( glut_font_idx >= font_cnt ) glut_font_idx = 0;
-    printf("Changed to %d\n",glut_font_idx);
   }
 
 private:
@@ -741,8 +772,17 @@ private:
     // to a 4:3 aspect ratio.
     //
     const int screen_ht = glutGet(GLUT_SCREEN_HEIGHT);
+    const int screen_wd = glutGet(GLUT_SCREEN_WIDTH);
     const int req_ht = screen_ht / 2;
     const int req_wd = req_ht * 4 / 3; // 4:3 aspect ratio.
+
+    const int screen_wd_mm = glutGet(GLUT_SCREEN_WIDTH_MM);
+    px_per_point = float(screen_wd) / ( screen_wd_mm / 25.4 * 72 );
+    font_size_pt = 10;
+
+    // The other option: GLUT_STROKE_ROMAN,
+    glut_fontid = (void*) GLUT_STROKE_MONO_ROMAN;
+    glut_font_height = glutStrokeHeight(glut_fontid);
 
     glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL );
     glutInitWindowSize(req_wd,req_ht);
@@ -764,6 +804,7 @@ private:
   {
     shape_update();
     frame_print_calls = 0;
+    glut_stroke_frame_start();
     user_display_func(user_display_data);
 
     if ( animation_record || animation_frame_count ) 
@@ -778,6 +819,7 @@ private:
     const int height_new = glutGet(GLUT_WINDOW_HEIGHT);
     width = width_new;
     height = height_new;
+    glut_stroke_window_change();
   }
 
   static void cb_keyboard_w(unsigned char key, int x, int y)
@@ -786,7 +828,7 @@ private:
   {opengl_helper_self_->cb_keyboard(key+0x100,x,y);}
   void cb_keyboard(int key=0, int x=0, int y=0)
   {
-    keyboard_key = key;
+    keyboard_key = 0;
     keyboard_modifiers = key ? glutGetModifiers() : 0;
     keyboard_shift = keyboard_modifiers & GLUT_ACTIVE_SHIFT;
     keyboard_alt = keyboard_modifiers & GLUT_ACTIVE_ALT;
@@ -794,15 +836,27 @@ private:
     keyboard_x = x;
     keyboard_y = y;
     if ( !key ) return;
-    if ( keyboard_key == FB_KEY_F12 ) { write_img(); return; }
-    if ( keyboard_key == FB_KEY_F11 ) { cycle_font(); return; }
-    if ( keyboard_key == FB_KEY_F10 )
+    if ( key == FB_KEY_F12 ) { write_img(); return; }
+    if ( keyboard_control && ( key == '+' || key == '=' ) )
+      {  font_size_pt *= 1.1;  return; }
+    if ( keyboard_control && ( key == '-' || key == '_' ) )
+      {  font_size_pt /= 1.1;  return; }
+    if ( key == FB_KEY_F11 )
+      {
+        if ( keyboard_shift )
+          font_size_pt /= 1.1;
+        else
+          font_size_pt *= 1.1;
+        return;
+      }
+    if ( key == FB_KEY_F10 )
       { 
         animation_record = !animation_record; 
         printf("Animation recording %s\n",
                animation_record ? "starting, press F10 to stop." : "ending");
         return;
       }
+    keyboard_key = key;
     glutPostRedisplay();
   }
 
@@ -898,9 +952,19 @@ private:
   double render_start;
   int width;
   int height;
+  float font_size_pt;
+  float px_per_point;
+  void *glut_fontid;
+  float glut_font_height;
+  float glut_stroke_width_px;
+  float glut_baselineskip_m;
+  float glut_stroke_mv[16];
+  float glut_stroke_sx, glut_stroke_sy;
+  float glut_stroke_line_first, glut_stroke_line_last;
+  float height_mx, width_mx;
+
   int frame_print_calls;
   bool user_text_reprint_called;
-  int glut_font_idx;
   int glut_window_id;
   void (*user_display_func)(void *data);
   void *user_display_data;
