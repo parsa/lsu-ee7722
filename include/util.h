@@ -682,11 +682,14 @@ public:
   {
     const float win_ht_lines = height / ( px_per_point * font_size_pt );
     height_mx = win_ht_lines * glut_font_height;
-    width_mx = height_mx / height * width;
+    const float condense_factor = 1.4; // Amount by which to squish font.
+    width_mx = condense_factor * height_mx / height * width;
     const float stroke_width_pt = font_size_pt / 20.0f;
     glut_stroke_width_px = std::max(1.0f,stroke_width_pt * px_per_point);
     glut_stroke_sx = 2/width_mx;
     glut_stroke_sy = 2/height_mx;
+    glut_x_mx_per_px = width_mx / width;
+    glut_y_mx_per_px = height_mx / height;
   }
 
   void glut_stroke_frame_start()
@@ -723,20 +726,44 @@ public:
     glDisable(GL_LIGHTING);
     glShadeModel(GL_FLAT);
     glDisable(GL_DEPTH_TEST);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadTransposeMatrixf(glut_stroke_mv);
+
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
     glScalef(glut_stroke_sx,glut_stroke_sy,1);
-    glColor3f(0,1,0);
-    glLineWidth(glut_stroke_width_px);
-    glutStrokeString(glut_fontid,(unsigned char*)s);
+    glDisable(GL_LINE_SMOOTH);
+    float wid_range[2];
+    glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE,wid_range);
+    float wid_max = wid_range[1];
+
+    for ( int i: {0,1} )
+      {
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadTransposeMatrixf(glut_stroke_mv);
+        if ( i == 0 )
+          {
+            float s_n = 2.0f;
+            float s_px = std::min(s_n * glut_stroke_width_px,wid_max);
+            glColor3f(0,0,0);
+            glLineWidth( s_px );
+            glTranslatef
+              (glut_stroke_width_px*glut_x_mx_per_px,
+               -glut_stroke_width_px*glut_y_mx_per_px,0);
+          }
+        else
+          {
+            glColor3f(0,1,0);
+            glLineWidth( glut_stroke_width_px );
+          }
+        glutStrokeString(glut_fontid,(unsigned char*)s);
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+      }
+
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
+
     if ( en_lighting ) glEnable(GL_LIGHTING);
     if ( en_depth ) glEnable(GL_DEPTH_TEST);
     glShadeModel(shade_model);
@@ -769,12 +796,12 @@ private:
     lglext_ptr_init();
 
     // Set window size to half the height of the display and
-    // to a 4:3 aspect ratio.
+    // to a 19:9 aspect ratio.
     //
     const int screen_ht = glutGet(GLUT_SCREEN_HEIGHT);
     const int screen_wd = glutGet(GLUT_SCREEN_WIDTH);
     const int req_ht = screen_ht / 2;
-    const int req_wd = req_ht * 4 / 3; // 4:3 aspect ratio.
+    const int req_wd = req_ht * 16 / 9; // Match desired aspect ratio.
 
     const int screen_wd_mm = glutGet(GLUT_SCREEN_WIDTH_MM);
     px_per_point = float(screen_wd) / ( screen_wd_mm / 25.4 * 72 );
@@ -961,6 +988,7 @@ private:
   float glut_stroke_mv[16];
   float glut_stroke_sx, glut_stroke_sy;
   float glut_stroke_line_first, glut_stroke_line_last;
+  float glut_x_mx_per_px, glut_y_mx_per_px;
   float height_mx, width_mx;
 
   int frame_print_calls;
