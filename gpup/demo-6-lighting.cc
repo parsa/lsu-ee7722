@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Lighting
 
@@ -21,6 +21,18 @@
 /// Lighting
  //
  // :ogl45: Section 12.2
+ //
+ // :Def: Lighting
+ // The computation of the value to write into the color buffer for
+ // a fragment, or the value to blend with textures or the contents
+ // of the frame buffer.
+
+ // OpenGL commands for lighting, such as glColor, glLight are deprecated.
+ //
+ // Instead, lighting should be performed by user-written shaders.
+ //
+ // This demo uses OpenGL commands, later demos use shaders.
+
 
  // :Def: Material Property
  //       Some aspect of the color of an object.
@@ -55,7 +67,7 @@
 
  /// Lighting in OGL
  //
- //    Each vertex is assigned a material property.
+ //    Vertices in a rendering pass are assigned a common material property.
             glMaterial( ... )
  //
  //    Each light is assigned source parameters.
@@ -92,16 +104,29 @@
  //  GL_LIGHT0, GL_LIGHT1, etc.
  //
  // PARAM:  (See :ogl45: Table 12.2)
- //  GL_POSITION: Val is a coordinate, set position.
- //  GL_DIFFUSE:  Val is a color, set light color.
- //  GL_CONSTANT_ATTENUATION: Parameter for computing brightness.
+ //
+ //  - GL_POSITION: 
+ //    Val is a coordinate, set position.
+ //
+ //  - GL_DIFFUSE, GL_AMBIENT, GL_SPECULAR: 
+ //    Val is a color, set light color.
+ //
+ //  - GL_CONSTANT_ATTENUATION, GL_LINEAR_ATTENUATION, GL_QUADRATIC_ATTENUATION
+ //    Fudge factors for computing lighted color.
  //  ....
  //
- // :Example: Turn light on, set location, set color.
+ // :Example: Turn lighting on, turn light 0, set location, set color.
+ //
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, color_white * opt_light_intensity );
+
+ /// Computation of Lighted Color
+ //
+ // :ogl45: Section 12.2.1.1
+ //
+ // See Section 12.2.1.1
 
 
  /// Typical Lighting Procedure
@@ -568,12 +593,8 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
-
+  ogl_helper.user_text_reprint();
   glutSwapBuffers();
 }
 
