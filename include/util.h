@@ -680,12 +680,17 @@ public:
 
   void glut_stroke_window_change()
   {
+    glGetFloatv( GL_SMOOTH_LINE_WIDTH_RANGE, glut_line_range_px );
+
     const float win_ht_lines = height / ( px_per_point * font_size_pt );
     height_mx = win_ht_lines * glut_font_height;
     const float condense_factor = 1.4; // Amount by which to squish font.
     width_mx = condense_factor * height_mx / height * width;
     const float stroke_width_pt = font_size_pt / 20.0f;
-    glut_stroke_width_px = std::max(1.0f,stroke_width_pt * px_per_point);
+    glut_stroke_width_px =
+      std::min
+      ( glut_line_range_px[1],
+        std::max(glut_line_range_px[0],stroke_width_pt * px_per_point) );
     glut_stroke_sx = 2/width_mx;
     glut_stroke_sy = 2/height_mx;
     glut_x_mx_per_px = width_mx / width;
@@ -721,6 +726,14 @@ public:
 
     const bool en_lighting = glIsEnabled(GL_LIGHTING);
     const bool en_depth = glIsEnabled(GL_DEPTH_TEST);
+    const bool en_smooth = glIsEnabled(GL_LINE_SMOOTH);
+    const bool en_tex2d = glIsEnabled(GL_TEXTURE_2D);
+    const bool en_blend = glIsEnabled(GL_BLEND);
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glBlendEquation(GL_FUNC_ADD);
+
     int shade_model;
     glGetIntegerv(GL_SHADE_MODEL,&shade_model);
     glDisable(GL_LIGHTING);
@@ -731,10 +744,7 @@ public:
     glPushMatrix();
     glLoadIdentity();
     glScalef(glut_stroke_sx,glut_stroke_sy,1);
-    glDisable(GL_LINE_SMOOTH);
-    float wid_range[2];
-    glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE,wid_range);
-    float wid_max = wid_range[1];
+    glEnable(GL_LINE_SMOOTH);
 
     for ( int i: {0,1} )
       {
@@ -744,7 +754,8 @@ public:
         if ( i == 0 )
           {
             float s_n = 2.0f;
-            float s_px = std::min(s_n * glut_stroke_width_px,wid_max);
+            float s_px =
+              std::min( s_n * glut_stroke_width_px, glut_line_range_px[1] );
             glColor3f(0,0,0);
             glLineWidth( s_px );
             glTranslatef
@@ -766,7 +777,12 @@ public:
 
     if ( en_lighting ) glEnable(GL_LIGHTING);
     if ( en_depth ) glEnable(GL_DEPTH_TEST);
+    if ( en_tex2d ) glEnable(GL_TEXTURE_2D);
+    if ( en_blend ) glEnable(GL_BLEND);
     glShadeModel(shade_model);
+    if ( en_smooth ) glEnable(GL_LINE_SMOOTH);
+    else             glDisable(GL_LINE_SMOOTH);
+
     glut_stroke_mv[7] -= glut_font_height * nlines;
 
   }
@@ -989,6 +1005,7 @@ private:
   float glut_stroke_sx, glut_stroke_sy;
   float glut_stroke_line_first, glut_stroke_line_last;
   float glut_x_mx_per_px, glut_y_mx_per_px;
+  float glut_line_range_px[2];
   float height_mx, width_mx;
 
   int frame_print_calls;
