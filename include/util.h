@@ -690,22 +690,23 @@ public:
     glut_stroke_width_px =
       std::min
       ( glut_line_range_px[1],
-        std::max(glut_line_range_px[0],stroke_width_pt * px_per_point) );
+        std::max(1.0f,stroke_width_pt * px_per_point) );
     glut_stroke_sx = 2/width_mx;
     glut_stroke_sy = 2/height_mx;
     glut_x_mx_per_px = width_mx / width;
     glut_y_mx_per_px = height_mx / height;
-  }
-
-  void glut_stroke_frame_start()
-  {
+    glut_stroke_line_first = height_mx/2-glut_font_height*1.5;
+    glut_stroke_line_last = -height_mx/2+glut_font_height*0.5;
     const float ex = glutStrokeWidth(glut_fontid,'X');
     for ( auto& e: glut_stroke_mv ) e = 0;
     for ( int i: {0,5,10,15} ) glut_stroke_mv[i] = 1;
     glut_stroke_mv[3] = ex - width_mx/2;
-    glut_stroke_mv[7] = height_mx/2-glut_font_height*1.5;
-    glut_stroke_line_first = height_mx/2-glut_font_height*1.5;
-    glut_stroke_line_last = -height_mx/2+glut_font_height*0.5;
+    glut_stroke_mv[7] = glut_stroke_line_first;
+  }
+
+  void glut_stroke_frame_start()
+  {
+    glut_stroke_goto_line(0);
   }
 
   void glut_stroke_goto_line(float line)
@@ -724,15 +725,27 @@ public:
     assert ( sp[-1] == 0 );
     if ( sp[-2] != '\n' ) nlines++;
 
+    const bool antialias = glut_stroke_width_px > 1.25;
+
     const bool en_lighting = glIsEnabled(GL_LIGHTING);
     const bool en_depth = glIsEnabled(GL_DEPTH_TEST);
     const bool en_smooth = glIsEnabled(GL_LINE_SMOOTH);
     const bool en_tex2d = glIsEnabled(GL_TEXTURE_2D);
     const bool en_blend = glIsEnabled(GL_BLEND);
     glDisable(GL_TEXTURE_2D);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    glBlendEquation(GL_FUNC_ADD);
+
+    if ( antialias )
+      {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
+        glEnable(GL_LINE_SMOOTH);
+      }
+    else
+      {
+        glDisable(GL_BLEND);
+        glDisable(GL_LINE_SMOOTH);
+      }
 
     int shade_model;
     glGetIntegerv(GL_SHADE_MODEL,&shade_model);
@@ -744,7 +757,6 @@ public:
     glPushMatrix();
     glLoadIdentity();
     glScalef(glut_stroke_sx,glut_stroke_sy,1);
-    glEnable(GL_LINE_SMOOTH);
 
     for ( int i: {0,1} )
       {
