@@ -1,7 +1,8 @@
 /// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
- /// Homework 1
+ /// Homework 1 -- SOLUTION
  //
+ //  For solution search for SOLUTION in this file.
 
  /// Instructions
  //
@@ -37,20 +38,20 @@
  /// Eye Direction, View, and Screenshot Options
  //
  //  'Home', 'End', 'Delete', 'Insert'
- //        Change the eye direction.
- //        Home rotates eye direction up, End rotates eye
- //        down, Delete rotates eye to the left, Insert rotates eye
- //        to the right.
- //        The eye direction vector is displayed in the upper left.
+ //         Change the eye direction.
+ //         Home rotates eye direction up, End rotates eye
+ //         down, Delete rotates eye to the left, Insert rotates eye
+ //         to the right.
+ //         The eye direction vector is displayed in the upper left.
  //
  //  'Ctrl' '+'  or  'Ctrl' '=',  and  'Ctrl' '-'  or  'Ctrl' '_', 
- //        Increase and decrease green text size.
- //  'F12' Write screenshot to file.
-
+ //         Increase and decrease green text size.
+ //  'F12'  Write screenshot to file.
 
  /// Simulation Options
  //  (Also see variables below.)
  //
+ //  'w'    Twirl balls around axis formed by head and tail. (Prob 2 soln).
  //  '1'    Set up scene 1.
  //  '2'    Set up scene 2.
  //  '3'    Set up scene 3.
@@ -282,7 +283,6 @@ World::render_p0()
 
       glNormal3fv(norm);
       glVertex3fv(apex);
-      if ( opt_tryout1 ) glColor3fv( color_lsu_spirit_gold );
       glVertex3fv(base);
       glVertex3fv(circ);
 
@@ -306,7 +306,8 @@ World::render_p1()
   glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
   glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_gray);
 
-  glBegin(GL_TRIANGLES);
+  /// SOLUTION:
+  //  Remove glBegin.
 
   for ( int i=0; i<3; i++ )
     {
@@ -328,18 +329,37 @@ World::render_p1()
         case 2: marker_khaki->position = mid; break;
       }
 
-      /// Homework 1 Hint: Use markers to help debug your code.
 
       glColor3fv(color_red);
 
+      /// SOLUTION
+      //
+      //  Compute vertices of triangle hole.
+
+      pNorm ma(mid,apex);
+      pNorm mb(mid,base);
+      pNorm mc(mid,circ);
+      pCoor a2 = mid + 0.5 * ma.magnitude * ma;
+      pCoor b2 = mid + 0.5 * mb.magnitude * mb;
+      pCoor c2 = mid + 0.5 * mc.magnitude * mc;
+
+      // Draw triangle strip.
+
+      glBegin(GL_TRIANGLE_STRIP);
+
       glNormal3fv(norm);
+      glVertex3fv(a2);
       glVertex3fv(apex);
+      glVertex3fv(b2);
       glVertex3fv(base);
+      glVertex3fv(c2);
       glVertex3fv(circ);
+      glVertex3fv(a2);
+      glVertex3fv(apex);
+
+      glEnd();
 
     }
-
-  glEnd();
 }
 
 void
@@ -358,9 +378,6 @@ World::render_p2()
   glColorMaterial(GL_FRONT,GL_AMBIENT_AND_DIFFUSE);
   glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE,color_gray);
 
-
-  glBegin(GL_TRIANGLES);
-
   for ( int i=0; i<3; i++ )
     {
       pCoor circ = ring[i];
@@ -376,25 +393,69 @@ World::render_p2()
       // .. and drop a marker there.
       //
       switch ( i ) {
-        case 0: marker_red->position = mid; break;
-        case 1: marker_blue->position = mid; break;
-        case 2: marker_khaki->position = mid; break;
+      case 0: marker_red->position = mid; break;
+      case 1: marker_blue->position = mid; break;
+      case 2: marker_khaki->position = mid; break;
       }
-
-      /// Homework 1 Hint: Use markers to help debug your code.
 
       glColor3fv(color_red);
 
-      glNormal3fv(norm);
-      glVertex3fv(apex);
-      glVertex3fv(base);
-      glVertex3fv(circ);
+      /// SOLUTION
 
+
+      // Compute vectors from vertices to triangle center (mid).
+      //
+      pVect am(apex,mid);
+      pVect bm(base,mid);
+      pVect cm(circ,mid);
+
+      float t_stop = 0.9;
+      float delta_t = t_stop / opt_layers;
+
+      pCoor coors[4] = {apex,base,circ,apex};
+
+      for ( int j=0; j<3; j++ )
+        {
+          pCoor p0 = coors[j];
+          pCoor q0 = coors[j+1];
+          pVect pm(p0,mid);
+          pVect qm(q0,mid);
+
+          // Use a triangle strip for the path up the volcano.
+
+          glBegin(GL_TRIANGLE_STRIP);
+          glColor3fv(color_red);
+
+          for ( int k = 0;  k <= opt_layers;  k++ )
+            {
+              float t = k * delta_t;
+              pVect up = t * opt_height * norm;
+              float frac = pow(t,opt_e);
+
+              pCoor p = p0 + up + frac * pm;
+              pCoor q = q0 + up + frac * qm;
+
+              // Compute derivative of parameteric line function,
+              // and evaluate it at each point to get vectors along surface.
+              //
+              pVect dupdt = opt_height * norm;
+              float dfracdt = t ? opt_e * pow(t,opt_e-1) : 0;
+              pVect dpdt = dupdt + dfracdt * pm;
+              pVect dqdt = dupdt + dfracdt * qm;
+
+              // Take cross product to find normal.
+              //
+              pNorm n = cross(dpdt,dqdt);
+
+              glNormal3fv(n);
+              glVertex3fv(p);
+              glVertex3fv(q);
+            }
+
+          glEnd();
+        }
     }
-
-  glEnd();
 }
-
 
 void
 World::objects_erase()
