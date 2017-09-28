@@ -365,8 +365,6 @@ World::render_p1()
 void
 World::render_p2()
 {
-  /// Put Problem 2 solution in this routine.
-
   // Make sure that this scene set the thing_1 positions.
   if ( !thing_1_apex ) return;
 
@@ -402,7 +400,6 @@ World::render_p2()
 
       /// SOLUTION
 
-
       // Compute vectors from vertices to triangle center (mid).
       //
       pVect am(apex,mid);
@@ -412,8 +409,13 @@ World::render_p2()
       float t_stop = 0.9;
       float delta_t = t_stop / opt_layers;
 
+      // Use an array to conveniently obtain adjacent vertices of triangle
+      // using loop iterator, j.
+      //
       pCoor coors[4] = {apex,base,circ,apex};
 
+      // Iterate over sides of volcano.
+      //
       for ( int j=0; j<3; j++ )
         {
           pCoor p0 = coors[j];
@@ -432,10 +434,12 @@ World::render_p2()
               pVect up = t * opt_height * norm;
               float frac = pow(t,opt_e);
 
+              // Compute points on lines going up volcano.
+              //
               pCoor p = p0 + up + frac * pm;
               pCoor q = q0 + up + frac * qm;
 
-              // Compute derivative of parameteric line function,
+              // Compute derivative of parametric line function,
               // and evaluate it at each point to get vectors along surface.
               //
               pVect dupdt = opt_height * norm;
