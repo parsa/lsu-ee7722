@@ -17,8 +17,7 @@ INCLUDE = -I $(COURSE_INCLUDE_DIR)
 
 CXX = $(CUDAPATH)/bin/nvcc
 
-SRC_FILES = gpu-get-cc.cc
-OBJ_FILES = $(SRC_FILES:.cc=.o)
+SRC_FILE = gpu-get-cc.cc
 
 .SUFFIXES: .cu .cuh
 
@@ -35,11 +34,10 @@ LIBDIR  =
 .PHONY: gpu-get-cc-force
 default: gpu-get-cc-force
 
-%.o: %.cc Makefile
-	@ $(CXX) $(CXXFLAGS) -c $*.cc
+gpu-get-cc-force:
+	@ $(CXX) $ $(CXXFLAGS) $(LINKFLAGS) $(SRC_FILE) -o gpu-get-cc \
+	 $(LIBRARIES)
 
-gpu-get-cc-force: $(OBJ_FILES)
-	@ $(CXX) $^ $(CXXFLAGS) $(LINKFLAGS) -o gpu-get-cc $(LIBRARIES)
 
 
 clean:
