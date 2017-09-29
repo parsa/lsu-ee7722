@@ -169,9 +169,11 @@
       glDisable(GL_BLEND);
  //
  //   Specify blend operator (Equation) and blend factors (BF)
+ //
       glBlendEquation( EQ );
-      glBlendFunc( SRC_BF, DST_BF );
  //   EQ -> GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_MIN, GL_MAX
+ //
+      glBlendFunc( SRC_BF, DST_BF );
  //   BF -> GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_DST_COLOR, 
 
 
@@ -193,7 +195,7 @@
  /// Stencil Test
 //
 //   Stencil test is set up using glStencilFunc.
-//   Typical test: stencil test passes if value in stencil buffer > 10.
+//   Typical test: stencil test passes if value in stencil buffer > 12.
    //
    glStencilFunc(FUNC, REF,  MASK);
    glStencilFuncSeparate(FACE, FUNC, REF,  MASK);
@@ -207,18 +209,20 @@
    //           GL_GEQUAL, GL_NOTEQUAL
    //
    //   REF  -> An integer. 
-   //           The stencil value will be compared to REF.
+   //           The stencil buffer contents will be compared to REF.
    //
    //   MASK -> An integer.
    //           Used to select which bits of the stencil value to use.
    //           For simpler uses, MASK = -1 (all 1s in binary).
    //
    //   Test passes if:  REF & MASK  FUNC  VAL & MASK
-   //
+   //   Typical:         12  & 0xff   <    34  & 0xff   (Test passes)
+   //   Typical:         12  & 0xff   <     5  & 0xff   (Test fails)
 
    // :Example::
    //
-   glStencilFunc(GL_EQUAL, 4,  5);
+   glStencilFunc(GL_EQUAL, 4,    5    );
+   //            FUNC      REF   MASK
    //
    //  Suppose VAL = 12
    //  4 & 5  ==  12 & 5
@@ -228,9 +232,10 @@
    //  4 & 5  ==  13 & 5
    //  4      ==  5         --> Test fails
 
- /// Stencil Operation
+ /// Stencil Operation, For Writing Stencil Buffer
 //
-//   The stencil operation is used to modify the value in the stencil buffer.
+//   Stencil Operation specifies conditions for writing stencil buffer ..
+//   .. and show the stencil buffer is changed.
 //
 //   Typical operation: Write the stencil buffer if the depth test passes.
 //
