@@ -86,7 +86,8 @@
  //
  //  'm'    Change method used to specify vertices.
  //  'r'    Toggle vertex re-computation on and off.
- //  'F11'  Change size of text.
+ //  'Ctrl' '+'  or  'Ctrl' '=',  and  'Ctrl' '-'  or  'Ctrl' '_', 
+ //         Increase and decrease green text size.
  //  'F12'  Write screenshot to file.
 
  /// Variables

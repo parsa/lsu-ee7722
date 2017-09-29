@@ -35,6 +35,11 @@
  //   down, Delete should rotate eye left, Insert should rotate eye
  //   right.  The eye direction vector is displayed in the upper left.
 
+ /// Text Zoom and Screenshot
+ //  'Ctrl' '+'  or  'Ctrl' '=',  and  'Ctrl' '-'  or  'Ctrl' '_', 
+ //         Increase and decrease green text size.
+ //  'F12'  Write screenshot to file.
+
  /// Simulation Options
  //  (Also see variables below.)
  //
@@ -42,7 +47,6 @@
  //  's'    Stop ball.
  //  'S'    Freeze ball. (Set velocity of all vertices to zero.)
  //  'g'    Turn gravity on and off.
- //  'F12'  Write screenshot to file.
 
  /// Variables
  //   Selected program variables can be modified using the keyboard.
