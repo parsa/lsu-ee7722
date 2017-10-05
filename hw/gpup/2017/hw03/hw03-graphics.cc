@@ -85,6 +85,9 @@ public:
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_pi_xwidth_inv;
+  // Portion of texture image to use for platform tiles.
+  float platform_trmin, platform_trmax, platform_tsmin, platform_tsmax;
+
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
   pVect platform_normal;
@@ -163,6 +166,13 @@ World::init_graphics()
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
+
+  // Part of texture that covers a platform tile.
+  platform_trmin = 0.05;
+  platform_trmax = 0.7;
+  platform_tsmin = 0;
+  platform_tsmax = 0.4;
+
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
   texid_emacs = pBuild_Texture_File("mult.png", false,-1);
 
@@ -195,10 +205,10 @@ World::platform_update()
   const float delta_x = ( platform_xmax - platform_xmin ) / tile_count * ep;
   const float zdelta = ( platform_zmax - platform_zmin ) / tile_count * ep;
 
-  const float trmin = 0.05;
-  const float trmax = 0.7;
-  const float tsmin = 0;
-  const float tsmax = 0.4;
+  const float trmin = platform_trmin;
+  const float trmax = platform_trmax;
+  const float tsmin = platform_tsmin;
+  const float tsmax = platform_tsmax;
 
   platform_normal = pVect(0,1,0);
 

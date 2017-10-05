@@ -132,6 +132,8 @@
 #include <GL/glu.h>
 #include <GL/freeglut.h>
 
+#include <Magick++.h>
+
 #include <gp/util.h>
 #include <gp/glextfuncs.h>
 #include <gp/coord.h>
@@ -321,6 +323,9 @@ My_Piece_Of_The_World::sample_tex_make()
   // be used as a substitute for the "scuffed" texture before
   // the scuffed texture part of this assignment is finished.
 
+  // Make ImageMagick symbols visible.
+  using namespace Magick;
+
   Platform_Overlay* const po = &sample_overlay;
 
   // Allocate storage for the array of texels.
@@ -330,6 +335,42 @@ My_Piece_Of_The_World::sample_tex_make()
   // Initialize the texels to black and transparent. (Alpha = 0)
   //
   memset(po->data,0,num_texels*sizeof(po->data[0]));
+
+  //
+  // Put syllabus in part of texture.
+  //
+  const string image_path = "gpup.png";
+
+  // ImageMagick C++ Binding Documentation:
+  //     http://www.imagemagick.org/Magick++/Image++.html
+  Magick::Image image(image_path);
+
+  const int img_wd = image.columns();
+  const int img_ht = image.rows();
+  if ( img_wd )
+    {
+      // Image was read, include it in texture.
+
+      const int cor_wd = img_wd * ( w.platform_trmax - w.platform_trmin );
+      const int cor_ht = img_ht * ( w.platform_tsmax - w.platform_tsmin );
+      const int cor_c = img_wd * w.platform_trmin;
+      const int cor_r = img_ht * w.platform_tsmin;
+
+      PixelPacket* pp = image.getPixels(cor_c,cor_r,cor_wd,cor_ht);
+
+      const double ixtx = cor_wd * 2.0 / twid_x;
+      const double iytz = cor_ht * 2.0 / twid_z;
+      const double sc = 1.0 / MaxRGB;
+      for ( int tx = 0;  tx < twid_x / 2;  tx++ )
+        for ( int tz = 0;  tz < twid_z / 2;  tz++ )
+          {
+            int ix = tx * ixtx;
+            int iy = tz * iytz;
+            PixelPacket p = pp[ix + iy * cor_wd];
+            po->data[tx + tz * twid_x] =
+              pColor( p.red * sc, p.green * sc, p.blue * sc );
+          }
+    }
 
   // Thickness of the strokes making up the letter ex.
   //
@@ -351,12 +392,11 @@ My_Piece_Of_The_World::sample_tex_make()
       // Write colors to texels.
       //
       for ( int i=0; i<thickness; i++ )
-        {
-          po->data[idx+i] = color_red;
-          po->data[idx+i].a = 1;
-          po->data[idx2-i] = color_red;
-          po->data[idx2-i].a = 1;
-        }
+        for ( pColor* c: { &po->data[idx+i], &po->data[idx2-i] } )
+          {
+            *c = 0.5 * ( *c + color_red );
+            c->a = 1;
+          }
     }
 
   // Create a new texture object.
