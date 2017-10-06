@@ -51,17 +51,33 @@ public:
     return data;
   }
 
+  void re_take(vector<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
+            GLenum default_target = GL_ARRAY_BUFFER)
+  {
+    const int elements_taking = stack.size();
+    const size_t sz_char = sizeof(T) * elements_taking;
+    T* const cpy = new T[elements_taking];
+    memcpy(cpy,stack.data(),sz_char);
+    re_take(cpy,elements_taking,hint,default_target);
+  }
+
   void re_take(PStack<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
+            GLenum default_target = GL_ARRAY_BUFFER)
+  {
+    const int elements_taking = stack.occ();
+    re_take(stack.take_storage(),elements_taking,hint,default_target);
+  }
+
+  void re_take(T* stack, int elements_taking, GLenum hint = GL_DYNAMIC_COPY,
             GLenum default_target = GL_ARRAY_BUFFER)
   {
     const bool first_alloc = !created;
     usage_hint = hint;
     btarget = default_target;
-    const int elements_taking = stack.occ();
     if ( !first_alloc && elements_taking != elements )
       pError_Msg("Second filling of pBuffer_Object with different # elem.");
     if ( !first_alloc ) free(data);
-    data = stack.take_storage();
+    data = stack;
     if ( !first_alloc ) return;
     elements = elements_taking;
     chars = elements * sizeof(T);
