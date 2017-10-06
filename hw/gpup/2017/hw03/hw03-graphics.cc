@@ -85,12 +85,16 @@ public:
   //
   float platform_xmin, platform_xmax, platform_zmin, platform_zmax;
   float platform_pi_xwidth_inv;
+
+  int platform_tile_count;
   // Portion of texture image to use for platform tiles.
   float platform_trmin, platform_trmax, platform_tsmin, platform_tsmax;
+  float platform_tile_sz_x, platform_tile_sz_z;
 
   pBuffer_Object<pVect> platform_tile_coords;
   pBuffer_Object<float> platform_tex_coords;
   pVect platform_normal;
+  string platform_tex_path;
   GLuint texid_syl;
   GLuint texid_emacs;
   bool opt_platform_texture;
@@ -155,25 +159,20 @@ World::init_graphics()
   ///
 
   opt_platform_texture = true;
-  opt_shadows = false; // For Homework 3 2015.
+  opt_shadows = true;
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_ball_texture = false;
   opt_tryout1 = opt_tryout2 = false;
 
-  eye_location = pCoor(24.2,11.6,-38.7);
-  eye_direction = pVect(-0.42,-0.09,0.9);
+  eye_location = pCoor(13.5,8.8,-16.5);
+  eye_direction = pVect(-0.08,-0.86,.51);
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
 
-  // Part of texture that covers a platform tile.
-  platform_trmin = 0.05;
-  platform_trmax = 0.7;
-  platform_tsmin = 0;
-  platform_tsmax = 0.4;
 
-  texid_syl = pBuild_Texture_File("gpup.png",false,255);
+  texid_syl = pBuild_Texture_File(platform_tex_path,false,255);
   texid_emacs = pBuild_Texture_File("mult.png", false,-1);
 
   opt_light_intensity = 100.2;
@@ -200,10 +199,12 @@ World::init_graphics()
 void
 World::platform_update()
 {
-  const float tile_count = 19;
+  const int tile_count = platform_tile_count = 19;
   const float ep = 1.00001;
   const float delta_x = ( platform_xmax - platform_xmin ) / tile_count * ep;
+  platform_tile_sz_x = delta_x;
   const float zdelta = ( platform_zmax - platform_zmin ) / tile_count * ep;
+  platform_tile_sz_z = zdelta;
 
   const float trmin = platform_trmin;
   const float trmax = platform_trmax;
@@ -212,11 +213,15 @@ World::platform_update()
 
   platform_normal = pVect(0,1,0);
 
-  PStack<pVect> p_tile_coords;
-  PStack<pVect> p1_tile_coords;
-  PStack<float> p_tex_coords;
+  vector<pVect> p_tile_coords;
+  vector<pVect> p1_tile_coords;
+  vector<float> p_tex_coords;
+
+  // Note: Even tiles have texture, odd tiles are mirrored.
   bool even = true;
 
+  /// Compute Platform Tile Coordinates
+  //
   for ( int i = 0; i < tile_count; i++ )
     {
       const float x0 = platform_xmin + i * delta_x;
@@ -224,20 +229,26 @@ World::platform_update()
       const float y = 0;
       for ( float z = platform_zmin; z < platform_zmax; z += zdelta )
         {
-          PStack<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
-          p_tex_coords += trmax; p_tex_coords += tsmax;
-          t_coords += pVect(x0,y,z);
-          p_tex_coords += trmax; p_tex_coords += tsmin;
-          t_coords += pVect(x0,y,z+zdelta);
-          p_tex_coords += trmin; p_tex_coords += tsmin;
-          t_coords += pVect(x1,y,z+zdelta);
-          p_tex_coords += trmin; p_tex_coords += tsmax;
-          t_coords += pVect(x1,y,z);
+          vector<pVect>& t_coords = even ? p_tile_coords : p1_tile_coords;
+          p_tex_coords.push_back( trmax );
+          p_tex_coords.push_back( tsmax );
+          t_coords.push_back( pVect(x0,y,z) );
+          p_tex_coords.push_back( trmax );
+          p_tex_coords.push_back( tsmin );
+          t_coords.push_back( pVect(x0,y,z+zdelta) );
+          p_tex_coords.push_back( trmin );
+          p_tex_coords.push_back( tsmin );
+          t_coords.push_back( pVect(x1,y,z+zdelta) );
+          p_tex_coords.push_back( trmin );
+          p_tex_coords.push_back( tsmax );
+          t_coords.push_back( pVect(x1,y,z) );
           even = !even;
         }
     }
 
-  while ( pVect* const v = p1_tile_coords.iterate() ) p_tile_coords += *v;
+  move
+    ( p1_tile_coords.begin(), p1_tile_coords.end(),
+      back_inserter(p_tile_coords) );
 
   platform_tile_coords.re_take(p_tile_coords);
   platform_tile_coords.to_gpu();

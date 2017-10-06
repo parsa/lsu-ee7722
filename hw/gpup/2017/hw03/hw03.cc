@@ -146,6 +146,9 @@
 #include <gp/util-containers.h>
 #include "shapes.h"
 
+// Make ImageMagick symbols visible.
+using namespace Magick;
+
 
 ///
 /// Main Data Structures
@@ -166,6 +169,7 @@ public:
   //
   pColor *data;
   GLuint txid;
+  float overlay_xmin, overlay_zmin;
 
   bool texture_modified;
   bool texture_object_initialized;
@@ -193,11 +197,29 @@ public:
   float scale_x_obj_to_texel;
   float scale_z_obj_to_texel;
 
-  // Minimum x- and z- object space coordinate for most recent overlay.
-  float overlay_xmin, overlay_zmin;
+  int syl_wd, syl_ht;
+  vector<PixelPacket> syl_pixels;
 
   void init();
   void sample_tex_make();
+
+  // Return platform tile coordinate in x and z components. Tile
+  // coordinates range from 0 to platform_tile_count in the x and z
+  // directions. For example, (0.1,0,3.5) indicates that the
+  // coordinate is near the left (low x) side of the first tile in the
+  // x direction and in the middle of the fourth tile in the z
+  // direction.
+  //
+  // If w component is 1 then tile shows texture (syllabus),
+  // if w component is 0 then tile is mirrored.
+  //
+  pCoor platform_obj_to_tile(pCoor obj_coord);
+
+  float opt_smear_factor;
+
+  pCoor platform_tile_to_obj(pCoor tile_coord);
+
+  pCoor overlay_obj_to_ovr(pCoor pos_obj);
 
   // Return the platform overlay that includes pos, or NULL if pos is
   // not on platform.
@@ -206,12 +228,7 @@ public:
 
   // Convert object space coordinate to texel coordinate relative
   // to overlay po.
-  pCoor po_get_lcoor(Platform_Overlay *po, pCoor pos);
-
-  // Return the texel at lpos in po.
-  pColor* po_get_texel(Platform_Overlay *po, pCoor lpos);
-
-  int po_get_tidx(pCoor lpos);
+  pCoor overlay_obj_to_tex(Platform_Overlay *po, pCoor pos);
 
   void render();
   void clean();
@@ -237,6 +254,8 @@ public:
   pColor color;
   bool contact;                 // When true, ball rendered in gray.
   float spring_constant_sum;    // Used to compute minimum mass.
+
+  vector<pColor> glop;
 
   void push(pVect amt);
   void translate(pVect amt);
@@ -292,7 +311,7 @@ My_Piece_Of_The_World::init()
 
   // Number of texels along each dimension of each overlay's texture.
   //
-  twid_x = 256; twid_z = 256;
+  twid_x = 512; twid_z = 512;
   num_texels = twid_x * twid_z;
 
   sample_tex_make();
@@ -311,6 +330,10 @@ My_Piece_Of_The_World::init()
   //
   scale_x_obj_to_texel = wid_x_inv * twid_x;
   scale_z_obj_to_texel = wid_z_inv * twid_z;
+
+  opt_smear_factor = 0.7;
+  w.variable_control.insert(opt_smear_factor,"Smear Factor");
+
 }
 
 void
@@ -322,9 +345,6 @@ My_Piece_Of_The_World::sample_tex_make()
   // loads it into a texture object.  The texture object can
   // be used as a substitute for the "scuffed" texture before
   // the scuffed texture part of this assignment is finished.
-
-  // Make ImageMagick symbols visible.
-  using namespace Magick;
 
   Platform_Overlay* const po = &sample_overlay;
 
@@ -339,11 +359,10 @@ My_Piece_Of_The_World::sample_tex_make()
   //
   // Put syllabus in part of texture.
   //
-  const string image_path = "gpup.png";
 
   // ImageMagick C++ Binding Documentation:
   //     http://www.imagemagick.org/Magick++/Image++.html
-  Magick::Image image(image_path);
+  Magick::Image image(w.platform_tex_path);
 
   const int img_wd = image.columns();
   const int img_ht = image.rows();
@@ -351,22 +370,27 @@ My_Piece_Of_The_World::sample_tex_make()
     {
       // Image was read, include it in texture.
 
-      const int cor_wd = img_wd * ( w.platform_trmax - w.platform_trmin );
-      const int cor_ht = img_ht * ( w.platform_tsmax - w.platform_tsmin );
+      syl_wd = img_wd * ( w.platform_trmax - w.platform_trmin );
+      syl_ht = img_ht * ( w.platform_tsmax - w.platform_tsmin );
       const int cor_c = img_wd * w.platform_trmin;
       const int cor_r = img_ht * w.platform_tsmin;
 
-      PixelPacket* pp = image.getPixels(cor_c,cor_r,cor_wd,cor_ht);
+      PixelPacket* pp = image.getPixels(cor_c,cor_r,syl_wd,syl_ht);
+      syl_pixels.resize(syl_wd*syl_ht);
+      for ( int c = 0;  c < syl_wd;  c++ )
+        for ( int r = 0;  r < syl_ht;  r++ )
+          syl_pixels[ syl_wd - c - 1 + ( syl_ht -r - 1 ) * syl_wd ]
+            = pp[ c + r * syl_wd ];
 
-      const double ixtx = cor_wd * 2.0 / twid_x;
-      const double iytz = cor_ht * 2.0 / twid_z;
+      const double ixtx = syl_wd * 2.0 / twid_x;
+      const double iytz = syl_ht * 2.0 / twid_z;
       const double sc = 1.0 / MaxRGB;
       for ( int tx = 0;  tx < twid_x / 2;  tx++ )
         for ( int tz = 0;  tz < twid_z / 2;  tz++ )
           {
             int ix = tx * ixtx;
             int iy = tz * iytz;
-            PixelPacket p = pp[ix + iy * cor_wd];
+            PixelPacket p = syl_pixels[ix + iy * syl_wd];
             po->data[tx + tz * twid_x] =
               pColor( p.red * sc, p.green * sc, p.blue * sc );
           }
@@ -428,39 +452,68 @@ My_Piece_Of_The_World::sample_tex_make()
      );
 }
 
-int
-My_Piece_Of_The_World::po_get_tidx(pCoor lpos)
+pCoor
+My_Piece_Of_The_World::platform_obj_to_tile(pCoor pos_obj)
 {
-  // Return an index for the texel array corresponding to texel coord lpos.
-  const int idx = int(lpos.x) + twid_x * int(lpos.z);
-  return idx;
-}
+  /// Problem 1 Solution Goes Here 
 
-pColor*
-My_Piece_Of_The_World::po_get_texel(Platform_Overlay *po, pCoor lpos)
-{
-  // Use our function to get the array index corresponding to lpos.
-  const int idx = po_get_tidx(lpos);
+  const float x = ( pos_obj.x - w.platform_xmin ) / w.platform_tile_sz_x;
+  const float z = ( pos_obj.z - w.platform_zmin ) / w.platform_tile_sz_z;
+  pCoor rv(x,0,z);
 
-  // If it's out of range return null ..
-  if ( idx < 0 || idx >= num_texels ) return NULL;
-  // .. otherwise return the texel.
-  return &po->data[ idx ];
+  // Make sure that conversion is correct by applying the inverse conversion.
+  pCoor check = platform_tile_to_obj(rv);
+  assert( fabs(pos_obj.x - check.x) < 0.0001 );
+  assert( fabs(pos_obj.z - check.z) < 0.0001 );
+
+  bool mirrored = ( int(x) + int(z) * w.platform_tile_count ) & 1;
+  rv.w = !mirrored;
+
+  return rv;
 }
 
 pCoor
-My_Piece_Of_The_World::po_get_lcoor(Platform_Overlay *po, pCoor pos)
+My_Piece_Of_The_World::platform_tile_to_obj(pCoor tile_coord)
+{
+  pCoor rv =
+    pVect(w.platform_xmin, 0, w.platform_zmin) +
+    pCoor( tile_coord.x * w.platform_tile_sz_x,
+           tile_coord.y,
+           tile_coord.z * w.platform_tile_sz_z );
+
+  return rv;
+}
+
+
+pCoor
+My_Piece_Of_The_World::overlay_obj_to_tex(Platform_Overlay *po, pCoor pos_obj)
 {
   pCoor lc;
   // Convert object space coordinates to texel coordinates.
   // Variables overlay_xmin and overlay_zmin were set when the overlay
   // was retrieved.
   //
-  lc.x = ( pos.x - overlay_xmin ) * scale_x_obj_to_texel;
-  lc.z = ( pos.z - overlay_zmin ) * scale_z_obj_to_texel;
+  lc.x = ( pos_obj.x - po->overlay_xmin ) * scale_x_obj_to_texel;
+  lc.z = ( pos_obj.z - po->overlay_zmin ) * scale_z_obj_to_texel;
   lc.y = 0;
   lc.w = 0;
   return lc;
+}
+
+pCoor
+My_Piece_Of_The_World::overlay_obj_to_ovr(pCoor pos_obj)
+{
+  // Convert object-space coordinate, pos, into an overlay space, (x,z) ..
+  // .. in which (0,0) is the lower-left overlay, etc.
+
+  pCoor pos_ovr;
+  pos_ovr.w = 1; // Will be set back to 0 if within platform.
+
+  pos_ovr.x = ( pos_obj.x - w.platform_xmin ) * wid_x_inv;
+  if ( pos_ovr.x < 0 || pos_ovr.x >= nx ) pos_ovr.w = 0;
+  pos_ovr.z = ( pos_obj.z - w.platform_zmin ) * wid_z_inv;
+  if ( pos_ovr.z < 0 || pos_ovr.z >= nz ) pos_ovr.w = 0;
+  return pos_ovr;
 }
 
 Platform_Overlay*
@@ -469,16 +522,18 @@ My_Piece_Of_The_World::po_get(pCoor pos)
   // Convert object-space coordinate, pos, into an overlay space, (x,z) ..
   // .. in which (0,0) is the lower-left overlay, etc.
 
-  const int x = ( pos.x - w.platform_xmin ) * wid_x_inv;
-  if ( x < 0 || x >= nx ) return NULL;
-  const int z = ( pos.z - w.platform_zmin ) * wid_z_inv;
-  if ( z < 0 || z >= nz ) return NULL;
-  overlay_xmin = w.platform_xmin + x * wid_x;
-  overlay_zmin = w.platform_zmin + z * wid_z;
+  pCoor pos_ovr = overlay_obj_to_ovr(pos);
+  if ( pos_ovr.w == 0 ) return NULL;
+
+  const int x = pos_ovr.x;
+  const int z = pos_ovr.z;
 
   // Retrieve the overlay in which pos lies.
   //
   Platform_Overlay* const po = &platform_overlays[x + z * nz];
+
+  po->overlay_xmin = w.platform_xmin + x * wid_x;
+  po->overlay_zmin = w.platform_zmin + z * wid_z;
 
   if ( !po->data )
     {
@@ -497,12 +552,33 @@ My_Piece_Of_The_World::po_get(pCoor pos)
       // on which the texture will be applied.
       //
       pCoor* const vertices = po->vertices;
-      vertices[0] =
-        pCoor( w.platform_xmin + x * wid_x, 0.01, w.platform_zmin + z * wid_z );
+      vertices[0] = pCoor( po->overlay_xmin, 0.01, po->overlay_zmin );
       vertices[1] = vertices[0] + pVect(wid_x,0,0);
       vertices[2] = vertices[1] + pVect(0,0,wid_z);
       vertices[3] = vertices[0] + pVect(0,0,wid_z);
       po->texture_modified = true;
+
+      /// Homework 3  Problem 2  Put Solution Below
+
+
+      // Copy sample texture.
+      // 
+      memcpy(po->data,sample_overlay.data,num_texels*sizeof(pCoor));
+      //
+      /// Please remove the memcpy when this part is solved.
+
+      // Object space coordinates of overlay lower-left (00) and
+      // upper-right (11) corners.
+      //
+      pCoor ovr_obj_00 = vertices[0];
+      pCoor ovr_obj_11 = vertices[2];
+
+      // Tile coordinates of overlay lower-left and upper-right corners.
+      //
+      pCoor tile_00 = platform_obj_to_tile(ovr_obj_00);
+      pCoor tile_11 = platform_obj_to_tile(ovr_obj_11);
+
+
     }
 
   return po;
@@ -603,8 +679,6 @@ My_Piece_Of_The_World::render()
       glEnd();
     }
 
-  // [x] Disable anything turned on at the start.
-
   glDisable(GL_ALPHA_TEST);
   glDisable(GL_BLEND);
   glDisable(GL_TEXTURE_2D);
@@ -646,7 +720,6 @@ World::init()
   chain_length = 14;
 
   opt_time_step_duration = 0.0003;
-  variable_control.insert(opt_time_step_duration,"Time Step Duration");
 
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 15000;
@@ -658,7 +731,6 @@ World::init()
   variable_control.insert(opt_gravity_accel,"Gravity");
 
   opt_air_resistance = 0.04;
-  variable_control.insert(opt_air_resistance,"Air Resistance");
 
   world_time = 0;
   time_step_count = 0;
@@ -668,11 +740,22 @@ World::init()
   ball_eye = NULL;
   opt_ride = false;
 
+  // File to use for texture on platform files. Image can
+  // be in any format that ImageMagick can handle, which is alot.
+  //
+  platform_tex_path = "code_shot.png";
+
+  // Part of texture that covers a platform tile.
+  platform_trmin = 0;
+  platform_trmax = 1;
+  platform_tsmin = 0;
+  platform_tsmax = 1;
+
   init_graphics();
 
   mp.init();
 
-  ball_setup_1();
+  ball_setup_2();
   lock_update();
 }
 
@@ -721,6 +804,20 @@ World::balls_twirl()
 {
   if ( !head_ball || !tail_ball ) return;
 
+  pCoor centroid(0,0,0);
+  if ( opt_head_lock && head_ball )
+    centroid = head_ball->position;
+  else if ( opt_tail_lock && tail_ball )
+    centroid = tail_ball->position;
+  else {
+    for ( Ball* const ball: balls ) centroid += pCoor(ball->position,1);
+    centroid.homogenize();
+  }
+  for ( Ball* const ball: balls )
+    ball->velocity += cross( pVect(centroid,ball->position), pVect(0,3,0) );
+
+  return;
+
   pNorm axis(head_ball->position, tail_ball->position);
 
   for ( Ball* const ball: balls )
@@ -755,7 +852,7 @@ World::ball_setup_1()
 {
   // Arrange and size balls to form a pendulum.
 
-  pCoor first_pos(13.4,14,-9.2);
+  pCoor first_pos(13.4,10,-9.2);
   pVect delta_pos = pVect(distance_relaxed,0,0);
 
   // Remove objects from the simulated objects lists, balls and links.
@@ -773,7 +870,7 @@ World::ball_setup_1()
       //
       ball->position = first_pos + i * delta_pos;
       ball->locked = false;
-      ball->velocity = pVect(0,0,0);
+      ball->velocity = cross(pVect(ball->position,first_pos),pVect(0,1,0));
       ball->radius = 0.3;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
@@ -899,9 +996,14 @@ World::make_truss(Truss_Info *truss_info)
 void
 World::ball_setup_2()
 {
-  pCoor first_pos(13.4,17.8,-9.2);
+  const int sides = 4;
+  const double delta_angle = 2*M_PI/sides;
+  const double rot = delta_angle / 2;
+  const float ball_radius = 0.15;
   const float spacing = distance_relaxed;
-  pVect delta_pos = pVect(spacing*0.05,-spacing,0);
+  pCoor first_pos
+    (13.4 + drand48(),0.5*spacing*cos(rot)+ball_radius,-9.2+drand48());
+  pVect delta_pos = pVect(spacing,0,0);
   pNorm loc_y = delta_pos;
   pNorm loc_x = pVect(0,0,1);
   pNorm loc_z = cross(loc_y,loc_x);
@@ -912,14 +1014,14 @@ World::ball_setup_2()
 
   Truss_Info truss_info;
 
-  truss_info.num_units = chain_length;
-  truss_info.unit_length = delta_pos;
+  const int truss_units = 5;
 
-  const int sides = 4;
+  truss_info.num_units = truss_units;
+  truss_info.unit_length = delta_pos;
 
   for ( int j=0; j<sides; j++ )
     {
-      const double angle = double(j)/sides*2*M_PI;
+      const double angle = rot + double(j)/sides*2*M_PI;
       pCoor chain_first_pos =
         first_pos
         + 0.5 * spacing * cos(angle) * loc_x
@@ -938,7 +1040,7 @@ World::ball_setup_2()
     links += new Link( head_ball, truss_info.balls[j], color_chocolate );
 
   tail_ball = balls += new Ball;
-  tail_ball->position = first_pos + chain_length * delta_pos;
+  tail_ball->position = first_pos + truss_units * delta_pos;
 
   const int bsize = truss_info.balls.size();
 
@@ -950,8 +1052,8 @@ World::ball_setup_2()
     {
       ball->locked = false;
       ball->velocity = pVect(0,0,0);
-      ball->radius = 0.15;
-      ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
+      ball->radius = ball_radius;
+      ball->mass = 10 * 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
     }
 
@@ -959,7 +1061,10 @@ World::ball_setup_2()
   links += truss_info.links;
 
   opt_tail_lock = false;
-  opt_head_lock = false;
+  opt_head_lock = true;
+
+  balls_twirl();
+
 }
 
 void
@@ -1229,18 +1334,18 @@ World::time_step_cpu(double delta_t)
 
       // Current ball location in texel coordinates.
       //
-      pCoor ball_lcor = mp.po_get_lcoor(po,ball->position);
+      pCoor ball_tex = mp.overlay_obj_to_tex(po,ball->position);
 
       // Previous location of ball in texel coordinates.
       //
-      pCoor prev_lcor = mp.po_get_lcoor(po,pos_prev);
+      pCoor prev_tex = mp.overlay_obj_to_tex(po,pos_prev);
 
       float width = mp.scale_x_obj_to_texel *
-        sqrt( ball->radius * ball->radius - pos_prev.y * pos_prev.y );
+        4 * sqrt( ball->radius * ball->radius - pos_prev.y * pos_prev.y );
 
       // Direction along scuff mark (based on sliding motion).
       //
-      pNorm skid(prev_lcor,ball_lcor);
+      pNorm skid(prev_tex,ball_tex);
 
       // Find direction along width of scuff mark.
       //
@@ -1248,25 +1353,24 @@ World::time_step_cpu(double delta_t)
 
       // Iterate over texel locations scuffed by ball.
       //
-      for ( float t = -width; t <= skid.magnitude+width; t++ )
+      for ( float t = 0; t <= skid.magnitude+width; t++ )
         for ( float u = -width; u < max(width,1.0f); u++ )
         {
-          pCoor tex_pos = prev_lcor + t * skid + u * nskid;
-          pColor* const texel = mp.po_get_texel(po,tex_pos);
+          pCoor tex_pos = prev_tex + t * skid + u * nskid;
+          const int idx = int(tex_pos.x) + mp.twid_x * int(tex_pos.z);
+          if ( idx < 0 || idx >= mp.num_texels ) continue;
 
-          // If texel is not on overlay po then just skip it.
-          //
-          if ( !texel ) continue;
+          pColor& texel = po->data[ idx ];
 
-          // Don't bother if already scuffed. If we wanted to be
-          // fancy we could add this balls color onto what is already
-          // there. But we don't want to be fancy.
-          //
-          if ( texel->a ) continue;
 
+          /// Homework 3 Problem 2 Solution Goes Here
+
+          // Note: Remove this code for the solution
           po->texture_modified = true;
-          *texel = ball->color;
-          texel->a = 0.8;
+          texel = ball->color;
+          texel.a = 0.8;
+
+
         }
 
     }
