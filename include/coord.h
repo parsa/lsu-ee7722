@@ -33,6 +33,7 @@ class pCoor {
 public:
   pCoor(){};
   pCoor(pVect v);
+  pCoor(pCoor v, float wp){ *this = v; w = wp; }
   pCoor(float x, float y):x(x),y(y),z(0),w(1){};
   pCoor(float x, float y, float z):x(x),y(y),z(z),w(1){};
   pCoor(float x, float y, float z, float w):x(x),y(y),z(z),w(w){};
@@ -397,6 +398,7 @@ public:
     g( ( ( rgb >> 8 ) & 0xff ) / 255.0 ),
     b( ( ( rgb ) & 0xff ) / 255.0 ),a(1){}
   pColor(){}
+  pColor inv() { return pColor(1-r,1-g,1-b,a); }
   const float* v() const { return &r; }
   operator const float* () const { return v(); }
   float r, g, b, a;
