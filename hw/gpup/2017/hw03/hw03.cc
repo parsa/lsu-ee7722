@@ -558,7 +558,7 @@ My_Piece_Of_The_World::po_get(pCoor pos)
       vertices[3] = vertices[0] + pVect(0,0,wid_z);
       po->texture_modified = true;
 
-      /// Homework 3  Problem 2  Put Solution Below
+      /// Homework 3  Problem 3  Put Solution Below
 
 
       // Copy sample texture.
