@@ -1365,8 +1365,9 @@ World::time_step_cpu(double delta_t)
 
           /// Homework 3 Problem 2 Solution Goes Here
 
-          // Note: Remove this code for the solution
           po->texture_modified = true;
+
+          // Note: Remove this code for the solution
           texel = ball->color;
           texel.a = 0.8;
 
