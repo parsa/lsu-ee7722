@@ -6,7 +6,7 @@
 GP_ROOT =  ../../../..
 
 .PHONY:  clean
-default: hw02
+default: hw02 hw02-sol
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
@@ -60,10 +60,12 @@ CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
 
-SRC_FILES = hw02.cc links-kernel.cu
-all := hw02
+COMMON_FILES = links-kernel.cu
+MAIN_FILES := hw02.cc hw02-sol.cc
+all := $(basename $(MAIN_FILES))
+SRC_FILES = $(MAIN_FILES) $(COMMON_FILES)
 
-hw02: $(addsuffix .o,$(basename $(SRC_FILES)))
+$(all):%: %.o $(addsuffix .o,$(basename $(COMMON_FILES)))
 
 $(BUILD_CC_FILE_PATH):
 	;
@@ -101,7 +103,7 @@ endif
 	$(CUCC) $(CUFLAGS) $(PTXASFLAGS) -cubin $*.cu -o $*.cubin && \
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
-$(all):%: %.o
+$(all):%:
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
