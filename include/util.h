@@ -543,6 +543,21 @@ public:
 };
 
 
+class pGL_Restore_Later {
+public:
+  pGL_Restore_Later(const vector<GLuint> caps)
+    {
+      for ( auto cap: caps ) settings.emplace_back( glIsEnabled(cap), cap );
+    }
+  ~pGL_Restore_Later()
+    {
+      for ( auto s: settings )
+        if ( get<0>(s) ) glEnable(get<1>(s)); else glDisable(get<1>(s));
+    }
+
+  vector<tuple<bool,GLuint> > settings;
+};
+
 class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
@@ -727,11 +742,9 @@ public:
 
     const bool antialias = glut_stroke_width_px > 1.25;
 
-    const bool en_lighting = glIsEnabled(GL_LIGHTING);
-    const bool en_depth = glIsEnabled(GL_DEPTH_TEST);
-    const bool en_smooth = glIsEnabled(GL_LINE_SMOOTH);
-    const bool en_tex2d = glIsEnabled(GL_TEXTURE_2D);
-    const bool en_blend = glIsEnabled(GL_BLEND);
+    pGL_Restore_Later restore_later
+      ({GL_LIGHTING,GL_DEPTH_TEST,GL_LINE_SMOOTH,GL_TEXTURE_2D,GL_BLEND});
+
     glDisable(GL_TEXTURE_2D);
 
     if ( antialias )
@@ -787,13 +800,7 @@ public:
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
 
-    if ( en_lighting ) glEnable(GL_LIGHTING);
-    if ( en_depth ) glEnable(GL_DEPTH_TEST);
-    if ( en_tex2d ) glEnable(GL_TEXTURE_2D);
-    if ( en_blend ) glEnable(GL_BLEND);
     glShadeModel(shade_model);
-    if ( en_smooth ) glEnable(GL_LINE_SMOOTH);
-    else             glDisable(GL_LINE_SMOOTH);
 
     glut_stroke_mv[7] -= glut_font_height * nlines;
 
