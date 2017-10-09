@@ -102,6 +102,16 @@ mat4 mv_matrix = get_mat();
 vec4 eye_sp = mv_matrix * obj_sp;  // Matrix / vector multiplication.
 
 
+/// Shader Data Access, Storage Qualifiers
+//
+//  User-defined variables need to be declared.
+//
+//  Declaration includes a storage qualifier that indicates:
+//    - Where the value is generated.
+//    - Whether it can be written.
+//    - Resources.
+
+
 
 
 
