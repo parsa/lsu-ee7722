@@ -110,8 +110,75 @@ vec4 eye_sp = mv_matrix * obj_sp;  // Matrix / vector multiplication.
 //    - Where the value is generated.
 //    - Whether it can be written.
 //    - Resources.
+//
+//
+ /// Some Qualifiers
+//
+//   - in         Shader Input
+//   - out        Shader Output
+//   - uniform    A uniform variable.
+//   - buffer     A buffer object variable.
+
+ /// Quick Examples
+//
 
 
+// Single Declarations
+
+   out vec2 my_tex_coor;
+// 111 2222 33333333333
+//
+// 1: The storage qualifier.
+//      In this case, indicating a shader output variable.
+// 2: Data Type.
+// 3: Variable names, or name in this case.
+//
+// Sample code writing to variable:
+   my_tex_coor.x = a + b;
+
+
+   in vec2 my_tex_coor;
+//
+// Sample code:
+   ypos = my_tex_coor.y;
+
+
+layout ( location = 3 ) uniform float wire_radius;
+// 111   222222222222   3333333 44444 55555555555
+//
+// 1: The layout keyword.
+// 2: Layout information.
+//      In general, info about where data is and how data arranged.
+//      In example above, indicates CPU can find data in location 3.
+// 3: Storage Qualifier. uniform in this case.
+// 4: Data type.
+// 5: Variable names. (Just one name in example.)
+
+
+ // :Def: Interface Block
+//        A group of variables that share a storage qualifier and
+//        other attributes.
+
+   in Data { int hidx; vec3 normal_o; vec4 color;} In;
+// 11 2222   33333333333333333333333333333333333   44;
+//
+// 1: Storage Qualifier
+// 2: Interface Block Name.
+// 3: Variable declarations.
+// 4: Instance name.
+//
+// Sample code:
+ float len = length(In.normal_o);
+ vec4 lcolor = generic_lighting(mvp * In.normal_o);
+
+
+layout ( binding = 7 ) buffer Helix_Coord  { vec4  helix_coord[];  };
+// 111   22222222222   333333 44444444444  5555555555555555555555555
+//
+// 1: The layout keyword.
+// 2: Layout information. In this case, an identifier used by CPU.
+// 3: Storage Qualifier.
+// 4: Interface block name.
 
 
 
