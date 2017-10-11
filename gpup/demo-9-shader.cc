@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Shaders
 
@@ -104,6 +104,8 @@ vec4 eye_sp = mv_matrix * obj_sp;  // Matrix / vector multiplication.
 
 /// Shader Data Access, Storage Qualifiers
 //
+// :ogsl45: Section 4.3
+//
 //  User-defined variables need to be declared.
 //
 //  Declaration includes a storage qualifier that indicates:
@@ -119,9 +121,15 @@ vec4 eye_sp = mv_matrix * obj_sp;  // Matrix / vector multiplication.
 //   - uniform    A uniform variable.
 //   - buffer     A buffer object variable.
 
+ /// Programmable Shader Stages (For Review)
+//
+//   Vertex
+//   Tessellation Control - Tessellation Evaluation 
+//   Geometry 
+//   Fragment
+
  /// Quick Examples
 //
-
 
 // Single Declarations
 
@@ -180,6 +188,50 @@ layout ( binding = 7 ) buffer Helix_Coord  { vec4  helix_coord[];  };
 // 3: Storage Qualifier.
 // 4: Interface block name.
 
+
+ /// Shader Inputs (in)
+//
+// :ogsl45: Section 4.3.4
+//
+//   A shader input is a variable that can be read by the shader
+//     for which it's defined.
+//
+//   Each shader stage has its own set of inputs.
+//
+//   Except for the vertex shader ..
+//   .. shader inputs for one stage ..
+//   .. must match the shader outputs of the prior stage.
+//
+//   There is a different set of values for each shader invocation.
+//
+//   It is an error to write a shader input.
+//
+//   There are pre-defined and user-defined shader inputs.
+//
+//   Vertex shader inputs get values from host commands ..
+//   .. like glColor3f for pre-defined inputs ..
+//   .. and glVertexAttrib for user-defined inputs.
+//
+//   Other stages' input values are produced by outputs of the prior stage.
+
+ /// Shader Outputs (out)
+//
+// :ogsl45: Section 4.3.6
+//
+//   A shader output is a variable that can be written by the shader
+//     for which it's defined.
+//
+//   Each shader stage has its own set of outputs.
+//
+//   Except for the fragment shader ..
+//   .. shader outputs for one stage ..
+//   .. must match the shader inputs of the next stage.
+//
+//   It is okay to read a shader output ..
+//   .. but value is undefined if shader has not yet written it.
+//
+//   There are pre-defined and user-defined shader outputs.
+//   
 
 
 #endif
