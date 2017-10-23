@@ -866,11 +866,9 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
+
+  ogl_helper.user_text_reprint();
 
   glutSwapBuffers();
 }

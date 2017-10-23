@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
  /// See demo-10-shader.cc for details.
@@ -20,7 +20,8 @@
 //
 #extension GL_EXT_geometry_shader : enable
 
-vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
+vec4 generic_lighting
+(vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing);
 
 
  /// Declare Uniform Variables
@@ -225,10 +226,14 @@ fs_main_phong()
   //
   vec4 texel = texture(tex_unit_0,tex_coord);
 
+  // Compute lighted color of fragment.
+  //
+  vec4 lighted_color =
+    generic_lighting( vertex_e, gl_Color, normalize(normal_e), gl_FrontFacing );
+
   // Multiply filtered texel color with lighted color of fragment.
   //
-  gl_FragColor =
-    texel * generic_lighting( vertex_e, gl_Color, normalize(normal_e));
+  gl_FragColor = texel * lighted_color;
 
   // Copy fragment depth unmodified.
   //
@@ -238,7 +243,7 @@ fs_main_phong()
 
 
 vec4
-generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
+generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing)
 {
   // Return lighted color of vertex_e.
   //
@@ -246,7 +251,7 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
   float dist = length(v_vtx_light);
   float d_n_vl = dot(normalize(normal_e), v_vtx_light) / dist;
-  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
+  float phase_light = max(0, front_facing ? d_n_vl : -d_n_vl );
 
   vec3 ambient_light = gl_LightSource[0].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
