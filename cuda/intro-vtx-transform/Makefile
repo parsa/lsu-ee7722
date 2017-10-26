@@ -28,6 +28,7 @@ GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
 DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
 GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+DHASH := $(shell $(GPU_GET_PATH) -dhash)
 
 # Optimization Flag (Omitted from debug builds by make rules.)
 #
@@ -76,22 +77,22 @@ $(BUILD_CC_FILE_PATH):
 # Include dependencies that were created by %.d rules.
 #
 ifneq ($(MAKECMDGOALS),clean)
--include $(SRC_FILES:=.d)
+-include $(SRC_FILES:=.$(DHASH))
 endif
 
 # Prepare file holding dependencies, to be included in this file.
 #
-%.cc.d: %.cc
+%.cc.$(DHASH): %.cc
 	@set -e; rm -f $@; \
-         $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
-         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-         rm -f $@.$$$$
+	 $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
 
-%.cu.d: %.cu
+%.cu.$(DHASH): %.cu
 	@set -e; rm -f $@; \
-         $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
-         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-         rm -f $@.$$$$
+	 $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
 
 %.o: %.cc Makefile
 	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
@@ -113,4 +114,5 @@ $(all):%: %.o
 clean:
 	$(MAKE) -f Makefile-phi clean
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
-	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]
+	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9] \
+	 *.d.[0-9][0-9][0-9][0-9][0-9][0-9] *.d.[0-9][0-9][0-9][0-9]

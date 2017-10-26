@@ -475,10 +475,11 @@ mxv_vls()
           fi4 f41 = f41x.fi4;
 
           fi4 fswap = offset ? f40 : f41;
-          fswap.i = __shfl_xor(fswap.i,1);
-          fswap.j = __shfl_xor(fswap.j,1);
-          fswap.k = __shfl_xor(fswap.k,1);
-          fswap.l = __shfl_xor(fswap.l,1);
+          const unsigned mask = ~0;
+          fswap.i = __shfl_xor_sync(mask,fswap.i,1);
+          fswap.j = __shfl_xor_sync(mask,fswap.j,1);
+          fswap.k = __shfl_xor_sync(mask,fswap.k,1);
+          fswap.l = __shfl_xor_sync(mask,fswap.l,1);
 
           fi4 v_03 = offset ? fswap : f40;
           fi4 v_47 = offset ? f41   : fswap;
