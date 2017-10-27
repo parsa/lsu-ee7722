@@ -196,6 +196,8 @@ gs_main_helix()
   vec3 delta_n10 = n0 - n10;
   vec3 delta_n11 = n0 - n11;
 
+  // Image:60em:demo-10-ill.plain.svg
+
   // Number of times to split triangle.
   int slices = 7;
   float bulge_rad = 1;
