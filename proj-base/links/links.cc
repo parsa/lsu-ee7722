@@ -1766,10 +1766,23 @@ World::time_step_cpu(double delta_t)
     {
       Link* const link = links[i];
       if ( !link->is_simulatable ) continue;
+
+      //
       // Spring Force from Neighbor Balls
       //
+
       Ball* const ball1 = link->ball1;
       Ball* const ball2 = link->ball2;
+
+      /// Notes:
+      //
+      // link->cb1
+      //   Coordinate where link touches ball1, in ball1's local space.
+      //
+      // ball1->omatrix
+      //   Ball's orientation transformation ..
+      //   .. which transforms vectors in ball1's local space to object space.
+      //
 
       // Find position and velocity of the point where the link touches
       // the surface of ball 1 ...
