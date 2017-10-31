@@ -570,82 +570,58 @@ My_Piece_Of_The_World::po_get(pCoor pos)
       memcpy(po->data,sample_overlay.data,num_texels*sizeof(pCoor));
       //
       /// Please remove the memcpy when this part is solved.
-#else
+#endif
 
       // Object space coordinates of overlay lower-left (00) and
       // upper-right (11) corners.
       //
       pCoor ovr_obj_00 = vertices[0];
-      pCoor ovr_obj_11 = vertices[2];
 
-      // Tile coordinates of overlay lower-left and upper-right corners.
+      /// SOLUTION Homework 3 Problem 3
+
+      // Factors to scale overlay texel space coordinates to object space.
       //
-      pCoor tile_00 = platform_obj_to_tile(ovr_obj_00);
-      pCoor tile_11 = platform_obj_to_tile(ovr_obj_11);
+      const float oxtx = wid_x / twid_x;
+      const float oztz = wid_z / twid_z;
 
+      // Scale ImageMagick color components to range [0,1].
+      //
+      const float sc = 1.0 / MaxRGB;
 
-      /// SOLUTION BELOW
+      // Convenience function for extracting the fractional part of a number.
+      //
+      auto fpart = [] ( float f ) { float i; return modf(f,&i); };
 
-      bool tile_00_textured = tile_00.w;
-      const bool span_x = int(tile_00.x) != int(tile_11.x);
-      const bool span_z = int(tile_00.z) != int(tile_11.z);
+      for ( int tx = 0;  tx < twid_x;  tx++ )
+        for ( int tz = 0;  tz < twid_z;  tz++ )
+          {
+            // Get object-space coordinates of this texel ..
+            //
+            pCoor coor_obj = ovr_obj_00 + pVect( tx * oxtx, 0, tz * oztz );
+            //
+            // .. and convert that to platform tile space.
+            //
+            pCoor coor_tile = platform_obj_to_tile(coor_obj);
 
-      vector<pCoor> sec_tiles_00;
-      if ( tile_00_textured )
-        {
-          sec_tiles_00.push_back(tile_00);
-          if ( span_x && span_z )
-            sec_tiles_00.emplace_back(int(tile_00.x)+1,0,int(tile_00.z)+1);
-        }
-      else
-        {
-          if ( span_x ) sec_tiles_00.emplace_back(int(tile_00.x)+1,0,tile_00.z);
-          if ( span_z ) sec_tiles_00.emplace_back(tile_00.x,0,int(tile_00.z)+1);
-        }
+            // Do nothing if this texel is over a mirror tile.
+            //
+            if ( !coor_tile.w ) continue;
 
-      for ( pCoor sec_tile_00: sec_tiles_00 )
-        {
-          pCoor sec_obj_00 = platform_tile_to_obj(sec_tile_00);
+            // From tile-space coordinate compute location in syl_pixels array
+            // and retrieve the pixel, if it's not out of range.
+            //
+            const int idx_syl =
+              int ( fpart(coor_tile.x) * syl_wd )
+              + int ( fpart(coor_tile.z) * syl_ht ) * syl_wd;
+            if ( idx_syl >= syl_wd * syl_ht ) continue;
+            PixelPacket p = syl_pixels[ idx_syl ];
 
-          pCoor sec_tile_11
-            ( min(tile_11.x,float(int(sec_tile_00.x)+1)),
-              0,
-              min(tile_11.z,float(int(sec_tile_00.z)+1)));
-
-          pCoor sec_obj_11 = platform_tile_to_obj(sec_tile_11);
-
-          pCoor sec_tex_00 = overlay_obj_to_tex(po,sec_obj_00);
-          pCoor sec_tex_11 = overlay_obj_to_tex(po,sec_obj_11);
-          const double sc = 1.0 / MaxRGB;
-
-          const int sec_img_x =
-            ( sec_tile_00.x - int(sec_tile_00.x) ) * syl_wd;
-          const int sec_img_z =
-            ( sec_tile_00.z - int(sec_tile_00.z) ) * syl_ht;
-
-          const float ixtx =
-            float(syl_wd) * wid_x / ( twid_x * w.platform_tile_sz_x );
-          const float iztz =
-            float(syl_ht) * wid_z / ( twid_z * w.platform_tile_sz_z );
-
-          for ( int tx = sec_tex_00.x;  tx < int(sec_tex_11.x); tx++ )
-            for ( int tz = sec_tex_00.z;  tz < int(sec_tex_11.z); tz++ )
-              {
-                int idx = tx + tz * twid_x;
-                int sidx = sec_img_x + ( tx - int(sec_tex_00.x) ) * ixtx
-                  + ( sec_img_z + int(( tz - int(sec_tex_00.z) ) * iztz) )
-                  * syl_wd;
-                assert( sidx >= 0 && sidx < syl_wd * syl_ht );
-                PixelPacket& p = syl_pixels[sidx];
-                assert( idx >= 0 && idx < twid_x * twid_z );
-                pColor c =
-                  po->data[idx] = pColor( p.red, p.green, p.blue ) * sc;
-                assert( c.r <= 1 && c.r >= 0 );
-                po->data[idx].a = 1;
-              }
-        }
-      /// SOLUTION ABOVE
-#endif
+            // Convert ImageMagick pixel to a pColor and write it to our
+            // texture.
+            //
+            const int idx_otex = tx + tz * twid_x;
+            po->data[idx_otex] = pColor( p.red, p.green, p.blue ) * sc;
+          }
     }
 
   return po;
