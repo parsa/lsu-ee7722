@@ -1,7 +1,10 @@
 /// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
- /// Homework 3
+ /// Homework 3 -- SOLUTION
  //
+ //  Search for SOLUTION in this file to find changes.
+ //  In git use git diff to find changes.
+
 
  /// Instructions
  //
@@ -331,7 +334,8 @@ My_Piece_Of_The_World::init()
   scale_x_obj_to_texel = wid_x_inv * twid_x;
   scale_z_obj_to_texel = wid_z_inv * twid_z;
 
-  opt_smear_factor = 0.7;
+  /// SOLUTION - Minor Change - Choose a better looking smear factor.
+  opt_smear_factor = 1.43;
   w.variable_control.insert(opt_smear_factor,"Smear Factor");
 
 }
@@ -558,14 +562,15 @@ My_Piece_Of_The_World::po_get(pCoor pos)
       vertices[3] = vertices[0] + pVect(0,0,wid_z);
       po->texture_modified = true;
 
-      /// Homework 3  Problem 3  Put Solution Below
+      /// SOLUTION: Homework 3  Problem 3 -- Initialize texture to match image tile.
 
-
+#if 0
       // Copy sample texture.
       // 
       memcpy(po->data,sample_overlay.data,num_texels*sizeof(pCoor));
       //
       /// Please remove the memcpy when this part is solved.
+#else
 
       // Object space coordinates of overlay lower-left (00) and
       // upper-right (11) corners.
@@ -579,6 +584,68 @@ My_Piece_Of_The_World::po_get(pCoor pos)
       pCoor tile_11 = platform_obj_to_tile(ovr_obj_11);
 
 
+      /// SOLUTION BELOW
+
+      bool tile_00_textured = tile_00.w;
+      const bool span_x = int(tile_00.x) != int(tile_11.x);
+      const bool span_z = int(tile_00.z) != int(tile_11.z);
+
+      vector<pCoor> sec_tiles_00;
+      if ( tile_00_textured )
+        {
+          sec_tiles_00.push_back(tile_00);
+          if ( span_x && span_z )
+            sec_tiles_00.emplace_back(int(tile_00.x)+1,0,int(tile_00.z)+1);
+        }
+      else
+        {
+          if ( span_x ) sec_tiles_00.emplace_back(int(tile_00.x)+1,0,tile_00.z);
+          if ( span_z ) sec_tiles_00.emplace_back(tile_00.x,0,int(tile_00.z)+1);
+        }
+
+      for ( pCoor sec_tile_00: sec_tiles_00 )
+        {
+          pCoor sec_obj_00 = platform_tile_to_obj(sec_tile_00);
+
+          pCoor sec_tile_11
+            ( min(tile_11.x,float(int(sec_tile_00.x)+1)),
+              0,
+              min(tile_11.z,float(int(sec_tile_00.z)+1)));
+
+          pCoor sec_obj_11 = platform_tile_to_obj(sec_tile_11);
+
+          pCoor sec_tex_00 = overlay_obj_to_tex(po,sec_obj_00);
+          pCoor sec_tex_11 = overlay_obj_to_tex(po,sec_obj_11);
+          const double sc = 1.0 / MaxRGB;
+
+          const int sec_img_x =
+            ( sec_tile_00.x - int(sec_tile_00.x) ) * syl_wd;
+          const int sec_img_z =
+            ( sec_tile_00.z - int(sec_tile_00.z) ) * syl_ht;
+
+          const float ixtx =
+            float(syl_wd) * wid_x / ( twid_x * w.platform_tile_sz_x );
+          const float iztz =
+            float(syl_ht) * wid_z / ( twid_z * w.platform_tile_sz_z );
+
+          for ( int tx = sec_tex_00.x;  tx < int(sec_tex_11.x); tx++ )
+            for ( int tz = sec_tex_00.z;  tz < int(sec_tex_11.z); tz++ )
+              {
+                int idx = tx + tz * twid_x;
+                int sidx = sec_img_x + ( tx - int(sec_tex_00.x) ) * ixtx
+                  + ( sec_img_z + int(( tz - int(sec_tex_00.z) ) * iztz) )
+                  * syl_wd;
+                assert( sidx >= 0 && sidx < syl_wd * syl_ht );
+                PixelPacket& p = syl_pixels[sidx];
+                assert( idx >= 0 && idx < twid_x * twid_z );
+                pColor c =
+                  po->data[idx] = pColor( p.red, p.green, p.blue ) * sc;
+                assert( c.r <= 1 && c.r >= 0 );
+                po->data[idx].a = 1;
+              }
+        }
+      /// SOLUTION ABOVE
+#endif
     }
 
   return po;
@@ -711,6 +778,11 @@ My_Piece_Of_The_World::clean()
       po->texture_modified = false;
       po->texture_object_initialized = false;
     }
+
+  /// SOLUTION - Remove glop from balls when clean pressed.
+  //             Note: This was not specifically requested.
+
+  for ( Ball* b: w.balls ) b->glop.clear();
 }
 
 
@@ -1353,7 +1425,7 @@ World::time_step_cpu(double delta_t)
 
       // Iterate over texel locations scuffed by ball.
       //
-      for ( float t = 0; t <= skid.magnitude+width; t++ )
+      for ( float t = 0; t <= skid.magnitude; t++ )
         for ( float u = -width; u < max(width,1.0f); u++ )
         {
           pCoor tex_pos = prev_tex + t * skid + u * nskid;
@@ -1362,15 +1434,87 @@ World::time_step_cpu(double delta_t)
 
           pColor& texel = po->data[ idx ];
 
+          /// SOLUTION -- Homework 3 Problem 2
 
-          /// Homework 3 Problem 2 Solution Goes Here
+          if ( !texel.a ) continue;
 
           po->texture_modified = true;
 
-          // Note: Remove this code for the solution
-          texel = ball->color;
-          texel.a = 0.8;
+          pColor cur_color = texel;
 
+          // Determine which element of glop array corresponds to this
+          // value of u.
+          //
+          size_t glop_idx = u < 0 ? - 2 * int(u) : 1 + 2 * int(u);
+          //
+          // Note: u is perpendicular to the direction of motion. Say,
+          // u = -width is the leftmost part of the smear, u=0 is the
+          // center, and u=width-1 is the rightmost part.
+
+          // Initialize any new glop array elements.
+          //
+          while ( ball->glop.size() <= glop_idx )
+            ball->glop.emplace_back( 0, 0, 0, 0 );
+
+          pColor& glop = ball->glop[glop_idx];
+
+          // Save the prior glop.a. Here, glop.a is the amount of ink
+          // accumulated by the ball. It's not used as an alpha
+          // channel.
+          //
+          const float glop_a = glop.a;
+
+          // Compute amount of the glop int to deposit at this location.
+          //
+          const float dropoff = glop_a/(1+glop_a);
+
+          // Compute the amount of ink that is before we arrived here.
+          // Base that on the smallest (darkest) of the three color
+          // components.
+          //
+          const float amt_ink =
+            1 - min(min(cur_color.r,cur_color.g),cur_color.b);
+
+          // Compute the amount of ink at this location that will be
+          // added to the glop.
+          //
+          const float pickup_factor = 0.7;
+          const float pickup = pickup_factor * amt_ink;
+
+          texel = ( 1 - dropoff ) * texel + dropoff * glop;
+          texel.a = 1;
+
+          // Compute the amount of ink the glop looses.
+          //
+          const float glop_dropoff = dropoff/( 2 * mp.opt_smear_factor );
+          //
+          // Note that there is no conservation of ink law being applied.
+          // That is, it's okay of glop_dropoff != dropoff.
+
+          // Compute the amount of ink on the glop after accounting for
+          // pickup and drop off.
+          //
+          const float glop_a_new = glop_a - glop_dropoff + pickup;
+
+          // Compute new glop color, taking care to re-normalize it.
+          //
+          glop =
+            glop_a_new < 0.0001 ? pColor(0.5,0.5,0.5) :
+            ( 1 / glop_a_new )
+            * ( ( glop_a - glop_dropoff ) * glop + pickup * cur_color );
+
+          glop.a = glop_a_new;
+
+          continue;
+
+          /// SOLUTION ABOVE
+
+
+          // Don't bother if already scuffed. If we wanted to be
+          // fancy we could add this balls color onto what is already
+          // there. But we don't want to be fancy.
+          //
+          if ( texel.a ) continue;
 
         }
 
