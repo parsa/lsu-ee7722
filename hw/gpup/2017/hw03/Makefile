@@ -6,7 +6,7 @@
 GP_ROOT =  ../../../..
 
 .PHONY:  clean
-default: hw03
+default: hw03 hw03-sol
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
@@ -53,9 +53,8 @@ LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags --libs)
 
 SRC_FILES = hw03.cc
-all := hw03
+all := hw03 hw03-sol
 
-hw03: $(addsuffix .o,$(basename $(SRC_FILES)))
 
 $(BUILD_CC_FILE_PATH):
 	;
