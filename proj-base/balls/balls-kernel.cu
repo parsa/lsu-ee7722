@@ -74,6 +74,10 @@ extern __shared__ float block_torque_dt[];
 /// Useful Functions and Types
 ///
 
+template <typename T1, typename T2, typename T3> __device__ T1
+clamp(T1 val, T2 min, T3 max)
+{ return val < min ? min : val > max ? max : val; }
+
 typedef float3 pCoor;
 typedef float3 pVect;
 
@@ -269,26 +273,26 @@ tile_ball_collide(CUDA_Tile_W& tile, float3 ball_pos, float radius)
   // point on tile to tact_pos and ball-center-to-tact-pos direction
   // to tact_dir.
 
-  pVect tile_to_ball = mv(tile.pt_ll,ball_pos);
+  pVect tile_to_ball = mv(tile.pt_00,ball_pos);
 
   // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile.normal);
+  const float dist = dot(tile_to_ball,tile.nz);
 
   if ( fabs(dist) > radius ) return false;
 
   // The closest point on tile plane to the ball.
-  pCoor pt_closest = ball_pos - dist * tile.normal; 
+  pCoor pt_closest = ball_pos - dist * tile.nz;
 
   // How far up the tile in the y direction the center of the ball sits
-  const float dist_ht = dot(tile.norm_up,tile_to_ball);  
+  const float loc_y = dot(tile.ny,tile_to_ball);
 
-  if ( dist_ht < -radius ) return false;
-  if ( dist_ht > tile.height + radius ) return false;
+  if ( loc_y < -radius ) return false;
+  if ( loc_y > tile.ly + radius ) return false;
 
   // How far up the tile in the x direction the center of the ball sits
-  const float dist_wd = dot(tile.norm_rt,tile_to_ball);
-  if ( dist_wd < -radius ) return false;
-  if ( dist_wd > tile.width + radius ) return false;
+  const float loc_x = dot(tile.nx,tile_to_ball);
+  if ( loc_x < -radius ) return false;
+  if ( loc_x > tile.lx + radius ) return false;
 
   // Really a maybe, but good enough for preparing proximity list.
   return true;
@@ -302,80 +306,39 @@ tile_ball_collide
   // point on tile to tact_pos and ball-center-to-tact-pos direction
   // to tact_dir.
 
-  pVect tile_to_ball = mv(tile.pt_ll,ball.position);
+  pVect tile_to_ball = mv(tile.pt_00,ball.position);
 
   // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile.normal);
+  const float dist = dot(tile_to_ball,tile.nz);
   const float radius = ball.radius;
 
   if ( fabs(dist) > radius ) return false;
 
-  // The closest point on tile plane to the ball.
-  pCoor pt_closest = ball.position - dist * tile.normal; 
-
   // How far up the tile in the y direction the center of the ball sits
-  const float dist_ht = dot(tile.norm_up,tile_to_ball);  
+  const float loc_y = dot(tile.ny,tile_to_ball);
 
-  if ( dist_ht < -radius ) return false;
-  if ( dist_ht > tile.height + radius ) return false;
+  if ( loc_y < -radius ) return false;
+  if ( loc_y > tile.ly + radius ) return false;
 
   // How far up the tile in the x direction the center of the ball sits
-  const float dist_wd = dot(tile.norm_rt,tile_to_ball);
-  if ( dist_wd < -radius ) return false;
-  if ( dist_wd > tile.width + radius ) return false;
+  const float loc_x = dot(tile.nx,tile_to_ball);
+  if ( loc_x < -radius ) return false;
+  if ( loc_x > tile.lx + radius ) return false;
 
-  // If ball touching tile surface (not including an edge or corner)
-  // then set up the pseudo ball for collision handling
-  if ( dist_ht >= 0 && dist_ht <= tile.height
-       && dist_wd >= 0 && dist_wd <= tile.width )
+  // Find closest ball local x and y coordinates that are within tile.
+  //
+  const float loc_xc = clamp(loc_x, 0, tile.lx);
+  const float loc_yc = clamp(loc_y, 0, tile.ly);
+
+  tact_pos = tile.pt_00 + loc_xc * tile.nx + loc_yc * tile.ny;
+
+  // If ball local coordinates are within tile then pseudo ball is
+  // on opposite side of tile.
+  //
+  if ( loc_x == loc_xc && loc_y == loc_yc )
     {
-      tact_pos = pt_closest;
-      tact_dir = dist > 0 ? -tile.normal : tile.normal;
+      tact_dir = dist > 0 ? -tile.nz : tile.nz;
       return true;
-    }
-
-  float3 pt_lr = tile.pt_ll + tile.width * tile.norm_rt;
-  float3 pt_ul = tile.pt_ll + tile.height * tile.norm_up;
-  float3 pt_ur = pt_lr + tile.height * tile.norm_up;
-
-  // Test whether the ball is touching a corner
-  if ( ( dist_ht < 0 || dist_ht > tile.height ) 
-       && ( dist_wd < 0 || dist_wd > tile.width) )
-    {
-      // We need to place the pseudo ball based upon the vector from
-      // ball position to the corner. First step is to figure out which
-      // corner.
-
-      if ( dist_ht < 0 && dist_wd < 0 ) 
-        {
-          tact_pos = tile.pt_ll;
-        }
-      else if ( dist_ht < 0 && dist_wd > tile.width ) 
-        {
-          tact_pos = pt_lr;
-        }
-      else if ( dist_ht > tile.height && dist_wd < 0 ) 
-        {
-          tact_pos = pt_ul;
-        }
-      else 
-        {
-          tact_pos = pt_ur;
-        }
-    }
-  else
-    {
-      // Else the ball is touching an edge
-
-      const bool tact_horiz = dist_ht < 0 || dist_ht > tile.height;
-      const pVect corner_to_tact =
-        tact_horiz ? dist_wd * tile.norm_rt : dist_ht * tile.norm_up;
-      const pCoor ref_pt =
-        tact_horiz ? ( dist_ht < 0 ? tile.pt_ll : pt_ul ) :
-        ( dist_wd < 0 ? tile.pt_ll : pt_lr );
-
-      // Find the closest edge point of the tile to the ball
-      tact_pos = ref_pt + corner_to_tact;
     }
 
   pNorm ball_to_tact_dir = mn(ball.position,tact_pos);
@@ -839,10 +802,10 @@ pass_platform_tile(CUDA_Phys_W& phys, int idx)
 
   float omega = wheel.omega[0];
 
-  const float3 pt_ll = xyz(balls_x.position[idx]);
-  const float3 norm_rt = xyz(balls_x.omega[idx]);
-  const float3 norm_up = xyz(balls_x.prev_velocity[idx]);
-  const float3 normal = xyz(balls_x.ball_props[idx]);
+  const float3 pt_00 = xyz(balls_x.position[idx]);
+  const float3 nx = xyz(balls_x.omega[idx]);
+  const float3 ny = xyz(balls_x.prev_velocity[idx]);
+  const float3 nz = xyz(balls_x.ball_props[idx]);
 
   float torque_sum = 0;
   // Assuming that all are on same warp. :-)
@@ -861,15 +824,15 @@ pass_platform_tile(CUDA_Phys_W& phys, int idx)
 
   pMatrix3x3 rot;
   pMatrix_set_rotation(rot,wheel.axis_dir,delta_theta);
-  const float3 rpt_ll = wheel.center + rot * ( pt_ll - wheel.center );
-  const float3 rnorm_rt = rot * norm_rt;
-  const float3 rnorm_up = rot * norm_up;
-  const float3 rnormal = rot * normal;
+  const float3 rpt_00 = wheel.center + rot * ( pt_00 - wheel.center );
+  const float3 rnx = rot * nx;
+  const float3 rny = rot * ny;
+  const float3 rnz = rot * nz;
 
-  set_f4(balls_x.position[idx],rpt_ll);
-  set_f4(balls_x.omega[idx], rnorm_rt);
-  set_f4(balls_x.prev_velocity[idx], rnorm_up);
-  set_f4(balls_x.ball_props[idx], rnormal);
+  set_f4(balls_x.position[idx],rpt_00);
+  set_f4(balls_x.omega[idx], rnx);
+  set_f4(balls_x.prev_velocity[idx], rny);
+  set_f4(balls_x.ball_props[idx], rnz);
   if ( idx == wheel.idx_start ) wheel.omega[0] = omega;
 }
 

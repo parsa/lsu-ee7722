@@ -890,9 +890,9 @@ World::init()
     pColor step_color(0.5,0.5,0.5);
     for ( int i=0; i<step_count; i++ )
       {
-        const pCoor step_ll = step_start + i * ( step_hor + step_ver );
-        tile_manager.new_tile(step_ll,step_hor,step_wid,step_color);
-        tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
+        const pCoor step_00 = step_start + i * ( step_hor + step_ver );
+        tile_manager.new_tile(step_00,step_hor,step_wid,step_color);
+        tile_manager.new_tile(step_00+step_hor,step_ver,step_wid,step_color);
       }
 
     variables_update();
@@ -1436,15 +1436,15 @@ World::cpu_data_to_cuda()
       else if ( tile )
         {
           float4 wht;
-          wht.x = tile->width;
-          wht.y = tile->height;
+          wht.x = tile->lx;
+          wht.y = tile->ly;
           wht.z = 0;     // Torque, initialized to zero.
           wht.w = 0;
-          vec_sets3(cuda_balls.soa.position[idx],tile->pt_ll);
+          vec_sets3(cuda_balls.soa.position[idx],tile->pt_00);
           cuda_balls.soa.velocity[idx] = wht;
-          vec_sets3(cuda_balls.soa.omega[idx],tile->norm_rt);
-          vec_sets3(cuda_balls.soa.prev_velocity[idx],tile->norm_up);
-          vec_sets3(cuda_balls.soa.ball_props[idx],tile->normal);
+          vec_sets3(cuda_balls.soa.omega[idx],tile->nx);
+          vec_sets3(cuda_balls.soa.prev_velocity[idx],tile->ny);
+          vec_sets3(cuda_balls.soa.ball_props[idx],tile->nz);
         }
       else
         {
@@ -1502,7 +1502,7 @@ World::cuda_data_to_cpu(uint which_data)
           vec_sets3(pt_ll,cuda_balls.soa.position[idx]);
           vec_sets4(norm_rt,cuda_balls.soa.omega[idx]);
           vec_sets4(norm_up,cuda_balls.soa.prev_velocity[idx]);
-          tile->set(pt_ll, tile->height * norm_up, tile->width * norm_rt);
+          tile->set(pt_ll, tile->ly * norm_up, tile->lx * norm_rt);
         }
 
       if ( !ball ) continue;
@@ -1664,10 +1664,10 @@ Wheel::spin()
   pMatrix transform = tr_restore * tr_rotate * tr_center;
   for ( Tile *tile; tiles.iterate(tile); )
     {
-      pCoor ll = transform * tile->pt_ll;
-      pVect vec_up = tr_rotate * tile->vec_up;
-      pVect vec_rt = tr_rotate * tile->vec_rt;
-      tile->set(ll,vec_up,vec_rt);
+      pCoor ll = transform * tile->pt_00;
+      pVect vec_ay = tr_rotate * tile->ay;
+      pVect vec_ax = tr_rotate * tile->ax;
+      tile->set(ll,vec_ay,vec_ax);
     }
 }
 
