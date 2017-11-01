@@ -17,6 +17,10 @@
 
 #define SQ(x) ((x)*(x))
 
+template <typename T1, typename T2, typename T3>
+T1 clamp(T1 val, T2 min, T3 max)
+{ return val < min ? min : val > max ? max : val; }
+
 class pMatrix;
 class pCoor;
 class pColor;
