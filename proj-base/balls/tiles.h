@@ -89,12 +89,11 @@ public:
   void render_shadow_volume(pCoor light_pos);
   Tile* new_tile(pCoor ll, pVect ay, pVect ax, pColor color);
   Tile* new_tile(pCoor ll, pVect ay, pVect ax);
-  Tile* iterate();
-  int occ() { return tiles.occ(); }
+  int occ() { return tiles.size(); }
 
 private:
   World* w;
-  PStack<Tile*> tiles;
+  vector<Tile*> tiles;
   Phys_List *phys_list;
   bool cuda_stale;
 };
@@ -111,24 +110,17 @@ Tile*
 Tile_Manager::new_tile(pCoor ll, pVect ay, pVect ax)
 {
   Tile* const rv = new Tile(cuda_stale,ll,ay,ax);
-  tiles += rv;
-  rv->idx = phys_list->occ();
-  phys_list->push(rv);
+  tiles.push_back( rv );
+  rv->idx = phys_list->size();
+  phys_list->push_back(rv);
   return rv;
-}
-
-Tile*
-Tile_Manager::iterate()
-{
-  Tile** const tp = tiles.iterate();
-  return tp ? *tp : NULL;
 }
 
 void
 Tile_Manager::render(bool simple)
 {
   glBegin(GL_TRIANGLES);
-  for ( PStackIterator<Tile*> tile(tiles); tile; tile++ )
+  for ( Tile* tile: tiles )
     {
       if ( !simple )
         {
@@ -151,7 +143,7 @@ void
 Tile_Manager::render_shadow_volume(pCoor light_pos)
 {
   const float height = 1000;
-  for ( PStackIterator<Tile*> tile(tiles); tile; tile++ )
+  for ( Tile* tile: tiles )
     {
       pCoor pt_ur = tile->pt_00+tile->ax+tile->ay;
       pNorm l_to_ul(light_pos,tile->pt_00 + tile->ay);
