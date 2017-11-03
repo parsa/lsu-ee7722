@@ -366,7 +366,7 @@ public:
   double theta, omega, torque_dt;
   bool cpu_data_stale, cuda_constants_stale, cuda_data_stale;
   pCUDA_Memory<float> cuda_omega;
-  PStack<Tile*> tiles;
+  vector<Tile*> tiles;
   pCoor center;
   pNorm axis_dir;
   float base_moment_of_inertia_inv, moment_of_inertia_inv;
@@ -1606,10 +1606,10 @@ Wheel::init(pCoor centerp, pVect axis, double r_inner, double blade_len)
       pCoor pt2 = center + cos(theta_2) * r_inner * x_axis
         + sin(theta_2) * r_inner * y_axis;
       pVect pt12(pt1,pt2);
-      tiles += w.tile_manager.new_tile(pt1,pt12,axis,wheel_color);
-      tiles += w.tile_manager.new_tile(pt1,pt1o,axis,wheel_color);
+      tiles.push_back( w.tile_manager.new_tile(pt1,pt12,axis,wheel_color) );
+      tiles.push_back( w.tile_manager.new_tile(pt1,pt1o,axis,wheel_color) );
     }
-  for ( Tile *tile; tiles.iterate(tile); )
+  for ( Tile *tile: tiles )
     {
       tile->read_only = false;
       tile->marker = this;
@@ -1629,9 +1629,9 @@ Wheel::to_cuda()
       wheel.moment_of_inertia_inv = moment_of_inertia_inv;
       wheel.friction_torque = friction_torque;
       Tile* const tf = tiles[0];
-      Tile* const tl = tiles.peek();
-      const int tig_check = tl->idx - tf->idx + 1;
-      ASSERTS( tig_check == tiles.occ() );
+      Tile* const tl = tiles.back();
+      const size_t tig_check = tl->idx - tf->idx + 1;
+      ASSERTS( tig_check == tiles.size() );
       wheel.idx_start = tf->idx;
       wheel.idx_stop = tl->idx + 1;
       if ( cuda_omega.elements == 0 ) cuda_omega.alloc(1);
@@ -1694,7 +1694,7 @@ Wheel::spin()
   pMatrix_Translate tr_restore(center);
   pMatrix_Rotation tr_rotate(axis_dir,delta_theta);
   pMatrix transform = tr_restore * tr_rotate * tr_center;
-  for ( Tile *tile; tiles.iterate(tile); )
+  for ( Tile *tile: tiles )
     {
       pCoor ll = transform * tile->pt_00;
       pVect vec_ay = tr_rotate * tile->ay;
