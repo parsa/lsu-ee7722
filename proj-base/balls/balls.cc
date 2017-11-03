@@ -1668,6 +1668,17 @@ Wheel::variables_update()
 }
 
 void
+Wheel::collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo)
+{
+  // Check whether tile is part of this wheel, if not return.
+  //
+  if ( tile->marker != this ) return;
+
+  pVect to_center(center,tact);
+  torque_dt += dot( axis_dir, cross(to_center,delta_mo) );
+}
+
+void
 Wheel::spin()
 {
   from_cuda();
@@ -1701,15 +1712,6 @@ Wheel::spin()
       pVect vec_ax = tr_rotate * tile->ax;
       tile->set(ll,vec_ay,vec_ax);
     }
-}
-
-void
-Wheel::collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo)
-{
-  if ( tile->marker != this ) return;
-  pVect to_center(center,tact);
-  // Formula below needs to be checked.
-  torque_dt += dot(axis_dir,cross(to_center,delta_mo));
 }
 
 
