@@ -403,7 +403,6 @@ public:
   void render_link_render_sv(){ render_link_render(true); };
 
   pShader *sp_set_2, *sp_set_2_sv;
-  GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
   double world_time_link_update;
 
   int opt_sides, opt_segments;
@@ -462,7 +461,6 @@ World::init_graphics()
   adj_t_stop = 0;
   adj_duration = 0.25;
 
-  link_bo_vtx = 0;
   opt_sides = 20;
   opt_segments = 15;
   variable_control.insert(opt_sides,"Link Sides");
