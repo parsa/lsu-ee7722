@@ -25,6 +25,7 @@ class pMatrix;
 class pCoor;
 class pColor;
 class pVect;
+class pVect4;
 inline pCoor mult_MC(pMatrix& m, pCoor c);
 inline void pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2);
 pVect cross(pCoor a, pCoor b, pCoor c);
@@ -324,6 +325,9 @@ public:
   /*  float *v() {return &x;}  */
   //  operator float*() const { return v(); }
   operator const float*() const { return &x; }
+
+  operator const pVect4 () const;
+
   float elt(int idx) const { return (&x)[idx]; }
 
   pVect mask(int8_t components) const
@@ -387,11 +391,13 @@ public:
 // Intended for situations where a power-of-2 stride element is needed.
 class pVect4 {
 public:
+  pVect4(const pVect v){ *this = v; }
+  void operator = (const pVect v) { x=v.x; y=v.y; z=v.z; }
   float x, y, z, w;
   operator const pVect () const { return pVect(x,y,z); }
-  void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
 };
 
+inline pVect::operator const pVect4 () const { return pVect4(*this); }
 
 class pColor {
 public:
