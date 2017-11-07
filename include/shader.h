@@ -305,6 +305,24 @@ private:
   bool ready;
 };
 
+class pShader_Use {
+public:
+  pShader_Use(pShader *sp)
+    :s(sp),program_prev(pobject_in_use),prev_not_this(sp->use()){}
+  ~pShader_Use()
+    {
+      if ( ! prev_not_this ) return;
+      pError_Check();
+      glUseProgram(program_prev);
+      pError_Check();
+      pobject_in_use = program_prev;
+    }
+private:
+  pShader* const s;
+  const uint program_prev;
+  const bool prev_not_this;
+};
+
 
 
 #endif
