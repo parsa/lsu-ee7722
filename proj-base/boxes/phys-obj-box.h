@@ -2,8 +2,6 @@
 //
  /// Class for Boxes
 
-// $Id:$
-
 #ifndef PHYS_OBJ_BOX_H
 #define PHYS_OBJ_BOX_H
 
@@ -99,9 +97,13 @@ public:
 class Box_Manager {
 public:
   Box_Manager(World *wp, Phys_List *pl)
-  { phys_list = NULL; cuda_stale = true;  rebuild = false; init(wp,pl); };
-  Box_Manager(){ phys_list = NULL; cuda_stale = true;  rebuild = false; };
+  { phys_list = NULL; cuda_stale = true;  rebuild = false; init(wp,pl);
+    bo_pos = 0; sp_boxes = NULL; };
+  Box_Manager(){
+    phys_list = NULL; cuda_stale = true;  rebuild = false;
+    bo_pos = 0; sp_boxes = NULL; };
   void init(World *wp, Phys_List *pl){ w = wp; phys_list = pl; }
+  void shader_setup();
   void rebuild_maybe();
   void render(bool color_events, bool simple = false);
   void render_simple();
@@ -114,6 +116,20 @@ public:
 
 private:
   World* w;
+  enum { BOB_pos = 1, BOB_quat, BOB_to_111, BOB_color, BOB_color_event,
+         BOB_tex_unit };
+  GLuint bo_pos, bo_quat, bo_to_111, bo_color, bo_color_event, bo_tex_unit;
+  bool shader_data_rebuild;
+  double render_world_time_last;
+  vector<pCoor> poss;
+  vector<pQuat> quats;
+  vector<pVect4> to_111s;
+  vector<pColor> colors;
+  vector<pColor> color_events;
+  vector<uint32_t> tex_units;
+
+  map<GLuint,int> texid_to_unit;
+  pShader *sp_boxes, *sp_boxes_sv;
   PStack<Box*> boxes;
   Phys_List *phys_list;
   bool cuda_stale;

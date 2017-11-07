@@ -67,7 +67,7 @@ World::cuda_init()
   CE(cudaEventCreate(&pairs_stop_ce));
   CE(cudaEventCreate(&platform_stop_ce));
   pairs_cumulative_count = 0;
-  platform_cumulative = pairs_cumulative = pairs_cumulative = 0;
+  platform_cumulative = pairs_cumulative = 0;
   xx_pairs_cumulative = 0;
 
   timer_id_cuda_prox = frame_timer.user_timer_per_start_define("CUDA Prox");

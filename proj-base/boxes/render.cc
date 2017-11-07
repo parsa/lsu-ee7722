@@ -106,12 +106,17 @@ World::render()
      eye_location.x, eye_location.y, eye_location.z,
      eye_direction.x, eye_direction.y, eye_direction.z);
 
+  const double time_now = time_wall_fp();
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
   ogl_helper.fbprintf
     ("Shadows: %-3s ('w')  Mirror: %-3s %d "
-     "Light location: [%5.1f, %5.1f, %5.1f]\n",
+     "Light location: [%5.1f, %5.1f, %5.1f]  Exper Shader (';'): %s\n",
      opt_shadows ? "on" : "off",
      opt_mirror ? "on" : "off", opt_mirror_method,
-     light_location.x, light_location.y, light_location.z);
+     light_location.x, light_location.y, light_location.z,
+     opt_wip_shader ? BLINK("ON","  ") : "OFF");
 
   Phys* const phys = phys_last();
   pVect z(0,0,0);
@@ -124,9 +129,6 @@ World::render()
      physs.occ() - physs_occluded, physs_occluded,
      box_manager->occ(), pos.x,pos.y,pos.z, vel.x,vel.y,vel.z, tri_count);
 
-  const double time_now = time_wall_fp();
-  const bool blink_visible = int64_t(time_now*3) & 1;
-# define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
     ("Physics: %s ('a')  Pause: %s ('p')  Debug Options: %d %d ('qQ')  "
