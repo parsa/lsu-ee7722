@@ -371,11 +371,17 @@ Box_Manager::rebuild_maybe()
 }
 
 void
-Box_Manager::render(bool color_events_on, bool simple)
+Box_Manager::render_reflected(bool color_events_on)
+{
+  render(color_events_on,false,true);
+}
+
+void
+Box_Manager::render(bool color_events_on, bool simple, bool reflect)
 {
   rebuild_maybe();
 
-  if ( w->opt_wip_shader )
+  if ( !reflect && w->opt_wip_shader )
     {
       shader_setup();
       const bool first_render = render_world_time_last != w->world_time;

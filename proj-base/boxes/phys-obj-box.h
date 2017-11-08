@@ -105,7 +105,8 @@ public:
   void init(World *wp, Phys_List *pl){ w = wp; phys_list = pl; }
   void shader_setup();
   void rebuild_maybe();
-  void render(bool color_events, bool simple = false);
+  void render(bool color_events, bool simple = false, bool reflect = false);
+  void render_reflected(bool color_events);
   void render_simple();
   void render_shadow_volume(pCoor light_pos);
   Box* new_box(pCoor pt_000, pVect to_111, pColor color);

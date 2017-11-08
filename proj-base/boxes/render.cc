@@ -296,7 +296,7 @@ World::render()
 
       balls_render(false);
       tile_manager->render();
-      box_manager->render(opt_color_events);
+      box_manager->render_reflected(opt_color_events);
 
       // Change back to fixed functionality (no user shader).
       //

@@ -192,7 +192,7 @@ World::init()
   opt_color_events = false;
   opt_debug = false;
   opt_debug2 = false;
-  opt_wip_shader = false;
+  opt_wip_shader = true;
   opt_block_color_pass = 0;
   opt_extra_cuda_info = false;  // Display CUDA tuning info.
 
