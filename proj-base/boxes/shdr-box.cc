@@ -116,6 +116,33 @@ box_get_vertices(const vec4 pos, const mat3 ori, const vec4 xyz)
 }
 
 void
+gs_main_box_simple()
+{
+  vtx_id = In[0].vtx_id;
+
+  vec4 pos = box_pos[vtx_id];
+  mat3 ori = make_rot_quat(box_ori[vtx_id]);
+  vec4 xyz = box_dim[vtx_id];
+
+  vec3 box_vs[8] = box_get_vertices(pos,ori,xyz);
+
+  for ( int axis = 0; axis < 3; axis++ )
+    for ( int f = 0; f < 2; f++ )
+      {
+        ivec3 a = box_get_ax_idx(axis,f);
+        for ( int x=0; x<2; x++ )
+          for ( int y=0; y<2; y++ )
+            {
+              int idx = ( bool(x) ? a.x : 0 )
+                + ( bool(y) ? a.y : 0 ) + ( bool(f) ? a.z : 0 );
+              vec4 vtx_o = vec4(box_vs[idx],1);
+              gl_Position = gl_ModelViewProjectionMatrix * vtx_o;
+              EmitVertex();
+            }
+        EndPrimitive();
+      }
+}
+void
 gs_main_box()
 {
   vtx_id = In[0].vtx_id;

@@ -296,6 +296,9 @@ Box_Manager::shader_setup()
       sp_boxes_sv = new pShader
         ("shdr-box.cc",
          "vs_main_box();", "gs_main_box_sv();", NULL );
+      sp_boxes_simple = new pShader
+        ("shdr-box.cc",
+         "vs_main_box();", "gs_main_box_simple();", NULL );
 
       shader_data_rebuild = true;
 
@@ -402,7 +405,7 @@ Box_Manager::render(bool color_events_on, bool simple)
       glGetBooleanv(GL_LIGHT1,&l1);
       int light_state = l0 | (l1<<1);
 
-      pShader_Use sp_use(sp_boxes);
+      pShader_Use sp_use( simple ? sp_boxes_simple : sp_boxes );
 
 #define BIND_BO(name) \
       glBindBufferBase(GL_SHADER_STORAGE_BUFFER,BOB_##name,bo_##name);

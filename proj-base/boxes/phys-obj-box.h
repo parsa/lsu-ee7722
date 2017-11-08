@@ -129,7 +129,7 @@ private:
   vector<uint32_t> tex_units;
 
   map<GLuint,int> texid_to_unit;
-  pShader *sp_boxes, *sp_boxes_sv;
+  pShader *sp_boxes, *sp_boxes_sv, *sp_boxes_simple;
   PStack<Box*> boxes;
   Phys_List *phys_list;
   bool cuda_stale;
