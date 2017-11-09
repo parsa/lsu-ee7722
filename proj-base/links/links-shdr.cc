@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
 
@@ -14,7 +14,7 @@ layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
 // Use this variable to debug your code. Press 'y' to toggle tryout.x
 // and 'Y' to toggle debug_bool.y (between true and false).
 //
-layout ( location = 3 ) uniform bvec2 tryout;
+layout ( location = 3 ) uniform bvec3 tryout;
 layout ( location = 2 ) uniform int lighting_options;
 
 
@@ -108,9 +108,10 @@ layout ( triangle_strip, max_vertices = 3 ) out;
 void
 gs_main_simple()
 {
+  const bool opt_normal_sphere = tryout.z;
   for ( int i=0; i<3; i++ )
     {
-      normal_e = In[i].normal_e;
+      normal_e = In[opt_normal_sphere?i:0].normal_e;
       vertex_e = In[i].vertex_e;
       color = In[i].color;
       gl_Position = In[i].gl_Position;

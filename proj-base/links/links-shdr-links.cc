@@ -15,7 +15,7 @@ layout ( location = 6 ) uniform ivec2 lighting_options_segs;
 // Use this variable to debug your code. Press 'y' to toggle tryout.x
 // and 'Y' to toggle debug_bool.y (between true and false).
 //
-layout ( location = 3 ) uniform bvec2 tryout;
+layout ( location = 3 ) uniform bvec3 tryout;
 
 
 layout ( location = 4 ) uniform vec2 sides_rad;
