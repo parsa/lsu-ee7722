@@ -1298,7 +1298,7 @@ World::init(int argc, char **argv)
 
 
   PSplit exe_pieces(argv[0],'/');
-  pString this_exe_name(exe_pieces.pop());
+  string this_exe_name(exe_pieces.pop());
 
   const char* const links_shader_code_path = "links-shdr-links.cc";
 
@@ -1317,7 +1317,10 @@ World::init(int argc, char **argv)
 
   /// 2017 Homework 4
 
-  const char* const hw4_shader_path = "hw04-shdr.cc";
+  string sol_name("hw04-sol");
+  const char* const hw4_shader_path =
+    this_exe_name.substr(0,sol_name.size()) == sol_name ?
+    "hw04-shdr-sol.cc" : "hw04-shdr.cc";
   sp_prob0 = new pShader
     (hw4_shader_path,
      "vs_main_p0();",

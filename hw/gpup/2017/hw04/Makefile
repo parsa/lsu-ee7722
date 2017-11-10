@@ -6,7 +6,7 @@
 GP_ROOT =  ../../../..
 
 .PHONY:  clean
-default: hw04
+default: hw04 hw04-sol
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
@@ -65,6 +65,10 @@ MAIN_FILES := hw04.cc
 all := $(basename $(MAIN_FILES))
 SRC_FILES = $(MAIN_FILES) $(COMMON_FILES)
 
+hw04-sol: hw04
+	ln hw04 hw04-sol
+	ln hw04-debug hw04-sol-debug
+
 $(all):%: %.o $(addsuffix .o,$(basename $(COMMON_FILES)))
 
 $(BUILD_CC_FILE_PATH):
@@ -110,4 +114,4 @@ $(all):%:
 clean:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin \
 	$(all) $(all:=-debug) *.s *.d *.d.[0-9][0-9][0-9][0-9][0-9] \
-	*.d.[0-9][0-9][0-9][0-9]
+	*.d.[0-9][0-9][0-9][0-9] $(all:=-sol) $(all:=-sol-debug)
