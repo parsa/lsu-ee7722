@@ -566,6 +566,7 @@ public:
 
   pCoor light_location;
   float opt_light_intensity;
+  bool opt_light1; // If true, use a second light.
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_Drip, MI_Wheel, MI_COUNT } 
     opt_move_item;
   bool opt_pause;
@@ -833,6 +834,7 @@ World::init()
   tsmax = 0;
   tsmin = 0.4;
 
+  opt_light1 = true;
   opt_light_intensity = 100.2;
   light_location = pCoor(0,25.8,-14.3);
 
@@ -3739,10 +3741,11 @@ World::render()
 
   ogl_helper.fbprintf
     ("Shadows: %-3s ('w')  Mirror: %-3s %d "
-     "Light location: [%5.1f, %5.1f, %5.1f]\n",
-     opt_shadows ? "on" : "off",
-     opt_mirror ? "on" : "off", opt_mirror_method,
-     light_location.x, light_location.y, light_location.z);
+     "Light 0 location: [%5.1f, %5.1f, %5.1f]  Light 1 ('L'): %s\n",
+     opt_shadows ? "ON" : "OFF",
+     opt_mirror ? "ON" : "OFF", opt_mirror_method,
+     light_location.x, light_location.y, light_location.z,
+     opt_light1 ? "ON" : "OFF");
 
   Ball& ball = *ball_first();
   ogl_helper.fbprintf
@@ -3939,17 +3942,17 @@ World::render()
       // Second pass, add on light0.
       //
 
-      // Turn off ambient light, turn on light 0.
-      //
-      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
-      glEnable(GL_LIGHT0);
-
       // Write stencil with shadow locations based on shadow volumes
       // cast by light0 (light_location).  Shadowed locations will
       // have a positive stencil value.
       //
       glClear(GL_STENCIL_BUFFER_BIT);
       render_shadow_volumes(light_location);
+
+      // Turn off ambient light, turn on light 0.
+      //
+      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
+      glEnable(GL_LIGHT0);
 
       // Use stencil test to prevent writes to shaded areas.
       //
@@ -3966,20 +3969,23 @@ World::render()
       //
       render_objects();
 
-      //
-      // Third pass, add on light1.
-      //
+      if ( opt_light1 )
+        {
+          //
+          // Third pass, add on light1.
+          //
 
-      glDisable(GL_LIGHT0);
-      glEnable(GL_LIGHT1);
+          glClear(GL_STENCIL_BUFFER_BIT);
+          render_shadow_volumes(light1_location);
 
-      glClear(GL_STENCIL_BUFFER_BIT);
-      render_shadow_volumes(light1_location);
+          glDisable(GL_LIGHT0);
+          glEnable(GL_LIGHT1);
 
-      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-      glStencilFunc(GL_EQUAL,0,-1); // ref, mask
+          glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+          glStencilFunc(GL_EQUAL,0,-1); // ref, mask
 
-      render_objects();
+          render_objects();
+        }
     }
 
   // Maybe render platform normals.
@@ -4050,7 +4056,8 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'i': opt_info = true; break;
-  case 'l': case 'L': opt_move_item = MI_Light; break;
+  case 'l': opt_move_item = MI_Light; break;
+  case 'L': opt_light1 = !opt_light1; break;
   case 'm': opt_mirror = !opt_mirror; break;
   case 'M': opt_mirror_method++;
     if ( opt_mirror_method == 4 ) opt_mirror_method = 0;

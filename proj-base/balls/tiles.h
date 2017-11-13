@@ -125,7 +125,9 @@ Tile_Manager::render(bool simple)
       if ( !simple )
         {
           glColor3fv(tile->color);
-          glNormal3fv(tile->nz);}
+          glNormal3fv(tile->nz);
+        }
+
       glVertex3fv(tile->pt_00 + tile->ay);
       glVertex3fv(tile->pt_00);
       glVertex3fv(tile->pt_00 + tile->ax);
@@ -145,14 +147,15 @@ Tile_Manager::render_shadow_volume(pCoor light_pos)
   const float height = 1000;
   for ( Tile* tile: tiles )
     {
-      pCoor pt_ur = tile->pt_00+tile->ax+tile->ay;
-      pNorm l_to_ul(light_pos,tile->pt_00 + tile->ay);
-      pCoor ul_2 = light_pos + height * l_to_ul;
-      pCoor ll_2 = light_pos + height * pNorm(light_pos,tile->pt_00);
-      pCoor lr_2 = light_pos + height
-        * pNorm(light_pos,tile->pt_00 + tile->ax);
-      pCoor ur_2 = light_pos + height * pNorm(light_pos,pt_ur);
-      const bool facing_light = dot(tile->nz,l_to_ul) < 0;
+      pCoor pt_11 = tile->pt_00+tile->ax+tile->ay;
+      pCoor pt_10 = tile->pt_00+tile->ax;
+      pCoor pt_01 = tile->pt_00+tile->ay;
+      pNorm l_to_01(light_pos,pt_01);
+      pCoor pt_01_2 = light_pos + height * l_to_01;
+      pCoor pt_00_2 = light_pos + height * pNorm(light_pos,tile->pt_00);
+      pCoor pt_10_2 = light_pos + height * pNorm(light_pos,pt_10);
+      pCoor pt_11_2 = light_pos + height * pNorm(light_pos,pt_11);
+      const bool facing_light = dot(tile->nz,l_to_01) < 0;
 
       if ( facing_light )
         glFrontFace(GL_CW);
@@ -161,15 +164,15 @@ Tile_Manager::render_shadow_volume(pCoor light_pos)
 
       glBegin(GL_QUAD_STRIP);
       glVertex3fv(tile->pt_00);
-      glVertex3fv(ll_2);
-      glVertex3fv(tile->pt_00+tile->ax);
-      glVertex3fv(lr_2);
-      glVertex3fv(pt_ur);
-      glVertex3fv(ur_2);
-      glVertex3fv(tile->pt_00+tile->ay);
-      glVertex3fv(ul_2);
+      glVertex3fv(pt_00_2);
+      glVertex3fv(pt_10);
+      glVertex3fv(pt_10_2);
+      glVertex3fv(pt_11);
+      glVertex3fv(pt_11_2);
+      glVertex3fv(pt_01);
+      glVertex3fv(pt_01_2);
       glVertex3fv(tile->pt_00);
-      glVertex3fv(ll_2);
+      glVertex3fv(pt_00_2);
       glEnd();
     }
   glFrontFace(GL_CCW);
