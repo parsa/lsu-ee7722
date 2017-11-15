@@ -351,7 +351,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   shadow_volume_points_bo.bind();
   glVertexPointer(3,GL_FLOAT,sizeof(shadow_volume_points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
-  glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
+  glDrawArrays(GL_TRIANGLE_STRIP,0,shadow_volume_points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
 }
@@ -375,7 +375,7 @@ Sphere::render_bunch_render_sv()
   glVertexPointer(3,GL_FLOAT,sizeof(shadow_volume_points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArraysInstanced
-    (GL_QUAD_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
+    (GL_TRIANGLE_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
 
   glDisableClientState(GL_VERTEX_ARRAY);
 }
@@ -404,7 +404,7 @@ public:
     glTranslatef(base.x,base.y,base.z);
     glRotatef(rot_angle * 180.0 / M_PI,rn.x,rn.y,rn.z);
     glScalef(radius,radius,to_height);
-    glBegin(GL_QUAD_STRIP);
+    glBegin(GL_TRIANGLE_STRIP);
     for ( int i=0; i<=sides; i++ )
       {
         const double theta = delta_theta * i;

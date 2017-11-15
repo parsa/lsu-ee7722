@@ -34,7 +34,7 @@ public:
     read_only = true;
     set(ll,ay,ax);
   }
-  ~Tile(){ ASSERTS( false ); }
+  ~Tile(){ };
 
   void set(pCoor ll, pVect ayp, pVect axp)
   {
@@ -84,6 +84,7 @@ class Tile_Manager {
 public:
   Tile_Manager(){ phys_list = NULL; cuda_stale = true; };
   void init(Phys_List *pl){ phys_list = pl; }
+  void clear(){ tiles.clear(); }
   void render(bool simple = false);
   void render_simple();
   void render_shadow_volume(pCoor light_pos);
@@ -162,7 +163,7 @@ Tile_Manager::render_shadow_volume(pCoor light_pos)
       else
         glFrontFace(GL_CCW);
 
-      glBegin(GL_QUAD_STRIP);
+      glBegin(GL_TRIANGLE_STRIP);
       glVertex3fv(tile->pt_00);
       glVertex3fv(pt_00_2);
       glVertex3fv(pt_10);
