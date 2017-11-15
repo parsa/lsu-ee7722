@@ -162,7 +162,7 @@ Tile_Manager::render_shadow_volume(pCoor light_pos)
       else
         glFrontFace(GL_CCW);
 
-      glBegin(GL_QUAD_STRIP);
+      glBegin(GL_TRIANGLE_STRIP);
       glVertex3fv(tile->pt_00);
       glVertex3fv(pt_00_2);
       glVertex3fv(pt_10);

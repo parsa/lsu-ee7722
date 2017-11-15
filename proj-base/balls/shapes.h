@@ -295,11 +295,11 @@ Sphere::shadow_volume_init(int pieces)
 {
   const double delta_theta = 2 * M_PI / pieces;
   const float height = 100;
-  PStack<pVect> coords;
-  pVect norm1(1,0,0);
-  pVect binorm1(0,1,0);
-  pVect norm2(height,0,0);
-  pVect binorm2(0,height,0);
+  vector<pVect> coords;
+  pVect ax1(1,0,0);
+  pVect ay1(0,1,0);
+  pVect ax2(height,0,0);
+  pVect ay2(0,height,0);
   const pVect center1(0,0,1);
   const pVect center2(0,0,height);
 
@@ -308,12 +308,12 @@ Sphere::shadow_volume_init(int pieces)
       const double theta = i * delta_theta;
       const float co = cos(theta);
       const float si = sin(theta);
-      pVect c1 = center1 + co * norm1 + si * binorm1;
-      pVect c2 = center2 + co * norm2 + si * binorm2;
-      coords += c1;
-      coords += c2;
+      pVect c1 = center1 + co * ax1 + si * ay1;
+      pVect c2 = center2 + co * ax2 + si * ay2;
+      coords.push_back( c1 );
+      coords.push_back( c2 );
     }
-  shadow_volume_points_bo.take(coords,GL_STATIC_DRAW);
+  shadow_volume_points_bo.re_take(coords,GL_STATIC_DRAW);
   shadow_volume_points_bo.to_gpu();
 }
 
