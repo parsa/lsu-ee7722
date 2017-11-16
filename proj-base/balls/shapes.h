@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Spring 2016), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Spring 2017), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -61,7 +61,6 @@ public:
   pMatrix rotation_matrix;
   bool default_orientation;
   bool opt_render_flat;
-  int* tri_count; // Cumulative count of triangles rendered. 
 };
 
 void
@@ -77,7 +76,6 @@ Sphere::init(int slicesp)
   axis = pVect(0,1,0);
   angle = 0;
   radius = 2;
-  tri_count = NULL;
   opt_render_flat = false;
   default_orientation = true;
   color = pColor(0xf9b237); // LSU Spirit Gold
@@ -201,7 +199,6 @@ void
 Sphere::render()
 {
   if ( opt_render_flat ) { render_flat(); return; }
-  if ( tri_count ) *tri_count += points_bo.elements;
 
   if ( bunch_rendering )
     {
@@ -268,7 +265,6 @@ Sphere::render_flat()
   glEnd();
 
   glPopMatrix();
-  if ( tri_count ) *tri_count += points_bo.elements;
 }
 
 void
@@ -287,7 +283,6 @@ Sphere::render_simple(float radiusp, pVect position)
   glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
-  if ( tri_count ) *tri_count += points_bo.elements;
 }
 
 void
@@ -295,11 +290,11 @@ Sphere::shadow_volume_init(int pieces)
 {
   const double delta_theta = 2 * M_PI / pieces;
   const float height = 100;
-  vector<pVect> coords;
-  pVect ax1(1,0,0);
-  pVect ay1(0,1,0);
-  pVect ax2(height,0,0);
-  pVect ay2(0,height,0);
+  PStack<pVect> coords;
+  pVect norm1(1,0,0);
+  pVect binorm1(0,1,0);
+  pVect norm2(height,0,0);
+  pVect binorm2(0,height,0);
   const pVect center1(0,0,1);
   const pVect center2(0,0,height);
 
@@ -308,12 +303,12 @@ Sphere::shadow_volume_init(int pieces)
       const double theta = i * delta_theta;
       const float co = cos(theta);
       const float si = sin(theta);
-      pVect c1 = center1 + co * ax1 + si * ay1;
-      pVect c2 = center2 + co * ax2 + si * ay2;
-      coords.push_back( c1 );
-      coords.push_back( c2 );
+      pVect c1 = center1 + co * norm1 + si * binorm1;
+      pVect c2 = center2 + co * norm2 + si * binorm2;
+      coords += c1;
+      coords += c2;
     }
-  shadow_volume_points_bo.re_take(coords,GL_STATIC_DRAW);
+  shadow_volume_points_bo.take(coords,GL_STATIC_DRAW);
   shadow_volume_points_bo.to_gpu();
 }
 
@@ -351,7 +346,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   shadow_volume_points_bo.bind();
   glVertexPointer(3,GL_FLOAT,sizeof(shadow_volume_points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
-  glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
+  glDrawArrays(GL_TRIANGLE_STRIP,0,shadow_volume_points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
 }
@@ -375,7 +370,7 @@ Sphere::render_bunch_render_sv()
   glVertexPointer(3,GL_FLOAT,sizeof(shadow_volume_points_bo[0]),0);
   glEnableClientState(GL_VERTEX_ARRAY);
   glDrawArraysInstanced
-    (GL_QUAD_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
+    (GL_TRIANGLE_STRIP,0,shadow_volume_points_bo.elements, sphere_rots.size());
 
   glDisableClientState(GL_VERTEX_ARRAY);
 }
@@ -404,7 +399,7 @@ public:
     glTranslatef(base.x,base.y,base.z);
     glRotatef(rot_angle * 180.0 / M_PI,rn.x,rn.y,rn.z);
     glScalef(radius,radius,to_height);
-    glBegin(GL_QUAD_STRIP);
+    glBegin(GL_TRIANGLE_STRIP);
     for ( int i=0; i<=sides; i++ )
       {
         const double theta = delta_theta * i;
