@@ -96,5 +96,5 @@ balls: $(addsuffix .o,$(basename $(SRC_FILES)))
 
 clean:
 	/bin/rm -f build-cc *.s *.o *~ *.sass *.cubin *.ptx \
-	*.d *.d.[0-9][0-9][0-9][0-9] \
+	*.d *.d.[0-9][0-9][0-9][0-9] *.d.[0-9][0-9][0-9][0-9][0-9] \
 	balls balls-debug
