@@ -21,10 +21,10 @@
 ///  Keyboard Commands
  //
  /// Object (Eye, Light, Ball) Location or Push
- //   Arrows, Page Up, Page Down
+ //   Arrows (←,→,↑,↓) Page Up, Page Down
  //        Move object or push ball, depending on mode.
- //        With shift key pressed, motion is 5x faster.
- //        With control key pressed, motion is 5x slower.
+ //        Shift + KEY: motion is 5x faster.
+ //        Ctrl + KEY : motion is 5x slower.
  //   'e': Move eye.
  //   'l': Move light.
  //   'b': Move head (first) ball. (Change position but not velocity.)
@@ -46,6 +46,7 @@
  //
  //  'p'    Pause simulation. (Press again to resume.)
  //  ' '    (Space bar.) Advance simulation by 1/30 second.
+ //  'S- '  (Shift Space bar.) Advance simulation by one time step.
 
  /// Performance Tuning, Graphics Effects, and Debugging Options
  //
