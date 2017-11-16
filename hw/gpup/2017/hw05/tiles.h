@@ -82,7 +82,7 @@ public:
 
 class Tile_Manager {
 public:
-  Tile_Manager(){ phys_list = NULL; cuda_stale = true; };
+  Tile_Manager(World *wp):w(wp){ phys_list = NULL; cuda_stale = true; };
   void init(Phys_List *pl){ phys_list = pl; }
   void clear(){ tiles.clear(); }
   void render(bool simple = false);
@@ -93,7 +93,7 @@ public:
   int occ() { return tiles.size(); }
 
 private:
-  World* w;
+  World* const w;
   vector<Tile*> tiles;
   Phys_List *phys_list;
   bool cuda_stale;
@@ -117,27 +117,6 @@ Tile_Manager::new_tile(pCoor ll, pVect ay, pVect ax)
   return rv;
 }
 
-void
-Tile_Manager::render(bool simple)
-{
-  glBegin(GL_TRIANGLES);
-  for ( Tile* tile: tiles )
-    {
-      if ( !simple )
-        {
-          glColor3fv(tile->color);
-          glNormal3fv(tile->nz);
-        }
-
-      glVertex3fv(tile->pt_00 + tile->ay);
-      glVertex3fv(tile->pt_00);
-      glVertex3fv(tile->pt_00 + tile->ax);
-      glVertex3fv(tile->pt_00 + tile->ax);
-      glVertex3fv(tile->pt_00+tile->ax+tile->ay);
-      glVertex3fv(tile->pt_00 + tile->ay);
-    }
-  glEnd();
-}
 
 void
 Tile_Manager::render_simple(){ render(true); }

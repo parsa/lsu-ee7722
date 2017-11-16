@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Spring 2016), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Spring 2017), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -61,7 +61,6 @@ public:
   pMatrix rotation_matrix;
   bool default_orientation;
   bool opt_render_flat;
-  int* tri_count; // Cumulative count of triangles rendered. 
 };
 
 void
@@ -77,7 +76,6 @@ Sphere::init(int slicesp)
   axis = pVect(0,1,0);
   angle = 0;
   radius = 2;
-  tri_count = NULL;
   opt_render_flat = false;
   default_orientation = true;
   color = pColor(0xf9b237); // LSU Spirit Gold
@@ -201,7 +199,6 @@ void
 Sphere::render()
 {
   if ( opt_render_flat ) { render_flat(); return; }
-  if ( tri_count ) *tri_count += points_bo.elements;
 
   if ( bunch_rendering )
     {
@@ -268,7 +265,6 @@ Sphere::render_flat()
   glEnd();
 
   glPopMatrix();
-  if ( tri_count ) *tri_count += points_bo.elements;
 }
 
 void
@@ -287,7 +283,6 @@ Sphere::render_simple(float radiusp, pVect position)
   glDrawArrays(GL_TRIANGLE_STRIP,0,points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
-  if ( tri_count ) *tri_count += points_bo.elements;
 }
 
 void
