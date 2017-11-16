@@ -624,6 +624,7 @@ public:
   pShader *s_hw05_tiles_0;
   pShader *s_hw05_tiles_1, *s_hw05_tiles_2, *s_hw05_tiles_sv;
   uint opt_shader;
+  void render_tiles(bool simple);
 
   int light_state_get()
     {
@@ -1390,6 +1391,7 @@ World::cpu_data_to_cuda()
 
   ASSERTS( ( DL_ALL & ( data_location | ( data_location >> 4 ) ) ) == DL_ALL );
 
+  TO_DEVF(world_time);
   if ( wheel ) wheel->to_cuda();
 
   const int cnt = physs.size();
@@ -1450,7 +1452,9 @@ World::cpu_data_to_cuda()
           cuda_balls.soa.velocity[idx] = wht;
           vec_sets3(cuda_balls.soa.omega[idx],tile->nx);
           vec_sets3(cuda_balls.soa.prev_velocity[idx],tile->ny);
-          vec_sets3(cuda_balls.soa.ball_props[idx],tile->nz);
+          float4 tpos_time = m_float4(tile->tact_pos);
+          tpos_time.w = tile->tact_time;
+          cuda_balls.soa.ball_props[idx] = tpos_time;
         }
       else
         {
@@ -1499,6 +1503,13 @@ World::cuda_data_to_cpu(uint which_data)
           phys->contact_count = tact_counts.y;
           phys->collision |= phys->contact_count;
           phys->debug_pair_calls = tact_counts.z;
+        }
+
+      if ( tile && !tile->marker )
+        {
+          pCoor tact_pos_time = m_pCoor(cuda_balls.soa.ball_props[idx]);
+          tile->tact_time = tact_pos_time.w;
+          tile->tact_pos = tact_pos_time;
         }
 
       if ( tile && tile->marker && ( mask & DL_PO_CPU ) )
@@ -2348,6 +2359,8 @@ World::time_step_cpu()
           pVect vbefore = ball->velocity;
           penetration_balls_resolve(ball,pball,false);
           pVect delta_mo = ball->mass * ( ball->velocity - vbefore );
+          tile->tact_pos = tact_pos;
+          tile->tact_time = world_time;
           if ( wheel ) wheel->collect_tile_force(tile,tact_pos,delta_mo);
         }
     }
@@ -3707,23 +3720,32 @@ World::render_objects()
   glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
+
+void Tile_Manager::render(bool simple) { w->render_tiles(simple);}
+
+
 void
-Tile_Manager::render(bool simple)
+World::render_tiles(bool simple)
 {
-  switch ( w->opt_shader ){
+  // Homework 5 (2017)
+
+  vector<Tile*>& tiles = tile_manager.tiles_get();
+
+  switch ( opt_shader ){
   case 0:
     {
-      pShader_Use use(w->s_hw05_tiles_0);
+      pShader_Use use(s_hw05_tiles_0);
       // Initialize a uniform used by the lighting routine.
-      glUniform2i(1, w->opt_debug, w->opt_debug2);
-      glUniform1i(2, w->light_state_get());
+      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform1i(2, light_state_get());
 
       glBegin(GL_TRIANGLES);
       for ( Tile* tile: tiles )
         {
+          double contact_age = world_time - tile->tact_time;
           if ( !simple )
             {
-              glColor3fv(tile->color);
+              glColor3fv(contact_age < 10 ? color_red : tile->color);
               glNormal3fv(tile->nz);
             }
 
@@ -3738,9 +3760,8 @@ Tile_Manager::render(bool simple)
     }
     break;
   case 1:
-  case 2:
     {
-      pShader_Use use(w->s_hw05_tiles_1);
+      pShader_Use use(s_hw05_tiles_1);
 
       glBegin(GL_TRIANGLES);
       for ( Tile* tile: tiles )
@@ -3753,14 +3774,14 @@ Tile_Manager::render(bool simple)
       glEnd();
     }
     break;
-#if 0
   case 2:
     {
-      //  pShader_Use use(s_hw05_tiles_2);
+      pShader_Use use(s_hw05_tiles_2);
 
     }
     break;
-#endif
+  default:
+    assert( false );
   }
 }
 
@@ -4270,9 +4291,7 @@ World::cb_keyboard()
     if ( opt_mirror_method == 4 ) opt_mirror_method = 0;
     break;
   case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
-  case 'p': case 'P': opt_pause = !opt_pause;
-    if ( !opt_pause ) world_time = time_wall_fp();
-    break;
+  case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': balls_stop(); break;
   case 'S': balls_rot_stop(); break;
   case 'T': benchmark_setup(1); break;

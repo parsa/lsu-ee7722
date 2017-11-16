@@ -45,14 +45,16 @@ struct CUDA_Ball_W { // W is for work.
   float3 omega;
   float3 prev_velocity;
   float radius, mass_inv;
-  float pad;
+  float pad, pad2;
 };
 
 struct CUDA_Tile_W {
-  float3 pt_00;
+  float3 pt_00; // pos
   float lx, ly;
-  float torque;
-  float3 nx, ny, nz;
+  float torque; // vel
+  float3 nx, ny; // omega, prev vel
+  float3 tact_pos; // scalars.
+  float tact_time;
 };
 
 struct CUDA_Phys_W { // W is for work.

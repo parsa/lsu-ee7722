@@ -38,6 +38,7 @@ public:
 
   void set(pCoor ll, pVect ayp, pVect axp)
   {
+    tact_time = -1000;
     ay = ayp;
     ax = axp;
     pt_00 = ll;
@@ -78,6 +79,13 @@ public:
   pColor color;
   void *marker;
   Ball *ball_tested;
+
+  // Homework 5
+  //
+  pCoor tact_pos;
+  float tact_time;
+
+
 };
 
 class Tile_Manager {
@@ -91,6 +99,7 @@ public:
   Tile* new_tile(pCoor ll, pVect ay, pVect ax, pColor color);
   Tile* new_tile(pCoor ll, pVect ay, pVect ax);
   int occ() { return tiles.size(); }
+  vector<Tile*>& tiles_get() { return tiles; }
 
 private:
   World* const w;

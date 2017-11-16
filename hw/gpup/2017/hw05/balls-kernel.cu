@@ -2,8 +2,6 @@
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
-// $Id:$
-
 /// Purpose
 //
 //   Demonstrate Several Graphical and Simulation Techniques.
@@ -63,7 +61,7 @@ __constant__ float opt_friction_coeff, opt_friction_roll;
 __constant__ float platform_xmin, platform_xmax;
 __constant__ float platform_zmin, platform_zmax;
 __constant__ float platform_xmid, platform_xrad;
-__constant__ float delta_t;
+__constant__ float delta_t, world_time;
 __constant__ float elasticity_inv_dt;
 
 __constant__ CUDA_Wheel wheel;
@@ -275,14 +273,6 @@ tile_ball_collide(CUDA_Tile_W& tile, float3 ball_pos, float radius)
 
   pVect tile_to_ball = mv(tile.pt_00,ball_pos);
 
-  // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile.nz);
-
-  if ( fabs(dist) > radius ) return false;
-
-  // The closest point on tile plane to the ball.
-  pCoor pt_closest = ball_pos - dist * tile.nz;
-
   // How far up the tile in the y direction the center of the ball sits
   const float loc_y = dot(tile.ny,tile_to_ball);
 
@@ -293,6 +283,17 @@ tile_ball_collide(CUDA_Tile_W& tile, float3 ball_pos, float radius)
   const float loc_x = dot(tile.nx,tile_to_ball);
   if ( loc_x < -radius ) return false;
   if ( loc_x > tile.lx + radius ) return false;
+
+  float3 nz = cross(tile.nx,tile.ny);
+
+  // Distance from tile's plane to the ball.
+  const float dist = dot(tile_to_ball,nz);
+
+  if ( fabs(dist) > radius ) return false;
+
+  // The closest point on tile plane to the ball.
+  pCoor pt_closest = ball_pos - dist * nz;
+
 
   // Really a maybe, but good enough for preparing proximity list.
   return true;
@@ -308,14 +309,10 @@ tile_ball_collide
 
   pVect tile_to_ball = mv(tile.pt_00,ball.position);
 
-  // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile.nz);
-  const float radius = ball.radius;
-
-  if ( fabs(dist) > radius ) return false;
-
   // How far up the tile in the y direction the center of the ball sits
   const float loc_y = dot(tile.ny,tile_to_ball);
+
+  const float radius = ball.radius;
 
   if ( loc_y < -radius ) return false;
   if ( loc_y > tile.ly + radius ) return false;
@@ -324,6 +321,13 @@ tile_ball_collide
   const float loc_x = dot(tile.nx,tile_to_ball);
   if ( loc_x < -radius ) return false;
   if ( loc_x > tile.lx + radius ) return false;
+
+  float3 nz = cross(tile.nx,tile.ny);
+
+  // Distance from tile's plane to the ball.
+  const float dist = dot(tile_to_ball,nz);
+
+  if ( fabs(dist) > radius ) return false;
 
   // Find closest ball local x and y coordinates that are within tile.
   //
@@ -337,7 +341,7 @@ tile_ball_collide
   //
   if ( loc_x == loc_xc && loc_y == loc_yc )
     {
-      tact_dir = dist > 0 ? -tile.nz : tile.nz;
+      tact_dir = dist > 0 ? -nz : nz;
       return true;
     }
 
@@ -609,6 +613,7 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
       ball.radius = ball_props.x;
       ball.mass_inv = ball_props.y;
       ball.pad = ball_props.z;
+      ball.pad2 = ball_props.w;
     }
 
   const pVect zero_vec = mv(0,0,0);
@@ -655,6 +660,8 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
           physy.contact_count++;
           pVect delta_mo = ( 1.0f / bally.mass_inv )
             * ( bally.velocity - vbefore );
+          tilex.tact_pos = tact_pos;
+          tilex.tact_time = world_time;
           if ( !physx.part_of_wheel ) continue;
           wheel_collect_tile_force(tilex, tact_pos, delta_mo);
         }
@@ -682,6 +689,12 @@ pass_pairs(int prefetch_offset, int schedule_offset, int round_cnt,
 
       set_f4(balls_x.velocity[m_idx], ball.velocity);
 
+      if ( phys.pt_type == PT_Tile )
+        {
+          float4 tact_pos_time
+            = make_float4( ball.radius, ball.mass_inv, ball.pad, ball.pad2);
+          balls_x.ball_props[m_idx] = tact_pos_time;
+        }
       if ( phys.pt_type != PT_Ball ) continue;
 
       set_f4(balls_x.omega[m_idx], ball.omega);
@@ -1078,7 +1091,7 @@ cuda_get_attr_plat_pairs(GPU_Info *gpu_info)
   CU_SYM(platform_xmin); CU_SYM(platform_xmax);
   CU_SYM(platform_zmin); CU_SYM(platform_zmax);
   CU_SYM(platform_xmid); CU_SYM(platform_xrad);
-  CU_SYM(delta_t);
+  CU_SYM(delta_t); CU_SYM(world_time);
   CU_SYM(elasticity_inv_dt);
   CU_SYM(wheel);
 
