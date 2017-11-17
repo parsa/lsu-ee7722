@@ -513,7 +513,6 @@ public:
   // Physical objects (Balls, Tiles, etc.) being Simulated
   //
   Phys_List physs;
-  PSList<Phys*,double> eye_dist; // Balls sorted by eye distance.
   Ball* ball_first();           // Oldest surviving ball.
   Ball* ball_last();            // Youngest surviving ball.
 
@@ -3459,7 +3458,7 @@ World::balls_render_instances()
 {
   Sphere& sphere = spheres[opt_sphere_lod];
   sphere.render_bunch_gather(world_time);
-  for ( Phys *phys; eye_dist.iterate(phys); )
+  for ( Phys *phys: physs )
     {
       Ball* const ball = BALL(phys);
       if ( !ball ) continue;
@@ -3921,18 +3920,6 @@ World::render()
                       double(prox_test_per_ball_prev) / physs.size(),
                       prox_test_per_ball_prev,
                       cuda_prox_full_prev);
-
-  // Sort balls by distance from user's eye.
-  // This is needed for the occlusion test.
-  // What occlusion test?
-  //
-  eye_dist.reset();
-  for ( Ball *ball: Iterate_Balls(physs) )
-    {
-      pVect ve(ball->position,eye_location);
-      eye_dist.insert(dot(ve,ve),ball);
-    }
-  eye_dist.sort();
 
   if ( !hide_platform && opt_mirror && vs_reflect->okay() )
     {
