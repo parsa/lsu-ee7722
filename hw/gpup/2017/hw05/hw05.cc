@@ -1,6 +1,15 @@
-/// LSU EE 4702-X/7722 GPU Programming / Microarch
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
- /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
+ /// Homework 5
+ //
+
+ /// Instructions
+ //
+ //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2017/hw05.pdf
+ //
+ ///  The solution should be in file hw05-shdr.cc, but code in this
+ //   file needs to be inspected.
+
 
 /// Purpose
 //
@@ -461,6 +470,12 @@ pKeep_if(vector<T>& l, F pred)
 }
 
 
+double rrand(double mini, double maxi)
+{
+  return mini + drand48() * ( maxi - mini );
+};
+
+
 // Include class definitions for tiles.  Yes, this code
 // is disorganized.
 //
@@ -624,7 +639,10 @@ public:
   pShader *s_hw05_tiles_0;
   pShader *s_hw05_tiles_1, *s_hw05_tiles_2, *s_hw05_tiles_sv;
   uint opt_shader;
+  bool tile_data_stale, tile_dynamic_data_stale;
   void render_tiles(bool simple);
+  GLuint bos_tiles[6]; // Starting at idx 1: pt_00, ax, ay, color, tact_pos
+
 
   int light_state_get()
     {
@@ -789,6 +807,8 @@ void* pt_sched_main(void *arg){((World*)arg)->pt_sched_main();return NULL;}
 void
 World::init()
 {
+  tile_data_stale = true;
+  tile_dynamic_data_stale = true;
   opt_cuda_prox = true;
   wheel = NULL;
 
@@ -874,7 +894,8 @@ World::init()
      "vs_main_tiles_1();", "gs_main_tiles_1();", "fs_main_tiles_1();" );
   s_hw05_tiles_2 = new pShader
     ("hw05-shdr.cc",
-     "vs_main_tiles_2();", "gs_main_tiles_2();", "fs_main_tiles_2();" );
+     "vs_main_tiles_2();", "gs_main_tiles_2();", "fs_main_tiles_2();",
+     "#define _PROBLEM_2_");
 
 #if 0
   s_hw05_tiles_sv = new pShader
@@ -1718,19 +1739,23 @@ World::ball_setup_1()
   drip_run = 3;
 
   const int n_tiles = 8000;
-  const int louv_wid = 1;
-  const int louv_len = 1;
+  const float louv_wid_min = 0.5;
+  const float louv_wid_max = 3.0;
+  const float louv_len_min = 0.5;
+  const float louv_len_max = 3.0;
   const float span = 0.2;
   const float louv_z0 = 70;
-  pVect tile_vy(0,0,louv_wid);
   const float louv_x = ( 1 - span ) * 2 * platform_xrad;
   const float louv_y = 0.7 * platform_xrad;
   const float louv_z = 88;
 
   pCoor focus
     (platform_xmid+platform_xrad*0.2,-0.8*platform_xrad,louv_z0-louv_z/2);
+
   for ( int i=0; i<n_tiles; i++ )
     {
+      const float louv_wid = rrand(louv_wid_min,louv_wid_max);
+      const float louv_len = rrand(louv_len_min,louv_len_max);
       pCoor pt_00
         ( platform_xmin + span * platform_xrad + drand48() * louv_x,
           0.3 * platform_xrad - drand48() * louv_y,
@@ -1739,11 +1764,10 @@ World::ball_setup_1()
       pVect dir_vy(cross(pVect(0,1,0),dir_vx));
       tile_manager
         .new_tile(pt_00,louv_wid * dir_vy, louv_len*dir_vx,
-                  color_light_gray);
-
+                  color_pale_green);
     }
 
-  drip_location = pCoor( louv_wid/3, 10.1, louv_z0 - 0.76 * louv_wid );
+  drip_location = pCoor( 0, 15.1, louv_z0 - 7.6 );
 
   {
     //  Use tiles to construct a staircase.
@@ -1984,6 +2008,8 @@ void Ball::stop()
 //
 void World::balls_remove()
 {
+  tile_data_stale = true;
+  tile_dynamic_data_stale = true;
   dball = NULL;
   if ( wheel ) { delete wheel; wheel = NULL; }
   cuda_at_balls_change();
@@ -2233,13 +2259,23 @@ World::balls_add(float contact_y_max)
   //
   if ( opt_drip && ( !dball || dball->collision ) )
     {
-      if ( !sphere_empty(drip_location,opt_ball_radius) ) return;
-      dball = new Ball(this);
-      dball->position = drip_location + pVect(0,dball->radius,0);
-      dball->velocity = pVect(0,0,0);
-      dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
-      drip_cnt++;
-      physs.push_back( dball );
+      float drip_radius = 5;
+      for ( int i=0; i<10; i++ )
+        {
+          float ball_radius = rrand(opt_ball_radius/2,opt_ball_radius);
+          pCoor pos = drip_location
+            + pVect(rrand(0,drip_radius),ball_radius,rrand(0,drip_radius));
+          if ( !sphere_empty(pos,ball_radius) ) continue;
+          dball = new Ball(this);
+          dball->position = pos;
+          dball->set_radius(ball_radius);
+          dball->velocity = pVect(0,0,0);
+          dball->color_natural =
+            *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
+          drip_cnt++;
+          physs.push_back( dball );
+          break;
+        }
     }
 
   /// If spray is on, release a new ball if it's time.
@@ -2251,7 +2287,7 @@ World::balls_add(float contact_y_max)
       const double max_rad = 2 * opt_ball_radius;
       const double dr = max_rad - min_radius;
       const double radius = min_radius + dr * random()/(0.0+RAND_MAX);
-      const double r = 10;
+      const double r = rrand(5,20);
       const double delta_theta = 0.001 + asin(radius/r);
       static double th = 0;  
       th += delta_theta;
@@ -3738,16 +3774,16 @@ World::render_tiles(bool simple)
       // Initialize a uniform used by the lighting routine.
       glUniform2i(1, opt_debug, opt_debug2);
       glUniform1i(2, light_state_get());
+      glUniform1f(3, world_time);
 
       glBegin(GL_TRIANGLES);
       for ( Tile* tile: tiles )
         {
           double contact_age = world_time - tile->tact_time;
-          if ( !simple )
-            {
-              glColor3fv(contact_age < 10 ? color_red : tile->color);
-              glNormal3fv(tile->nz);
-            }
+
+          glColor3fv(contact_age < 2 ? color_red : tile->color);
+          glTexCoord4fv(tile->tact_pos);
+          glNormal3fv(tile->nz);
 
           glVertex3fv(tile->pt_00 + tile->ay);
           glVertex3fv(tile->pt_00);
@@ -3762,12 +3798,18 @@ World::render_tiles(bool simple)
   case 1:
     {
       pShader_Use use(s_hw05_tiles_1);
+      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform1i(2, light_state_get());
+      glUniform1f(3, world_time);
 
       glBegin(GL_TRIANGLES);
       for ( Tile* tile: tiles )
         {
-          if ( !simple ) glColor3fv(tile->color);
+          // Homework 5: DO NOT modify this code in this block.
+
+          glColor3fv(tile->color);
           glVertex3fv(tile->pt_00);
+          glColor4fv(tile->tact_pos);
           glVertex3fv(tile->ax);
           glVertex3fv(tile->ay);
         }
@@ -3776,9 +3818,46 @@ World::render_tiles(bool simple)
     break;
   case 2:
     {
-      pShader_Use use(s_hw05_tiles_2);
+      if ( !bos_tiles[0] )
+        glGenBuffers(sizeof(bos_tiles)/sizeof(bos_tiles[0]),bos_tiles);
 
-    }
+      vector<pCoor> pt_00, tact_pos;
+      vector<pColor> color;
+      vector<pVect4> ax, ay;
+
+      if ( tile_data_stale || tile_dynamic_data_stale )
+        for ( Tile* tile: tiles )
+          {
+            tact_pos.push_back( tile->tact_pos );
+            if ( !tile_data_stale ) continue;
+            pt_00.push_back( tile->pt_00 );
+            ax.push_back( tile->ax );
+            ay.push_back( tile->ay );
+            color.push_back( tile->color );
+          }
+
+#define TO_BO(name,num,update)                                                \
+  glBindBuffer(GL_ARRAY_BUFFER,bos_tiles[num]);                               \
+  if ( update ) glBufferData                                                  \
+    (GL_ARRAY_BUFFER, name.size()*sizeof(name[0]),                            \
+     name.data(), GL_STREAM_DRAW);                                            \
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,num,bos_tiles[num]);
+
+      pShader_Use use(s_hw05_tiles_2);
+      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform1i(2, light_state_get());
+      glUniform1f(3, world_time);
+
+      TO_BO(pt_00,1,tile_data_stale);
+      TO_BO(ax,2,tile_data_stale);
+      TO_BO(ay,3,tile_data_stale);
+      TO_BO(color,4,tile_data_stale);
+      TO_BO(tact_pos,5,tile_dynamic_data_stale);
+      tile_data_stale = false;
+
+      glDrawArrays(GL_POINTS,0,tiles.size());
+      glBindBuffer(GL_ARRAY_BUFFER,0);
+     }
     break;
   default:
     assert( false );
@@ -3844,6 +3923,7 @@ World::frame_callback()
       opt_single_frame = opt_single_time_step = false;
 
       frame_timer.work_amt_set(iter_limit);
+      tile_dynamic_data_stale = true;
     }
 
   frame_timer.phys_end();
@@ -4375,7 +4455,6 @@ main(int argv, char **argc)
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
   glDisable(GL_DEBUG_OUTPUT);
-  glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
                         GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
 

@@ -1,13 +1,13 @@
 /// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
- /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
+ /// Homework 5
 
-
-/// Purpose
-//
-//   Shader Code for Ball Collision Demo.
-//
-//   Shaders compute shadow and reflection locations.
+ /// Instructions
+ //
+ //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2017/hw05.pdf
+ //
+ ///  Put the solution in this file.
+ //   To solve the problem code in hw05.cc needs to be inspected.
 
 
 // Specify version of OpenGL Shading Language.
@@ -20,12 +20,32 @@
 #extension GL_EXT_geometry_shader4 : enable
 #endif
 
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 1 - 3      ↓↓  Code can be placed below.   ↓↓
 
-layout ( location = 1 ) uniform bvec2 opt_debug;
+
+layout ( location = 1 ) uniform bvec2 opt_tryout;
 layout ( location = 2 ) uniform int lighting_options;
+layout ( location = 3 ) uniform float world_time;
+
+layout ( binding = 1 ) buffer b1 { vec4 pt_00s[]; };
+layout ( binding = 2 ) buffer b2 { vec4 axs[]; };
+layout ( binding = 3 ) buffer b3 { vec4 ays[]; };
+layout ( binding = 4 ) buffer b4 { vec4 colors[]; };
+layout ( binding = 5 ) buffer b5 { vec4 tact_pos_times[]; };
 
 
 #ifdef _VERTEX_SHADER_
+
+ /// PROBLEM 1 - 3       ↑↑   Code can be placed above.   ↑↑
+ // ----------------------------------------------------------------------------
+
+
+#ifndef _PROBLEM_2_
+
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 1 and 3   ↓↓  Code can be placed below.   ↓↓
+
 
 // Interface block for vertex shader output / geometry shader input.
 //
@@ -52,26 +72,59 @@ void
 vs_main_tiles_1()
 {
   vs_main_tiles_0();
+
 }
+
+ /// PROBLEM 1  and 3   ↑↑   Code can be placed above.   ↑↑
+ // ----------------------------------------------------------------------------
+#else
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 2 and 3    ↓↓  Code can be placed below.   ↓↓
+
+// Interface block for vertex shader output / geometry shader input.
+//
+out Data_to_GS
+{
+  vec4 gl_Position;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec4 color;
+
+  // Any changes here must also be made to the geometry shader input.
+};
+
 void
 vs_main_tiles_2()
 {
-  vs_main_tiles_0();
 }
 
-#if 0
-void
-vs_main_instances_sv()
-{
-  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 vertex_o = rot * gl_Vertex;
-  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
-}
 #endif
 
+ /// PROBLEM 2 and 3          ↑↑   Code can be placed above.   ↑↑
+ // ----------------------------------------------------------------------------
+
 #endif
+
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 1 - 3             ↓↓  Code can be placed below.   ↓↓
+
 
 #ifdef _GEOMETRY_SHADER_
+
+out Data_to_FS
+{
+  flat vec3 normal_e;
+  vec4 vertex_e;
+  flat vec4 color;
+};
+
+ /// PROBLEM 1 - 3           ↑↑   Code can be placed above.   ↑↑
+ // ----------------------------------------------------------------------------
+
+#ifndef _PROBLEM_2_
+
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 1 and 3     ↓↓  Code can be placed below.   ↓↓
 
 // Interface block for vertex shader output / geometry shader input.
 //
@@ -83,14 +136,8 @@ in Data_to_GS
   vec4 color;
 
   // Any changes here must also be made to the vertex shader output.
-} In[];
+} In[3];
 
-out Data_to_FS
-{
-  flat vec3 normal_e;
-  vec4 vertex_e;
-  flat vec4 color;
-};
 
 // Type of primitive at geometry shader input.
 //
@@ -127,15 +174,51 @@ gs_main_tiles_1()
   gs_main_tiles_0();
 }
 
+ /// PROBLEM 1 and 3     ↑↑   Code can be placed above.   ↑↑
+ // ----------------------------------------------------------------------------
+
+#else
+
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 2 and 3     ↓↓  Code can be placed below.   ↓↓
+
+// Interface block for vertex shader output / geometry shader input.
+//
+in Data_to_GS
+{
+  vec4 gl_Position;
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec4 color;
+
+  // Any changes here must also be made to the vertex shader output.
+} In[1];
+
+
+// Type of primitive at geometry shader input.
+//
+layout ( points ) in;
+
+//
+layout ( triangle_strip, max_vertices = 3 ) out;
+
+
 void
 gs_main_tiles_2()
 {
-  gs_main_tiles_0();
+
 }
 
 
+ /// PROBLEM 2 and 3      ↑↑   Code can be placed above.   ↑↑
+ // ----------------------------------------------------------------------------
+
 #endif
 
+#endif
+
+ // ----------------------------------------------------------------------------
+ /// PROBLEM 1 - 3        ↓↓  Code can be placed below.   ↓↓
 
 
 
@@ -222,51 +305,4 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_er)
   return vec4(nspc_color+spec_color,1);
 }
 
-#endif
-
-
-
-#if 0
-vec4
-olde_generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
-{
-  vec3 nspc_color = color.rgb * gl_LightModel.ambient.rgb;
-  vec3 spec_color = vec3(0);
-
-  for ( int i=0; i<2; i++ )
-    {
-      if ( ( lighting_options & ( 1 << i ) ) == 0 ) continue;
-      vec4 light_pos = gl_LightSource[i].position;
-      vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
-      float dist = length(v_vtx_light);
-      float dist_vl_inv = 1.0 / dist;
-      vec3 v_vtx_l_n = v_vtx_light * dist_vl_inv;
-
-      float d_n_vl = dot(normalize(normal_e), v_vtx_l_n);
-      //  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
-      float phase_light = max(0,true ? d_n_vl : -d_n_vl );
-
-      vec3 ambient_light = gl_LightSource[i].ambient.rgb;
-      vec3 diffuse_light = gl_LightSource[i].diffuse.rgb;
-      float distsq = dist * dist;
-      float atten_inv =
-        gl_LightSource[i].constantAttenuation +
-        gl_LightSource[i].linearAttenuation * dist +
-        gl_LightSource[i].quadraticAttenuation * distsq;
-      vec3 lighted_color =
-        color.rgb
-        * ( ambient_light + phase_light * diffuse_light ) / atten_inv;
-      nspc_color += lighted_color;
-
-      vec3 h = normalize( v_vtx_l_n - normalize(vertex_e.xyz) );
-
-      spec_color +=
-        pow(max(0.0,dot(normal_e,h)),gl_FrontMaterial.shininess)
-        * gl_FrontMaterial.specular.rgb
-        * gl_LightSource[i].specular.rgb / atten_inv;
-    }
-
-  gl_FrontColor = vec4(nspc_color,color.a);
-  gl_FrontSecondaryColor = vec4(spec_color,1);
-}
 #endif
