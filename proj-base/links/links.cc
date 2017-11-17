@@ -553,8 +553,18 @@ World::modelview_update()
   pMatrix_Translate center_eye(-eye_location);
   pMatrix_Rotation rotate_eye(eye_direction,pVect(0,0,-1));
   modelview = rotate_eye * center_eye;
-  pMatrix reflect; reflect.set_identity(); reflect.rc(1,1) = -1;
+
+  // Compute a matrix to transform object-space coordinate to its
+  // reflected location for a mirror on the xz plane at y=0.
+  //
+  pMatrix reflect;
+  reflect.set_identity();
+  reflect.rc(1,1) = -1;    // Flip y to -y.
+
+  // Transform eye-space coordinate to its reflected position.
+  //
   transform_mirror = modelview * reflect * invert(modelview);
+
 }
 
 void
@@ -862,26 +872,46 @@ World::render()
     {
       if ( opt_mirror )
         {
-          // Write stencil value 2 at location of dark (mirrored) tiles.
+          /// Mirror Effect
+          //
+          //  - Step 1:  Write location of mirrors into stencil buffer.
+          //
+          //  - Step 2a: Prepare a matrix that transforms to mirrored location.
+          //  - Step 2b: Set up blending to blend mirrored objects with mirrors.
+          //
+          //  - Step 3:  Render all objects except mirrors.
+
+          ///  Step 1: Write location of mirrors into stencil buffer.
+          //
+          //   Write stencil value 2 at location of dark (mirrored) tiles.
           //
           glDisable(GL_LIGHTING);
           glEnable(GL_STENCIL_TEST);
+
+          // Set stencil operation to write a 2 at all locations written.
+          //
           glStencilFunc(GL_NEVER,2,2);
           glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+
+          // Render mirrored tiles (but only to write stencil buffer).
+          //
           platform_tile_coords.bind();
           glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
           glEnableClientState(GL_VERTEX_ARRAY);
           glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
-          glEnable(GL_LIGHTING);
           glDisableClientState(GL_VERTEX_ARRAY);
           glBindBuffer(GL_ARRAY_BUFFER,0);
+
+          glEnable(GL_LIGHTING);
+
 
           // Prepare to write only stenciled locations.
           //
           glStencilFunc(GL_EQUAL,2,2);
           glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
 
-          // Use a transform that reflects objects to other side of platform.
+          ///  Step 2a: Prepare a matrix that transforms to mirrored location.
+          //   Use a transform that reflects objects to other side of platform.
           //
           glMatrixMode(GL_PROJECTION);
           glPushMatrix();
@@ -890,6 +920,8 @@ World::render()
           // Reflected front face should still be treated as the front face.
           //
           glFrontFace(GL_CW);
+
+          /// Step 3:  Render all objects.
 
           render_objects(RO_Normally);
 
