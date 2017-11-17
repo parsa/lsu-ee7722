@@ -17,7 +17,8 @@ public:
           const char *main_body_fs = NULL)
   {init(path,main_body_vs,main_body_fs);}
   pShader(const char *path, const char *main_body_vs,
-          const char *main_body_gs, const char *main_body_fs)
+          const char *main_body_gs, const char *main_body_fs,
+          string top_textp = "" ):top_text(top_textp)
   {init_vgf_or_c(path,main_body_vs,main_body_gs,main_body_fs);}
   pShader()
   {
@@ -152,6 +153,7 @@ private:
         shader_define += "#define _";
         shader_define += stype_str;
         shader_define += "_\n";
+        if ( top_text.size() ) shader_define += top_text + "\n";
       }
 
     std::string file_text;
@@ -298,6 +300,7 @@ public:
   bool okay(){ return ready; }
 
   pString source_path;
+  string top_text;
   GLuint pobject;
   GLuint vs_object, gs_object, fs_object, cs_object;
   bool validated;
