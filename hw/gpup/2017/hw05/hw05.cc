@@ -809,6 +809,7 @@ World::init()
 {
   tile_data_stale = true;
   tile_dynamic_data_stale = true;
+  bos_tiles[0] = 0;
   opt_cuda_prox = true;
   wheel = NULL;
 
@@ -3854,6 +3855,7 @@ World::render_tiles(bool simple)
       TO_BO(color,4,tile_data_stale);
       TO_BO(tact_pos,5,tile_dynamic_data_stale);
       tile_data_stale = false;
+      tile_dynamic_data_stale = false;
 
       glDrawArrays(GL_POINTS,0,tiles.size());
       glBindBuffer(GL_ARRAY_BUFFER,0);
@@ -4454,7 +4456,11 @@ main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
+# ifdef __OPTIMIZE__
   glDisable(GL_DEBUG_OUTPUT);
+# else
+  glEnable(GL_DEBUG_OUTPUT);
+# endif
   glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
                         GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
 
