@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
@@ -41,11 +41,17 @@
 //      Maxwell
 //      Product cycle ending.
 //
-//   -- CC 6.0, 6.1
+//   -- CC 6.0, 6.1, 6.2
 //      Pascal
-//      Product cycle starting.
+//      Current product cycle.
 //      If cost is no object, good double-precision and half-precision perf.
-
+//      Some support for machine learning: 16-bit floats.
+//
+//   -- CC 7.x
+//      Volta
+//      Being introduced.
+//      Machine learning support.
+//      Maybe double precision priced once again for the masses.
 
 
  /// Hardware Organization
