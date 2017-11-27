@@ -54,25 +54,18 @@
 //      Maybe double precision priced once again for the masses.
 
 
- /// Hardware Organization
-//
-//   Streaming Multiprocessor (SM, SMX)
-//
-//   Functional Unit
-//     A piece of hardware that can perform a particular set of operations.
-//     Examples:
-//
-//        CUDA Core:  Can perform most single-precision non-divide FP.
-
-
  /// CUDA Thread Organization
 //
 //   :Def: Kernel
+//     A procedure that executes on the GPU.
 //
 //   :Def: Thread
-//     Has one PC.
-//      Sort of a brain, or maybe just a body that can be in one place
-//      at one time.
+//     Similar to the definition of a thread on a CPU.
+//     A path of execution through the kernel.
+//     Each Thread:
+//       Has its own id.
+//       The id consists of a thread index, in variable threadIdx, ..
+//       .. and a block index, in variable blockIdx.
 //
 //   :Def: Block
 //     A grouping of threads.
@@ -80,17 +73,34 @@
 //     The number of threads in a block is called the block size.
 
 
-//     All threads in a block execute on the same multiprocessor.
-//     Threads within a block share shared memory.
 //
 //   :Def: Grid
 //     A collection of blocks.
 //
-//   Warp
-//     A collection of 32 threads.
-//     One day the size of warp may change but it's been 32 through CC 5.2.
-//     Threads in a warp travel together.
+//   :Def: Warp
+//     A group of threads that (usually) execute together.
+//     For all NV GPUs so far warp size is 32 threads
+//     One day the size of warp may change but it's been 32 through CC 7.0.
 //
+
+
+ /// Hardware Organization
+//
+//   :Def: Streaming Multiprocessor (SM, SMX, MP)
+//     The hardware to execute a block of threads.
+//     Roughly akin to a core in a CPU.
+//     High-performance GPUs might have about 20 SMs.
+//     Each block is assigned to a particular SM.
+//     All threads in a block execute on the same multiprocessor.
+//     Threads within a block share shared memory.
+//         
+//         
+//
+//   :Def: Functional Unit
+//     A piece of hardware that can perform a particular set of operations.
+//     Examples:
+//
+//        CUDA Core:  Can perform most single-precision non-divide FP.
 
 
  /// Kernel Launch
