@@ -70,7 +70,8 @@
 //   :Def: Block
 //     A grouping of threads.
 //
-//     The number of threads in a block is called the block size.
+//     The number of threads in a block is called the block size ..
+//     .. in variable blockDim.
 
 
 //
@@ -98,9 +99,15 @@
 //
 //   :Def: Functional Unit
 //     A piece of hardware that can perform a particular set of operations.
-//     Examples:
-//
+//     Typical, GPU and Non-GPU Examples:
+//        Integer ALU: Can perform such as add, sub, AND, OR, etc.
+//        Integer multiply.
+//        FP add, mul, madd.
+//        FP div, sqrt, trig.
+//     NVIDIA GPU Units:
 //        CUDA Core:  Can perform most single-precision non-divide FP.
+//        Special Func Unit: division, reciprocal square root, approx trig.
+//        Load / Store: Read and write from memory.
 
 
  /// Kernel Launch
