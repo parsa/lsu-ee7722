@@ -125,7 +125,12 @@ glStencilOp(SFAIL,DFAIL,DPASS);
  //  'W'    Toggle visibility of shadow volumes.
  //  'm'    Toggle mirror effect.
  //  'M'    Cycle through mirror effect methods.
- //  'c'    Use colors to show number of reflected points, and other info.
+
+ //  'c'    Toggle color events: the use colors to show number of
+ //           reflected points, and the grouping of balls into CUDA blocks.
+ //           See 'Color by Block in Pass' in Variables section, below.
+ //  'C'    Toggle visibility of balls not assigned to any CUDA block and
+ //           also turn on color events.
  //  'n'    Toggle visibility of platform normals.
  //  '!'    Toggle rendering of spheres (balls).
  //  '@'    Toggle rendering of tiles.
@@ -607,6 +612,7 @@ public:
   int opt_mirror_method;
   bool opt_normals_visible;
   bool opt_color_events;
+  bool opt_color_events_hide_black;
   int opt_hide_stuff;
 
   void ball_setup_1();
@@ -820,6 +826,7 @@ World::init()
   opt_mirror_method = 0;
   opt_spray_on = false;
   opt_color_events = false;
+  opt_color_events_hide_black = false;
   opt_debug = false;
   opt_debug2 = false;
   opt_block_color_pass = 0;
@@ -3462,6 +3469,8 @@ World::balls_render_instances()
     {
       Ball* const ball = BALL(phys);
       if ( !ball ) continue;
+      if ( opt_color_events && opt_color_events_hide_black
+           && ball->color_block == -1 ) continue;
       pColor color =
         opt_color_events ? ball->color_event : ball->color_natural;
       // Set ball's color, position, and orientation, and
@@ -3836,13 +3845,16 @@ World::render()
   const bool hide_spheres = opt_hide_stuff & OH_Spheres;
 
   ogl_helper.fbprintf
-    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('wm')  "
+    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('wm')  Evnt Color %s-%s ('cC')  "
      "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')\n",
      hide_spheres ? 'S' : '_',
      hide_tiles ? 'T' : '_',
      hide_platform ? 'P' : '_',
      opt_shadows ? 'S' : '_',
      opt_mirror ? 'M' : '_',
+     opt_color_events ? BLINK("ON ","   ") : "OFF",
+     opt_color_events_hide_black
+     ? ( opt_color_events ? BLINK("ON ","   ") : "ON " ) : "OFF",
      opt_debug ? BLINK("ON ","   ") : "OFF",
      opt_debug2 ? BLINK("ON ","   ") : "OFF" );
 
@@ -4141,7 +4153,11 @@ World::cb_keyboard()
     break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
-  case 'c': case 'C': opt_color_events = !opt_color_events; break;
+  case 'c': opt_color_events = !opt_color_events; break;
+  case 'C':
+    opt_color_events = true;
+    opt_color_events_hide_black = !opt_color_events_hide_black;
+    break;
   case 'd': opt_drip = !opt_drip; if(!opt_drip)dball=NULL; break;
   case 'D': opt_move_item = MI_Drip; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
