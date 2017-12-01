@@ -128,8 +128,8 @@ glStencilOp(SFAIL,DFAIL,DPASS);
 
  /// Performance Tuning, Graphics Effects, and Debugging Options
  //
- //  'y'    Toggle value of opt_debug. Intended for experiments and debugging.
- //  'Y'    Toggle value of opt_debug2. Intended for experiments and debugging.
+ //  'y'    Toggle value of opt_tryout1. Intended for experiments and debugging.
+ //  'Y'    Toggle value of opt_tryout2. Intended for experiments and debugging.
  //  'w'    Toggle shadow effect.
  //  'W'    Toggle visibility of shadow volumes.
  //  'm'    Toggle mirror effect.
@@ -516,8 +516,8 @@ public:
   // For debugging and tuning.
   //
   bool opt_verify;  // If true verify correctness in certain places.
-  bool opt_debug;   // Turns something on and off. Changes frequently.
-  bool opt_debug2;  // Turns something else on and off. Changes frequently.
+  bool opt_tryout1; // Turns something on and off. Changes frequently.
+  bool opt_tryout2; // Turns something else on and off. Changes frequently.
   bool opt_info;    // Request info to be printed to stdout.
 
   // Time in simulated world.
@@ -852,8 +852,8 @@ World::init(int argc, char **argv)
   opt_mirror_method = 0;
   opt_spray_on = false;
   opt_color_events = false;
-  opt_debug = false;
-  opt_debug2 = false;
+  opt_tryout1 = false;
+  opt_tryout2 = false;
   opt_block_color_pass = 0;
 
   mirror_tint = color_lsu_spirit_purple * 0.5;
@@ -1410,8 +1410,8 @@ World::cuda_constants_update()
   TO_DEVF(elasticity_inv_dt); 
   TO_DEVF(opt_friction_coeff); TO_DEVF(opt_friction_roll);
 
-  TO_DEV(opt_debug);
-  TO_DEV(opt_debug2);
+  TO_DEV(opt_tryout1);
+  TO_DEV(opt_tryout2);
 }
 
 bool
@@ -3583,7 +3583,7 @@ World::balls_render_instances()
       sphere.color = color;
       sphere.render(ball->radius,ball->position,rot);
     }
-  glUniform2i(1, opt_debug, opt_debug2);
+  glUniform2i(1, opt_tryout1, opt_tryout2);
   glUniform1i(2, light_state_get());
   glUniform1i(3,1);
 
@@ -3662,7 +3662,7 @@ World::render_shadow_volumes(pCoor light_pos)
 
       int light_state = 0;
       s_sv_instances->use();
-      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform2i(1, opt_tryout1, opt_tryout2);
       glUniform1i(2, light_state);
       sphere.render_bunch_render_sv();
       vs_fixed->use();
@@ -3781,7 +3781,7 @@ World::render_tiles(bool simple)
     {
       pShader_Use use(s_hw05_tiles_0);
       // Initialize a uniform used by the lighting routine.
-      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform2i(1, opt_tryout1, opt_tryout2);
       glUniform1i(2, light_state_get());
       glUniform1f(3, world_time);
 
@@ -3807,7 +3807,7 @@ World::render_tiles(bool simple)
   case 1:
     {
       pShader_Use use(s_hw05_tiles_1);
-      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform2i(1, opt_tryout1, opt_tryout2);
       glUniform1i(2, light_state_get());
       glUniform1f(3, world_time);
 
@@ -3853,7 +3853,7 @@ World::render_tiles(bool simple)
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER,num,bos_tiles[num]);
 
       pShader_Use use(s_hw05_tiles_2);
-      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform2i(1, opt_tryout1, opt_tryout2);
       glUniform1i(2, light_state_get());
       glUniform1f(3, world_time);
 
@@ -4071,8 +4071,8 @@ World::render()
      hide_platform ? 'P' : '_',
      opt_shadows ? 'S' : '_',
      opt_mirror ? 'M' : '_',
-     opt_debug ? BLINK("ON ","   ") : "OFF",
-     opt_debug2 ? BLINK("ON ","   ") : "OFF" );
+     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout2 ? BLINK("ON ","   ") : "OFF" );
 
   ogl_helper.fbprintf
     ("Shadows: %-3s ('w')  Mirror: %-3s %d "
@@ -4407,8 +4407,8 @@ World::cb_keyboard()
       physs.push_back( b2 );
     }
     break;
-  case 'y': opt_debug = !opt_debug; break;
-  case 'Y': opt_debug2 = !opt_debug2; break;
+  case 'y': opt_tryout1 = !opt_tryout1; break;
+  case 'Y': opt_tryout2 = !opt_tryout2; break;
   case ' ':
     if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true;

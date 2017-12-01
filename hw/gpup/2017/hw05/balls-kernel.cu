@@ -938,7 +938,7 @@ __constant__ int64_t *cuda_prox;
 
 // Handy variables for debugging and tuning.  Initially false,
 // press q or Q to toggle.
-__constant__ bool opt_debug, opt_debug2;
+__constant__ bool opt_tryout1, opt_tryout2;
 
 // An array that can be used to pass values back to the CPU for
 // use in debugging.
@@ -1098,7 +1098,7 @@ cuda_get_attr_plat_pairs(GPU_Info *gpu_info)
   CU_SYM(z_sort_indices);
   CU_SYM(z_sort_z_max);
   CU_SYM(cuda_prox);
-  CU_SYM(opt_debug); CU_SYM(opt_debug2);
+  CU_SYM(opt_tryout1); CU_SYM(opt_tryout2);
   CU_SYM(pass_sched_debug);
 
   // Return attributes of CUDA functions. The code needs the

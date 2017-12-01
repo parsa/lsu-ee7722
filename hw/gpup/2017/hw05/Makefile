@@ -91,8 +91,8 @@ endif
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
 hw05-sol: hw05
-	ln hw05 hw05-sol
-	ln hw05-debug hw05-sol-debug
+	ln -f hw05 hw05-sol
+	ln -f hw05-debug hw05-sol-debug
 
 hw05: $(addsuffix .o,$(basename $(SRC_FILES)))
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)

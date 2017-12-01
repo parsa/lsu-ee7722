@@ -66,8 +66,8 @@ all := $(basename $(MAIN_FILES))
 SRC_FILES = $(MAIN_FILES) $(COMMON_FILES)
 
 hw04-sol: hw04
-	ln hw04 hw04-sol
-	ln hw04-debug hw04-sol-debug
+	ln -f hw04 hw04-sol
+	ln -f hw04-debug hw04-sol-debug
 
 $(all):%: %.o $(addsuffix .o,$(basename $(COMMON_FILES)))
 
