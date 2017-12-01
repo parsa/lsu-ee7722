@@ -240,6 +240,10 @@ gs_main_tiles_1()
   //
   // Note that the normal is set once here and used for all four
   // vertices.
+  //
+  // Note that the CPU case 1 code does NOT send a normal. The vertex
+  // shader still has an input named gl_Normal, but since the CPU code
+  // does not set it, its value will be arbitrary.
 
   color = In[0].color;
   //
@@ -319,7 +323,7 @@ gs_main_tiles_2()
   normal_e = normalize(gl_NormalMatrix * normal_o);
   //
   // Don't write comments like "compute normal" in real-world code
-  // for situations when its obvious what the code is doing.
+  // for situations when it's obvious what the code is doing.
 
   /// SOLUTION -- Problem 3
 
