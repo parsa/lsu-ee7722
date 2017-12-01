@@ -3,7 +3,7 @@
 SRC_FILES = balls-kernel.cu hw05.cc
 
 .PHONY: default
-default: hw05
+default: hw05 hw05-sol
 
 GP_ROOT =  ../../../..
 
@@ -90,6 +90,10 @@ endif
 	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
+hw05-sol: hw05
+	ln hw05 hw05-sol
+	ln hw05-debug hw05-sol-debug
+
 hw05: $(addsuffix .o,$(basename $(SRC_FILES)))
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
@@ -97,4 +101,4 @@ hw05: $(addsuffix .o,$(basename $(SRC_FILES)))
 clean:
 	/bin/rm -f build-cc *.s *.o *~ *.sass *.cubin *.ptx \
 	*.d *.d.[0-9][0-9][0-9][0-9] *.d.[0-9][0-9][0-9][0-9][0-9] \
-	hw05 hw05-debug
+	hw05 hw05-debug hw05-sol hw05-sol-debug

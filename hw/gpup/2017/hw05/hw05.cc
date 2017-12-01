@@ -487,9 +487,9 @@ double rrand(double mini, double maxi)
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):
-    ogl_helper(fb),tile_manager(this){init();}
-  void init();
+  World(pOpenGL_Helper &fb, int argc, char **argv):
+    ogl_helper(fb),tile_manager(this){init(argc,argv);}
+  void init(int argc, char **argv);
 
   pOpenGL_Helper& ogl_helper;
   pVariable_Control variable_control;
@@ -805,7 +805,7 @@ static const char* const sh_names[] =
 void* pt_sched_main(void *arg){((World*)arg)->pt_sched_main();return NULL;}
 
 void
-World::init()
+World::init(int argc, char **argv)
 {
   tile_data_stale = true;
   tile_dynamic_data_stale = true;
@@ -887,20 +887,28 @@ World::init()
     ("balls-shdr.cc", "vs_main_sphere();");
   s_sv_instances = new pShader
     ("balls-shdr.cc", "vs_main_sv_instances();");
+
+  PSplit exe_pieces(argv[0],'/');
+  string this_exe_name(exe_pieces.pop());
+  string sol_name("hw05-sol");
+  const char* const hw05_shader_path =
+    this_exe_name.substr(0,sol_name.size()) == sol_name ?
+    "hw05-shdr-sol.cc" : "hw05-shdr.cc";
+
   s_hw05_tiles_0 = new pShader
-    ("hw05-shdr.cc",
+    (hw05_shader_path,
      "vs_main_tiles_0();", "gs_main_tiles_0();", "fs_main_tiles_0();" );
   s_hw05_tiles_1 = new pShader
-    ("hw05-shdr.cc",
+    (hw05_shader_path,
      "vs_main_tiles_1();", "gs_main_tiles_1();", "fs_main_tiles_1();" );
   s_hw05_tiles_2 = new pShader
-    ("hw05-shdr.cc",
+    (hw05_shader_path,
      "vs_main_tiles_2();", "gs_main_tiles_2();", "fs_main_tiles_2();",
      "#define _PROBLEM_2_");
 
 #if 0
   s_hw05_tiles_sv = new pShader
-    ("hw05-shdr.cc",
+    (hw05_shader_path,
      "vs_main_tiles_sv();", "gs_main_tiles_sv();", "fs_main_tiles_sv();" );
 #endif
 
@@ -4455,7 +4463,7 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
-  World world(popengl_helper);
+  World world(popengl_helper,argv,argc);
 # ifdef __OPTIMIZE__
   glDisable(GL_DEBUG_OUTPUT);
 # else
