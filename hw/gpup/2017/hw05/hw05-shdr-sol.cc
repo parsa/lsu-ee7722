@@ -24,11 +24,8 @@
  /// PROBLEM 1 - 3      ↓↓  Code can be placed below.   ↓↓
 
 
-layout ( location = 1 ) uniform bvec2 opt_debug;
+layout ( location = 1 ) uniform bvec2 opt_tryout;
 layout ( location = 2 ) uniform int lighting_options;
-
- /// SOLUTION?
-
 layout ( location = 3 ) uniform float world_time;
 
 layout ( binding = 1 ) buffer b1 { vec4 pt_00s[]; };
@@ -74,11 +71,12 @@ vs_main_tiles_0()
 void
 vs_main_tiles_1()
 {
-  //  vs_main_tiles_0();
+  /// SOLUTION - Problem 1
 
-  /// SOLUTION
-  vertex_e = gl_Vertex;
-  color = gl_Color;
+  // Pass through inputs unchanged.
+  //
+  vertex_e = gl_Vertex;  // Either pt_00, ax, or ay.
+  color = gl_Color;      // Either color or tact_pos_time.
 }
 
  /// PROBLEM 1  and 3   ↑↑   Code can be placed above.   ↑↑
@@ -97,17 +95,26 @@ out Data_to_GS
   vec4 color;
 
   // Any changes here must also be made to the geometry shader input.
-  /// SOLUTION
+
+  /// SOLUTION -- Problem 2
+
   int vertex_id;
 };
 
 void
 vs_main_tiles_2()
 {
-  //  vs_main_tiles_0();
+  /// SOLUTION -- Problem 2
 
-  /// SOLUTION
+  // Pass vertex id unchanged.
+  //
   vertex_id = gl_VertexID;
+  //
+  // Note: Doing more work here and sending the results to the
+  // geometry shader might result in exactly the same amount of
+  // computation, but it will definitely increase the amount of data
+  // sent between the vertex and geometry shaders, which is not
+  // a good thing.
 }
 
 #endif
@@ -129,8 +136,15 @@ out Data_to_FS
   vec4 vertex_e;
   flat vec4 color;
 
-  /// SOLUTION
+  /// SOLUTION -- Problem 3
+
+  // Pass contact position and time to fragment shader to draw the ring.
+  //
   flat vec4 tact_pos_time_e;
+  //
+  // Note the use of a flat qualifier since the values will be the
+  // same at all three vertices and so there is no point in doing
+  // interpolation, which isn't free.
 };
 
  /// PROBLEM 1 - 3           ↑↑   Code can be placed above.   ↑↑
@@ -140,8 +154,6 @@ out Data_to_FS
 
  // ----------------------------------------------------------------------------
  /// PROBLEM 1 and 3     ↓↓  Code can be placed below.   ↓↓
-
- /// Problem 1 Solution Code
 
 // Interface block for vertex shader output / geometry shader input.
 //
@@ -162,9 +174,11 @@ layout ( triangles ) in;
 
 // Type of primitives emitted geometry shader output.
 //
- /// SOLUTION
+ /// SOLUTION -- Problem 1 and 2
+//
+// Increase max_vertices by 1.
+//
 layout ( triangle_strip, max_vertices = 4 ) out;
-
 
 
 void
@@ -190,22 +204,46 @@ gs_main_tiles_0()
 void
 gs_main_tiles_1()
 {
-  //  gs_main_tiles_0();
-
-  /// SOLUTION
+  /// SOLUTION -- Problem 1
 
   vec4 vtx_o[4];
+
+  // Write tile information into appropriately named variables.
+  //
   vec4 pt_00 = In[0].vertex_e;
   vec4 ax_o = vec4(In[1].vertex_e.xyz,0);
   vec4 ay_o = vec4(In[2].vertex_e.xyz,0);
+  //
+  // Note: The w component of ax and ay are set to zero. The OpenGL
+  // code on the CPU would have set them to one since they were
+  // specified using glVertex3f(FOO). Setting w to 1 is correct for
+  // coordinates (when only x, y, and z are given) but wrong for
+  // vectors.
+  //
+  // By setting the w components of vectors to 0 expressions like
+  // pt_00 + ax_o compute the correct results.
 
+
+  // Compute the object-space coordinates of the tile corners.
+  //
   vtx_o[0] = pt_00;
   vtx_o[1] = pt_00 + ax_o;
   vtx_o[2] = pt_00 + ay_o;
   vtx_o[3] = pt_00 + ay_o + ax_o;
+  //
+  // The order is chosen for a triangle strip.
+
+  // Compute the tile normal.
+  //
   vec3 normal_o = normalize(cross(ax_o.xyz,ay_o.xyz));
   normal_e = normalize(gl_NormalMatrix * normal_o);
+  //
+  // Note that the normal is set once here and used for all four
+  // vertices.
+
   color = In[0].color;
+  //
+  // The same color is also used for all four vertices.
 
   for ( int i=0; i<4; i++ )
     {
@@ -213,6 +251,7 @@ gs_main_tiles_1()
       vertex_e = gl_ModelViewMatrix * vtx_o[i];
       EmitVertex();
     }
+
   EndPrimitive();
 }
 
@@ -235,7 +274,8 @@ in Data_to_GS
 
   // Any changes here must also be made to the vertex shader output.
 
-  /// SOLUTION
+  /// SOLUTION -- Problem 2
+
   int vertex_id;
 
 } In[1];
@@ -247,33 +287,58 @@ layout ( points ) in;
 
 // Type of primitives emitted geometry shader output.
 //
- /// SOLUTION
+ /// SOLUTION -- Problem 2
+//
 layout ( triangle_strip, max_vertices = 4 ) out;
 
 void
 gs_main_tiles_2()
 {
-  //  gs_main_tiles_0();
+  /// SOLUTION -- Problem 2
 
-
-  /// SOLUTION
   int vertex_id = In[0].vertex_id;
+
+  // Retrieve information about the tile from buffer objects instead
+  // of shader inputs.
+  //
   vec4 vtx_o[4];
   vec4 pt_00 = pt_00s[vertex_id];
   vec4 ax_o = vec4(axs[vertex_id].xyz,0);
   vec4 ay_o = vec4(ays[vertex_id].xyz,0);
 
+  // Compute tile object space vertex coordinates.
+  //
   vtx_o[0] = pt_00;
   vtx_o[1] = pt_00 + ax_o;
   vtx_o[2] = pt_00 + ay_o;
   vtx_o[3] = pt_00 + ay_o + ax_o;
-  vec3 normal_o = normalize(cross(ax_o.xyz,ay_o.xyz));
 
+  // Compute normal.
+  //
+  vec3 normal_o = normalize(cross(ax_o.xyz,ay_o.xyz));
+  normal_e = normalize(gl_NormalMatrix * normal_o);
+  //
+  // Don't write comments like "compute normal" in real-world code
+  // for situations when its obvious what the code is doing.
+
+  /// SOLUTION -- Problem 3
+
+  // Convert contact position to eye space and write it to a
+  // geometry shader output. Also write time.
+  //
   vec4 tact_pos_time = tact_pos_times[vertex_id];
   tact_pos_time_e = gl_ModelViewMatrix * vec4(tact_pos_time.xyz,1);
   tact_pos_time_e.w = tact_pos_time.w;
+  //
+  // Using one variable for position and time is not the best coding
+  // style. But, in GPUs movement of 4-element vectors is more
+  // efficient than scalars or smaller vectors.
 
-  normal_e = normalize(gl_NormalMatrix * normal_o);
+
+  /// SOLUTION -- Problem 2
+  //
+  //  The code below is identical to the corresponding code in Problem 1.
+
   color = colors[vertex_id];
 
   for ( int i=0; i<4; i++ )
@@ -283,8 +348,6 @@ gs_main_tiles_2()
       EmitVertex();
     }
   EndPrimitive();
-
-
 }
 
 
@@ -308,9 +371,15 @@ in Data_to_FS
   vec4 vertex_e;
   flat vec4 color;
 
-  /// SOLUTION
-  flat vec4 tact_pos_time_e;
+  /// SOLUTION -- Problem 3
 
+  // Pass contact position and time to fragment shader to draw the ring.
+  //
+  flat vec4 tact_pos_time_e;
+  //
+  // Note the use of a flat qualifier since the values will be the
+  // same at all three vertices and so there is no point in doing
+  // interpolation, which isn't free.
 };
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
@@ -339,28 +408,38 @@ fs_main_tiles_1()
 void
 fs_main_tiles_2()
 {
-  //  fs_main_tiles_0();
-
-  /// SOLUTION
+  /// SOLUTION -- Problem 3
 
   float age = world_time - tact_pos_time_e.w;
-  float speed = 0.5;
-  float base_width = 0.05;
-  float width = base_width + age * speed / 8;
-  float dist = distance(vertex_e.xyz,tact_pos_time_e.xyz);
-  float radius_0 = age * speed - width;
-  float radius_1 = age * speed;
-  float radius_2 = radius_1 + width;
-  bool ring = dist >= radius_0 && dist <= radius_2;
-  float sat = ring ? 1/(1+age) : 0;
 
-  gl_FragColor = generic_lighting
-    (vertex_e, mix(color, vec4(1,0,0,1),sat), normal_e);
+  // Quantities below are in object space.
+  //
+  float speed = 0.5;   // Speed of increase of the ring radius.
+  float width = 0.1;   // Width of ring.
+  //
+  // Note: The distance between two points in object-space coordinates
+  // is (or should be) the same as the distance in eye-space
+  // coordinates and so it's okay to use an object-space width and
+  // speed on eye-space distances.
+
+  // Compute distance from this fragment to the contact point.
+  //
+  float dist = distance(vertex_e.xyz,tact_pos_time_e.xyz);
+
+  float inner_radius = age * speed;
+  float outer_radius = inner_radius + width;
+
+  // Determine if this fragment is in the ring, and set color appropriately.
+  //
+  bool ring = dist >= inner_radius && dist <= outer_radius;
+  vec4 color_red = vec4(1,0,0,1);
+  vec4 color2 = ring ? color_red : color;
+
+  gl_FragColor = generic_lighting(vertex_e, color2, normal_e);
 
   // Copy fragment depth unmodified.
   //
   gl_FragDepth = gl_FragCoord.z;
-
 }
 
 
@@ -409,5 +488,3 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_er)
 }
 
 #endif
-
-
