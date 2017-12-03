@@ -4,7 +4,7 @@
 
  /// Instructions
  //
- //  Read the assignment: http://www.ece.lsu.edu/koppel/gpup/2017/hw05.pdf
+ //  Solution Discussion: http://www.ece.lsu.edu/koppel/gpup/2017/hw05_sol.pdf
  //
  ///  Put the solution in this file.
  //   To solve the problem code in hw05.cc needs to be inspected.
