@@ -119,6 +119,7 @@ public:
     cpu_frac = 0;
     cuda_in_use = false;
     phys_timed = false;
+    opt_show_pipeline = true;
   }
   void work_unit_set(const char *description, double multiplier = 1)
   {
@@ -169,6 +170,9 @@ private:
   double cpu_frac, gpu_frac, cuda_frac, phys_frac;
   double time_render_start;
   double time_phys_start;
+public:
+  bool opt_show_pipeline;
+private:
   union {
     struct { GLuint query_objects[12]; };
     struct { GLuint qo_timer[2],
@@ -310,11 +314,14 @@ pFrame_Timer::frame_start()
   if ( query_objects[0] )
     {
       glBeginQuery(GL_TIME_ELAPSED,qo_timer[qa_idx]);
-      glBeginQuery(GL_VERTICES_SUBMITTED_ARB,qo_vtx_sub[qa_idx]);
-      glBeginQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB,qo_vtx_inv[qa_idx]);
-      glBeginQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB,qo_clp_pin[qa_idx]);
-      glBeginQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB,qo_clp_pout[qa_idx]);
-      glBeginQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB,qo_frag_inv[qa_idx]);
+      if ( opt_show_pipeline )
+        {
+          glBeginQuery(GL_VERTICES_SUBMITTED_ARB,qo_vtx_sub[qa_idx]);
+          glBeginQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB,qo_vtx_inv[qa_idx]);
+          glBeginQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB,qo_clp_pin[qa_idx]);
+          glBeginQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB,qo_clp_pout[qa_idx]);
+          glBeginQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB,qo_frag_inv[qa_idx]);
+        }
     }
   pError_Check();
   time_render_start = time_wall_fp();
@@ -349,22 +356,29 @@ pFrame_Timer::frame_end()
   if ( query_objects[0] )
     {
       glEndQuery(GL_TIME_ELAPSED);
-      glEndQuery(GL_VERTICES_SUBMITTED_ARB);
-      glEndQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB);
-      glEndQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB);
-      glEndQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB);
-      glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
+      if ( opt_show_pipeline )
+        {
+          glEndQuery(GL_VERTICES_SUBMITTED_ARB);
+          glEndQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB);
+          glEndQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB);
+          glEndQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB);
+          glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
+        }
 
       qa_idx = 1 - qa_idx;
       if ( query_pending )
         {
           int timer_val = 0;
           glGetQueryObjectiv(qo_timer[qa_idx],GL_QUERY_RESULT,&timer_val);
-          glGetQueryObjectiv(qo_vtx_sub[qa_idx],GL_QUERY_RESULT,&qv_vtx_sub);
-          glGetQueryObjectiv(qo_vtx_inv[qa_idx],GL_QUERY_RESULT,&qv_vtx_inv);
-          glGetQueryObjectiv(qo_clp_pin[qa_idx],GL_QUERY_RESULT,&qv_clp_pin);
-          glGetQueryObjectiv(qo_clp_pout[qa_idx],GL_QUERY_RESULT,&qv_clp_pout);
-          glGetQueryObjectiv(qo_frag_inv[qa_idx],GL_QUERY_RESULT,&qv_frag_inv);
+          if ( opt_show_pipeline )
+            {
+#define GQO(var) \
+  glGetQueryObjectiv(qo_##var[qa_idx],GL_QUERY_RESULT,&qv_##var);
+              GQO(vtx_sub); GQO(vtx_inv);
+              GQO(clp_pin); GQO(clp_pout);
+              GQO(frag_inv);
+#undef GQO
+            }
           gpu_tsum_ns += timer_val;
         }
       query_pending = true;
@@ -415,14 +429,16 @@ pFrame_Timer::frame_end()
         ("  %s %7.3f %s (%4.1f%%)", ti->label.s,
          fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
     }
-  frame_rate_text.sprintf
-    ("\n Vertices: %s   Clip Prim: in %s  out %s   "
-     "Fragments: %s   Frag/Vtx: %.1f",
-     commaize(qv_vtx_inv).c_str(),
-     commaize(qv_clp_pin).c_str(),
-     commaize(qv_clp_pout).c_str(),
-     commaize(qv_frag_inv).c_str(),
-     double(qv_frag_inv)/max(1,qv_vtx_inv));
+
+  if ( opt_show_pipeline )
+    frame_rate_text.sprintf
+      ("\n Vertices: %s   Clip Prim: in %s  out %s   "
+       "Fragments: %s   Frag/Vtx: %.1f",
+       commaize(qv_vtx_inv).c_str(),
+       commaize(qv_clp_pin).c_str(),
+       commaize(qv_clp_pout).c_str(),
+       commaize(qv_frag_inv).c_str(),
+       double(qv_frag_inv)/max(1,qv_vtx_inv));
 
 }
 
