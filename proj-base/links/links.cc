@@ -289,7 +289,7 @@ typedef pVectorI<Link> Links;
 typedef pVectorI<Ball> Balls;
 
 
-enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
+enum Render_Option { RO_Normally, RO_Mirrored, RO_Simple, RO_Shadow_Volumes };
 enum Shader_Option { SO_Phong, SO_Set_1, SO_ENUM_SIZE };
 
 class World {
@@ -318,6 +318,8 @@ public:
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
   bool opt_tryout1, opt_tryout2;  // For ad-hoc experiments.
+  float opt_tryoutf;
+  bool opt_sphere_true;
 
   // Tiled platform for ball.
   //
@@ -341,6 +343,7 @@ public:
 
   pCoor eye_location;
   pVect eye_direction;
+  pMatrix transform_projection;
   pMatrix modelview;
   pMatrix transform_mirror;
 
@@ -360,6 +363,7 @@ public:
   pShader *sp_phong;          // Basic stuff.
   pShader *sp_instances_sphere;
   pShader *sp_instances_sv;
+  pShader *sp_sphere_true;
 
   GLuint balls_pos_rad_bo;
   GLuint balls_color_bo;
@@ -462,6 +466,9 @@ World::init_graphics()
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_tryout1 = opt_tryout2 = false;
+  opt_sphere_true = true;
+  opt_tryoutf = 0;
+  variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
 
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
@@ -580,8 +587,9 @@ World::render_objects(Render_Option option)
   const bool hide_links = opt_hide_stuff & OH_Links;
   const bool hide_platform = opt_hide_stuff & OH_Platform;
   const bool hide_sphere = opt_hide_stuff & OH_Sphere;
+  const bool mirrored = option == RO_Mirrored;
 
-  if ( option == RO_Normally )
+  if ( option == RO_Normally || option == RO_Mirrored )
     {
       glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
       glEnable(GL_TEXTURE_2D);
@@ -616,6 +624,10 @@ World::render_objects(Render_Option option)
 
           pShader_Use use( sp_instances_sv );
           glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+          glUniform1f(4, opt_tryoutf);
+          glUniform1i(5, mirrored );
+          glUniformMatrix4fv(6, 1, true, transform_projection);
+
           sphere.render_bunch_render_sv();
         }
 
@@ -649,10 +661,15 @@ World::render_objects(Render_Option option)
                  pMatrix_Rotation(ball->orientation));
             }
 
-          pShader_Use use( sp_instances_sphere );
+          pShader_Use use
+            ( opt_sphere_true ? sp_sphere_true : sp_instances_sphere );
           glUniform1i(2, light_state);
           glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
-          sphere.render_bunch_render();
+          glUniform1f(4, opt_tryoutf);
+          glUniform1i(5, mirrored );
+          glUniformMatrix4fv(6, 1, true, transform_projection);
+
+          sphere.render_bunch_render(opt_sphere_true);
         }
 
       if ( !hide_links )
@@ -752,9 +769,10 @@ World::render()
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  // Frustum: left, right, bottom, top, near, far
   const float xr = .08;
-  glFrustum(-xr,xr,-xr/aspect,xr/aspect,.1,5000);
+  // pMatrix_Frustum: left, right, bottom, top, near, far
+  transform_projection = pMatrix_Frustum(-xr,xr,-xr/aspect,xr/aspect,.1,5000);
+  glLoadTransposeMatrixf(transform_projection);
 
   glViewport(0, 0, win_width, win_height);
   pError_Check();
@@ -923,7 +941,7 @@ World::render()
 
           /// Step 3:  Render all objects.
 
-          render_objects(RO_Normally);
+          render_objects(RO_Mirrored);
 
           glFrontFace(GL_CCW);
           glMatrixMode(GL_PROJECTION);
@@ -1120,6 +1138,7 @@ World::cb_keyboard()
   case 'w': case 'W': balls_twirl(); break;
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
+  case 'z': opt_sphere_true = !opt_sphere_true; break;
   case ' ':
     if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true;
@@ -1295,6 +1314,8 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
+  sp_sphere_true = new pShader
+    ("links-shdr-sphere-true.cc", "vs_main();", "gs_main();", "fs_main();" );
 
   PSplit exe_pieces(argv[0],'/');
   pString this_exe_name(exe_pieces.pop());
@@ -1315,6 +1336,12 @@ World::init(int argc, char **argv)
      );
 
   ball_setup_3();
+  return;
+  // For benchmarking.
+  opt_pause = true;
+  opt_hide_stuff = OH_Links | OH_Platform;
+  opt_shadows = false;
+  opt_mirror = false;
 }
 
 Ball*

@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Fall 2016), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Fall 2017), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -15,7 +15,7 @@ public:
   { world_time_last_update = world_time_last_update_sv = world_time - 1; }
   void render_bunch_gather(double world_timep);
   void render_bunch_gather_sv(double world_timep);
-  void render_bunch_render();
+  void render_bunch_render(bool use_sphere_true);
   void render_bunch_render_sv();
   void render();
   void render(pVect position){ center = position; render(); }
@@ -178,7 +178,7 @@ Sphere::render_bunch_gather_sv(double world_timep)
 }
 
 void
-Sphere::render_bunch_render()
+Sphere::render_bunch_render(bool use_sphere_true)
 {
   const bool first_render = world_time_last_update != world_time;
 
@@ -195,6 +195,12 @@ Sphere::render_bunch_render()
   TO_BO(sphere_color,3);
 # undef TO_BO
   glBindBuffer(GL_ARRAY_BUFFER,0);
+
+  if ( use_sphere_true )
+    {
+      glDrawArrays(GL_POINTS,0,sphere_pos_rads.size());
+      return;
+    }
 
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);

@@ -16,7 +16,9 @@ layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
 //
 layout ( location = 3 ) uniform bvec3 tryout;
 layout ( location = 2 ) uniform int lighting_options;
-
+layout ( location = 4 ) uniform float tryoutf;
+layout ( location = 5 ) uniform bool mirrored;
+layout ( location = 6 ) uniform mat4 trans_proj;
 
 #ifdef _VERTEX_SHADER_
 
