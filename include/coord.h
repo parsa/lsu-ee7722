@@ -17,10 +17,15 @@
 
 #define SQ(x) ((x)*(x))
 
+template <typename T1, typename T2, typename T3>
+T1 clamp(T1 val, T2 min, T3 max)
+{ return val < min ? min : val > max ? max : val; }
+
 class pMatrix;
 class pCoor;
 class pColor;
 class pVect;
+class pVect4;
 inline pCoor mult_MC(pMatrix& m, pCoor c);
 inline void pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2);
 pVect cross(pCoor a, pCoor b, pCoor c);
@@ -33,6 +38,7 @@ class pCoor {
 public:
   pCoor(){};
   pCoor(pVect v);
+  pCoor(pCoor v, float wp){ *this = v; w = wp; }
   pCoor(float x, float y):x(x),y(y),z(0),w(1){};
   pCoor(float x, float y, float z):x(x),y(y),z(z),w(1){};
   pCoor(float x, float y, float z, float w):x(x),y(y),z(z),w(w){};
@@ -319,6 +325,9 @@ public:
   /*  float *v() {return &x;}  */
   //  operator float*() const { return v(); }
   operator const float*() const { return &x; }
+
+  operator const pVect4 () const;
+
   float elt(int idx) const { return (&x)[idx]; }
 
   pVect mask(int8_t components) const
@@ -382,11 +391,13 @@ public:
 // Intended for situations where a power-of-2 stride element is needed.
 class pVect4 {
 public:
+  pVect4(const pVect v){ *this = v; }
+  void operator = (const pVect v) { x=v.x; y=v.y; z=v.z; }
   float x, y, z, w;
   operator const pVect () const { return pVect(x,y,z); }
-  void operator = (pVect v) { x=v.x; y=v.y; z=v.z; }
 };
 
+inline pVect::operator const pVect4 () const { return pVect4(*this); }
 
 class pColor {
 public:
@@ -397,6 +408,7 @@ public:
     g( ( ( rgb >> 8 ) & 0xff ) / 255.0 ),
     b( ( ( rgb ) & 0xff ) / 255.0 ),a(1){}
   pColor(){}
+  pColor inv() { return pColor(1-r,1-g,1-b,a); }
   const float* v() const { return &r; }
   operator const float* () const { return v(); }
   float r, g, b, a;

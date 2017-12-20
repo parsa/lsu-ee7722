@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Shaders
 
@@ -102,7 +102,136 @@ mat4 mv_matrix = get_mat();
 vec4 eye_sp = mv_matrix * obj_sp;  // Matrix / vector multiplication.
 
 
+/// Shader Data Access, Storage Qualifiers
+//
+// :ogsl45: Section 4.3
+//
+//  User-defined variables need to be declared.
+//
+//  Declaration includes a storage qualifier that indicates:
+//    - Where the value is generated.
+//    - Whether it can be written.
+//    - Resources.
+//
+//
+ /// Some Qualifiers
+//
+//   - in         Shader Input
+//   - out        Shader Output
+//   - uniform    A uniform variable.
+//   - buffer     A buffer object variable.
 
+ /// Programmable Shader Stages (For Review)
+//
+//   Vertex
+//   Tessellation Control - Tessellation Evaluation 
+//   Geometry 
+//   Fragment
+
+ /// Quick Examples
+//
+
+// Single Declarations
+
+   out vec2 my_tex_coor;
+// 111 2222 33333333333
+//
+// 1: The storage qualifier.
+//      In this case, indicating a shader output variable.
+// 2: Data Type.
+// 3: Variable names, or name in this case.
+//
+// Sample code writing to variable:
+   my_tex_coor.x = a + b;
+
+
+   in vec2 my_tex_coor;
+//
+// Sample code:
+   ypos = my_tex_coor.y;
+
+
+layout ( location = 3 ) uniform float wire_radius;
+// 111   222222222222   3333333 44444 55555555555
+//
+// 1: The layout keyword.
+// 2: Layout information.
+//      In general, info about where data is and how data arranged.
+//      In example above, indicates CPU can find data in location 3.
+// 3: Storage Qualifier. uniform in this case.
+// 4: Data type.
+// 5: Variable names. (Just one name in example.)
+
+
+ // :Def: Interface Block
+//        A group of variables that share a storage qualifier and
+//        other attributes.
+
+   in Data { int hidx; vec3 normal_o; vec4 color;} In;
+// 11 2222   33333333333333333333333333333333333   44;
+//
+// 1: Storage Qualifier
+// 2: Interface Block Name.
+// 3: Variable declarations.
+// 4: Instance name.
+//
+// Sample code:
+ float len = length(In.normal_o);
+ vec4 lcolor = generic_lighting(mvp * In.normal_o);
+
+
+layout ( binding = 7 ) buffer Helix_Coord  { vec4  helix_coord[];  };
+// 111   22222222222   333333 44444444444  5555555555555555555555555
+//
+// 1: The layout keyword.
+// 2: Layout information. In this case, an identifier used by CPU.
+// 3: Storage Qualifier.
+// 4: Interface block name.
+
+
+ /// Shader Inputs (in)
+//
+// :ogsl45: Section 4.3.4
+//
+//   A shader input is a variable that can be read by the shader
+//     for which it's defined.
+//
+//   Each shader stage has its own set of inputs.
+//
+//   Except for the vertex shader ..
+//   .. shader inputs for one stage ..
+//   .. must match the shader outputs of the prior stage.
+//
+//   There is a different set of values for each shader invocation.
+//
+//   It is an error to write a shader input.
+//
+//   There are pre-defined and user-defined shader inputs.
+//
+//   Vertex shader inputs get values from host commands ..
+//   .. like glColor3f for pre-defined inputs ..
+//   .. and glVertexAttrib for user-defined inputs.
+//
+//   Other stages' input values are produced by outputs of the prior stage.
+
+ /// Shader Outputs (out)
+//
+// :ogsl45: Section 4.3.6
+//
+//   A shader output is a variable that can be written by the shader
+//     for which it's defined.
+//
+//   Each shader stage has its own set of outputs.
+//
+//   Except for the fragment shader ..
+//   .. shader outputs for one stage ..
+//   .. must match the shader inputs of the next stage.
+//
+//   It is okay to read a shader output ..
+//   .. but value is undefined if shader has not yet written it.
+//
+//   There are pre-defined and user-defined shader outputs.
+//   
 
 
 #endif

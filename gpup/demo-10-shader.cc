@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
  /// More Shaders
@@ -276,6 +276,7 @@ out Data_GF
 #include <gp/misc.h>
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
+#include <gp/colors.h>
 #include "shapes.h"
 
 
@@ -330,27 +331,27 @@ public:
   bool coords_stale;
   bool buffer_objects_stale;
 
-  PStack<int> helix_indices;
+  vector<int> helix_indices;
   GLuint helix_indices_bo;
 
   // Coordinates of helix. (Helix runs through center of wire.)
   //
-  PStack<pCoor> helix_coords;
+  vector<pCoor> helix_coords;
   GLuint helix_coords_bo;
   int helix_coords_size;
 
   // Coordinates of surface of wire.
   //
-  PStack<pVect> surface_coords;
+  vector<pVect> surface_coords;
   GLuint surface_coords_bo;
 
-  PStack<int> wire_surface_indices;
+  vector<int> wire_surface_indices;
   GLuint wire_surface_indices_bo;
   int wire_surface_indices_size;
 
   // Wire normals.
   //
-  PStack<pVect> helix_normals;
+  vector<pVect> helix_normals;
   GLuint helix_normals_bo;
 
   int surface_coords_size;
@@ -524,7 +525,6 @@ World::render()
   const float aspect = float(win_width) / win_height;
 
   glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
   glLoadTransposeMatrixf(modelview);
 
   glMatrixMode(GL_PROJECTION);
@@ -534,16 +534,10 @@ World::render()
 
   glEnable(GL_LIGHTING);
 
-  const pColor white(1,1,1);
-  const pColor red(1,0,0);
-  const pColor blue(0,0,1);
-  const pColor lsu_spirit_purple(0x580da6);
-  const pColor lsu_spirit_gold(0xf9b237);
-
   glEnable(GL_LIGHT0);
   glLightfv(GL_LIGHT0, GL_POSITION, light_location);
 
-  glLightfv(GL_LIGHT0, GL_DIFFUSE, white * opt_light_intensity);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, color_white * opt_light_intensity);
 
   pError_Check();
 
@@ -632,11 +626,11 @@ World::render()
       buffer_objects_stale = true;
 
       // Reset existing storage.
-      helix_coords.reset();
-      helix_normals.reset();
-      helix_indices.reset();
-      surface_coords.reset();
-      wire_surface_indices.reset();
+      helix_coords.clear();
+      helix_normals.clear();
+      helix_indices.clear();
+      surface_coords.clear();
+      wire_surface_indices.clear();
 
       // Number of times helix wraps around.
       const int revolutions_per_helix = 6;
@@ -659,42 +653,46 @@ World::render()
                     i * delta_y,
                     helix_radius * sin_eta);
 
-          helix_coords += p0;
+          helix_coords.push_back( p0 );
 
-          pVect n0( -wire_radius * cos_eta, 0, -wire_radius * sin_eta);
-          pNorm tangent( delta_eta * helix_radius * -sin_eta,
-                         delta_y,
-                         delta_eta * helix_radius * cos_eta );
-          pVect b = cross(n0,tangent);
+          // Compute axes for drawing surface.
+          //
+          pVect ax( -wire_radius * cos_eta, 0, -wire_radius * sin_eta);
+
+          pNorm ay( delta_eta * helix_radius * -sin_eta,
+                    delta_y,
+                    delta_eta * helix_radius * cos_eta );
+
+          pVect az = cross(ax,ay);
 
           for ( int j = 0; j < seg_per_wire_revolution; j++ )
             {
-              const int idx = surface_coords.occ();
-              const double theta = j * delta_theta;
+              const int idx = surface_coords.size();
+              const float theta = j * delta_theta;
 
-              pVect norm0 = cos(theta) * n0 + sin(theta) * b;
+              pVect norm0 = cosf(theta) * ax + sinf(theta) * az;
 
-              helix_normals += norm0.normal();
-              helix_indices += i;
+              helix_normals.push_back( norm0.normal() );
+              helix_indices.push_back( i );
 
               // Compute surface coordinate. This computation can also
               // be done by the vertex shader, when that feature is
               // turned on the two lines below are not needed.
               //
               pCoor s0 = p0 + norm0;
-              surface_coords += s0;
+              surface_coords.push_back( s0 );
 
               if ( last_i_iteration ) continue;
 
               // Insert indices for triangle with one vertex on eta.
-              wire_surface_indices += idx; // This vertex.
-              wire_surface_indices += idx + seg_per_wire_revolution;
+              wire_surface_indices.push_back( idx ); // This vertex.
+              wire_surface_indices.push_back( idx + seg_per_wire_revolution );
             }
         }
 
-      wire_surface_indices_size = wire_surface_indices.occ();
-      helix_coords_size = helix_coords.occ();
-      surface_coords_size = surface_coords.occ();
+      wire_surface_indices_size = wire_surface_indices.size();
+      helix_coords_size = helix_coords.size();
+      surface_coords_size = surface_coords.size();
     }
 
   // If necessary, update data in buffer objects.
@@ -723,32 +721,32 @@ World::render()
         (GL_ARRAY_BUFFER,               // Kind of buffer object.
          // Amount of data (bytes) to copy.
          surface_coords_size*3*sizeof(surface_coords[0]),
-         surface_coords.get_storage(),  // Pointer to data to copy.
+         surface_coords.data(),         // Pointer to data to copy.
          GL_STATIC_DRAW);               // Hint about who, when, how accessed.
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
          helix_coords_size*4*sizeof(helix_coords[0]),
-         helix_coords.get_storage(), GL_STATIC_DRAW);
+         helix_coords.data(), GL_STATIC_DRAW);
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_indices_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
          surface_coords_size*sizeof(helix_indices[0]),
-         helix_indices.get_storage(), GL_STATIC_DRAW);
+         helix_indices.data(), GL_STATIC_DRAW);
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_normals_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
          surface_coords_size*3*sizeof(helix_normals[0]),
-         helix_normals.get_storage(), GL_STATIC_DRAW);
+         helix_normals.data(), GL_STATIC_DRAW);
 
       glBindBuffer(GL_ARRAY_BUFFER, wire_surface_indices_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
          wire_surface_indices_size*sizeof(wire_surface_indices[0]),
-         wire_surface_indices.get_storage(),GL_STATIC_DRAW);
+         wire_surface_indices.data(),GL_STATIC_DRAW);
 
       // Tell GL that subsequent array pointers refer to host storage.
       //
@@ -805,7 +803,7 @@ World::render()
   glTranslatef(helix_location.x,helix_location.y,helix_location.z);
   glRotatef(60,0,1,0);
 
-  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE, lsu_spirit_purple);
+  glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE, color_lsu_spirit_purple);
   glEnable(GL_COLOR_MATERIAL);
 
   // Specify color. Since it's not an array the same color
@@ -813,7 +811,7 @@ World::render()
   // If we wanted to vary vertex colors we could have created
   // and used a color array.
   //
-  glColor3fv(lsu_spirit_gold);
+  glColor3fv(color_lsu_spirit_gold);
 
   // Specify buffer object to use for vertices.
   //
@@ -866,11 +864,9 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
+
+  ogl_helper.user_text_reprint();
 
   glutSwapBuffers();
 }

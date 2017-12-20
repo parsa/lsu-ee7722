@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Minimal OpenGL Program
 
@@ -37,6 +37,22 @@
  //  A library for initializing OpenGL.
 
 
+/// Important Concepts in this Demo
+//
+
+ /// Role of OpenGL, and glut, and how code organized.
+ //
+ /// Basic OpenGL Frame Buffer Operations
+ //
+ /// OpenGL Primitives
+ //
+ /// OpenGL Rendering Pass
+ //
+ /// OpenGL Transformation Matrix Handling
+ //
+ /// OpenGL Function Naming Conventions
+
+
 /// Organization of This Demo
 //
 
@@ -51,12 +67,13 @@
  //  Paint the frame buffer with a triangle using OpenGL.
 
 
-/// OpenGL Primitives
+/// OpenGL Primitives and The Rendering Pass
 //
+// :ogl45: Section 10.1  Primitives
 
  // :Def: OpenGL Primitive
  // A shape (or collection of shapes) that OpenGL can render on to the
- // frame buffer.
+ // frame buffer. For example, a triangle.
  //
  // - There are a small number of primitives.
  // - More complex objects are constructed from primitives by non OpenGL code.
@@ -65,8 +82,11 @@
  //
  /// Each type of primitive:
  //
+ //  - Consists of one or more Vertices.
  //  - Defines a shape. (Triangle, line, etc.)
- //  - Vertices shared with neighbors. (See GL_TRIANGLE_STRIP)
+ //  - May have a relationship with a neighboring primitive.
+ //    (See GL_TRIANGLE_STRIP)
+
 
  // :Def: Rendering Pass
  // A place in the execution of an OpenGL program in which OpenGL
@@ -280,7 +300,7 @@ main(int argc, char **argv)
 
   /// Request Window
   //
-  glutInitWindowSize( 640, 480 );
+  glutInitWindowSize( 1280, 960 );
 
   // Create a new window.
   //

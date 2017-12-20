@@ -30,11 +30,9 @@ template <int BLOCK_LG, int BIN_LG>
 __global__ void radix_sort_1_pass_1(int bin_idx, bool first_iter);
 __global__ void radix_sort_1_pass_2(int bin_idx, bool last_iter);
 
-static __host__ int
-kernels_get_attr_(pCUDA_Func_Attributes *attr)
+__host__ void
+kernels_get_attr(GPU_Info *gpu_info)
 {
-  int count = 0;
-
   CU_SYM(block_lg);
   CU_SYM(array_size); CU_SYM(array_size_lg);
   CU_SYM(scan_in); CU_SYM(scan_out);
@@ -49,35 +47,20 @@ kernels_get_attr_(pCUDA_Func_Attributes *attr)
   CU_SYM(sort_all_bin_count); CU_SYM(sort_all_bin_lg);
   CU_SYM(sort_bin_lg);
 
-
-#define GETATTR(func)                                                         \
-  count++;                                                                    \
-  if ( attr ) {                                                               \
-      attr->err = cudaFuncGetAttributes(&attr->attr,func);                    \
-      attr->name = #func;                                                     \
-      attr++;                                                                 \
-    }
+#define GETATTR(func) gpu_info->GET_INFO(func)
   GETATTR(sort_segments_1_bit_split);
   GETATTR(sort_block_batcher);
   GETATTR(sort_block_batcher_1);
   GETATTR(sort_block_batcher_opt<8>);
   GETATTR((radix_sort_1_pass_1<6,4>));
   GETATTR(radix_sort_1_pass_2);
-  return count;
 #undef GETATTR
 }
 
-__host__ int
-kernels_get_attr(pCUDA_Func_Attributes **attr)
-{
-  int count = kernels_get_attr_(NULL);
-  *attr = (pCUDA_Func_Attributes*) calloc(count,sizeof(**attr));
-  return kernels_get_attr_(*attr);
-}
 
 // This routine executes on the CPU.
 //
-__host__ void
+__host__ int
 sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
 {
   // Launch the kernel, using the provided configuration (block size, etc).
@@ -88,6 +71,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       int elt_per_thread = 4;
       int size_per_elt = 4 + 2;
       int shared_size = db.x * size_per_elt * elt_per_thread;
+      if ( !dg.x ) return shared_size;
       sort_segments_1_bit_split<<<dg,db,shared_size>>>();
     }
     break;
@@ -97,6 +81,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       int elt_per_thread = 4;
       int size_per_elt = 4;
       int shared_size = db.x * size_per_elt * elt_per_thread;
+      if ( !dg.x ) return shared_size;
       sort_block_batcher<<<dg,db,shared_size>>>();
     }
     break;
@@ -106,6 +91,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       int elt_per_thread = 4;
       int size_per_elt = 4;
       int shared_size = db.x * size_per_elt * elt_per_thread;
+      if ( !dg.x ) return shared_size;
       sort_block_batcher_1<<<dg,db,shared_size>>>();
     }
     break;
@@ -115,6 +101,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       int elt_per_thread = 4;
       int size_per_elt = 4;
       int shared_size = db.x * size_per_elt * elt_per_thread;
+      if ( !dg.x ) return shared_size;
       switch ( db.x ) {
       case 64: sort_block_batcher_opt<6><<<dg,db,shared_size>>>(); break;
       case 128: sort_block_batcher_opt<7><<<dg,db,shared_size>>>(); break;
@@ -136,6 +123,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       int bins = int( ceil( 32.0 / bin_lg ) );
       int bin_idx_start = 0;
       int bin_idx_stop = bins;
+      if ( !dg.x ) return shared_size_pass_1;
       for ( int bin_idx = bin_idx_start; bin_idx < bin_idx_stop; bin_idx++ )
         {
           const bool first_iter = bin_idx == bin_idx_start;
@@ -164,6 +152,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
   default:
     break;
   }
+  return 0;
 }
 
 __device__ int lg_ceil(uint n)

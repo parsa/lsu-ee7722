@@ -2,8 +2,6 @@
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
-// $Id:$
-
 /// Purpose
 //
 //   Demonstrate Several Graphical and Simulation Techniques.
@@ -51,11 +49,10 @@ struct CUDA_Ball_W { // W is for work.
 };
 
 struct CUDA_Tile_W {
-  float3 pt_ll; // A corner called lower-left but it doesn't have to be.
-  float width, height;
+  float3 pt_00;
+  float lx, ly;
   float torque;
-  float3 norm_rt, norm_up;
-  float3 normal;
+  float3 nx, ny, nz;
 };
 
 struct CUDA_Phys_W { // W is for work.

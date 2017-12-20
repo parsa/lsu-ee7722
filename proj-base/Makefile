@@ -1,6 +1,6 @@
 
 
-DIRS = balls boxes spring
+DIRS = balls boxes spring links
 
 default:
 	echo The only non-default target is clean.

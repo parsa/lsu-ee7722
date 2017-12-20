@@ -11,6 +11,7 @@
 #include <string.h>
 #include <nvml.h>
 #include <map>
+#include <vector>
 
 
  /// CUDA Runtime API Error-Checking Wrapper
@@ -60,6 +61,7 @@ struct GPU_Choose_Info {
   CUdevice cuda_device;
   int cuda_device_index;
   int cc_major, cc_minor;
+  int cuda_version;
   bool display_absent;
 };
 
@@ -130,6 +132,8 @@ gpu_choose(bool verbose)
       info.display_absent =
         ia_rv == NVML_SUCCESS && is_active == NVML_FEATURE_DISABLED;
 
+      info.cuda_version = CUDA_VERSION;
+
       if ( info_best.cuda_device_index < 0
            || !info_best.display_absent
            || info_best.cc_major < info.cc_major
@@ -173,6 +177,14 @@ struct Kernel_Info {
   GPU_Info_Func func_ptr;       // Pointer to kernel function.
   const char *name;             // ASCII version of kernel name.
   cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
+  bool (*block_size_okay_user_func)(int block_size);
+  bool block_size_okay(int block_size)
+    {
+      if ( cfa.maxThreadsPerBlock < block_size ) return false;
+      if ( block_size_okay_user_func )
+        return block_size_okay_user_func(block_size);
+      return true;
+    }
 };
 
 // Info about GPU and each kernel.
@@ -181,12 +193,14 @@ class GPU_Info {
 public:
   GPU_Info() { num_kernels = 0; }
   GPU_Info(int dev) { num_kernels = 0; get_gpu_info(dev); }
-  int get_info(GPU_Info_Func k_ptr, const char *k_name)
+  Kernel_Info& get_info(GPU_Info_Func k_ptr, const char *k_name)
   {
+    ki.push_back(Kernel_Info());
     ki[num_kernels].name = k_name;
     ki[num_kernels].func_ptr = k_ptr;
+    ki[num_kernels].block_size_okay_user_func = NULL;
     CE( cudaFuncGetAttributes(&ki[num_kernels].cfa,(void*)k_ptr) );
-    return num_kernels++;
+    return ki[num_kernels++];
   }
   void get_gpu_info(int dev)
     {
@@ -232,8 +246,7 @@ public:
   double chip_sp_flops; // MADD counted as 1 FLOP.
   double chip_dp_flops; // MADD counted as 1 FLOP.
   int cc_per_mp, dp_per_mp;
-  static const int max_kernels = 10;
-  Kernel_Info ki[max_kernels];
+  std::vector<Kernel_Info> ki;
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
   int num_kernels;
 };

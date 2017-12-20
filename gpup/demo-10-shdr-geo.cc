@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Demonstration of Geometry Shader
 
@@ -17,7 +17,8 @@
 #define ATTR_IDX_HELIX_INDICES 1
 #define SB_COORD 1
 
-vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
+vec4 generic_lighting
+(vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing);
 
 
 ///
@@ -81,8 +82,8 @@ in Data
 
 out Data_GF
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
   flat vec4 color;
 };
 
@@ -91,8 +92,8 @@ out Data_GF
 
 in Data_GF
 {
-  vec3 var_normal_e;
-  vec4 var_vertex_e;
+  vec3 normal_e;
+  vec4 vertex_e;
   flat vec4 color;
 };
 
@@ -156,8 +157,8 @@ gs_main_helix()
           vec4 pos_o = c + vec4(norm_o,0);
 
           gl_Position = gl_ModelViewProjectionMatrix * pos_o;
-          var_normal_e = gl_NormalMatrix * In[i].normal_o;
-          var_vertex_e = gl_ModelViewMatrix * pos_o;
+          normal_e = gl_NormalMatrix * In[i].normal_o;
+          vertex_e = gl_ModelViewMatrix * pos_o;
 
           // Indicate that vertex is finished.
           EmitVertex();
@@ -195,6 +196,8 @@ gs_main_helix()
   vec3 delta_n10 = n0 - n10;
   vec3 delta_n11 = n0 - n11;
 
+  // Image:60em:demo-10-ill.plain.svg
+
   // Number of times to split triangle.
   int slices = 7;
   float bulge_rad = 1;
@@ -221,14 +224,14 @@ gs_main_helix()
 
       color = In[0].color * base_shade;
       gl_Position = gl_ModelViewProjectionMatrix * pos0;
-      var_vertex_e = gl_ModelViewMatrix * pos0;
-      var_normal_e = gl_NormalMatrix * nx0; // Not quite correct.
+      vertex_e = gl_ModelViewMatrix * pos0;
+      normal_e = gl_NormalMatrix * nx0; // Not quite correct.
       EmitVertex();
 
       color = In[0].color * vec4(1,0.8,1,1) * base_shade;
       gl_Position = gl_ModelViewProjectionMatrix * pos1;
-      var_vertex_e = gl_ModelViewMatrix * pos1;
-      var_normal_e = gl_NormalMatrix * nx1;  // Not quite correct.
+      vertex_e = gl_ModelViewMatrix * pos1;
+      normal_e = gl_NormalMatrix * nx1;  // Not quite correct.
       EmitVertex();
     }
   EndPrimitive();
@@ -249,10 +252,14 @@ fs_main_phong()
   //
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0].xy);
 
+  // Compute lighted color of fragment.
+  //
+  vec4 lighted_color =
+    generic_lighting( vertex_e, color, normalize(normal_e), gl_FrontFacing );
+
   // Multiply filtered texel color with lighted color of fragment.
   //
-  gl_FragColor =
-    texel * generic_lighting(var_vertex_e, color, normalize(var_normal_e));
+  gl_FragColor = texel * lighted_color;
 
   // Copy fragment depth unmodified.
   //
@@ -266,7 +273,7 @@ fs_main_phong()
 ///
 
 vec4
-generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
+generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing)
 {
   // Return lighted color of vertex_e.
   //
@@ -274,7 +281,7 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
   float dist = length(v_vtx_light);
   float d_n_vl = dot(normalize(normal_e), v_vtx_light) / dist;
-  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
+  float phase_light = max(0, front_facing ? d_n_vl : -d_n_vl );
 
   vec3 ambient_light = gl_LightSource[0].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;

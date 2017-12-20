@@ -2,8 +2,6 @@
 //
  /// Quick and dirty code for ball / rectangle physics.
 
-// $Id:$
-
 pVect vec_pos(pVect v)
 { return pVect(max(v.x,0.0f),max(v.y,0.0f),max(v.z,0.0f)); }
 pVect vec_neg(pVect v)
@@ -30,29 +28,30 @@ struct Bounding_Box {
 
 class Tile : public Phys {
 public:
-  Tile(bool &cuda_stale, pCoor ll, pVect up, pVect rt)
+  Tile(bool &cuda_stale, pCoor ll, pVect ay, pVect ax)
     :Phys(PT_Tile),cuda_stale(cuda_stale),marker(NULL)
   {
     read_only = true;
-    set(ll,up,rt);
+    set(ll,ay,ax);
   }
-  ~Tile(){ ASSERTS( false ); }
+  ~Tile(){ };
 
-  void set(pCoor ll, pVect up, pVect rt)
+  void set(pCoor ll, pVect ayp, pVect axp)
   {
-    pt_ll = ll;
-    pt_ul = ll + up;
-    pt_lr = ll + rt;
-    vec_up = up;
-    vec_rt = rt;
-    normal.set(cross(rt,up));
-    norm_rt.set(rt);
-    width = norm_rt.magnitude;
-    norm_up.set(up);
-    height = norm_up.magnitude;
+    ay = ayp;
+    ax = axp;
+    pt_00 = ll;
+    nz.set(cross(ax,ay));
+    nx.set(ax);
+    lx = nx.magnitude;
+    ny.set(ay);
+    ly = ny.magnitude;
     cuda_stale = true;
-    bb.ll = pt_ll + vec_neg(vec_up) + vec_neg(vec_rt);
-    bb.ur = pt_ll + vec_pos(vec_up) + vec_pos(vec_rt);
+    bb.ll = pt_00 + vec_neg(ay) + vec_neg(ax);
+    bb.ur = pt_00 + vec_pos(ay) + vec_pos(ax);
+
+    m_to_local = pMatrix_Rows(nx,ny,nz) * pMatrix_Translate(-ll);
+
   }
 
   float max_z_get(double delta_t){ return bb.ur.z; }
@@ -61,15 +60,23 @@ public:
   Bounding_Box bounding_box_get(){return bb;}
 
   bool& cuda_stale;
-  void *marker;
-  pCoor pt_ll; // A corner called lower-left but it doesn't have to be.
-  pCoor pt_ul, pt_lr;
-  pVect vec_up;
-  pVect vec_rt;
-  pNorm normal, norm_rt, norm_up;
-  pColor color;
-  float width, height;
+
+  // Transformation to local coordinate space.
+  pMatrix m_to_local;
+
+  // Length of tile along local x and y axes.
+  float lx, ly;
+
+  pCoor pt_00; // Global coordinate corresponding to local coord (0,0,0).
+
+  // Local space axes.
+  pVect ay, ax;
+  pNorm nx, ny, nz;
+
   Bounding_Box bb;
+
+  pColor color;
+  void *marker;
   Ball *ball_tested;
 };
 
@@ -77,63 +84,57 @@ class Tile_Manager {
 public:
   Tile_Manager(){ phys_list = NULL; cuda_stale = true; };
   void init(Phys_List *pl){ phys_list = pl; }
+  void clear(){ tiles.clear(); }
   void render(bool simple = false);
   void render_simple();
   void render_shadow_volume(pCoor light_pos);
-  Tile* new_tile(pCoor ll, pVect up, pVect rt, pColor color);
-  Tile* new_tile(pCoor ll, pVect up, pVect rt);
-  Tile* iterate();
-  int occ() { return tiles.occ(); }
+  Tile* new_tile(pCoor ll, pVect ay, pVect ax, pColor color);
+  Tile* new_tile(pCoor ll, pVect ay, pVect ax);
+  int occ() { return tiles.size(); }
 
 private:
   World* w;
-  PStack<Tile*> tiles;
+  vector<Tile*> tiles;
   Phys_List *phys_list;
   bool cuda_stale;
 };
 
 Tile*
-Tile_Manager::new_tile(pCoor ll, pVect up, pVect rt, pColor color)
+Tile_Manager::new_tile(pCoor ll, pVect ay, pVect ax, pColor color)
 {
-  Tile* const rv = new_tile(ll,up,rt);
+  Tile* const rv = new_tile(ll,ay,ax);
   rv->color = color;
   return rv;
 }
 
 Tile*
-Tile_Manager::new_tile(pCoor ll, pVect up, pVect rt)
+Tile_Manager::new_tile(pCoor ll, pVect ay, pVect ax)
 {
-  Tile* const rv = new Tile(cuda_stale,ll,up,rt);
-  tiles += rv;
-  rv->idx = phys_list->occ();
-  phys_list->push(rv);
+  Tile* const rv = new Tile(cuda_stale,ll,ay,ax);
+  tiles.push_back( rv );
+  rv->idx = phys_list->size();
+  phys_list->push_back(rv);
   return rv;
-}
-
-Tile*
-Tile_Manager::iterate()
-{
-  Tile** const tp = tiles.iterate();
-  return tp ? *tp : NULL;
 }
 
 void
 Tile_Manager::render(bool simple)
 {
   glBegin(GL_TRIANGLES);
-  for ( PStackIterator<Tile*> tile(tiles); tile; tile++ )
+  for ( Tile* tile: tiles )
     {
       if ( !simple )
         {
           glColor3fv(tile->color);
-          glNormal3fv(tile->normal);
+          glNormal3fv(tile->nz);
         }
-      glVertex3fv(tile->pt_ul);
-      glVertex3fv(tile->pt_ll);
-      glVertex3fv(tile->pt_lr);
-      glVertex3fv(tile->pt_lr);
-      glVertex3fv(tile->pt_ll+tile->vec_rt+tile->vec_up);
-      glVertex3fv(tile->pt_ul);
+
+      glVertex3fv(tile->pt_00 + tile->ay);
+      glVertex3fv(tile->pt_00);
+      glVertex3fv(tile->pt_00 + tile->ax);
+      glVertex3fv(tile->pt_00 + tile->ax);
+      glVertex3fv(tile->pt_00+tile->ax+tile->ay);
+      glVertex3fv(tile->pt_00 + tile->ay);
     }
   glEnd();
 }
@@ -145,32 +146,34 @@ void
 Tile_Manager::render_shadow_volume(pCoor light_pos)
 {
   const float height = 1000;
-  for ( PStackIterator<Tile*> tile(tiles); tile; tile++ )
+  for ( Tile* tile: tiles )
     {
-      pCoor pt_ur = tile->pt_ll+tile->vec_rt+tile->vec_up;
-      pNorm l_to_ul(light_pos,tile->pt_ul);
-      pCoor ul_2 = light_pos + height * l_to_ul;
-      pCoor ll_2 = light_pos + height * pNorm(light_pos,tile->pt_ll);
-      pCoor lr_2 = light_pos + height * pNorm(light_pos,tile->pt_lr);
-      pCoor ur_2 = light_pos + height * pNorm(light_pos,pt_ur);
-      const bool facing_light = dot(tile->normal,l_to_ul) < 0;
+      pCoor pt_11 = tile->pt_00+tile->ax+tile->ay;
+      pCoor pt_10 = tile->pt_00+tile->ax;
+      pCoor pt_01 = tile->pt_00+tile->ay;
+      pNorm l_to_01(light_pos,pt_01);
+      pCoor pt_01_2 = light_pos + height * l_to_01;
+      pCoor pt_00_2 = light_pos + height * pNorm(light_pos,tile->pt_00);
+      pCoor pt_10_2 = light_pos + height * pNorm(light_pos,pt_10);
+      pCoor pt_11_2 = light_pos + height * pNorm(light_pos,pt_11);
+      const bool facing_light = dot(tile->nz,l_to_01) < 0;
 
       if ( facing_light )
         glFrontFace(GL_CW);
       else
         glFrontFace(GL_CCW);
 
-      glBegin(GL_QUAD_STRIP);
-      glVertex3fv(tile->pt_ll);
-      glVertex3fv(ll_2);
-      glVertex3fv(tile->pt_lr);
-      glVertex3fv(lr_2);
-      glVertex3fv(pt_ur);
-      glVertex3fv(ur_2);
-      glVertex3fv(tile->pt_ul);
-      glVertex3fv(ul_2);
-      glVertex3fv(tile->pt_ll);
-      glVertex3fv(ll_2);
+      glBegin(GL_TRIANGLE_STRIP);
+      glVertex3fv(tile->pt_00);
+      glVertex3fv(pt_00_2);
+      glVertex3fv(pt_10);
+      glVertex3fv(pt_10_2);
+      glVertex3fv(pt_11);
+      glVertex3fv(pt_11_2);
+      glVertex3fv(pt_01);
+      glVertex3fv(pt_01_2);
+      glVertex3fv(tile->pt_00);
+      glVertex3fv(pt_00_2);
       glEnd();
     }
   glFrontFace(GL_CCW);
@@ -178,95 +181,62 @@ Tile_Manager::render_shadow_volume(pCoor light_pos)
 
 bool
 tile_sphere_intersect
-(Tile *tile, pCoor position, float radius,
+(Tile *tile, pCoor ball_pos, float radius,
  pCoor& tact_pos, pNorm& tact_dir, bool dont_compute_tact = false)
 {
-  pVect tile_to_ball(tile->pt_ll,position);
+  // Transform sphere position to tile's local coordinate space.
+  //
+  pCoor ball_loc = tile->m_to_local * ball_pos;
 
   // Distance from tile's plane to the ball.
-  const float dist = dot(tile_to_ball,tile->normal); 
+  const float dist = ball_loc.z;
 
   if ( fabs(dist) > radius ) return false;
 
-  // The closest point on tile plane to the ball.
-  pCoor pt_closest = position - dist * tile->normal; 
+  // Get local y coordinate of ball and return if it's too far to touch.
+  //
+  const float loc_y = ball_loc.y;
+  if ( loc_y < -radius ) return false;
+  if ( loc_y > tile->ly + radius ) return false;
 
-  // How far up the tile in the y direction the center of the ball sits
-  const float dist_ht = dot(tile->norm_up,tile_to_ball);  
-
-  if ( dist_ht < -radius ) return false; 
-  if ( dist_ht > tile->height + radius ) return false;
-
-  // How far up the tile in the x direction the center of the ball sits
-  const float dist_wd = dot(tile->norm_rt,tile_to_ball);
-  if ( dist_wd < -radius ) return false;
-  if ( dist_wd > tile->width + radius ) return false;
+  // Get local x coordinate of ball and return if it's too far to touch.
+  //
+  const float loc_x = ball_loc.x;
+  if ( loc_x < -radius ) return false;
+  if ( loc_x > tile->lx + radius ) return false;
 
   // The return value here should be maybe, but true is good enough
   // for preparing a proximity list.
   if ( dont_compute_tact ) return true;
 
-  // If ball touching tile surface (not including an edge or corner)
-  // then set up the pseudo ball for collision handling
-  if ( dist_ht >= 0 && dist_ht <= tile->height
-       && dist_wd >= 0 && dist_wd <= tile->width )
+  // Find closest ball local x and y coordinates that are within tile.
+  //
+  const float loc_xc = clamp(loc_x, 0, tile->lx);
+  const float loc_yc = clamp(loc_y, 0, tile->ly);
+
+  // If ball local coordinates are within tile then pseudo ball is
+  // on opposite side of tile.
+  //
+  if ( loc_x == loc_xc && loc_y == loc_yc )
     {
-      tact_pos = pt_closest;
-      tact_dir = dist > 0 ? -tile->normal : tile->normal;
+      tact_pos = ball_pos - dist * tile->nz;
+      tact_dir = dist > 0 ? -tile->nz : tile->nz;
       return true;
     }
 
-  const float radius_sq = radius * radius;
+  // Otherwise, ball is touching an edge or corner.
 
-  // Test whether the ball is touching a corner
-  if ( ( dist_ht < 0 || dist_ht > tile->height ) 
-       && ( dist_wd < 0 || dist_wd > tile->width) )
-    {
-      // We need to place the pseudo ball based upon the vector from
-      // ball position to the corner. First step is to figure out which
-      // corner.
+  tact_pos = tile->pt_00 + loc_xc * tile->nx + loc_yc * tile->ny;
+  tact_dir = pVect(ball_pos,tact_pos);
 
-      if ( dist_ht < 0 && dist_wd < 0 ) 
-        {
-          tact_pos = tile->pt_ll;
-        }
-      else if ( dist_ht < 0 && dist_wd > tile->width ) 
-        {
-          tact_pos = tile->pt_lr;
-        }
-      else if ( dist_ht > tile->height && dist_wd < 0 ) 
-        {
-          tact_pos = tile->pt_ul;
-        }
-      else 
-        {
-          tact_pos = tile->pt_ll+tile->vec_rt+tile->vec_up;
-        }
-    }
-  else
-    {
-      // Else the ball is touching an edge
-
-      const bool tact_horiz = dist_ht < 0 || dist_ht > tile->height;
-      const pVect corner_to_tact =
-        tact_horiz ? dist_wd * tile->norm_rt : dist_ht * tile->norm_up;
-      const pCoor ref_pt =
-        tact_horiz ? ( dist_ht < 0 ? tile->pt_ll : tile->pt_ul ) :
-        ( dist_wd < 0 ? tile->pt_ll : tile->pt_lr );
-
-      // Find the closest edge point of the tile to the ball
-      tact_pos = ref_pt + corner_to_tact;
-    }
-
-  tact_dir = pVect(position,tact_pos);
-  return tact_dir.mag_sq < radius_sq;
+  return tact_dir.mag_sq < radius * radius;
 }
 
 bool
 tile_sphere_intersect
-(Tile *tile, pCoor position, float radius)
+(Tile *tile, pCoor ball_pos, float radius)
 {
   pCoor dummyc;
   pNorm dummyn;
-  return tile_sphere_intersect(tile,position,radius,dummyc,dummyn,true);
+  return tile_sphere_intersect(tile,ball_pos,radius,dummyc,dummyn,true);
 }

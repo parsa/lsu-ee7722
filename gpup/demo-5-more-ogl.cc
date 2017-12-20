@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Simple Demo of OpenGL
 
@@ -53,7 +53,7 @@
 //
         glMatrixMode( matrix_name );
 //
-//       where matrix-name can be
+//       where matrix_name can be
 //
        glMatrixMode( GL_MODELVIEW );
        glMatrixMode( GL_PROJECTION );
@@ -119,7 +119,77 @@
        //
        glPopMatrix();
 
- /// Vertex Attribute: glNormal
+
+/// Vertex Attributes
+//
+//  :Def: Vertex Attribute
+//
+//  Data associated with a vertex. Also called associated data.
+//
+//  Attributes include:
+//
+//    - Vertex coordinate.
+        glVertex3f(1,2,3);
+//
+//    - Vertex color. (In the Compatibility Profile)
+        glColor3fv(color_orange);
+//
+//    - Vertex "normal". In the Compatibility Profile)
+        glNormal(1,0,0);
+//
+
+ /// Attribute Values
+//
+//   Historically, a vertex attribute was a four-element vector
+//   of single-precision (32b) floating point numbers.
+//
+//   Such a vector could easily represent two important quantities:
+//
+//     - Homogeneous coordinate: (x,y,z,w)
+//     - A color with transparency:  (r,g,b,a)
+//
+//     Coordinates and colors make up a large fraction of the data
+//     needed for 3D graphics.
+//
+//   Vectors
+//
+//     Yes, these only need three floats ...
+//     ... but they still occupy a "slot" that can hold four floats ...
+//     ... because avoiding the wasted space (one float) ...
+//     ... is not worth the trouble of having two attribute sizes ...
+//     ... especially if one of those sizes is not a power of 2.
+//
+//  Attribute Values in the year 2017
+//
+//     Performance is still best when attributes are 4-element vectors.
+//     ( In fact, other kinds of values should also have a power-of-2 size.)
+
+
+ /// Vertex Attributes
+ //
+ //  :lindholm01: Description of an early GPU, showing origin of attrib limits.
+ //  http://www.ece.lsu.edu/koppel/gp/srefs/p149-lindholm.pdf
+ //
+ //  Older versions of OpenGL defined 16 attributes ..
+ //  .. each with a specific purpose.
+ //
+ //  This limit of 16 attributes is based on hardware constraints.
+ //    Note: 16 * 4 * sizeof(float) = 256 B.
+ //    So hardware had to move 256 B of data for each vertex,
+ //      and have at least that much storage in "shader" performing
+ //      vertex calculations.
+ //
+ //  Current versions of OpenGL define only a few attributes ..
+ //  .. such as coordinates.
+ //  The user is free to define others (to be used by user-written code).
+ //
+ //  The maximum number of vertex attributes that can be defined is
+ //  the value of:
+       GL_MAX_VERTEX_ATTRIBS;
+
+
+
+ /// glNormal
  //
  //  A normal is one of the 16 "classic" attributes of a vertex.
  //
@@ -400,7 +470,7 @@ World::render()
   glTranslatef(sphere_location.x,sphere_location.y,sphere_location.z);
   glScalef(sphere_size,sphere_size,sphere_size);
 
-  // Construct color objects using hex RGB codes. See coord.h.
+  // Construct color objects using hex RGB codes. See coord.h and colors.h.
   //
   const pColor lsu_spirit_purple(0x580da6);
   const pColor lsu_spirit_gold(0xf9b237);

@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -18,11 +18,15 @@
 //         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
 //
 
- /// The Vertex Specification Related Issues
+ /// The Vertex Specification (Pulling) Related Issues
  //
  //  A scene to be rendered has many vertices ..
  //  .. and so the overhead of handling those vertices must be kept small.
  //
+ //
+ // :Def: Vertex Pulling
+ //  The transfer of vertices into the rendering pipeline.
+
 
  //  -- Vertex Processing
  //  -- Vertex Specification: Telling OpenGL about the vertices.
@@ -82,7 +86,8 @@
  //
  //  'm'    Change method used to specify vertices.
  //  'r'    Toggle vertex re-computation on and off.
- //  'F11'  Change size of text.
+ //  'Ctrl' '+'  or  'Ctrl' '=',  and  'Ctrl' '-'  or  'Ctrl' '_', 
+ //         Increase and decrease green text size.
  //  'F12'  Write screenshot to file.
 
  /// Variables
@@ -152,8 +157,7 @@ public:
   bool gpu_buffer_stale;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
-  float *coords;
-  int coords_size;
+  vector<pCoor> sphere_coords;
 
   int opt_slices;
   pCoor sphere_location;
@@ -181,7 +185,6 @@ void
 World::init()
 {
   frame_timer.work_unit_set("Steps / s");
-  coords = NULL;
   gpu_buffer = 0;
   gpu_buffer_stale = true;
 
@@ -358,15 +361,10 @@ World::render()
   glMaterialfv(GL_BACK,GL_AMBIENT_AND_DIFFUSE, lsu_spirit_purple);
   glEnable(GL_COLOR_MATERIAL);
 
-  if ( coords == NULL )
+  if ( sphere_coords.empty() )
     {
       /// Initialize array coords with sphere's coordinates.
       // 
-
-      // Declare a self-resizing stack for collecting coordinates.
-      // See code in include/misc.h.
-      //
-      PStack<float> sphere_coords;
 
       const double delta_eta = M_PI / opt_slices;
 
@@ -377,23 +375,17 @@ World::render()
           const double slice_r0 = sin(eta),  slice_r1 = sin(eta1);
           const double delta_theta = delta_eta * slice_r1;
 
-          /// Note "+=" means append to array.
-
           // Add first two vertices of triangle strip.
           // Note that a vertex is added to list one coordinate at a time.
           //
 
           // Vertex 1
           //
-          sphere_coords += slice_r1;  // x
-          sphere_coords += y1;        // y
-          sphere_coords += 0;         // z
+          sphere_coords.push_back( pCoor( slice_r1, y1, 0 ) );
 
           // Vertex 2
           //
-          sphere_coords += slice_r0;
-          sphere_coords += y0;
-          sphere_coords += 0;
+          sphere_coords.push_back( pCoor( slice_r0, y0, 0 ) );
 
           for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
             {
@@ -401,23 +393,18 @@ World::render()
 
               // Vertex 3  (Used for three triangles.)
               //
-              sphere_coords += slice_r1 * cos(theta1);  // x
-              sphere_coords += y1;                      // y
-              sphere_coords += slice_r1 * sin(theta1);  // z
+              sphere_coords.push_back
+                ( pCoor( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) ) );
 
               // Vertex 4  (Used for three triangles.)
               //
-              sphere_coords += slice_r0 * cos(theta1);
-              sphere_coords += y0;
-              sphere_coords += slice_r0 * sin(theta1);
+
+              sphere_coords.push_back
+                ( pCoor( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) ) );
             }
 
         }
 
-      // Move coordinates from sphere_coords object to array coords.
-      //
-      coords_size = sphere_coords.occ();
-      coords = sphere_coords.take_storage();  // Return storage. See misc.h
     }
 
   ///
@@ -430,6 +417,7 @@ World::render()
 
   // Size of vertex coordinate or normal.
   const int pf_bytes_per_vec3 = 3 * sizeof(float);
+  const int coords_size = sphere_coords.size();
 
   switch ( opt_method ) {
 
@@ -443,19 +431,19 @@ World::render()
 
       glBegin(GL_TRIANGLES);
       glColor3fv(lsu_spirit_gold);
-      for ( int i=0; i<coords_size; i+=3 )
+      for ( int i=0; i<coords_size-2; i++ )
         {
-          glNormal3fv( &coords[i] );
-          glVertex3fv( &coords[i + ( i & 1 ? 6 : 0 ) ] );
-          glVertex3fv( &coords[i + 3] );
-          glVertex3fv( &coords[i + ( i & 1 ? 0 : 6 ) ] );
+          glNormal3fv( sphere_coords[i] );
+          glVertex3fv( sphere_coords[i + 0] );
+          glVertex3fv( sphere_coords[i + 1 + ( i & 1 ) ] );
+          glVertex3fv( sphere_coords[i + 2 - ( i & 1 ) ] );
         }
       glEnd();
 
       // Performance factors to show in green text.
       //
-      pf_vertices = coords_size;
-      pf_triangles = coords_size / 3;
+      pf_vertices = coords_size * 3;
+      pf_triangles = coords_size;
       pf_gpu_cpu_bytes =  // Excludes command overhead, which is large here.
           (   3 * pf_triangles * pf_bytes_per_vec3  // Vertices
             +     pf_triangles * pf_bytes_per_vec3  // Normals
@@ -474,17 +462,17 @@ World::render()
 
       glBegin(GL_TRIANGLE_STRIP);
       glColor3fv(lsu_spirit_gold);
-      for ( int i=0; i<coords_size; i+=3 )
+      for ( int i=0; i<coords_size; i++ )
         {
-          glNormal3fv( &coords[i] );
-          glVertex3fv( &coords[i] );
+          glNormal3fv( sphere_coords[i] );
+          glVertex3fv( sphere_coords[i] );
         }
       glEnd();
 
       // Performance factors to show in green text.
       //
-      pf_vertices = coords_size / 3;
-      pf_triangles = coords_size / 3;
+      pf_vertices = coords_size;
+      pf_triangles = coords_size;
       pf_gpu_cpu_bytes =  // Excludes command overhead, which is large here.
           (   pf_triangles * pf_bytes_per_vec3  // Vertices
             + pf_triangles * pf_bytes_per_vec3  // Normals
@@ -512,8 +500,9 @@ World::render()
 
       /// Specify pointer to the array of vertices.
       //
-      glVertexPointer( 3, GL_FLOAT, 3*sizeof(float), coords);
-      //               N  Type      Stride           Pointer
+      glVertexPointer
+          ( 3, GL_FLOAT, sizeof(sphere_coords[0]), sphere_coords.data());
+      //    N  Type      Stride                    Pointer
       //
       // Args: N: 
       //         Number of dimensions.  Valid: 2-4.
@@ -529,8 +518,8 @@ World::render()
       // Ditto for normals.
       //
       glEnableClientState(GL_NORMAL_ARRAY);
-      glNormalPointer( GL_FLOAT, 0,       coords);
-      //               Type      Stride   Pointer
+      glNormalPointer( GL_FLOAT,sizeof(sphere_coords[0]),sphere_coords.data());
+      //               Type      Stride                  Pointer
       //
       // Fewer arguments than glNormalPointer because normals always have
       // three dimensions.
@@ -544,7 +533,7 @@ World::render()
 
       /// Draw triangle strips using enabled arrays.
       //
-      glDrawArrays(GL_TRIANGLE_STRIP, 0,         coords_size/3);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0,         coords_size);
       //           Primitive          StartIdx   Count
       // Args:
       //
@@ -563,8 +552,8 @@ World::render()
 
       // Performance factors to show in green text.
       //
-      pf_vertices = coords_size / 3;
-      pf_triangles = coords_size / 3;
+      pf_vertices = coords_size;
+      pf_triangles = coords_size;
 
       // Assuming that OpenGL does not recognize that normals and
       // vertices are sourced from the same address.
@@ -585,10 +574,36 @@ World::render()
       // The intent is to keep chunks of storage on GPU where they
       // can be re-used.
 
+#ifdef XXX
+      /// Steps:
+      //
+      //  - Get a buffer object name.
+      //    Just do this once.
+
+      glGenBuffers(n, &gpu_buffer);
+
+
+      //  - Copy data from CPU into buffer object.
+      //    Do this whenever data changes.
+
+      glBufferData
+        (GL_ARRAY_BUFFER,   // Kind of buffer object.
+         n_bytes ,          // Amount of data (bytes) to copy.
+         data_ptr,          // Pointer to data to copy.
+         GL_STATIC_DRAW);   // Hint about who, when, how accessed.
+
+      //   - Use buffer object in place of a CPU (client) array.
+      //     Do this each time a command, like glVertexPointer, reads
+      //      array data.
+
+      glBindBuffer(GL_ARRAY_BUFFER, gpu_buffer);
+
+#endif
+
       // Performance factors to show in green text.
       //
-      pf_vertices = coords_size / 3;
-      pf_triangles = coords_size / 3;
+      pf_vertices = coords_size;
+      pf_triangles = coords_size;
 
       // Set up or update a buffer object to hold coordinates.
       //
@@ -606,8 +621,8 @@ World::render()
           //
           glBufferData
             (GL_ARRAY_BUFFER,           // Kind of buffer object.
-             coords_size*sizeof(float), // Amount of data (bytes) to copy.
-             coords,                    // Pointer to data to copy.
+             coords_size*sizeof(pCoor), // Amount of data (bytes) to copy.
+             sphere_coords.data(),      // Pointer to data to copy.
              GL_STATIC_DRAW);           // Hint about who, when, how accessed.
 
           // Tell GL that subsequent array pointers refer to host storage.
@@ -635,8 +650,8 @@ World::render()
 
       // Specify array of vertices.
       //
-      glVertexPointer( 3, GL_FLOAT, 3*sizeof(float), NULL);
-      //               N  Type      Stride           Pointer
+      glVertexPointer( 3, GL_FLOAT, sizeof(pCoor), NULL);
+      //               N  Type      Stride         Pointer
       //
       // Pointer indicates the starting point in the array buffer,
       // NULL (a zero) means start at the beginning.
@@ -645,7 +660,7 @@ World::render()
 
       // Ditto. Note that vertices and normals read from same buffer.
       //
-      glNormalPointer(GL_FLOAT,0,NULL);
+      glNormalPointer(GL_FLOAT,sizeof(pCoor),NULL);
       glEnableClientState(GL_NORMAL_ARRAY);
 
       // Set vertex color the old-fashioned way. This color should
@@ -654,7 +669,7 @@ World::render()
       //
       glColor3fv(lsu_spirit_gold);
 
-      glDrawArrays(GL_TRIANGLE_STRIP,0,coords_size/3);
+      glDrawArrays(GL_TRIANGLE_STRIP,0,coords_size);
 
       // Tell GL that subsequent array pointers refer to host storage.
       //
@@ -674,7 +689,8 @@ World::render()
 
   if ( opt_recompute )
     {
-      free( coords );  coords = NULL;  gpu_buffer_stale = true;
+      sphere_coords.clear();
+      gpu_buffer_stale = true;
     }
 
   glPopMatrix();
@@ -731,7 +747,7 @@ World::cb_keyboard()
 
   if ( opt_slices != slices_prev )
     {
-      free(coords); coords = NULL;
+      sphere_coords.clear();
       gpu_buffer_stale = true;
     }
 
@@ -770,6 +786,8 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
+  popengl_helper.ogl_debug_set(true);
+
   World world(popengl_helper);
 
   // Specify default frame update rate.

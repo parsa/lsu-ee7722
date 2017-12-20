@@ -12,50 +12,66 @@
 
 // Simulates balls connected by springs over a platform. Balls and
 // springs can be initialized in different arrangements (called
-// scenes). Currently scene 1 is a simple string of beads, and scenes
-// 2, 3, and 4 are trusses. The platform consists of tiles, some are
-// purple-tinted mirrors (showing a reflection of the ball), the
-// others show the course syllabus.
+// scenes). Currently scene 1 is a tree-like arrangement. The platform
+// consists of tiles, some are purple-tinted mirrors (showing a
+// reflection of the ball), the others show the course syllabus.
 
 
 
 ///  Keyboard Commands
  //
  /// Object (Eye, Light, Ball) Location or Push
- //   Arrows, Page Up, Page Down
+ //   Arrows (←,→,↑,↓) Page Up, Page Down
  //        Move object or push ball, depending on mode.
- //        With shift key pressed, motion is 5x faster.
- //        With control key pressed, motion is 5x slower.
+ //        Shift + KEY: motion is 5x faster.
+ //        Ctrl + KEY : motion is 5x slower.
  //   'e': Move eye.
  //   'l': Move light.
  //   'b': Move head (first) ball. (Change position but not velocity.)
  //   'B': Push head ball. (Add velocity.)
  //
- /// Eye Direction
- //   Home, End, Delete, Insert
- //   Turn the eye direction.
- //   Home should rotate eye direction up, End should rotate eye
- //   down, Delete should rotate eye left, Insert should rotate eye
- //   right.  The eye direction vector is displayed in the upper left.
+ /// Eye Direction and GUI Options
+ //
+ //   'Home', 'End', 'Delete', 'Insert'
+ //         Turn the eye direction. Home should rotate eye direction
+ //         up, End should rotate eye down, Delete should rotate eye
+ //         left, Insert should rotate eye right. The eye direction
+ //         vector is displayed in the upper left.
+ //  'C-='  (Ctrl =) Increase green text size.
+ //  'C--'  (Ctrl -) Decrease green text size.
+ //  'F12'  Write screenshot to PNG file.
 
- /// Simulation Options
+ /// Simulation Execution Options
+ //  (Also see variables below.)
+ //
+ //  'p'    Pause simulation. (Press again to resume.)
+ //  ' '    (Space bar.) Advance simulation by 1/30 second.
+ //  'S- '  (Shift Space bar.) Advance simulation by one time step.
+
+ /// Performance Tuning, Graphics Effects, and Debugging Options
+ //
+ //  'y'    Toggle value of opt_tryout1. Intended for experiments and debugging.
+ //  'Y'    Toggle value of opt_tryout2. Intended for experiments and debugging.
+ //  'n'    Toggle use of surface normals for spheres.
+ //  'o'    Toggle shadow effect.
+ //  'r'    Toggle mirror effect.
+ //  '!'    Toggle rendering of spheres (balls).
+ //  '@'    Toggle rendering of links.
+ //  '#'    Toggle rendering of platform.
+
+
+ /// Scene and Simulated System Options
  //  (Also see variables below.)
  //
  //  'w'    Twirl balls around axis formed by head and tail. (Prob 2 soln).
  //  '1'    Set up scene 1.
  //  '2'    Set up scene 2.
  //  '3'    Set up scene 3.
- //  'p'    Pause simulation. (Press again to resume.)
- //  ' '    (Space bar.) Advance simulation by 1/30 second.
- //  'S- '  (Shift-space bar.) Advance simulation by one time step.
+ //  '4'    Set up scene 4.
  //  'h'    Freeze position of first (head) ball. (Press again to release.)
  //  't'    Freeze position of last (tail) ball. (Press again to release.)
  //  's'    Stop balls.
  //  'g'    Turn gravity on and off.
- //  'y'    Toggle value of opt_tryout1. Intended for experiments and debugging.
- //  'Y'    Toggle value of opt_tryout2. Intended for experiments and debugging.
- //  'F11'  Change size of green text (in upper left).
- //  'F12'  Write screenshot to file.
 
  /// Variables
  //   Selected program variables can be modified using the keyboard.
@@ -98,7 +114,6 @@
 
 #include <gp/util-containers.h>
 #include <gp/coord-containers.h>
-//  #include <gp/cuda-gpu-info-choose.h>
 #include <gp/cuda-gpuinfo.h>
 #include "shapes.h"
 #include "links.cuh"
@@ -114,6 +129,8 @@ class World;
 
 enum GPU_Physics_Method { GP_cpu, GP_cuda, GP_ENUM_SIZE };
 const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
+const char *sh_names[] = { "PLAIN", "SET 1", "SET 2" };
+
 
 // Object Holding Ball State
 //
@@ -272,7 +289,7 @@ typedef pVectorI<Link> Links;
 typedef pVectorI<Ball> Balls;
 
 
-enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
+enum Render_Option { RO_Normally, RO_Mirrored, RO_Simple, RO_Shadow_Volumes };
 enum Shader_Option { SO_Phong, SO_Set_1, SO_ENUM_SIZE };
 
 class World {
@@ -301,6 +318,8 @@ public:
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
   bool opt_tryout1, opt_tryout2;  // For ad-hoc experiments.
+  float opt_tryoutf;
+  bool opt_sphere_true;
 
   // Tiled platform for ball.
   //
@@ -324,6 +343,7 @@ public:
 
   pCoor eye_location;
   pVect eye_direction;
+  pMatrix transform_projection;
   pMatrix modelview;
   pMatrix transform_mirror;
 
@@ -332,14 +352,18 @@ public:
   double adj_t_stop;
   double adj_duration;
 
-  int opt_shader;
+  uint opt_shader;
+
   bool opt_mirror;
   bool opt_shadows;
   bool opt_shadow_volumes;      // Make shadow volumes visible.
+  bool opt_normal_sphere;
+  int opt_hide_stuff;
   pShader *sp_fixed;          // Fixed functionality.
   pShader *sp_phong;          // Basic stuff.
   pShader *sp_instances_sphere;
   pShader *sp_instances_sv;
+  pShader *sp_sphere_true;
 
   GLuint balls_pos_rad_bo;
   GLuint balls_color_bo;
@@ -399,10 +423,10 @@ public:
 
   void render_link_start();
   void render_link_gather(Link *link);
-  void render_link_render();
+  void render_link_render(bool shadow_volumes = false);
+  void render_link_render_sv(){ render_link_render(true); };
 
-  pShader *sp_set_2;
-  GLuint link_bo_vtx, link_bo_nrm, link_bo_tco;
+  pShader *sp_set_2, *sp_set_2_sv;
   double world_time_link_update;
 
   int opt_sides, opt_segments;
@@ -412,8 +436,17 @@ public:
   pCoors lis_pos1, lis_pos2;
   pCoors lis_v1, lis_v2, lis_b1_ydir, lis_b2_ydir, lis_tex_rad;
   GLuint *lis_bos;
+
+  int light_state_get()
+    {
+      GLboolean l0, l1;
+      glGetBooleanv(GL_LIGHT0,&l0);
+      glGetBooleanv(GL_LIGHT1,&l1);
+      return int(l0) | (int(l1)<<1);
+    };
 };
 
+enum { OH_Links = 1, OH_Platform = 2, OH_Sphere = 4 };
 
 void
 World::init_graphics()
@@ -433,6 +466,9 @@ World::init_graphics()
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_tryout1 = opt_tryout2 = false;
+  opt_sphere_true = true;
+  opt_tryoutf = 0;
+  variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
 
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
@@ -461,11 +497,11 @@ World::init_graphics()
   adj_t_stop = 0;
   adj_duration = 0.25;
 
-  link_bo_vtx = 0;
   opt_sides = 20;
   opt_segments = 15;
   variable_control.insert(opt_sides,"Link Sides");
   variable_control.insert(opt_segments,"Link Segments");
+  opt_hide_stuff = 0;
 }
 
 
@@ -524,8 +560,18 @@ World::modelview_update()
   pMatrix_Translate center_eye(-eye_location);
   pMatrix_Rotation rotate_eye(eye_direction,pVect(0,0,-1));
   modelview = rotate_eye * center_eye;
-  pMatrix reflect; reflect.set_identity(); reflect.rc(1,1) = -1;
+
+  // Compute a matrix to transform object-space coordinate to its
+  // reflected location for a mirror on the xz plane at y=0.
+  //
+  pMatrix reflect;
+  reflect.set_identity();
+  reflect.rc(1,1) = -1;    // Flip y to -y.
+
+  // Transform eye-space coordinate to its reflected position.
+  //
   transform_mirror = modelview * reflect * invert(modelview);
+
 }
 
 void
@@ -534,14 +580,16 @@ World::render_objects(Render_Option option)
   const float shininess_ball = 5;
   pColor spec_color(1,1,1);
   pColor spec_light = color_white * opt_light_intensity;
-  GLboolean l0, l1;
-  glGetBooleanv(GL_LIGHT0,&l0);
-  glGetBooleanv(GL_LIGHT1,&l1);
-  int light_state = l0 | (l1<<1);
+  const int light_state = light_state_get();
   glLightfv(GL_LIGHT0, GL_SPECULAR, spec_light);
   const double wt = world_time;
 
-  if ( option == RO_Normally )
+  const bool hide_links = opt_hide_stuff & OH_Links;
+  const bool hide_platform = opt_hide_stuff & OH_Platform;
+  const bool hide_sphere = opt_hide_stuff & OH_Sphere;
+  const bool mirrored = option == RO_Mirrored;
+
+  if ( option == RO_Normally || option == RO_Mirrored )
     {
       glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
       glEnable(GL_TEXTURE_2D);
@@ -568,86 +616,98 @@ World::render_objects(Render_Option option)
       cyl.light_pos = light_location;
       sphere.light_pos = light_location;
 
-      sphere.render_bunch_gather_sv(wt);
-      for ( Ball *ball: balls )
-        sphere.render_shadow_volume(ball->radius,ball->position);
-
-      sp_instances_sv->use();
-      glUniform2i(3, opt_tryout1, opt_tryout2);
-      sphere.render_bunch_render_sv();
-      sp_fixed->use();
-
-      for ( Link *link: links )
+      if ( !hide_sphere )
         {
-          if ( link->snapped ) continue;
-          if ( !link->is_renderable ) continue;
-          if ( !link->is_simulatable ) continue; // Should check if straight.
-          Ball *const ball1 = link->ball1;
-          Ball *const ball2 = link->ball2;
-          cyl.render_shadow_volume
-            (ball1->position,0.3*ball1->radius,
-             ball2->position-ball1->position);
+          sphere.render_bunch_gather_sv(wt);
+          for ( Ball *ball: balls )
+            sphere.render_shadow_volume(ball->radius,ball->position);
+
+          pShader_Use use( sp_instances_sv );
+          glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+          glUniform1f(4, opt_tryoutf);
+          glUniform1i(5, mirrored );
+          glUniformMatrix4fv(6, 1, true, transform_projection);
+
+          sphere.render_bunch_render_sv();
+        }
+
+      if ( !hide_links )
+        {
+          render_link_start();
+          for ( Link *link: links )
+            if ( link->is_renderable ) render_link_gather(link);
+          render_link_render_sv();
         }
     }
   else
     {
       sphere.opt_texture = true;
 
-      sphere.render_bunch_gather(wt);
-      for ( Ball *ball: balls )
+      if ( !hide_sphere )
         {
-          if ( ball->contact )
-            sphere.color = color_gray;
-          else if ( ball->mass > 0 && ball->mass < ball->mass_min )
-            sphere.color = color_red;
-          else if ( ball->mass > 0 && ball->locked )
-            sphere.color = color_pale_green;
-          else
-            sphere.color = ball->color;
-          sphere.render
-            (ball->radius,ball->position,
-             pMatrix_Rotation(ball->orientation));
+          sphere.render_bunch_gather(wt);
+          for ( Ball *ball: balls )
+            {
+              if ( ball->contact )
+                sphere.color = color_gray;
+              else if ( ball->mass > 0 && ball->mass < ball->mass_min )
+                sphere.color = color_red;
+              else if ( ball->mass > 0 && ball->locked )
+                sphere.color = color_pale_green;
+              else
+                sphere.color = ball->color;
+              sphere.render
+                (ball->radius,ball->position,
+                 pMatrix_Rotation(ball->orientation));
+            }
+
+          pShader_Use use
+            ( opt_sphere_true ? sp_sphere_true : sp_instances_sphere );
+          glUniform1i(2, light_state);
+          glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+          glUniform1f(4, opt_tryoutf);
+          glUniform1i(5, mirrored );
+          glUniformMatrix4fv(6, 1, true, transform_projection);
+
+          sphere.render_bunch_render(opt_sphere_true);
         }
 
-      sp_instances_sphere->use();
-      glUniform1i(2, light_state);
-
-      glUniform2i(3, opt_tryout1, opt_tryout2);
-      sphere.render_bunch_render();
-
-      glBindTexture(GL_TEXTURE_2D,texid_hw);
-
-      render_link_start();
-
-      for ( Link *link: links )
+      if ( !hide_links )
         {
-          if ( !link->is_renderable ) continue;
-          render_link_gather(link);
-          continue;
+          glBindTexture(GL_TEXTURE_2D,texid_hw);
+          glEnable(GL_TEXTURE_2D);
 
-          Ball *const ball1 = link->ball1;
-          Ball *const ball2 = link->ball2;
-          pVect dir1 = ball1->omatrix * link->cb1;
-          pCoor pos1 = ball1->position + dir1;
+          render_link_start();
 
-          pVect dir2 = ball2->omatrix * link->cb2;
-          pCoor pos2 = ball2->position + dir2;
+          for ( Link *link: links )
+            {
+              if ( !link->is_renderable ) continue;
+              render_link_gather(link);
+              continue;
 
-          cyl.set_color(link->color);
-          cyl.render(pos1,0.3*ball1->radius, pos2-pos1);
+              Ball *const ball1 = link->ball1;
+              Ball *const ball2 = link->ball2;
+              pVect dir1 = ball1->omatrix * link->cb1;
+              pCoor pos1 = ball1->position + dir1;
+
+              pVect dir2 = ball2->omatrix * link->cb2;
+              pCoor pos2 = ball2->position + dir2;
+
+              cyl.set_color(link->color);
+              cyl.render(pos1,0.3*ball1->radius, pos2-pos1);
+            }
+
+          render_link_render();
         }
-
-      render_link_render();
-
     }
 
-  sp_fixed->use();
+  if ( hide_platform ) return;
 
   if ( option == RO_Shadow_Volumes ) return;
 
-  sp_phong->use();
+  pShader_Use use( sp_phong );
   glUniform1i(2, light_state);
-  glUniform2i(3, opt_tryout1, opt_tryout2);
+  glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
 
   //
   // Render Platform
@@ -677,8 +737,6 @@ World::render_objects(Render_Option option)
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glBindBuffer(GL_ARRAY_BUFFER,0);
-
-  sp_fixed->use();
 }
 
 void
@@ -711,9 +769,10 @@ World::render()
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  // Frustum: left, right, bottom, top, near, far
   const float xr = .08;
-  glFrustum(-xr,xr,-xr/aspect,xr/aspect,.1,5000);
+  // pMatrix_Frustum: left, right, bottom, top, near, far
+  transform_projection = pMatrix_Frustum(-xr,xr,-xr/aspect,xr/aspect,.1,5000);
+  glLoadTransposeMatrixf(transform_projection);
 
   glViewport(0, 0, win_width, win_height);
   pError_Check();
@@ -770,7 +829,7 @@ World::render()
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
-    ("Code Compiled: %s\n",
+    ("Compiled: %s\n",
 #ifdef __OPTIMIZE__
      "WITH OPTIMIZATION"
 #else
@@ -799,18 +858,21 @@ World::render()
      ball.velocity.x,ball.velocity.y,ball.velocity.z );
 
   ogl_helper.fbprintf
-    ("%4zd Balls  %4zd Links\n",
-     balls.size(), links.size());
-
-  const char *sh_names[] = { "PLAIN", "SET 1", "SET 2" };
+    ("%4zd Balls  %4zd Links  Physics: %s ('a' to change)  \n",
+     balls.size(), links.size(), gpu_physics_method_str[opt_physics_method]);
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a' to change)  Shader: %s  ('v')  "
-     "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')\n",
-     gpu_physics_method_str[opt_physics_method],
+    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  Shader: %s  ('v')  "
+     "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')  Normals: %s ('n')\n",
+     opt_hide_stuff & OH_Sphere ? 'S' : '_',
+     opt_hide_stuff & OH_Links ? 'L' : '_',
+     opt_hide_stuff & OH_Platform ? 'P' : '_',
+     opt_shadows ? 'S' : '_',
+     opt_mirror ? 'M' : '_',
      sh_names[opt_shader],
-     opt_tryout1 ? BLINK("ON","  ") : "OFF",
-     opt_tryout2 ? BLINK("ON","  ") : "OFF");
+     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout2 ? BLINK("ON ","   ") : "OFF",
+     opt_normal_sphere ? "SPHERE" : "TRI");
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -822,71 +884,99 @@ World::render()
   // Render ball reflection.  (Will be blended with dark tiles.)
   //
 
-  if ( opt_mirror )
+  const bool hide_platform = opt_hide_stuff & OH_Platform;
+
+  if ( !hide_platform )
     {
-      // Write stencil value 2 at location of dark (mirrored) tiles.
+      if ( opt_mirror )
+        {
+          /// Mirror Effect
+          //
+          //  - Step 1:  Write location of mirrors into stencil buffer.
+          //
+          //  - Step 2a: Prepare a matrix that transforms to mirrored location.
+          //  - Step 2b: Set up blending to blend mirrored objects with mirrors.
+          //
+          //  - Step 3:  Render all objects except mirrors.
+
+          ///  Step 1: Write location of mirrors into stencil buffer.
+          //
+          //   Write stencil value 2 at location of dark (mirrored) tiles.
+          //
+          glDisable(GL_LIGHTING);
+          glEnable(GL_STENCIL_TEST);
+
+          // Set stencil operation to write a 2 at all locations written.
+          //
+          glStencilFunc(GL_NEVER,2,2);
+          glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+
+          // Render mirrored tiles (but only to write stencil buffer).
+          //
+          platform_tile_coords.bind();
+          glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
+          glEnableClientState(GL_VERTEX_ARRAY);
+          glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+          glDisableClientState(GL_VERTEX_ARRAY);
+          glBindBuffer(GL_ARRAY_BUFFER,0);
+
+          glEnable(GL_LIGHTING);
+
+
+          // Prepare to write only stenciled locations.
+          //
+          glStencilFunc(GL_EQUAL,2,2);
+          glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+
+          ///  Step 2a: Prepare a matrix that transforms to mirrored location.
+          //   Use a transform that reflects objects to other side of platform.
+          //
+          glMatrixMode(GL_PROJECTION);
+          glPushMatrix();
+          glMultTransposeMatrixf(transform_mirror);
+
+          // Reflected front face should still be treated as the front face.
+          //
+          glFrontFace(GL_CW);
+
+          /// Step 3:  Render all objects.
+
+          render_objects(RO_Mirrored);
+
+          glFrontFace(GL_CCW);
+          glMatrixMode(GL_PROJECTION);
+          glPopMatrix();
+        }
+
+      // Blend mirror tiles with possibly existing ball reflection.
       //
-      glDisable(GL_LIGHTING);
-      glEnable(GL_STENCIL_TEST);
-      glStencilFunc(GL_NEVER,2,2);
-      glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
-      platform_tile_coords.bind();
-      glVertexPointer(3, GL_FLOAT, sizeof(platform_tile_coords.data[0]), 0);
-      glEnableClientState(GL_VERTEX_ARRAY);
-      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+      glDepthFunc(GL_ALWAYS);
+
+      glDisable(GL_STENCIL_TEST);
+      glDisable(GL_TEXTURE_2D);
+
       glEnable(GL_LIGHTING);
+      glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
+      glLightfv(GL_LIGHT0, GL_SPECULAR, color_black);
+
+      glColor3fv(color_lsu_spirit_purple);
+
+      glEnable(GL_BLEND);
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFunc(GL_CONSTANT_ALPHA,GL_ONE_MINUS_CONSTANT_ALPHA); // src, dst
+      glBlendColor(0,0,0,0.5);
+
+      platform_tile_coords.bind();
+      glVertexPointer
+        (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
+      glEnableClientState(GL_VERTEX_ARRAY);
+
+      glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
+
       glDisableClientState(GL_VERTEX_ARRAY);
       glBindBuffer(GL_ARRAY_BUFFER,0);
 
-      // Prepare to write only stenciled locations.
-      //
-      glStencilFunc(GL_EQUAL,2,2);
-      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-
-      // Use a transform that reflects objects to other side of platform.
-      //
-      glMatrixMode(GL_PROJECTION);
-      glPushMatrix();
-      glMultTransposeMatrixf(transform_mirror);
-
-      // Reflected front face should still be treated as the front face.
-      //
-      glFrontFace(GL_CW);
-
-      render_objects(RO_Normally);
-
-      glFrontFace(GL_CCW);
-      glMatrixMode(GL_PROJECTION);
-      glPopMatrix();
     }
-
-  // Blend mirror tiles with possibly existing ball reflection.
-  //
-  glDepthFunc(GL_ALWAYS);
-
-  glDisable(GL_STENCIL_TEST);
-  glDisable(GL_TEXTURE_2D);
-
-  glEnable(GL_LIGHTING);
-  glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, color_black);
-
-  glColor3fv(color_lsu_spirit_purple);
-
-  glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_ADD);
-  glBlendFunc(GL_CONSTANT_ALPHA,GL_ONE_MINUS_CONSTANT_ALPHA); // src, dst
-  glBlendColor(0,0,0,0.5);
-
-  platform_tile_coords.bind();
-  glVertexPointer
-    (3, GL_FLOAT,sizeof(platform_tile_coords.data[0]), 0);
-  glEnableClientState(GL_VERTEX_ARRAY);
-
-  glDrawArrays(GL_QUADS,half_elements+4,half_elements-4);
-
-  glDisableClientState(GL_VERTEX_ARRAY);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
 
   glDepthFunc(GL_LESS);
   glDisable(GL_BLEND);
@@ -1028,6 +1118,9 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H': opt_head_lock = !opt_head_lock; break;
+  case '!': opt_hide_stuff ^= OH_Sphere; break;
+  case '@': opt_hide_stuff ^= OH_Links; break;
+  case '#': opt_hide_stuff ^= OH_Platform; break;
   case 't': case 'T': opt_tail_lock = !opt_tail_lock; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'r': case 'R': opt_mirror = !opt_mirror; break;
@@ -1036,12 +1129,16 @@ World::cb_keyboard()
     opt_shadow_volumes = !opt_shadow_volumes;
     if ( opt_shadow_volumes ) opt_shadows = true;
     break;
+  case 'n': case 'N': opt_normal_sphere = !opt_normal_sphere; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': case 'S': balls_stop(); break;
-  case 'v': case 'V': opt_shader++; if ( opt_shader > 2 ) opt_shader = 0; break;
+  case 'v': case 'V': opt_shader++;
+    if ( opt_shader >= sizeof(sh_names)/sizeof(sh_names[0]) ) opt_shader = 0;
+    break;
   case 'w': case 'W': balls_twirl(); break;
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
+  case 'z': opt_sphere_true = !opt_sphere_true; break;
   case ' ':
     if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true;
@@ -1217,6 +1314,8 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
+  sp_sphere_true = new pShader
+    ("links-shdr-sphere-true.cc", "vs_main();", "gs_main();", "fs_main();" );
 
   PSplit exe_pieces(argv[0],'/');
   pString this_exe_name(exe_pieces.pop());
@@ -1227,10 +1326,22 @@ World::init(int argc, char **argv)
     (links_shader_code_path,
      "vs_main_2(); ",     // Name of vertex shader main routine.
      "gs_main_2();",      // Name of geometry shader main routine.
-     "fs_main();"       // Name of fragment shader main routine.
+     "fs_main();"         // Name of fragment shader main routine.
+     );
+  sp_set_2_sv = new pShader
+    (links_shader_code_path,
+     "vs_main_2_sv(); ",     // Name of vertex shader main routine.
+     "gs_main_2_sv();",      // Name of geometry shader main routine.
+     "fs_main_sv();"         // Name of fragment shader main routine.
      );
 
   ball_setup_3();
+  return;
+  // For benchmarking.
+  opt_pause = true;
+  opt_hide_stuff = OH_Links | OH_Platform;
+  opt_shadows = false;
+  opt_mirror = false;
 }
 
 Ball*
@@ -1515,7 +1626,7 @@ World::data_gpu_to_cpu_dynamic()
 void
 World::ball_setup_1()
 {
-  // Arrange balls to form sort of an umbrella.
+  // Arrange balls to form sort of tree.
 
   last_setup = 1;
 
@@ -1588,7 +1699,7 @@ World::ball_setup_1()
 void
 World::ball_setup_2()
 {
-  // Arrange balls to form sort of an umbrella.
+  // Arrange balls to form a suspended thing.
 
   last_setup = 2;
 
@@ -1766,10 +1877,23 @@ World::time_step_cpu(double delta_t)
     {
       Link* const link = links[i];
       if ( !link->is_simulatable ) continue;
+
+      //
       // Spring Force from Neighbor Balls
       //
+
       Ball* const ball1 = link->ball1;
       Ball* const ball2 = link->ball2;
+
+      /// Notes:
+      //
+      // link->cb1
+      //   Coordinate where link touches ball1, in ball1's local space.
+      //
+      // ball1->omatrix
+      //   Ball's orientation transformation ..
+      //   .. which transforms vectors in ball1's local space to object space.
+      //
 
       // Find position and velocity of the point where the link touches
       // the surface of ball 1 ...
@@ -2063,7 +2187,7 @@ World::render_link_gather(Link *link)
 
 
 void
-World::render_link_render()
+World::render_link_render(bool shadow_volumes)
 {
   // Perform a rendering pass to render all the links collected
   // by the routine render_link_2.
@@ -2074,12 +2198,12 @@ World::render_link_render()
   const bool first_render = world_time_link_update != world_time;
   world_time_link_update = world_time;
 
-  sp_set_2->use();
+  pShader_Use use( shadow_volumes ? sp_set_2_sv : sp_set_2 );
 
   // Number of segments used to construct link.  Each segment is
   // approximately a cylinder.
   //
-  const int segments = opt_segments;
+  const int segments = shadow_volumes ? max(2,opt_segments/4) : opt_segments;
 
   // Number of sides of each cylinder.
   //
@@ -2109,17 +2233,12 @@ World::render_link_render()
   glUniform2f(4, sides, 0 );
   glUniform1f(5, delta_tee );
 
-  GLboolean l0, l1;
-  glGetBooleanv(GL_LIGHT0,&l0);
-  glGetBooleanv(GL_LIGHT1,&l1);
-  int light_state = l0 | (l1<<1);
-  glUniform1i(6, light_state);
-  glUniform2i(3, opt_tryout1, opt_tryout2);
+  int light_state = light_state_get();
+  glUniform2i(6, light_state, segments );
+  glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
 
   glDrawArraysInstanced
     (GL_LINE_STRIP, 0, segments+1, n_instances);
-
-  sp_fixed->use();
 }
 
 

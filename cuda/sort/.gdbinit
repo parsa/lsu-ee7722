@@ -1,4 +1,6 @@
 
+set cuda memcheck on
+
 # Breakpoints to catch errors and for catching instructions.
 #
 set breakpoint pending on

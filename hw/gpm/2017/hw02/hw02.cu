@@ -1,6 +1,6 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 1 - Spring 2017
+ ///  Homework 2 - Spring 2017
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2017/hw02.pdf
 

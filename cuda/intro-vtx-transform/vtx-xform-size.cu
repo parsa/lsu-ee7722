@@ -12,6 +12,7 @@
 #include <new>
 #include <cuda_runtime.h>
 #include <assert.h>
+#include <nperf.h>
 #include "util.h"
 
 #define N 16
@@ -354,7 +355,7 @@ mxv_sh_ochunk()
 }
 
 extern "C" __global__ void
-mxv_1()
+mxv_vec_ld()
 {
   // Compute an id number that will be in the range from 0 to num_threads-1.
   //
@@ -372,7 +373,8 @@ mxv_1()
       Elt_Type vin[N];
       for ( int c=0; c<N; c += 4 )
         {
-          float4 f4 = d_app.d_in_f4[ ( h * N + c ) >> 2 ];
+          // float4 f4 = d_app.d_in_f4[ ( h * N + c ) >> 2 ];
+          float4 f4 = d_app.d_in_f4[ h * ( N >> 2 ) + ( c >> 2 )];
           vin[c] = f4.x;
           vin[c+1] = f4.y;
           vin[c+2] = f4.z;
@@ -473,10 +475,11 @@ mxv_vls()
           fi4 f41 = f41x.fi4;
 
           fi4 fswap = offset ? f40 : f41;
-          fswap.i = __shfl_xor(fswap.i,1);
-          fswap.j = __shfl_xor(fswap.j,1);
-          fswap.k = __shfl_xor(fswap.k,1);
-          fswap.l = __shfl_xor(fswap.l,1);
+          const unsigned mask = ~0;
+          fswap.i = __shfl_xor_sync(mask,fswap.i,1);
+          fswap.j = __shfl_xor_sync(mask,fswap.j,1);
+          fswap.k = __shfl_xor_sync(mask,fswap.k,1);
+          fswap.l = __shfl_xor_sync(mask,fswap.l,1);
 
           fi4 v_03 = offset ? fswap : f40;
           fi4 v_47 = offset ? f41   : fswap;
@@ -608,8 +611,8 @@ print_gpu_and_kernel_info()
   info.GET_INFO(mxv_o_lbuf);
   info.GET_INFO(mxv_o_per_thd);
 
-#if N / 4 == (N+3)/4 
-  info.GET_INFO(mxv_1);
+#if N / 4 == (N+3)/4
+  info.GET_INFO(mxv_vec_ld);
 #endif
 #if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
   info.GET_INFO(mxv_vls);
@@ -645,9 +648,21 @@ main(int argc, char **argv)
 {
   const bool debug = false;
 
+  // Must be called before any CUDA API calls.
+  NPerf_init();
+
   // Get info about GPU and each kernel.
   //
   GPU_Info info = print_gpu_and_kernel_info();
+
+  // Collect performance data using a wrapper to NVIDIA CUPTI event
+  // counter API.
+  //
+  NPerf_metric_collect("inst_executed");
+  NPerf_metric_collect("gld_efficiency");
+  //
+  // Note: The more metrics that are collected, the more times a kernel
+  // will need to be run.
 
   const int num_mp = info.cuda_prop.multiProcessorCount;
 
@@ -678,6 +693,11 @@ main(int argc, char **argv)
              argv[0]);
       exit(1);
     }
+
+  // Don't collect performance data if we are varying warps. Why?
+  // Because it takes too long.
+  if ( vary_warps )
+    NPerf_metrics_off();
 
   const size_t in_size_elts = size_t(app.num_vecs) * N;
   const size_t in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
@@ -782,8 +802,9 @@ main(int argc, char **argv)
 
             // Launch Kernel
             //
-            KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
-              (app.d_out,app.d_in);
+            for ( NPerf_data_reset(); NPerf_need_run_get(); )
+              KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
+                (app.d_out,app.d_in);
 
             // Stop measuring execution time now, which is before is data
             // returned from GPU.
@@ -793,7 +814,9 @@ main(int argc, char **argv)
             float cuda_time_ms = -1.1;
             CE(cudaEventElapsedTime(&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
 
-            const double this_elapsed_time_s = cuda_time_ms * 0.001;
+            const double this_elapsed_time_s =
+              NPerf_metrics_collection_get()
+              ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
             const double thpt_compute_gflops =
               num_ops / this_elapsed_time_s * 1e-9;
@@ -846,12 +869,16 @@ main(int argc, char **argv)
 
               } else {
 
-              printf("K %-15s %2d wp  %11.3f µs  %8.3f GFLOPS  %8.3f GB/s\n",
-                     info.ki[kernel].name,
-                     (thd_per_block + 31 ) >> 5,
-                     this_elapsed_time_s * 1e6,
-                     thpt_compute_gflops, thpt_data_gbps);
-
+              printf
+                ("%-15s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
+                 "%5.2f I/F  %5.1f%%\n",
+                 info.ki[kernel].name,
+                 (thd_per_block + 31 ) >> 5,
+                 this_elapsed_time_s * 1e6,
+                 thpt_compute_gflops, thpt_data_gbps,
+                 NPerf_metric_value_get("inst_executed") * 32 / num_ops,
+                 NPerf_metric_value_get("gld_efficiency")
+                 );
             }
 
             elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);

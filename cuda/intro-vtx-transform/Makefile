@@ -1,5 +1,5 @@
 
-PGIPATH = /opt/pgi/linux86-64/16.10
+PGIPATH = /opt/pgi/linux86-64/17.10
 
 
 GXX = g++
@@ -19,7 +19,14 @@ CUCC = $(CUDAPATH)/bin/nvcc
 CXX = g++
 
 INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include \
-	-I$(PGIPATH)/etc/include_acc
+        -I$(PGIPATH)/etc/include_acc
+LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
+
+# Include the course libraries. So far a CUPTI interface.
+#
+DUMMY:= $(shell $(MAKE) -C $(GP_ROOT)/lib)
+
+INCLUDE += -I$(GP_ROOT)/lib
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
@@ -28,6 +35,7 @@ BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
 DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
 GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 GPU_ARCHP := $(subst sm_,cc,$(GPU_ARCH))
+DHASH := $(shell $(GPU_GET_PATH) -dhash)
 
 # Optimization Flag (Omitted from debug builds by make rules.)
 #
@@ -55,15 +63,15 @@ COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
-LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml -ldl
+LIBRARIES += -ldl
 
 PCFLAGS = $(INCLUDE) -g \
  -acc -ta=tesla:$(GPU_ARCHP),nordc,keep \
  -Minfo -Mneginfo -Msafeptr -Mkeepasm -O4 -fast
 
 
-ACCLIBRARIES =  -L/opt/pgi/linux86-64/16.10/lib \
-  -Xlinker -rpath=/opt/pgi/linux86-64/16.10/lib \
+ACCLIBRARIES =  -L$(PGIPATH)/lib \
+  -Xlinker -rpath=$(PGIPATH)/lib \
  -laccapi -laccg -laccn -laccg2 -lcudadevice -lpgatm  -lpgc -lpgmp -lnuma
 
 # /opt/pgi/linux86-64/2016/cuda/8.0/bin/nvlink --arch=sm_60 -m64
@@ -80,7 +88,7 @@ todo= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 SRC_FILES = $(todo:=.cu)
 
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better vtx-xform-s2
+	  vtx-xform-omp vtx-xform-better vtx-xform-s2 vtx-xform-phi
 
 
 # /opt/pgi/linux86-64/16.10/lib/acc_init_link_cuda.o
@@ -123,6 +131,9 @@ vtx-xform-s2-acc.o: vtx-xform-s2-acc.cc Makefile | HAVE_PGI
 
 
 
+vtx-xform-phi:
+	/bin/test -d /dev/mic && $(MAKE) -f Makefile-phi || echo No Phi
+
 
 $(BUILD_CC_FILE_PATH):
 	;
@@ -130,22 +141,22 @@ $(BUILD_CC_FILE_PATH):
 # Include dependencies that were created by %.d rules.
 #
 ifneq ($(MAKECMDGOALS),clean)
--include $(SRC_FILES:=.d)
+-include $(SRC_FILES:=.$(DHASH))
 endif
 
 # Prepare file holding dependencies, to be included in this file.
 #
-%.cc.d: %.cc
+%.cc.$(DHASH): %.cc
 	@set -e; rm -f $@; \
-         $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
-         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-         rm -f $@.$$$$
+	 $(CXX) -M $(CXXFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
 
-%.cu.d: %.cu
+%.cu.$(DHASH): %.cu
 	@set -e; rm -f $@; \
-         $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
-         sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-         rm -f $@.$$$$
+	 $(CUCC) -M $(CUFLAGS) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	 rm -f $@.$$$$
 
 
 %.o: %.cc Makefile
@@ -166,7 +177,8 @@ $(all):%: %.o
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
 clean:
+	$(MAKE) -f Makefile-phi clean
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
 	*.bin *.gpu \
-	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]
-
+	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9] \
+	 *.d.[0-9][0-9][0-9][0-9][0-9][0-9] *.d.[0-9][0-9][0-9][0-9]

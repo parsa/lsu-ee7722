@@ -356,8 +356,6 @@ reduce_method_5()
     for ( int i = threadIdx.x + warp_size;  i < blockDim.x;  i += warp_size )
       our_sum += shared_sum[i];
 
-  __all ( our_sum > 1.23 );
-
   // Perform a tree reduction.
   //
   // The first 32 threads perform a tree reduction of the linear sums

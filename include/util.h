@@ -112,13 +112,14 @@ class pFrame_Timer {
 public:
   pFrame_Timer():inited(false),work_description(NULL)
   {
-    query_timer_id[0] = 0;
+    query_objects[0] = 0;
     query_pending = false;
     frame_group_size = 5;
     frame_rate = 0;
     cpu_frac = 0;
     cuda_in_use = false;
     phys_timed = false;
+    opt_show_pipeline = true;
   }
   void work_unit_set(const char *description, double multiplier = 1)
   {
@@ -169,8 +170,18 @@ private:
   double cpu_frac, gpu_frac, cuda_frac, phys_frac;
   double time_render_start;
   double time_phys_start;
-  GLuint query_timer_id[2];
-  int query_timer_idx;
+public:
+  bool opt_show_pipeline;
+private:
+  union {
+    struct { GLuint query_objects[12]; };
+    struct { GLuint qo_timer[2],
+        qo_vtx_sub[2], qo_vtx_inv[2], qo_frag_inv[2], qo_clp_pin[2],
+        qo_clp_pout[2];
+    };
+  };
+  int qa_idx;
+  GLint qv_vtx_sub, qv_vtx_inv, qv_clp_pin, qv_clp_pout, qv_frag_inv;
   bool query_pending;
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
@@ -186,8 +197,8 @@ pFrame_Timer::init()
   inited = true;
   frame_inside = false;
   phys_inside = false;
-  glGenQueries(2,query_timer_id);
-  query_timer_idx = 0;
+  glGenQueries(sizeof(query_objects)/sizeof(query_objects[0]),query_objects);
+  qa_idx = 0;
   frame_group_start_time = time_wall_fp();
   var_reset();
   frame_rate_group_start();
@@ -300,26 +311,74 @@ pFrame_Timer::frame_start()
   assert( !frame_inside );
   frame_inside = true;
   pError_Check();
-  if ( query_timer_id[0] )
-    glBeginQuery(GL_TIME_ELAPSED,query_timer_id[query_timer_idx]);
+  if ( query_objects[0] )
+    {
+      glBeginQuery(GL_TIME_ELAPSED,qo_timer[qa_idx]);
+      if ( opt_show_pipeline )
+        {
+          glBeginQuery(GL_VERTICES_SUBMITTED_ARB,qo_vtx_sub[qa_idx]);
+          glBeginQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB,qo_vtx_inv[qa_idx]);
+          glBeginQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB,qo_clp_pin[qa_idx]);
+          glBeginQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB,qo_clp_pout[qa_idx]);
+          glBeginQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB,qo_frag_inv[qa_idx]);
+        }
+    }
   pError_Check();
   time_render_start = time_wall_fp();
   if ( !phys_timed ) frame_rate_group_start_check();
+}
+
+inline string
+commaize(int64_t i)
+{
+  if ( abs(i) < 10000 ) return to_string(i);
+  bool n = i < 0;
+  int64_t a = n ? -i : i;
+  string as = to_string(a);
+  string is = n ? "-" : "";
+  int gpos = as.size() % 3 ?: 3;
+  for ( char c: as )
+    {
+      // 3 999;  2 99;  1 9;
+      is += c;
+      gpos--;
+      if ( gpos == 0 ) { is += ","; gpos = 3; }
+    }
+  assert( is.back() == ',' );
+  is.pop_back();
+  return move(is);
 }
 
 void
 pFrame_Timer::frame_end()
 {
   const double time_render_elapsed = time_wall_fp() - time_render_start;
-  if ( query_timer_id[0] )
+  if ( query_objects[0] )
     {
       glEndQuery(GL_TIME_ELAPSED);
-      query_timer_idx = 1 - query_timer_idx;
+      if ( opt_show_pipeline )
+        {
+          glEndQuery(GL_VERTICES_SUBMITTED_ARB);
+          glEndQuery(GL_VERTEX_SHADER_INVOCATIONS_ARB);
+          glEndQuery(GL_CLIPPING_INPUT_PRIMITIVES_ARB);
+          glEndQuery(GL_CLIPPING_OUTPUT_PRIMITIVES_ARB);
+          glEndQuery(GL_FRAGMENT_SHADER_INVOCATIONS_ARB);
+        }
+
+      qa_idx = 1 - qa_idx;
       if ( query_pending )
         {
           int timer_val = 0;
-          glGetQueryObjectiv
-            (query_timer_id[query_timer_idx],GL_QUERY_RESULT,&timer_val);
+          glGetQueryObjectiv(qo_timer[qa_idx],GL_QUERY_RESULT,&timer_val);
+          if ( opt_show_pipeline )
+            {
+#define GQO(var) \
+  glGetQueryObjectiv(qo_##var[qa_idx],GL_QUERY_RESULT,&qv_##var);
+              GQO(vtx_sub); GQO(vtx_inv);
+              GQO(clp_pin); GQO(clp_pout);
+              GQO(frag_inv);
+#undef GQO
+            }
           gpu_tsum_ns += timer_val;
         }
       query_pending = true;
@@ -338,7 +397,7 @@ pFrame_Timer::frame_end()
     frame_rate_text += "--";
 
   frame_rate_text += "  GPU.GL ";
-  if ( query_timer_id )
+  if ( query_objects[0] )
     frame_rate_text.sprintf
       ("%6.3f ms (%4.1f%%)", 1000 * gpu_tlast, 100 * gpu_frac);
   else
@@ -370,6 +429,17 @@ pFrame_Timer::frame_end()
         ("  %s %7.3f %s (%4.1f%%)", ti->label.s,
          fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
     }
+
+  if ( opt_show_pipeline )
+    frame_rate_text.sprintf
+      ("\n Vertices: %s   Clip Prim: in %s  out %s   "
+       "Fragments: %s   Frag/Vtx: %.1f",
+       commaize(qv_vtx_inv).c_str(),
+       commaize(qv_clp_pin).c_str(),
+       commaize(qv_clp_pout).c_str(),
+       commaize(qv_frag_inv).c_str(),
+       double(qv_frag_inv)/max(1,qv_vtx_inv));
+
 }
 
 #endif
@@ -488,27 +558,21 @@ public:
   float inc_factor_def;
 };
 
-const void* const all_glut_fonts[] =
-  { GLUT_STROKE_ROMAN,
-    GLUT_STROKE_MONO_ROMAN,
-    GLUT_BITMAP_9_BY_15,
-    GLUT_BITMAP_8_BY_13,
-    GLUT_BITMAP_TIMES_ROMAN_10,
-    GLUT_BITMAP_TIMES_ROMAN_24,
-    GLUT_BITMAP_HELVETICA_10,
-    GLUT_BITMAP_HELVETICA_12,
-    GLUT_BITMAP_HELVETICA_18 };
 
-const void* const glut_fonts[] =
-  { 
-    GLUT_BITMAP_TIMES_ROMAN_24,
-    GLUT_BITMAP_HELVETICA_18,
-    GLUT_BITMAP_TIMES_ROMAN_10,
-    GLUT_BITMAP_HELVETICA_10,
-    GLUT_BITMAP_HELVETICA_12,
-    GLUT_BITMAP_8_BY_13,
-    GLUT_BITMAP_9_BY_15
- };
+class pGL_Restore_Later {
+public:
+  pGL_Restore_Later(const vector<GLuint> caps)
+    {
+      for ( auto cap: caps ) settings.emplace_back( glIsEnabled(cap), cap );
+    }
+  ~pGL_Restore_Later()
+    {
+      for ( auto s: settings )
+        if ( get<0>(s) ) glEnable(get<1>(s)); else glDisable(get<1>(s));
+    }
+
+  vector<tuple<bool,GLuint> > settings;
+};
 
 class pOpenGL_Helper {
 public:
@@ -520,7 +584,6 @@ public:
     animation_frame_rate = 60;
     animation_record = false;
     user_text_reprint_called = false;
-    glut_font_idx = 0;
     opengl_helper_self_ = this;
     width = height = 0;
     frame_period = -1; // No timer callback.
@@ -626,7 +689,7 @@ public:
   bool keyboard_shift, keyboard_control, keyboard_alt;
   int keyboard_x, keyboard_y;  // Mouse location when key pressed.
 
-  PStack<pString> user_frame_text;
+  vector<pString> user_frame_text;
 
   // Print text in frame buffer, starting at upper left.
   // Arguments same as printf.
@@ -634,46 +697,146 @@ public:
   void fbprintf(const char* fmt, ...)
   {
     va_list ap;
-    pString& str = *user_frame_text.pushi();
+    user_frame_text.emplace_back();
+    pString& str = user_frame_text.back();
     va_start(ap,fmt);
     str.vsprintf(fmt,ap);
     va_end(ap);
 
     if ( user_text_reprint_called ) return;
 
-    if ( !frame_print_calls ) glWindowPos2i(10,height-20);
     frame_print_calls++;
+    glut_stroke_print(str.s);
+  }
 
-    glutBitmapString((void*)glut_fonts[glut_font_idx],(unsigned char*)str.s);
+  void glut_stroke_window_change()
+  {
+    glGetFloatv( GL_SMOOTH_LINE_WIDTH_RANGE, glut_line_range_px );
+
+    const float win_ht_lines = height / ( px_per_point * font_size_pt );
+    height_mx = win_ht_lines * glut_font_height;
+    const float condense_factor = 1.4; // Amount by which to squish font.
+    width_mx = condense_factor * height_mx / height * width;
+    const float stroke_width_pt = font_size_pt / 20.0f;
+    glut_stroke_width_px =
+      std::min
+      ( glut_line_range_px[1],
+        std::max(1.0f,stroke_width_pt * px_per_point) );
+    glut_stroke_sx = 2/width_mx;
+    glut_stroke_sy = 2/height_mx;
+    glut_x_mx_per_px = width_mx / width;
+    glut_y_mx_per_px = height_mx / height;
+    glut_stroke_line_first = height_mx/2-glut_font_height*1.5;
+    glut_stroke_line_last = -height_mx/2+glut_font_height*0.5;
+    const float ex = glutStrokeWidth(glut_fontid,'X');
+    for ( auto& e: glut_stroke_mv ) e = 0;
+    for ( int i: {0,5,10,15} ) glut_stroke_mv[i] = 1;
+    glut_stroke_mv[3] = ex - width_mx/2;
+    glut_stroke_mv[7] = glut_stroke_line_first;
+  }
+
+  void glut_stroke_frame_start()
+  {
+    glut_stroke_goto_line(0);
+  }
+
+  void glut_stroke_goto_line(float line)
+    {
+      glut_stroke_mv[7] =
+        ( line>=0 ? glut_stroke_line_first : glut_stroke_line_last )
+        - line * glut_font_height;
+    }
+
+  void glut_stroke_print(const char *s)
+  {
+    if ( s[0] == 0 ) return;
+    const char *sp = s;
+    int nlines = 0;
+    while ( char c = *sp++ ) if ( c == '\n' ) nlines++;
+    assert ( sp[-1] == 0 );
+    if ( sp[-2] != '\n' ) nlines++;
+
+    const bool antialias = glut_stroke_width_px > 1.25;
+
+    pGL_Restore_Later restore_later
+      ({GL_LIGHTING,GL_DEPTH_TEST,GL_LINE_SMOOTH,GL_TEXTURE_2D,GL_BLEND});
+
+    glDisable(GL_TEXTURE_2D);
+
+    if ( antialias )
+      {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
+        glEnable(GL_LINE_SMOOTH);
+      }
+    else
+      {
+        glDisable(GL_BLEND);
+        glDisable(GL_LINE_SMOOTH);
+      }
+
+    int shade_model;
+    glGetIntegerv(GL_SHADE_MODEL,&shade_model);
+    glDisable(GL_LIGHTING);
+    glShadeModel(GL_FLAT);
+    glDisable(GL_DEPTH_TEST);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glScalef(glut_stroke_sx,glut_stroke_sy,1);
+
+    for ( int i: {0,1} )
+      {
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadTransposeMatrixf(glut_stroke_mv);
+        if ( i == 0 )
+          {
+            float s_n = 2.0f;
+            float s_px =
+              std::min( s_n * glut_stroke_width_px, glut_line_range_px[1] );
+            glColor3f(0,0,0);
+            glLineWidth( s_px );
+            glTranslatef
+              (glut_stroke_width_px*glut_x_mx_per_px,
+               -glut_stroke_width_px*glut_y_mx_per_px,0);
+          }
+        else
+          {
+            glColor3f(0,1,0);
+            glLineWidth( glut_stroke_width_px );
+          }
+        glutStrokeString(glut_fontid,(unsigned char*)s);
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+      }
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+
+    glShadeModel(shade_model);
+
+    glut_stroke_mv[7] -= glut_font_height * nlines;
+
   }
 
   void user_text_reprint()
   {
     user_text_reprint_called = true;
-    glDisable(GL_DEPTH_TEST);
-    glWindowPos2i(10,height-20);
-    while ( pString* const str = user_frame_text.iterate() )
-      glutBitmapString
-        ((void*)glut_fonts[glut_font_idx],(unsigned char*)str->s);  
-    user_frame_text.reset();
+    glut_stroke_goto_line(0);
+    pString all;
+    for ( auto& s: user_frame_text ) all += s;
+    glut_stroke_print(all.s);
+    user_frame_text.clear();
 
     const int64_t now = int64_t( time_wall_fp() * 2 );
     if ( now & 1 && animation_record )
       {
-        glWindowPos2i(10,10);
-        glutBitmapString
-          ((void*)glut_fonts[glut_font_idx], (unsigned char*)"REC");
+        glut_stroke_goto_line(-1);
+        glut_stroke_print("REC");
       }
-
-    glEnable(GL_DEPTH_TEST);
-  }
-
-  void cycle_font()
-  {
-    const int font_cnt = sizeof(glut_fonts) / sizeof(glut_fonts[0]);
-    glut_font_idx++;
-    if ( glut_font_idx >= font_cnt ) glut_font_idx = 0;
-    printf("Changed to %d\n",glut_font_idx);
   }
 
 private:
@@ -683,8 +846,24 @@ private:
     glutInit(&argc, argv);
     lglext_ptr_init();
 
+    // Set window size to half the height of the display and
+    // to a 19:9 aspect ratio.
+    //
+    const int screen_ht = glutGet(GLUT_SCREEN_HEIGHT);
+    const int screen_wd = glutGet(GLUT_SCREEN_WIDTH);
+    const int req_ht = screen_ht / 2;
+    const int req_wd = req_ht * 16 / 9; // Match desired aspect ratio.
+
+    const int screen_wd_mm = glutGet(GLUT_SCREEN_WIDTH_MM);
+    px_per_point = float(screen_wd) / ( screen_wd_mm / 25.4 * 72 );
+    font_size_pt = 10;
+
+    // The other option: GLUT_STROKE_ROMAN,
+    glut_fontid = (void*) GLUT_STROKE_MONO_ROMAN;
+    glut_font_height = glutStrokeHeight(glut_fontid);
+
     glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL );
-    glutInitWindowSize(854,480);
+    glutInitWindowSize(req_wd,req_ht);
 
     pStringF title("OpenGL Demo - %s",exe_file_name);
 
@@ -703,6 +882,7 @@ private:
   {
     shape_update();
     frame_print_calls = 0;
+    glut_stroke_frame_start();
     user_display_func(user_display_data);
 
     if ( animation_record || animation_frame_count ) 
@@ -717,6 +897,7 @@ private:
     const int height_new = glutGet(GLUT_WINDOW_HEIGHT);
     width = width_new;
     height = height_new;
+    glut_stroke_window_change();
   }
 
   static void cb_keyboard_w(unsigned char key, int x, int y)
@@ -725,7 +906,7 @@ private:
   {opengl_helper_self_->cb_keyboard(key+0x100,x,y);}
   void cb_keyboard(int key=0, int x=0, int y=0)
   {
-    keyboard_key = key;
+    keyboard_key = 0;
     keyboard_modifiers = key ? glutGetModifiers() : 0;
     keyboard_shift = keyboard_modifiers & GLUT_ACTIVE_SHIFT;
     keyboard_alt = keyboard_modifiers & GLUT_ACTIVE_ALT;
@@ -733,15 +914,27 @@ private:
     keyboard_x = x;
     keyboard_y = y;
     if ( !key ) return;
-    if ( keyboard_key == FB_KEY_F12 ) { write_img(); return; }
-    if ( keyboard_key == FB_KEY_F11 ) { cycle_font(); return; }
-    if ( keyboard_key == FB_KEY_F10 )
+    if ( key == FB_KEY_F12 ) { write_img(); return; }
+    if ( keyboard_control && ( key == '+' || key == '=' ) )
+      {  font_size_pt *= 1.1;  return; }
+    if ( keyboard_control && ( key == '-' || key == '_' ) )
+      {  font_size_pt /= 1.1;  return; }
+    if ( key == FB_KEY_F11 )
+      {
+        if ( keyboard_shift )
+          font_size_pt /= 1.1;
+        else
+          font_size_pt *= 1.1;
+        return;
+      }
+    if ( key == FB_KEY_F10 )
       { 
         animation_record = !animation_record; 
         printf("Animation recording %s\n",
                animation_record ? "starting, press F10 to stop." : "ending");
         return;
       }
+    keyboard_key = key;
     glutPostRedisplay();
   }
 
@@ -837,9 +1030,21 @@ private:
   double render_start;
   int width;
   int height;
+  float font_size_pt;
+  float px_per_point;
+  void *glut_fontid;
+  float glut_font_height;
+  float glut_stroke_width_px;
+  float glut_baselineskip_m;
+  float glut_stroke_mv[16];
+  float glut_stroke_sx, glut_stroke_sy;
+  float glut_stroke_line_first, glut_stroke_line_last;
+  float glut_x_mx_per_px, glut_y_mx_per_px;
+  float glut_line_range_px[2];
+  float height_mx, width_mx;
+
   int frame_print_calls;
   bool user_text_reprint_called;
-  int glut_font_idx;
   int glut_window_id;
   void (*user_display_func)(void *data);
   void *user_display_data;

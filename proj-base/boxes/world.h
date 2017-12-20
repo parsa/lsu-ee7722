@@ -46,6 +46,7 @@ public:
   bool opt_debug2;  // Turns something else on and off. Changes frequently.
   bool opt_info;    // Request info to be printed to stdout.
   bool opt_extra_cuda_info;
+  bool opt_wip_shader;  // If true, use shader that still needs work.
   int opt_fixed_lod;
 
   // Time in simulated world.

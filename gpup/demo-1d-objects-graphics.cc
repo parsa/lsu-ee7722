@@ -5,9 +5,6 @@
  // This file includes graphics code needed by the main file. The code
  // in this file does not need to be understood early in the semester.
 
-// $Id:$
-
-
 #define GL_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
 
@@ -26,6 +23,7 @@
 #include <gp/gl-buffer.h>
 #include <gp/texture-util.h>
 #include "shapes.h"
+#include <util-containers.h>
 
 enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
 
@@ -60,27 +58,12 @@ public:
   virtual void render_shadow_volume(Render_Ctx *re) {};
 };
 
-class Group : public Gr_Object {
-public:
-  Group():Gr_Object(){};
-  PStack<Gr_Object*> contents;
-  void render()
-  {
-    glPushMatrix();
-    glMultTransposeMatrixf(transform);
-    for ( Gr_Object *obj = NULL; contents.iterate(obj); ) obj->render();
-    glPopMatrix();
-  }
-  void render_shadow_volume(Render_Ctx *rc)
-  {
-    Render_Ctx rd(rc,transform);
-    for ( Gr_Object *obj = NULL; contents.iterate(obj); ) obj->render_shadow_volume(&rd);
-  }
-};
-
 class Card2 : public Gr_Object {
 public:
   Card2(float width = 1, float height = 1) {
+
+    // Construct card in local coordinate system.
+
     color = pColor(0.5,0.8,0.1);
     pVect lower_left_to_lower_right( width, 0, 0);
     pVect lower_left_to_upper_left( 0, height, 0);
@@ -229,6 +212,26 @@ public:
     glEnable(GL_STENCIL_TEST);
   }
 };
+
+
+class Group : public Gr_Object {
+public:
+  Group():Gr_Object(){};
+  pVector<Gr_Object*> contents;
+  void render()
+  {
+    glPushMatrix();
+    glMultTransposeMatrixf(transform);
+    for ( Gr_Object *obj: contents ) obj->render();
+    glPopMatrix();
+  }
+  void render_shadow_volume(Render_Ctx *rc)
+  {
+    Render_Ctx rd(rc,transform);
+    for ( Gr_Object *obj: contents ) obj->render_shadow_volume(&rd);
+  }
+};
+
 
 const pColor white(0xffffff);
 const pColor gray(0x303030);

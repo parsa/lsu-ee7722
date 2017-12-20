@@ -13,7 +13,7 @@
 class P_Image_Read
 {
 public:
-  P_Image_Read(const char *path, int transp):
+  P_Image_Read(const string path, int transp):
     image(path),image_loaded(false),data(NULL)
   {
     using namespace Magick;
@@ -72,11 +72,11 @@ private:
 #ifdef GP_UTIL_DECLARE_ONLY
 GLuint
 pBuild_Texture_File
-(const char *name, bool invert = false, int transp = 256 );
+(const string name, bool invert = false, int transp = 256 );
 #else
 GLuint
 pBuild_Texture_File
-(const char *name, bool invert = false, int transp = 256 )
+(const string name, bool invert = false, int transp = 256 )
 {
   // Read image from file.
   //

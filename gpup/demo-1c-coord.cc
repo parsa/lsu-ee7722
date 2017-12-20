@@ -1,8 +1,6 @@
-/// LSU EE 4702-1 (Fall 2014), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
-
-// $Id:$
 
 /// Purpose
 //
@@ -33,6 +31,11 @@
  //   Home should rotate eye direction up, End should rotate eye
  //   down, Delete should rotate eye left, Insert should rotate eye
  //   right.  The eye direction vector is displayed in the upper left.
+
+ /// Text Zoom and Screenshot
+ //  'Ctrl' '+'  or  'Ctrl' '=',  and  'Ctrl' '-'  or  'Ctrl' '_', 
+ //         Increase and decrease green text size.
+ //  'F12'  Write screenshot to file.
 
  /// Simulation Options
  //  (Also see variables below.)

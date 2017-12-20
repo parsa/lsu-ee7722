@@ -2,8 +2,6 @@
 //
  /// Quick and dirty code for boxes.
 
-// $Id:$
-
 #include "phys-obj-box.h"
 #include "world.h"
 
@@ -288,9 +286,84 @@ Box_Manager::iterate()
 }
 
 void
+Box_Manager::shader_setup()
+{
+  if ( !sp_boxes )
+    {
+      sp_boxes = new pShader
+        ("shdr-box.cc",
+         "vs_main_box();", "gs_main_box();", "fs_main_box();");
+      sp_boxes_sv = new pShader
+        ("shdr-box.cc",
+         "vs_main_box();", "gs_main_box_sv();", NULL );
+      sp_boxes_simple = new pShader
+        ("shdr-box.cc",
+         "vs_main_box();", "gs_main_box_simple();", NULL );
+
+      shader_data_rebuild = true;
+
+      glGenBuffers(1, &bo_pos);
+      glGenBuffers(1, &bo_quat);
+      glGenBuffers(1, &bo_to_111);
+      glGenBuffers(1, &bo_color);
+      glGenBuffers(1, &bo_color_event);
+      glGenBuffers(1, &bo_tex_unit);
+    }
+
+  if ( !shader_data_rebuild ) return;
+  shader_data_rebuild = false;
+
+  const int nboxes = boxes.occ();
+# define CLRRES(c) c.clear(); c.reserve(nboxes);
+  CLRRES(poss);
+  CLRRES(quats);
+  CLRRES(to_111s);
+  CLRRES(colors);
+  CLRRES(color_events);
+  CLRRES(tex_units);
+
+  const int unit_0 = 1;
+  const int unit_none = -1;
+  assert( unit_0 != 0 );
+  int unit_next = unit_0;
+  const int tunits_bits = 5;
+
+  texid_to_unit.clear();
+  texid_to_unit[0] = unit_none;
+
+  for ( PStackIterator<Box*> box(boxes); box; box++ )
+    {
+      to_111s.push_back( box->to_111 );
+      colors.push_back( box->color );
+      uint32_t tu = 0;
+      for ( int f=0; f<6; f++ )
+        {
+          int& unit = texid_to_unit[box->texid_faces[f]];
+          if ( unit == unit_none ) continue;
+          if ( !unit ) unit = unit_next++;
+          assert( unit >> tunits_bits == 0 );
+          tu += unit << f * tunits_bits;
+        }
+      tex_units.push_back( tu );
+    }
+
+#define TO_BO(name)                                                           \
+  glBindBuffer(GL_ARRAY_BUFFER,bo_##name);                                    \
+  glBufferData                                                                \
+    ( GL_ARRAY_BUFFER, name##s.size() * sizeof(name##s[0]),                   \
+      name##s.data(), GL_DYNAMIC_DRAW );
+
+  TO_BO(to_111);
+  TO_BO(color);
+  TO_BO(tex_unit);
+  glBindBuffer(GL_ARRAY_BUFFER,0);
+}
+
+void
 Box_Manager::rebuild_maybe()
 {
   if ( !rebuild ) return;
+  shader_data_rebuild = true;
   rebuild = false;
   boxes.reset();
   for ( Phys *p; phys_list->iterate(p); )
@@ -298,13 +371,83 @@ Box_Manager::rebuild_maybe()
 }
 
 void
-Box_Manager::render(bool color_events, bool simple)
+Box_Manager::render_reflected(bool color_events_on)
+{
+  render(color_events_on,false,true);
+}
+
+void
+Box_Manager::render(bool color_events_on, bool simple, bool reflect)
 {
   rebuild_maybe();
-  for ( PStackIterator<Box*> box(boxes); box; box++ )
+
+  if ( !reflect && w->opt_wip_shader )
     {
+      shader_setup();
+      const bool first_render = render_world_time_last != w->world_time;
+      render_world_time_last = w->world_time;
+
+      const int nboxes = boxes.occ();
+
+      if ( first_render )
+        {
+          CLRRES(poss);
+          CLRRES(quats);
+          CLRRES(color_events);
+
+          for ( PStackIterator<Box*> box(boxes); box; box++ )
+            {
+              poss.push_back( box->position );
+              quats.push_back( box->orientation );
+              color_events.push_back( box->color_event );
+            }
+          TO_BO(pos);
+          TO_BO(quat);
+          TO_BO(color_event);
+        }
+
+      GLboolean l0, l1;
+      glGetBooleanv(GL_LIGHT0,&l0);
+      glGetBooleanv(GL_LIGHT1,&l1);
+      int light_state = l0 | (l1<<1);
+
+      pShader_Use sp_use( simple ? sp_boxes_simple : sp_boxes );
+
+#define BIND_BO(name) \
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER,BOB_##name,bo_##name);
+      BIND_BO(pos)
+      BIND_BO(quat);
+      BIND_BO(to_111);
+      BIND_BO(color);
+      BIND_BO(color_event);
+      BIND_BO(tex_unit);
+      glBindBuffer(GL_ARRAY_BUFFER,0);
+      glUniform1i(1, color_events_on);
+      glUniform1i(2, light_state);
+      glUniform2i(3, w->opt_debug, w->opt_debug2);
+      const int unit_0 = 1;
+
+      for ( auto& elt: texid_to_unit )
+        {
+          if ( elt.first == 0 ) continue;
+          glActiveTexture(GL_TEXTURE0+elt.second-unit_0);
+          glBindTexture(GL_TEXTURE_2D,elt.first);
+        }
+
+      if ( texid_to_unit.size() > 1 )
+        glEnable(GL_TEXTURE_2D);
+      else
+        glDisable(GL_TEXTURE_2D);
+
+      glDrawArrays(GL_POINTS,0,nboxes);
+
+      return;
+    }
+
+    for ( PStackIterator<Box*> box(boxes); box; box++ )
+      {
       if ( !simple )
-        if ( color_events )
+        if ( color_events_on )
           glColor3fv(box->color_event);
         else
           glColor3fv(box->color);
@@ -353,6 +496,44 @@ void
 Box_Manager::render_shadow_volume(pCoor light_pos)
 {
   rebuild_maybe();
+
+  if ( w->opt_wip_shader )
+    {
+      shader_setup();
+      const bool first_render = render_world_time_last != w->world_time;
+      render_world_time_last = w->world_time;
+
+      const int nboxes = boxes.occ();
+
+      if ( first_render )
+        {
+          CLRRES(poss);
+          CLRRES(quats);
+          for ( PStackIterator<Box*> box(boxes); box; box++ )
+            {
+              poss.push_back( box->position );
+              quats.push_back( box->orientation );
+            }
+          TO_BO(pos);
+          TO_BO(quat);
+        }
+
+      pShader_Use sp_use(sp_boxes_sv);
+
+#define BIND_BO(name) \
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER,BOB_##name,bo_##name);
+      BIND_BO(pos)
+      BIND_BO(quat);
+      BIND_BO(to_111);
+      glBindBuffer(GL_ARRAY_BUFFER,0);
+      glUniform2i(3, w->opt_debug, w->opt_debug2);
+      glUniform4fv(4, 1, light_pos);
+
+      glDrawArrays(GL_POINTS,0,nboxes);
+
+      return;
+    }
+
   const float height = 1000;
   for ( PStackIterator<Box*> box(boxes); box; box++ )
     {
@@ -545,7 +726,6 @@ box_box_intersect(Box *box1, Box *box2, PStack<SectTT>* sl)
     if ( isb.faces[f].ref_pt_set ) vol_area_sum2 += isb.faces[f].area_sum;
 
   int area_pt = 0;
-  float a[6];  int aidx=0;
 
   for ( int f=6; f<12; f++ )
     {
@@ -555,7 +735,6 @@ box_box_intersect(Box *box1, Box *box2, PStack<SectTT>* sl)
       dir += wt * n2;
       vol_area_sum += wt;
       area_pt++;
-      a[aidx++] = wt;
     }
 
   isb.vec_sum += isb.volume_sum * isb.vol_ref_pt;

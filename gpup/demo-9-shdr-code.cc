@@ -10,7 +10,7 @@
 #version 450 compatibility
 
 
-vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
+vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, bool front);
 
 #define USE_MATERIAL_COLOR
 
@@ -81,7 +81,8 @@ vs_main_lighting()
   // Call our lighting routine to compute the lighted color of this
   // vertex.
   //
-  gl_FrontColor = generic_lighting(vertex_e,our_color,normal_e);
+  gl_FrontColor = generic_lighting(vertex_e,our_color,normal_e,true);
+  gl_BackColor = generic_lighting(vertex_e,our_color,normal_e,false);
 
   // Copy texture coordinate to output (no need to modify it).
   // Only copy x and y components since it's a 2D texture.
@@ -95,7 +96,7 @@ vs_main_lighting()
 ///
 
 vec4
-generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
+generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing)
 {
   // See OpenGL 4.5 Section 12.2.1.1 for a lighting formula.
   //
@@ -105,7 +106,7 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
   vec3 v_vtx_light = light_pos.xyz - vertex_e.xyz;
   float dist = length(v_vtx_light);
   float d_n_vl = dot(normalize(normal_e), v_vtx_light) / dist;
-  float phase_light = max(0,gl_FrontFacing ? d_n_vl : -d_n_vl );
+  float phase_light = max(0,front_facing ? d_n_vl : -d_n_vl );
 
   vec3 ambient_light = gl_LightSource[0].ambient.rgb;
   vec3 diffuse_light = gl_LightSource[0].diffuse.rgb;
@@ -173,7 +174,8 @@ fs_main_phong()
   // Multiply filtered texel color with lighted color of fragment.
   //
   gl_FragColor =
-    texel * generic_lighting(var_vertex_e,our_color,normalize(var_normal_e));
+    texel * generic_lighting
+    (var_vertex_e,our_color,normalize(var_normal_e),gl_FrontFacing);
 
   // Copy fragment depth unmodified.
   //

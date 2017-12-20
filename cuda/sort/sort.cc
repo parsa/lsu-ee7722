@@ -8,98 +8,6 @@
 #include <gp/cuda-util.h>
 #include "sort.cuh"
 
-cudaEvent_t cuda_start_ce, cuda_stop_ce;
-cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
-
-double cuda_ips_get(cudaDeviceProp cuda_prop)
-{
-  const int peak_ipc =
-  cuda_prop.major == 1 ? 8 :
-    cuda_prop.major == 2 && cuda_prop.minor == 0 ? 32 :
-    cuda_prop.major == 2 && cuda_prop.minor == 1 ? 48 : 0;
-
-  return peak_ipc
-    * 1000.0 * cuda_prop.multiProcessorCount * cuda_prop.clockRate;
-}
-
-void
-cuda_init()
-{
-  // Get information about GPU and its ability to run CUDA.
-  //
-  int device_count;
-  cudaGetDeviceCount(&device_count); // Get number of GPUs.
-  ASSERTS( device_count );
-  for ( int dev = 0; dev < device_count; dev ++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
-
-      printf
-        ("GPU %d: CAP: %d.%d  MP: %2d  TH/WP: %3d  TH/BL: %4d  "
-         "BL/GR %d/%d/%d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cuda_prop.warpSize,
-         cuda_prop.maxThreadsPerBlock,
-         cuda_prop.maxGridSize[0],
-         cuda_prop.maxGridSize[1],
-         cuda_prop.maxGridSize[2]
-         );
-
-      printf
-        ("GPU %d: SHARED: %5d  CONST: %5d  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: PEAK EXEC RATE: %7.3f GI/s\n",
-         dev, cuda_ips_get(cuda_prop));
-
-    }
-
-  const int dev_prefer = 0;
-  const int dev = min(dev_prefer,device_count-1);
-
-  printf("Using GPU %d\n",dev);
-  CE(cudaSetDevice(dev));
-  CE(cudaGetDeviceProperties(&cuda_prop,dev));
-
-
-  // Prepare events used for timing.
-  //
-  CE(cudaEventCreate(&cuda_start_ce));
-  CE(cudaEventCreate(&cuda_stop_ce));
-}
-
-pCUDA_Func_Attributes*
-cuda_func_attr_get(int &count)
-{
-  pCUDA_Func_Attributes *func_attr;
-  count = kernels_get_attr(&func_attr);
-
-  printf("CUDA Routine Resource Usage:\n");
-
-  for ( int i=0; i<count; i++ )
-    {
-      pStringF err_txt("Err %d",func_attr[i].err);
-      printf(" %-20s: %s\n"
-             "%6zd B shared,  %zd B const,  %zd B loc,  %d regs; "
-             "%d max thr / block\n",
-             func_attr[i].name,
-             func_attr[i].err ? err_txt.s : "",
-             func_attr[i].attr.sharedSizeBytes,
-             func_attr[i].attr.constSizeBytes,
-             func_attr[i].attr.localSizeBytes,
-             func_attr[i].attr.numRegs,
-             func_attr[i].attr.maxThreadsPerBlock);
-    }
-  return func_attr;
-}
 
 typedef unsigned Sort_Elt;
 
@@ -108,6 +16,9 @@ class Sort {
 public:
 
   Sort(int argc, char **argv){ init(argc,argv); }
+
+  GPU_Info gpu_info;
+  cudaEvent_t cuda_start_ce, cuda_stop_ce;
 
   // Data Arrays.
   //
@@ -128,13 +39,37 @@ public:
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
 
-  pCUDA_Func_Attributes *cuda_func_attr;
-  int cuda_func_attr_count;
-
   void init(int argc, char **argv)
   {
-    cuda_init();
-    cuda_func_attr = cuda_func_attr_get(cuda_func_attr_count);
+    gpu_info_print();
+
+    const int dev = gpu_choose_index();
+    CE(cudaSetDevice(dev));
+    printf("Using GPU %d\n",dev);
+    gpu_info.get_gpu_info(dev);
+    kernels_get_attr(&gpu_info);
+
+    // Prepare events used for timing.
+    //
+    CE(cudaEventCreate(&cuda_start_ce));
+    CE(cudaEventCreate(&cuda_stop_ce));
+
+    // Print information about kernel.
+    //
+    printf("\nCUDA Kernel Resource Usage:\n");
+
+    for ( int i=0; i<gpu_info.num_kernels; i++ )
+      {
+        printf("For %s:\n", gpu_info.ki[i].name);
+        printf("  %6zd shared, %zd const, %zd loc, %d regs; "
+               "%d max threads per block.\n",
+               gpu_info.ki[i].cfa.sharedSizeBytes,
+               gpu_info.ki[i].cfa.constSizeBytes,
+               gpu_info.ki[i].cfa.localSizeBytes,
+               gpu_info.ki[i].cfa.numRegs,
+               gpu_info.ki[i].cfa.maxThreadsPerBlock);
+      }
+
 
     srand48(1);                   // Seed random number generator.
 
@@ -164,8 +99,6 @@ public:
 
     bzero(sort_out.data,array_size*sizeof(sort_out[0]));
     sort_out.to_cuda();
-
-    const int db_friendly_offset = ( ( ( array_size_lg + 3 ) >> 2 ) + 1 ) << 2;
 
     // Initialize input arrays.
     //
@@ -359,11 +292,16 @@ public:
     const int cpu_rounds = 1;
     const int gpu_rounds = 1;
 
-    if ( block_size > cuda_func_attr[version].attr.maxThreadsPerBlock ) return;
+    Kernel_Info& ki = gpu_info.ki[version];
+    cudaFuncAttributes& cfa = ki.cfa;
+    cudaDeviceProp& cuda_prop = gpu_info.cuda_prop;
+
+    if ( block_size > cfa.maxThreadsPerBlock ) return;
 
     // Specify Launch Configuration
     //
     dim3 db, dg;
+    dim3 dg0; dg0.x = dg0.y = dg0.z = 0;
 
     // Specify block size.  (Block size is db.x * db.y * db.z )
     //
@@ -405,20 +343,22 @@ public:
     sort_tile_histo.realloc(prefix_sum_array_size);
     sort_tile_histo.ptrs_to_cuda("sort_tile_histo");
 
-    const int block_per_mp = 
+    const int block_per_mp =
       0.999 + double(dg.x)/cuda_prop.multiProcessorCount;
+    const int dynamic_sm_bytes =
+      sort_launch(dg0,db,version,array_size,array_size_lg); // Hack.
+    const int active_bl_per_mp_max =
+      gpu_info.get_max_active_blocks_per_mp(version,db.x,dynamic_sm_bytes);
     const int warps_per_block = (31 + db.x ) >> 5;
+    const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     // Ignoring memory and regs.
-    const int active_bl_per_mp_1 = min(block_per_mp,8);
-    const int active_bl_by_warps = 48 / warps_per_block;
-    const int active_bl_per_mp = min(active_bl_per_mp_1,active_bl_by_warps);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
     printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %.2f,  Active WP, %2d   %s\n",
            dg.x, db.x,
            double(dg.x)/cuda_prop.multiProcessorCount,
            active_wp,
-           cuda_func_attr[version].name
+           ki.name
            );
 
     if ( int(dg.x) > cuda_prop.maxGridSize[0] )
@@ -481,7 +421,8 @@ public:
         const double computation_insn = // Currently bogus!!
           gpu_rounds * double(array_size) * ( 0 + 3.0 );
 
-        const double peak_insn = cuda_time_ms * 1e-3 * cuda_ips_get(cuda_prop);
+        const double peak_insn =
+          cuda_time_ms * 1e-3 * gpu_info.chip_sp_flops;
 
         printf("CUDA Time %7.3f ms  Throughput %7.3f G elt/s  Eff %.4f  "
                "Eff ac %.4f\n",

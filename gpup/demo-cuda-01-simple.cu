@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
@@ -157,6 +157,7 @@ __constant__ App d_app;
 __global__ void
 cuda_thread_start()
 {
+  // Compute a unique ID for this thread.
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   if ( tid >= d_app.num_threads ) return;

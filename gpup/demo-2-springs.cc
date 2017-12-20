@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Simple Demo of Point Masses and Springs
 
@@ -171,6 +171,7 @@ World::ball_setup_1()
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[chain_length-i-1];
+
       ball->position = bottom_pos + i * ball_separation;
 
       ball->velocity = pVect(0,0,0);
@@ -327,10 +328,6 @@ World::time_step_cpu_easy(double delta_t)
       //
       if ( !platform_collision_possible(ball->position) ) continue;
       if ( ball->position.y >= 0 ) continue;
-
-      // Snap ball position to surface.
-      //
-      ball->position.y = 0;
 
       // Reflect y (vertical) component of velocity, with a reduction
       // due to energy lost in the collision.

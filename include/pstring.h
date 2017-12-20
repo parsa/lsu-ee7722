@@ -79,8 +79,9 @@ public:
     va_list ap;
 
     va_start(ap, fmt);
-    return vsprintf(fmt,ap);
+    char* const rv = vsprintf(fmt,ap);
     va_end(ap);
+    return rv;
   }
   char *vsprintf(const char *fmt, va_list ap)
   {

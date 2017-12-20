@@ -86,48 +86,73 @@ glStencilOp(SFAIL,DFAIL,DPASS);
 ///  Keyboard Commands
  //
  /// Object (Eye, Light, Ball) Location or Push
- //   Arrows, Page Up, Page Down
- //   Will move object or push ball, depending on mode:
+ //   Arrows (←,→,↑,↓) Page Up, Page Down
+ //        Move object or push ball, depending on mode.
+ //        Shift + KEY: motion is 5x faster.
+ //        Ctrl + KEY : motion is 5x slower.
  //   'e': Move eye.
  //   'l': Move light.
- //   'b': Move ball. (Change position but not velocity.)
+ //   'b': Move head (first) ball. (Change position but not velocity.)
+ //   'B': Push head ball. (Add velocity.)
  //   'D': Move ball drip location.
- //   'B': Push ball. (Add velocity.)
- //
- /// Eye Direction
- //   Home, End, Delete, Insert
- //   Turn the eye direction.
- //   Home should rotate eye direction up, End should rotate eye
- //   down, Delete should rotate eye left, Insert should rotate eye
- //   right.  The eye direction vector is displayed in the upper left.
 
- /// Simulation Options
+ //
+ /// Eye Direction and GUI Options
+ //
+ //   'Home', 'End', 'Delete', 'Insert'
+ //         Turn the eye direction. Home should rotate eye direction
+ //         up, End should rotate eye down, Delete should rotate eye
+ //         left, Insert should rotate eye right. The eye direction
+ //         vector is displayed in the upper left.
+ //  'C-='  (Ctrl =) Increase green text size.
+ //  'C--'  (Ctrl -) Decrease green text size.
+ //  'F10'  Write video to file.
+ //  'F12'  Write screenshot to PNG file.
+
+ /// Simulation Execution Options
  //  (Also see variables below.)
  //
- //  'p'    Pause simulation. (Press again to resume.)
  //  'a'    Switch physics method (CPU to GPU/CUDA).
+ //  'p'    Pause simulation. (Press again to resume.)
+ //  ' '    (Space bar.) Advance simulation by 1/30 second.
+ //  'S- '  (Shift Space bar.) Advance simulation by one time step.
 
+ /// Performance Tuning, Graphics Effects, and Debugging Options
+ //
+ //  'y'    Toggle value of opt_debug. Intended for experiments and debugging.
+ //  'Y'    Toggle value of opt_debug2. Intended for experiments and debugging.
+ //  'w'    Toggle shadow effect.
+ //  'W'    Toggle visibility of shadow volumes.
+ //  'm'    Toggle mirror effect.
+ //  'M'    Cycle through mirror effect methods.
+
+ //  'c'    Toggle color events: the use colors to show number of
+ //           reflected points, and the grouping of balls into CUDA blocks.
+ //           See 'Color by Block in Pass' in Variables section, below.
+ //  'C'    Toggle visibility of balls not assigned to any CUDA block and
+ //           also turn on color events.
+ //  'n'    Toggle visibility of platform normals.
+ //  '!'    Toggle rendering of spheres (balls).
+ //  '@'    Toggle rendering of tiles.
+ //  '#'    Toggle rendering of platform.
+
+
+ /// Scene and Simulated System Options
+ //  (Also see variables below.)
+ //
+ //  '1'    Set up scene 1.
+ //  '2'    Set up scene 2.
+ //  't'    Run 5-tier-of-balls benchmark.
+ //  'T'    Run 1-tier-of-balls benchmark.
+ //
  //  'd'    Toggle dripping of balls.
  //  'x'    Toggle shower of balls.
  //  'X'    Release one pair of balls.
- //  't'    Run 5-tier-of-balls benchmark.
- //  'T'    Run 1-tier-of-balls benchmark.
- //  'R'    Remove all but one ball.
-
- //  'm'    Toggle reflections on mirror tiles.
- //  'w'    Toggle shadows.
- //  'W'    Toggle visibility of shadow volumes.
- //  'n'    Toggle visibility of platform normals.
-
+ //
  //  's'    Stop balls linear motion.
  //  'S'    Stop balls rotational motion.
-
- //  'c'    Use colors to show number of reflected points, and other info.
- //  'M'    Switch between different shortcuts in computing reflections.
-
+ //
  //  'g'    Turn gravity on and off.
- //  'F10'  Write video to file.
- //  'F12'  Write screenshot to file.
 
  /// Variables
  //   Selected program variables can be modified using the keyboard.
@@ -366,7 +391,7 @@ public:
   double theta, omega, torque_dt;
   bool cpu_data_stale, cuda_constants_stale, cuda_data_stale;
   pCUDA_Memory<float> cuda_omega;
-  PStack<Tile*> tiles;
+  vector<Tile*> tiles;
   pCoor center;
   pNorm axis_dir;
   float base_moment_of_inertia_inv, moment_of_inertia_inv;
@@ -408,8 +433,38 @@ enum GPU_Physics_Method { GP_cpu, GP_cuda, GP_ENUM_SIZE };
 const char* const gpu_physics_method_str[] = { "CPU", "CUDA" };
 
 
-typedef PStack<Phys*> Phys_List;
-typedef PStackIterator<Phys*> Phys_Iterator;
+typedef vector<Phys*> Phys_List;
+typedef Phys_List::const_iterator Phys_List_Iterator;
+
+class Iterator_Balls {
+public:
+  Iterator_Balls(const Phys_List& lp, Phys_List_Iterator&& itp):l(lp),it(itp)
+  { to_ball(); };
+  void operator ++ () { if ( it != l.end() ) { it++; to_ball(); } }
+  Ball* operator * () { return (Ball*)it[0]; }
+  bool operator != (const Iterator_Balls b) { return it != b.it; }
+private:
+  void to_ball(){ while ( it != l.end() && !BALL(it[0]) ) it++; }
+  const Phys_List& l;
+  Phys_List_Iterator it;
+};
+
+class Iterate_Balls {
+public:
+  Iterate_Balls(const Phys_List& lp):l(lp){};
+  Iterator_Balls begin() { return Iterator_Balls(l,l.begin()); }
+  Iterator_Balls end() { return Iterator_Balls(l,l.end()); }
+private:
+  const Phys_List& l;
+};
+
+template<typename T, typename F> void
+pKeep_if(vector<T>& l, F pred)
+{
+  auto toast = partition(l.begin(),l.end(),pred);
+  l.erase(toast,l.end());
+}
+
 
 // Include class definitions for tiles.  Yes, this code
 // is disorganized.
@@ -435,9 +490,10 @@ public:
   (int zidx, double lifetime_delta_t, bool verify);
   void cuda_contact_pairs_find();
 
-  static void render_w(void *moi){ ((World*)moi)->render(); }
+  static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
+  void frame_callback();
   void render();
-  void render_objects(bool attempt_occlusion_test);
+  void render_objects();
   void render_shadow_volumes(pCoor light_pos);
   void cb_keyboard();
 
@@ -457,12 +513,11 @@ public:
   // Time in simulated world.
   //
   double world_time;
+  double last_frame_wall_time;
 
   // Physical objects (Balls, Tiles, etc.) being Simulated
   //
   Phys_List physs;
-  PSList<Phys*,double> eye_dist; // Balls sorted by eye distance.
-  bool balls_iterate(Ball*& ball);
   Ball* ball_first();           // Oldest surviving ball.
   Ball* ball_last();            // Youngest surviving ball.
 
@@ -535,11 +590,15 @@ public:
   void platform_update();
   bool platform_collision_possible(Ball *ball, float ts_mov_max = 0);
 
+  pCoor light1_location;
   pCoor light_location;
   float opt_light_intensity;
+  bool opt_light0; // If false, turn off light 0.
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_Drip, MI_Wheel, MI_COUNT } 
     opt_move_item;
   bool opt_pause;
+  bool opt_single_frame;      // Simulate for one frame.
+  bool opt_single_time_step;  // Simulate for one time step.
 
   pCoor eye_location;
   pVect eye_direction;
@@ -553,13 +612,27 @@ public:
   int opt_mirror_method;
   bool opt_normals_visible;
   bool opt_color_events;
+  bool opt_color_events_hide_black;
+  int opt_hide_stuff;
 
-  int tri_count; // For tuning, demo.
+  void ball_setup_1();
+  void ball_setup_2();
+  void ball_setup_3();
+  void ball_setup_4();
+  void ball_setup_5();
 
   pShader *vs_fixed;
   pShader *vs_reflect;
   pShader *s_sphere;
   pShader *s_sv_instances;
+
+  int light_state_get()
+    {
+      GLboolean l0, l1;
+      glGetBooleanv(GL_LIGHT0,&l0);
+      glGetBooleanv(GL_LIGHT1,&l1);
+      return int(l0) | (int(l1)<<1);
+    };
 
   GLint sun_axis_e, sun_axis_ne, sun_platform_xrad_sq, sun_light_num;
   GLint sun_platform_xmid, sun_platform_xrad; 
@@ -571,14 +644,12 @@ public:
 
   // Pre-Computed Spheres
   //
-  Sphere sphere;
   Sphere* spheres;
-  Sphere sphere_lite;
+  int opt_sphere_lod;
   int sphere_lod_max;
   int sphere_lod_min;
   double sphere_delta_lod, sphere_lod_factor, sphere_lod_offset;
   int sphere_count;
-  Sphere* sphere_get(Ball *ball);
 
   Cone cone;                    // Used to show platform normals.
 
@@ -703,6 +774,8 @@ public:
   int ball_cnt_sched;
 };
 
+enum { OH_Tiles = 1, OH_Platform = 2, OH_Spheres = 4 };
+
 #define CP(f) { const int rv=f; ASSERTS( rv == 0 ); }
 
 // Wrapper to call scheduler main thread in World class.
@@ -739,8 +812,10 @@ World::init()
   opt_physics_method = GP_cuda;
   opt_block_size = 128;
 
+  world_time = 0;
   frame_timer.work_unit_set("Steps / s");
-  world_time = time_wall_fp();
+  last_frame_wall_time = time_wall_fp();
+
   opt_gravity_accel = 9.8;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
@@ -751,6 +826,7 @@ World::init()
   opt_mirror_method = 0;
   opt_spray_on = false;
   opt_color_events = false;
+  opt_color_events_hide_black = false;
   opt_debug = false;
   opt_debug2 = false;
   opt_block_color_pass = 0;
@@ -805,8 +881,10 @@ World::init()
   tsmax = 0;
   tsmin = 0.4;
 
+  opt_light0 = true;
   opt_light_intensity = 100.2;
   light_location = pCoor(0,25.8,-14.3);
+  light1_location = pCoor(0,40,100);
 
   opt_ball_radius = 2;
   opt_ball_density = 0.0074603942589580438;
@@ -838,18 +916,16 @@ World::init()
 
   opt_move_item = MI_Eye;
   opt_pause = false;
+  opt_single_time_step = false;
+  opt_single_frame = false;
+
+  opt_hide_stuff = 0;
 
   pball = new Ball(this); 
   pball->prev_velocity = pVect(0,0,0);
   pball->set_radius(1);
 
-  drip_location = pCoor(30,20,60);
-
   ball_countdown = 0.1;
-  sphere.init(40);
-  sphere.tri_count = &tri_count;
-  sphere_lite.init(4);
-  sphere_lite.tri_count = &tri_count;
 
   // Initialize spheres with varying levels of detail (lod).
   // For performance reasons, sphere with lowest lod that provides
@@ -860,113 +936,17 @@ World::init()
   sphere_count = 16;
   sphere_delta_lod = ( sphere_lod_max - sphere_lod_min ) / (sphere_count-1);
   spheres = new Sphere[sphere_count];
+  opt_sphere_lod = sphere_count / 2;
+  variable_control.insert
+    (opt_sphere_lod,"Sphere Level of Detail",1,0,sphere_count-1);
 
   for ( int i=0; i<sphere_count; i++ )
     {
       const int lod = sphere_lod_min + int( i * sphere_delta_lod + 0.5 );
       spheres[i].init(lod);
-      spheres[i].tri_count = &tri_count;
     }
 
-
-  wheel = new Wheel(this);
-
-  variables_update();
-  platform_update();
-  modelview_update();
-
-  if ( wheel )
-    wheel->init(pCoor(0.6 * platform_xrad,-10,65), pVect(0,0,-10),3,8);
-
-  {
-    //  Use tiles to construct a staircase.
-    //
-    const int step_count = 10;
-    const float x2 = platform_xmax - 0.1 * platform_xrad;
-    const float x1 = platform_xmid + 0.1 * platform_xrad;
-    const float step_size = ( x2 - x1 ) / step_count;
-    const pVect step_hor(step_size,0,0);
-    const pVect step_ver(0,step_size,0);
-    const pVect step_wid(0,0,5);
-    const pCoor step_start(x1,-platform_xrad*0.9,-50);
-    pColor step_color(0.5,0.5,0.5);
-    for ( int i=0; i<step_count; i++ )
-      {
-        const pCoor step_ll = step_start + i * ( step_hor + step_ver );
-        tile_manager.new_tile(step_ll,step_hor,step_wid,step_color);
-        tile_manager.new_tile(step_ll+step_hor,step_ver,step_wid,step_color);
-      }
-
-    variables_update();
-  }
-
-  /// Initialize Ball Positions
-  //
-  //  Code below places balls in one of several ways.
-  //  Some of the ball arrangements are intended for debugging.
-
-  if ( opt_spray_on )
-    {
-      physs += new Ball(this);
-      return;
-    }
-
-  const float r_short = platform_xrad - opt_ball_radius;
-
-  if ( true )
-    {
-      const double sa = asin( opt_ball_radius / r_short );
-      const double ca = 1.5 * M_PI;
-      const double a[] = { ca - sa, ca + sa, ca };
-      const double r[] =
-        { r_short, r_short,
-          r_short - sqrt(3) * opt_ball_radius
-        };
-      for ( int i=0; i<3; i++ )
-        {
-          Ball* const b = new Ball(this);
-          b->position = pCoor( r[i] * cos(a[i]), r[i] * sin(a[i]), 45);
-          b->velocity = pVect(0,0,0);
-          physs += b;
-        }
-    }
-
-
-  //
-  /// Debug Code
-  //
-  // The following code initializes ball positions for debugging
-  // a particular problem. That problem has been fixed, but the
-  // code remains in case its needed for debugging something else.
-  //
-  if ( false ){
-    {
-      Ball* const b = new Ball(this);
-      b->position = pCoor(0,-r_short,40);
-      b->velocity = pVect(0,0,0);
-      physs += b;
-    }
-    {
-      Ball* const b = new Ball(this);
-      b->position = pCoor(r_short*cos(1.75*M_PI),r_short*sin(1.75*M_PI),40);
-      b->velocity = pVect(0,0,0);
-      physs += b;
-    }
-  }
-
-  if ( false )
-    {
-      Ball *b = new Ball(this);
-      b->position = pCoor(0,-r_short,48);
-      b->velocity = pVect(0,0,0);
-      b->omega = pVect(0,6,0);
-      physs += b;
-      b = new Ball(this);
-      b->position = pCoor(0,-r_short+3*opt_ball_radius,48);
-      b->velocity = pVect(0,0,0);
-      b->omega = pVect(0,1,0);
-      physs += b;
-    }
+  ball_setup_1();
 }
 
 
@@ -1078,8 +1058,11 @@ World::benchmark_setup(int tiers)
 
   cuda_at_balls_change();
 
-  for ( Ball *ball; balls_iterate(ball); )
-    { physs.iterate_yank(); delete ball; }
+  pKeep_if
+    ( physs,
+      [](Phys* p)
+      { if ( Ball* const b = BALL(p) ) { delete b; return false; }
+        else                           { return true; }             } );
 
   // Note that number of balls determined by ball size.
   opt_ball_radius = 1.08;
@@ -1103,7 +1086,7 @@ World::benchmark_setup(int tiers)
           Ball* const b = new Ball(this);
           b->velocity.z = 0;
           b->position = pCoor(x,y,z);
-          physs += b;
+          physs.push_back( b );
         }
   variables_update();
 }
@@ -1388,7 +1371,7 @@ World::cpu_data_to_cuda()
 
   if ( wheel ) wheel->to_cuda();
 
-  const int cnt = physs.occ();
+  const int cnt = physs.size();
 
   // Allocate additional cuda storage, if necessary.
   //
@@ -1438,15 +1421,15 @@ World::cpu_data_to_cuda()
       else if ( tile )
         {
           float4 wht;
-          wht.x = tile->width;
-          wht.y = tile->height;
+          wht.x = tile->lx;
+          wht.y = tile->ly;
           wht.z = 0;     // Torque, initialized to zero.
           wht.w = 0;
-          vec_sets3(cuda_balls.soa.position[idx],tile->pt_ll);
+          vec_sets3(cuda_balls.soa.position[idx],tile->pt_00);
           cuda_balls.soa.velocity[idx] = wht;
-          vec_sets3(cuda_balls.soa.omega[idx],tile->norm_rt);
-          vec_sets3(cuda_balls.soa.prev_velocity[idx],tile->norm_up);
-          vec_sets3(cuda_balls.soa.ball_props[idx],tile->normal);
+          vec_sets3(cuda_balls.soa.omega[idx],tile->nx);
+          vec_sets3(cuda_balls.soa.prev_velocity[idx],tile->ny);
+          vec_sets3(cuda_balls.soa.ball_props[idx],tile->nz);
         }
       else
         {
@@ -1478,7 +1461,7 @@ World::cuda_data_to_cpu(uint which_data)
 
   cuda_balls.from_cuda();       // Transfer data.
 
-  const int cnt = physs.occ();
+  const int cnt = physs.size();
 
   // Copy data to physs array, copying only the data that's
   // needed and not already present.
@@ -1504,7 +1487,7 @@ World::cuda_data_to_cpu(uint which_data)
           vec_sets3(pt_ll,cuda_balls.soa.position[idx]);
           vec_sets4(norm_rt,cuda_balls.soa.omega[idx]);
           vec_sets4(norm_up,cuda_balls.soa.prev_velocity[idx]);
-          tile->set(pt_ll, tile->height * norm_up, tile->width * norm_rt);
+          tile->set(pt_ll, tile->ly * norm_up, tile->lx * norm_rt);
         }
 
       if ( !ball ) continue;
@@ -1576,10 +1559,10 @@ Wheel::init(pCoor centerp, pVect axis, double r_inner, double blade_len)
       pCoor pt2 = center + cos(theta_2) * r_inner * x_axis
         + sin(theta_2) * r_inner * y_axis;
       pVect pt12(pt1,pt2);
-      tiles += w.tile_manager.new_tile(pt1,pt12,axis,wheel_color);
-      tiles += w.tile_manager.new_tile(pt1,pt1o,axis,wheel_color);
+      tiles.push_back( w.tile_manager.new_tile(pt1,pt12,axis,wheel_color) );
+      tiles.push_back( w.tile_manager.new_tile(pt1,pt1o,axis,wheel_color) );
     }
-  for ( Tile *tile; tiles.iterate(tile); )
+  for ( Tile *tile: tiles )
     {
       tile->read_only = false;
       tile->marker = this;
@@ -1599,9 +1582,9 @@ Wheel::to_cuda()
       wheel.moment_of_inertia_inv = moment_of_inertia_inv;
       wheel.friction_torque = friction_torque;
       Tile* const tf = tiles[0];
-      Tile* const tl = tiles.peek();
-      const int tig_check = tl->idx - tf->idx + 1;
-      ASSERTS( tig_check == tiles.occ() );
+      Tile* const tl = tiles.back();
+      const size_t tig_check = tl->idx - tf->idx + 1;
+      ASSERTS( tig_check == tiles.size() );
       wheel.idx_start = tf->idx;
       wheel.idx_stop = tl->idx + 1;
       if ( cuda_omega.elements == 0 ) cuda_omega.alloc(1);
@@ -1638,6 +1621,17 @@ Wheel::variables_update()
 }
 
 void
+Wheel::collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo)
+{
+  // Check whether tile is part of this wheel, if not return.
+  //
+  if ( tile->marker != this ) return;
+
+  pVect to_center(center,tact);
+  torque_dt += dot( axis_dir, cross(to_center,delta_mo) );
+}
+
+void
 Wheel::spin()
 {
   from_cuda();
@@ -1664,22 +1658,13 @@ Wheel::spin()
   pMatrix_Translate tr_restore(center);
   pMatrix_Rotation tr_rotate(axis_dir,delta_theta);
   pMatrix transform = tr_restore * tr_rotate * tr_center;
-  for ( Tile *tile; tiles.iterate(tile); )
+  for ( Tile *tile: tiles )
     {
-      pCoor ll = transform * tile->pt_ll;
-      pVect vec_up = tr_rotate * tile->vec_up;
-      pVect vec_rt = tr_rotate * tile->vec_rt;
-      tile->set(ll,vec_up,vec_rt);
+      pCoor ll = transform * tile->pt_00;
+      pVect vec_ay = tr_rotate * tile->ay;
+      pVect vec_ax = tr_rotate * tile->ax;
+      tile->set(ll,vec_ay,vec_ax);
     }
-}
-
-void
-Wheel::collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo)
-{
-  if ( tile->marker != this ) return;
-  pVect to_center(center,tact);
-  // Formula below needs to be checked.
-  torque_dt += dot(axis_dir,cross(to_center,delta_mo));
 }
 
 
@@ -1689,6 +1674,123 @@ Wheel::collect_tile_force(Tile *tile, pCoor tact, pVect delta_mo)
 
  /// Initialize Simulation
 //
+
+void
+World::ball_setup_1()
+{
+  balls_remove();
+
+  opt_ball_radius = 2;
+  opt_drip = true;
+  opt_spray_on = false;
+  drip_cnt = spray_cnt = 0;
+  drip_run = 3;
+  drip_location = pCoor(30,20,60);
+
+  wheel = new Wheel(this);
+
+  if ( wheel )
+    wheel->init(pCoor(0.6 * platform_xrad,-10,65), pVect(0,0,-10),3,8);
+
+  {
+    //  Use tiles to construct a staircase.
+    //
+    const int step_count = 10;
+    const float x2 = platform_xmax - 0.1 * platform_xrad;
+    const float x1 = platform_xmid + 0.1 * platform_xrad;
+    const float step_size = ( x2 - x1 ) / step_count;
+    const pVect step_hor(step_size,0,0);
+    const pVect step_ver(0,step_size,0);
+    const pVect step_wid(0,0,5);
+    const pCoor step_start(x1,-platform_xrad*0.9,-50);
+    pColor step_color(0.5,0.5,0.5);
+    for ( int i=0; i<step_count; i++ )
+      {
+        const pCoor step_00 = step_start + i * ( step_hor + step_ver );
+        tile_manager.new_tile(step_00,step_hor,step_wid,step_color);
+        tile_manager.new_tile(step_00+step_hor,step_ver,step_wid,step_color);
+      }
+
+    variables_update();
+  }
+
+
+  const float r_short = platform_xrad - opt_ball_radius;
+
+  if ( true )
+    {
+      const double sa = asin( opt_ball_radius / r_short );
+      const double ca = 1.5 * M_PI;
+      const double a[] = { ca - sa, ca + sa, ca };
+      const double r[] =
+        { r_short, r_short,
+          r_short - sqrt(3) * opt_ball_radius
+        };
+      for ( int i=0; i<3; i++ )
+        {
+          Ball* const b = new Ball(this);
+          b->position = pCoor( r[i] * cos(a[i]), r[i] * sin(a[i]), 45);
+          b->velocity = pVect(0,0,0);
+          physs.push_back( b );
+        }
+    }
+}
+
+void
+World::ball_setup_2()
+{
+  balls_remove();
+
+  opt_ball_radius = 2;
+  opt_drip = true;
+  opt_spray_on = false;
+  drip_cnt = spray_cnt = 0;
+  drip_run = 3;
+  drip_location = pCoor(30,20,60);
+
+  {
+    //  Use tiles to construct a staircase.
+    //
+    const int step_count = 10;
+    const float x2 = platform_xmax - 0.1 * platform_xrad;
+    const float x1 = platform_xmid + 0.1 * platform_xrad;
+    const float step_size = ( x2 - x1 ) / step_count;
+    const pVect step_hor(step_size,0,0);
+    const pVect step_ver(0,step_size,0);
+    const pVect step_wid(0,0,5);
+    const pCoor step_start(x1,-platform_xrad*0.9,-50);
+    pColor step_color(0.5,0.5,0.5);
+    for ( int i=0; i<step_count; i++ )
+      {
+        const pCoor step_00 = step_start + i * ( step_hor + step_ver );
+        tile_manager.new_tile(step_00,step_hor,step_wid,step_color);
+        tile_manager.new_tile(step_00+step_hor,step_ver,step_wid,step_color);
+      }
+
+    variables_update();
+  }
+
+
+  const float r_short = platform_xrad - opt_ball_radius;
+
+  if ( true )
+    {
+      const double sa = asin( opt_ball_radius / r_short );
+      const double ca = 1.5 * M_PI;
+      const double a[] = { ca - sa, ca + sa, ca };
+      const double r[] =
+        { r_short, r_short,
+          r_short - sqrt(3) * opt_ball_radius
+        };
+      for ( int i=0; i<3; i++ )
+        {
+          Ball* const b = new Ball(this);
+          b->position = pCoor( r[i] * cos(a[i]), r[i] * sin(a[i]), 45);
+          b->velocity = pVect(0,0,0);
+          physs.push_back( b );
+        }
+    }
+}
 
 int phys_serial_next = 0;
 
@@ -1717,17 +1819,10 @@ Phys::~Phys()
 {
 }
 
-bool
-World::balls_iterate(Ball*& ball)
-{
-  for ( Phys *p; physs.iterate(p); ) if ( ( ball = BALL(p) ) ) return true;
-  return false;
-}
-
 Ball*
 World::ball_first()
 {
-  for ( Phys_Iterator phys(physs); phys; phys++ )
+  for ( Phys *phys : physs )
     if ( Ball* const ball = BALL(phys) ) return ball;
   return NULL;
 }
@@ -1735,7 +1830,7 @@ World::ball_first()
 Ball*
 World::ball_last()
 {
-  for ( int i = physs.occ() - 1; i>=0; i-- )
+  for ( int i = physs.size() - 1; i>=0; i-- )
     if ( Ball* const ball = BALL(physs[i]) ) return ball;
   return NULL;
 }
@@ -1827,37 +1922,29 @@ void Ball::stop()
   velocity = pVect(0,0,0);
 }
 
-// Remove all but one ball.
+// Reset scene.
 //
 void World::balls_remove()
 {
+  dball = NULL;
+  if ( wheel ) { delete wheel; wheel = NULL; }
   cuda_at_balls_change();
-  PStack<Phys*> survivors;
-  bool ball_found = false;
-  while ( physs.occ() )
-    {
-      Phys* const phys = physs.pop();
-      const bool is_ball = phys->phys_type == PT_Ball;
-      if ( !ball_found || !is_ball )
-        {
-          survivors += phys;
-          ball_found = ball_found || is_ball;
-        }
-      else
-        {
-          delete phys;
-        }
-    }
-  while ( survivors.occ() ) physs += survivors;
+
+  for ( Phys *p: physs ) delete p;
+  physs.clear();
+  tile_manager.clear();
+  variables_update();
+  platform_update();
+  modelview_update();
 }
 
 void World::balls_stop()
 {
-  for ( Ball *ball; balls_iterate(ball); ) ball->stop();
+  for ( Ball *ball: Iterate_Balls(physs) ) ball->stop();
 }
 void World::balls_rot_stop()
 {
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Ball *ball: Iterate_Balls(physs) )
     ball->omega = pVect(0,0,0);
 }
 
@@ -2094,13 +2181,13 @@ World::balls_add(float contact_y_max)
       dball->velocity = pVect(0,0,0);
       dball->color_natural = *colors[ ( drip_cnt >> drip_run ) & colors_mask ];
       drip_cnt++;
-      physs += dball;
+      physs.push_back( dball );
     }
 
   /// If spray is on, release a new ball if it's time.
   //
   ball_countdown -= delta_t;
-  if ( opt_spray_on && ball_countdown <= 0 || physs.occ() == 0 )
+  if ( opt_spray_on && ball_countdown <= 0 || physs.size() == 0 )
     {
       const double min_radius = 0.8;
       const double max_rad = 2 * opt_ball_radius;
@@ -2126,7 +2213,7 @@ World::balls_add(float contact_y_max)
       nball->color_natural = *colors[ ( spray_cnt>>spray_run ) & colors_mask ];
       spray_cnt++;
 
-      physs += nball;
+      physs.push_back( nball );
       ball_countdown = 0.1;
     }
 }
@@ -2136,7 +2223,7 @@ World::sphere_empty(pCoor center, float radius)
 {
   // Determine if volume of space is ball-free within radius of center.
   //
-  for ( Phys_Iterator phys(physs); phys; phys++ )
+  for ( Phys* phys : physs )
     if ( Ball* const ball = BALL(phys) )
       {
         const double radii = radius + ball->radius;
@@ -2162,10 +2249,14 @@ World::time_step_cpu()
 
   /// Remove balls that have fallen away from the platform.
   //
-  for ( Ball *ball; balls_iterate(ball); )
-    if ( ball->position.y < deep ) { physs.iterate_yank(); delete ball; }
+  pKeep_if
+    ( physs,
+      [&](Phys* p)
+      { Ball* const b = BALL(p);
+        if ( b && b->position.y < deep ) { delete b; return false; }
+        else return true; } );
 
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Ball *ball: Iterate_Balls(physs) )
     {
       ball->prev_omega = ball->omega;
       ball->prev_velocity = ball->velocity;
@@ -2174,7 +2265,7 @@ World::time_step_cpu()
   /// Sort balls in z in preparation for finding balls that touch.
   //
   phys_zsort.reset();
-  for ( Phys *phys; physs.iterate(phys); )
+  for ( Phys* phys : physs )
     phys_zsort.insert(phys->max_z_get(0),phys);
   phys_zsort.sort();
 
@@ -2216,11 +2307,11 @@ World::time_step_cpu()
 
   /// Apply gravitational force.
   //
-  for ( Ball *ball; balls_iterate(ball); ) ball->velocity += gravity_accel_dt;
+  for ( Ball *ball: Iterate_Balls(physs) ) ball->velocity += gravity_accel_dt;
 
   /// Apply force for platform contact.
   //
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Ball *ball: Iterate_Balls(physs) )
     {
       // This code takes advantage of the fact that the platform axis
       // is in the z direction and that its upper edge is at y=0.
@@ -2282,14 +2373,14 @@ World::time_step_cpu()
 
   /// Based on updated velocity, update ball positions.
   //
-  for ( Ball *ball; balls_iterate(ball); ) 
+  for ( Ball *ball: Iterate_Balls(physs) ) 
     ball->position += delta_t * ball->velocity;
 
   float contact_y_max = -platform_xrad;
 
   /// Update orientation of balls. (Also find highest ball that hit something.)
   //
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Ball *ball: Iterate_Balls(physs) )
     {
       pNorm axis(ball->omega);
 
@@ -2368,6 +2459,7 @@ World::contact_pairs_proximity_check
   for ( int i=idx9-1; i>=0 && phys_zsort.get_key(i) >= z_min; i-- )
     {
       Phys* const phys1 = phys_zsort[i];
+      assert( phys1 != phys9 );
       Ball* const ball1 = BALL(phys1);
       Tile* const tile1 = TILE(phys1);
       Phys *physa, *physb;
@@ -2455,8 +2547,9 @@ World::cuda_contact_pairs_find()
   /// Sort phys in z in preparation for finding phys in proximity.
   //
   phys_zsort.reset(); // Avoid reallocation by resetting rather than declaring.
-  for ( Phys_Iterator ball(physs); ball; ball++ )
+  for ( auto bi = physs.begin(); bi != physs.end(); bi++ )
     {
+      Phys* const ball = bi[0];
       // Get maximum z value that phys could occupy.
       const float max_z = ball->max_z_get(lifetime_delta_t);
 
@@ -2467,12 +2560,12 @@ World::cuda_contact_pairs_find()
       // Set a ball index. This isn't the best place to do this.
       // The ball index refers to the position in the physs array
       // on the CPU and the balls_x arrays on the GPU.
-      ball->idx = ball.get_idx();
+      ball->idx = bi - physs.begin();
     }
   phys_zsort.sort();
 
   // Store number of balls for a sanity check (ball_cnt_sched). 
-  ball_cnt_sched = physs.occ();
+  ball_cnt_sched = physs.size();
   const int ball_cnt = ball_cnt_sched;
 
   // Update storage on GPU if number of balls has changed.
@@ -2577,7 +2670,7 @@ World::contact_pairs_find()
   //  valid. 
 
   const double lifetime_delta_t = schedule_lifetime_steps * delta_t;
-  const int ball_cnt = physs.occ();
+  const int ball_cnt = physs.size();
 
   // Used for performance tuning. Incremented for each pair the
   // CPU code examines.
@@ -2596,7 +2689,7 @@ World::contact_pairs_find()
   if ( cpu_computes_prox )
     {
       phys_zsort.reset();
-      for ( Phys_Iterator ball(physs); ball; ball++ )
+      for ( Phys *ball: physs )
         {
           const float max_z = ball->max_z_get(lifetime_delta_t);
           phys_zsort.insert(max_z,ball);
@@ -2753,9 +2846,10 @@ World::cuda_schedule()
 
   // Initialize phys members for scheduling, and initialize physs_todo_now.
   //
-  for ( Phys_Iterator phys(physs); phys; phys++ )
+  for ( auto bi = physs.begin(); bi != physs.end(); bi ++ )
     {
-      phys->idx = phys.get_idx();
+      Phys* const phys = bi[0];
+      phys->idx = bi - physs.begin();
       phys->color_block = -1; // Used for coloring based on block num.
       if ( !phys->proximity.occ() ) continue;
       phys->pass = -1;
@@ -3077,7 +3171,7 @@ World::cuda_schedule()
   // Sanity Check: Make sure phys scheduled in at most one
   // block per pass.
   //
-  for ( Phys_Iterator phys(physs); phys; phys++ ) phys->pass = -1;
+  for ( Phys* phys: physs ) phys->pass = -1;
   while ( Contact* const c = pair_check.iterate() )  
     {
       const int pass = c->pass;
@@ -3238,7 +3332,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
   const bool just_before_render = iter + 1 == iters_per_frame;
 
   cuda_init();
-  const int ball_cnt = physs.occ();
+  const int ball_cnt = physs.size();
 
   const int plat_block_size_1pmp =
     max(32,int(ceil(double(ball_cnt) / cuda_prop.multiProcessorCount)));
@@ -3267,7 +3361,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
       { PStack<Pass>* const x = passes_curr;
         passes_curr = passes_next; passes_next = x; }
       if ( opt_color_events )
-        for ( Ball *b; balls_iterate(b); )
+        for ( Ball *b: Iterate_Balls(physs) )
           b->color_event =
             b->color_block >= 0
             ? *colors[b->color_block & colors_mask] : color_black;
@@ -3303,7 +3397,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
 
   // Launch the platform kernel.
   //
-  pass_platform_launch(dim_grid,dim_block,physs.occ());
+  pass_platform_launch(dim_grid,dim_block,physs.size());
 
   // If data is needed to render a frame, copy from CUDA to CPU.
   //
@@ -3324,7 +3418,7 @@ World::time_step_cuda(int iter, int iters_per_frame)
   // Sanity Check: Make sure CUDA ran penetration_balls_resolve enough times.
   //
   if ( data_location & DL_OT_CPU )
-    for ( Phys *phys; physs.iterate(phys); )
+    for ( Phys *phys: physs )
       {
         Ball* const ball = BALL(phys);
         Tile* const tile = TILE(phys);
@@ -3347,46 +3441,36 @@ World::time_step_cuda(int iter, int iters_per_frame)
 
   float contact_y_max = -platform_xrad;
 
-  for ( Ball *ball; balls_iterate(ball); )
+  for ( Ball *ball: Iterate_Balls(physs) )
     if ( ball->collision ) set_max(contact_y_max,ball->position.y);
 
   balls_add(contact_y_max);
 
   const float deep = -100;
-  for ( Ball *ball; balls_iterate(ball); )
-    if ( ball->position.y < deep )
-      {
-        cuda_at_balls_change();
-        physs.iterate_yank(); delete ball;
-      }
+
+  pKeep_if(physs,
+      [&](Phys* p)
+      { Ball* const b = BALL(p);
+        if ( b && b->position.y < deep )
+          { cuda_at_balls_change();  delete b;  return false; }
+        else return true; } );
 
   if ( just_before_render && cuda_schedule_stale + iters_per_frame - 1 > 0 )
     pt_sched_start();
 }
 
 
-// Return a sphere with a detail level appropriate for the ball's distance
-// from the viewer's eye.
-//
-Sphere*
-World::sphere_get(Ball *ball)
-{
-  const float dist =
-    ball->radius_inv * ( pDistance(ball->position,eye_location) - 1 );
-  const int lod_raw =
-    int( 0.99 + sphere_lod_factor / dist - sphere_lod_offset );
-  const int lod = max(min(lod_raw,sphere_count-1),0);
-  return &spheres[lod];
-}
-
 void
 World::balls_render_instances()
 {
+  Sphere& sphere = spheres[opt_sphere_lod];
   sphere.render_bunch_gather(world_time);
-  for ( Phys *phys; eye_dist.iterate(phys); )
+  for ( Phys *phys: physs )
     {
       Ball* const ball = BALL(phys);
       if ( !ball ) continue;
+      if ( opt_color_events && opt_color_events_hide_black
+           && ball->color_block == -1 ) continue;
       pColor color =
         opt_color_events ? ball->color_event : ball->color_natural;
       // Set ball's color, position, and orientation, and
@@ -3414,6 +3498,9 @@ void
 World::render_shadow_volumes(pCoor light_pos)
 {
   // Render objects' shadow volumes.
+
+  const bool hide_tiles = opt_hide_stuff & OH_Tiles;
+  const bool hide_spheres = opt_hide_stuff & OH_Spheres;
 
   // Make sure that only stencil buffer written.
   //
@@ -3463,27 +3550,30 @@ World::render_shadow_volumes(pCoor light_pos)
 
   // Render balls' shadow volumes.
   //
-  sphere.render_bunch_gather_sv();
-
-  for ( Ball *ball; balls_iterate(ball); )
+  if ( !hide_spheres )
     {
-      Sphere* const s = &sphere;
-      s->light_pos = light_pos;
-      s->render_shadow_volume(ball->radius,ball->position);
-    }
-  {
-    int light_state = 0;
-    s_sv_instances->use();
-    glUniform2i(1, opt_debug, opt_debug2);
-    glUniform1i(2, light_state);
-    sphere.render_bunch_render_sv();
-    vs_fixed->use();
-  }
+      Sphere& sphere = spheres[opt_sphere_lod];
+      sphere.render_bunch_gather_sv();
 
+      for ( Ball *ball: Iterate_Balls(physs) )
+        {
+          Sphere* const s = &sphere;
+          s->light_pos = light_pos;
+          s->render_shadow_volume(ball->radius,ball->position);
+        }
+
+      int light_state = 0;
+      s_sv_instances->use();
+      glUniform2i(1, opt_debug, opt_debug2);
+      glUniform1i(2, light_state);
+      sphere.render_bunch_render_sv();
+      vs_fixed->use();
+    }
 
   // Render tiles' shadow volumes.
   //
-  tile_manager.render_shadow_volume(light_pos);
+  if ( !hide_tiles )
+    tile_manager.render_shadow_volume(light_pos);
 
   // Restore assumed state.
   //
@@ -3492,12 +3582,16 @@ World::render_shadow_volumes(pCoor light_pos)
 }
 
 void
-World::render_objects(bool attempt_ot)
+World::render_objects()
 {
   // Render objects normally.
 
   const float shininess_ball = 20;
   pColor spec_color(0.2,0.2,0.2);
+
+  const bool hide_tiles = opt_hide_stuff & OH_Tiles;
+  const bool hide_platform = opt_hide_stuff & OH_Platform;
+  const bool hide_spheres = opt_hide_stuff & OH_Spheres;
 
   glEnable(GL_LIGHTING);
   glEnable(GL_TEXTURE_2D);
@@ -3517,16 +3611,22 @@ World::render_objects(bool attempt_ot)
 
   // Render each ball.
   //
-  s_sphere->use();
-  balls_render_instances();
-  vs_fixed->use();
+  if ( !hide_spheres )
+    {
+      s_sphere->use();
+      balls_render_instances();
+      vs_fixed->use();
+    }
 
   glDisable(GL_COLOR_SUM);
   glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
 
   // Render each tile.
   //
-  tile_manager.render();
+  if ( !hide_tiles )
+    tile_manager.render();
+
+  if ( hide_platform ) return;
 
   //
   // Render Platform
@@ -3569,21 +3669,18 @@ World::render_objects(bool attempt_ot)
 
 
 void
-World::render()
+World::frame_callback()
 {
   // This routine called whenever window needs to be updated.
 
-  // Get any waiting keyboard commands.
-  //
-  cb_keyboard();
-
   // Start a timer object used for tuning this code.
   //
-  frame_timer.frame_start();
+  frame_timer.phys_start();
 
   const double time_now = time_wall_fp();
+  int time_step_count = 0;
 
-  if ( opt_pause || world_time == 0 )
+  if ( opt_pause && !opt_single_frame && !opt_single_time_step )
     {
       /// Don't change simulation state.
       //
@@ -3596,22 +3693,57 @@ World::render()
       if ( ogl_helper.animation_record )
         world_time = time_now - ogl_helper.frame_period;
 
-      // Advance simulation state by wall clock time.
+      // Amount of time since the user saw the last frame.
       //
-      const double elapsed_time = time_now - world_time;
+      const double wall_delta_t = time_now - last_frame_wall_time;
+
+      // Compute amount by which to advance simulation state for this frame.
+      //
+      const double duration =
+        opt_single_time_step ? delta_t :
+        opt_single_frame ? 1/30.0 :
+        wall_delta_t;
+
       const int iter_limit =
-        min( opt_time_step_factor * 3, int ( 0.5 + elapsed_time / delta_t));
+        min( opt_time_step_factor * 3, int ( 0.5 + duration / delta_t));
+
       for ( int iter=0; iter < iter_limit; iter++ )
         {
           if ( opt_physics_method == GP_cpu )
-            time_step_cpu();
+            {
+              time_step_cpu();
+            }
           else
-            time_step_cuda(iter,iter_limit);
-
+            {
+              time_step_cuda(iter,iter_limit);
+            }
+          time_step_count++;
           world_time += delta_t;
         }
+
+      // Reset these, just in case they were set.
+      //
+      opt_single_frame = opt_single_time_step = false;
+
       frame_timer.work_amt_set(iter_limit);
     }
+
+  frame_timer.phys_end();
+  frame_timer.work_amt_set(time_step_count);
+
+  last_frame_wall_time = time_now;
+  render();
+}
+
+void
+World::render()
+{
+  const double time_now = time_wall_fp();
+
+  // Get any waiting keyboard commands.
+  //
+  cb_keyboard();
+  frame_timer.frame_start();
 
   /// Emit a Graphical Representation of Simulation State
   //
@@ -3653,7 +3785,6 @@ World::render()
   glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
   glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0);
 
-  pCoor light1_location(0,40,100);
   glLightfv(GL_LIGHT1, GL_POSITION, light1_location);
   glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0.3);
   glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 1.0);
@@ -3706,33 +3837,49 @@ World::render()
      eye_location.x, eye_location.y, eye_location.z,
      eye_direction.x, eye_direction.y, eye_direction.z);
 
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
+  const bool hide_tiles = opt_hide_stuff & OH_Tiles;
+  const bool hide_platform = opt_hide_stuff & OH_Platform;
+  const bool hide_spheres = opt_hide_stuff & OH_Spheres;
+
+  ogl_helper.fbprintf
+    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('wm')  Evnt Color %s-%s ('cC')  "
+     "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')\n",
+     hide_spheres ? 'S' : '_',
+     hide_tiles ? 'T' : '_',
+     hide_platform ? 'P' : '_',
+     opt_shadows ? 'S' : '_',
+     opt_mirror ? 'M' : '_',
+     opt_color_events ? BLINK("ON ","   ") : "OFF",
+     opt_color_events_hide_black
+     ? ( opt_color_events ? BLINK("ON ","   ") : "ON " ) : "OFF",
+     opt_debug ? BLINK("ON ","   ") : "OFF",
+     opt_debug2 ? BLINK("ON ","   ") : "OFF" );
+
   ogl_helper.fbprintf
     ("Shadows: %-3s ('w')  Mirror: %-3s %d "
-     "Light location: [%5.1f, %5.1f, %5.1f]\n",
-     opt_shadows ? "on" : "off",
-     opt_mirror ? "on" : "off", opt_mirror_method,
-     light_location.x, light_location.y, light_location.z);
+     "Light 0 location: [%5.1f, %5.1f, %5.1f]  Light 0 ('L'): %s\n",
+     opt_shadows ? "ON" : "OFF",
+     opt_mirror ? "ON" : "OFF", opt_mirror_method,
+     light_location.x, light_location.y, light_location.z,
+     opt_light0 ? "ON" : "OFF");
 
   Ball& ball = *ball_first();
   ogl_helper.fbprintf
     ("Balls %4d   Tiles %3d  Last Ball Pos  "
-     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]  Tri Count %d\n",
-     physs.occ(),
+     "[%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+     physs.size(),
      tile_manager.occ(),
      ball.position.x,ball.position.y,ball.position.z,
-     ball.velocity.x,ball.velocity.y,ball.velocity.z,
-     tri_count);
-
-  const bool blink_visible = int64_t(time_now*3) & 1;
-# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+     ball.velocity.x,ball.velocity.y,ball.velocity.z);
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Debug Options: %d %d ('qQ')  "
-     "Physics Verification %s ('v')\n",
+    ("Physics: %s ('a')  Physics Verification %s ('v')\n",
      opt_physics_method != GP_cuda
      ? BLINK(gpu_physics_method_str[opt_physics_method],"      ") 
      : gpu_physics_method_str[opt_physics_method], 
-     opt_debug, opt_debug2,
      opt_verify ? BLINK("ON ","   ") : "OFF");
 
   if ( opt_physics_method == GP_cuda && cuda_initialized )
@@ -3774,8 +3921,6 @@ World::render()
          );
     }
 
-  tri_count = 0;
-
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
                       cvar->name,cvar->get_val());
@@ -3784,22 +3929,11 @@ World::render()
   ogl_helper.fbprintf("CUDA Prox %s ('F4' to change) "
                       "CPU test/ball: %.3f total %d,  Full %d\n",
                       opt_cuda_prox ? "On" : BLINK("Off","   "),
-                      double(prox_test_per_ball_prev) / physs.occ(),
+                      double(prox_test_per_ball_prev) / physs.size(),
                       prox_test_per_ball_prev,
                       cuda_prox_full_prev);
 
-  // Sort balls by distance from user's eye.
-  // This is needed for the occlusion test.
-  //
-  eye_dist.reset();
-  for ( Ball *ball; balls_iterate(ball); )
-    {
-      pVect ve(ball->position,eye_location);
-      eye_dist.insert(dot(ve,ve),ball);
-    }
-  eye_dist.sort();
-
-  if ( opt_mirror && vs_reflect->okay() )
+  if ( !hide_platform && opt_mirror && vs_reflect->okay() )
     {
       //
       // Render ball reflection.  (Will be blended with dark tiles.)
@@ -3886,7 +4020,7 @@ World::render()
       glEnable(GL_LIGHT1);
       glEnable(GL_LIGHT0);
 
-      render_objects(true);
+      render_objects();
     }
   else
     {
@@ -3901,25 +4035,24 @@ World::render()
       glDisable(GL_LIGHT0);
 
       // Send balls, tiles, and platform to opengl.
-      // Do occlusion test too.
       //
-      render_objects(true);
+      render_objects();
 
       //
       // Second pass, add on light0.
       //
-
-      // Turn off ambient light, turn on light 0.
-      //
-      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
-      glEnable(GL_LIGHT0);
 
       // Write stencil with shadow locations based on shadow volumes
       // cast by light0 (light_location).  Shadowed locations will
       // have a positive stencil value.
       //
       glClear(GL_STENCIL_BUFFER_BIT);
-      render_shadow_volumes(light_location);
+      render_shadow_volumes(light1_location);
+
+      // Turn off ambient light, turn on light 0.
+      //
+      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, dark);
+      glEnable(GL_LIGHT1);
 
       // Use stencil test to prevent writes to shaded areas.
       //
@@ -3932,24 +4065,27 @@ World::render()
       //
       glDepthFunc(GL_LEQUAL);  // Depth by default is GL_LESS.
 
-      // Render, but don't do occlusion test again.
+      // Render.
       //
-      render_objects(false);
+      render_objects();
 
-      //
-      // Third pass, add on light1.
-      //
+      if ( opt_light0 )
+        {
+          //
+          // Third pass, add on light1.
+          //
 
-      glDisable(GL_LIGHT0);
-      glEnable(GL_LIGHT1);
+          glClear(GL_STENCIL_BUFFER_BIT);
+          render_shadow_volumes(light_location);
 
-      glClear(GL_STENCIL_BUFFER_BIT);
-      render_shadow_volumes(light1_location);
+          glEnable(GL_LIGHT0);
+          glDisable(GL_LIGHT1);
 
-      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-      glStencilFunc(GL_EQUAL,0,-1); // ref, mask
+          glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+          glStencilFunc(GL_EQUAL,0,-1); // ref, mask
 
-      render_objects(false);
+          render_objects();
+        }
     }
 
   // Maybe render platform normals.
@@ -3985,8 +4121,9 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const bool shift = ogl_helper.keyboard_shift;
-  const float move_amt = shift ? 2.0 : 0.4;
+  const bool kb_mod_s = ogl_helper.keyboard_shift;
+  const bool kb_mod_c = ogl_helper.keyboard_control;
+  const float move_amt = kb_mod_s ? 2.0 : kb_mod_c ? 0.08 : 0.4;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -4007,6 +4144,8 @@ World::cb_keyboard()
       opt_friction_coeff = 0.0001;
       break;
     }
+  case '1': ball_setup_1(); break;
+  case '2': ball_setup_2(); break;
   case 'a':
     if ( opt_physics_method == GP_cuda ) cuda_at_balls_change();
     opt_physics_method++;
@@ -4014,13 +4153,21 @@ World::cb_keyboard()
     break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
-  case 'c': case 'C': opt_color_events = !opt_color_events; break;
+  case 'c': opt_color_events = !opt_color_events; break;
+  case 'C':
+    opt_color_events = true;
+    opt_color_events_hide_black = !opt_color_events_hide_black;
+    break;
   case 'd': opt_drip = !opt_drip; if(!opt_drip)dball=NULL; break;
   case 'D': opt_move_item = MI_Drip; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
+  case '!': opt_hide_stuff ^= OH_Spheres; break;
+  case '@': opt_hide_stuff ^= OH_Tiles; break;
+  case '#': opt_hide_stuff ^= OH_Platform; break;
   case 'i': opt_info = true; break;
-  case 'l': case 'L': opt_move_item = MI_Light; break;
+  case 'l': opt_move_item = MI_Light; break;
+  case 'L': opt_light0 = !opt_light0; break;
   case 'm': opt_mirror = !opt_mirror; break;
   case 'M': opt_mirror_method++;
     if ( opt_mirror_method == 4 ) opt_mirror_method = 0;
@@ -4029,9 +4176,6 @@ World::cb_keyboard()
   case 'p': case 'P': opt_pause = !opt_pause;
     if ( !opt_pause ) world_time = time_wall_fp();
     break;
-  case 'q': opt_debug = !opt_debug; break;
-  case 'Q': opt_debug2 = !opt_debug2; break;
-  case 'R': balls_remove(); break;
   case 's': balls_stop(); break;
   case 'S': balls_rot_stop(); break;
   case 'T': benchmark_setup(1); break;
@@ -4046,15 +4190,22 @@ World::cb_keyboard()
       b1->position = pCoor(30,22,20);
       b1->velocity = pVect(0,0,0);
       b1->color_natural = color_lsu_spirit_purple;
-      physs += b1;
+      physs.push_back( b1 );
       Ball* const b2 = new Ball(this);
       b2->position = b1->position;
       b2->position.z += 4 * opt_ball_radius;
       b2->velocity = pVect(0,0,0);
       b2->color_natural = color_lsu_spirit_gold;
-      physs += b2;
+      physs.push_back( b2 );
     }
     break;
+  case 'y': opt_debug = !opt_debug; break;
+  case 'Y': opt_debug2 = !opt_debug2; break;
+  case ' ':
+    if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
+    opt_pause = true;
+    break;
+
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
@@ -4063,7 +4214,7 @@ World::cb_keyboard()
   }
 
   variables_update();
-  sphere.bunch_invalidate();
+  spheres[opt_sphere_lod].bunch_invalidate();
 
   // Update eye_direction based on keyboard command.
   //
@@ -4110,5 +4261,5 @@ main(int argv, char **argc)
                         GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
 
   popengl_helper.rate_set(30);
-  popengl_helper.display_cb_set(world.render_w,&world);
+  popengl_helper.display_cb_set(world.frame_callback_w,&world);
 }

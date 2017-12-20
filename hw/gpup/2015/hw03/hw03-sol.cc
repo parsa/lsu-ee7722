@@ -363,8 +363,8 @@ My_Piece_Of_The_World::sample_tex_make()
 
       // Array index of texel at (tx,tz).
       //
-      int idx = tx + tz * twid_x;
-      int idx2 = twid_x - 1 - tx + tz * twid_x;
+      int idx  = tx              + tz * twid_x; // Lower left to upper right.
+      int idx2 = twid_x - 1 - tx + tz * twid_x; // Lower right to upper left.
 
       // Write colors to texels.
       //
@@ -381,23 +381,29 @@ My_Piece_Of_The_World::sample_tex_make()
   //
   glGenTextures(1,&po->txid);
 
-  // Load our texture into the texture object.
+  // Make our new texture object the current texture object.
   //
   glBindTexture(GL_TEXTURE_2D,po->txid);
+  //
+  // Subsequent OpenGL calls operating on GL_TEXTURE_2D ..
+  // .. will now operate on po->txid, our new texture object.
 
   // Tell OpenGL to generate MIPMAP levels for us.
   //
   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 
+  // Load our texture into the texture object.
+  //
   glTexImage2D
     (GL_TEXTURE_2D,
      0,                // Level of Detail (0 is base).
      GL_RGBA,          // Internal format to be used for texture.
      twid_x, twid_z,
      0,                // Border
-     GL_RGBA,     // GL_BGRA: Format of data read by this call.
-     GL_FLOAT,    // Size of component.
-     (void*)po->data);
+     GL_RGBA,          // GL_BGRA: Format of data read by this call.
+     GL_FLOAT,         // Size of component.
+     (void*)po->data   // Pointer to the texture data.
+     );
 }
 
  /// SOLUTION -- Problem 1a
@@ -443,6 +449,9 @@ My_Piece_Of_The_World::po_get_lcoor(Platform_Overlay *po, pCoor pos)
 Platform_Overlay*
 My_Piece_Of_The_World::po_get(pCoor pos)
 {
+  // Convert object-space coordinate, pos, into an overlay space, (x,z) ..
+  // .. in which (0,0) is the lower-left overlay, etc.
+
   const int x = ( pos.x - w.platform_xmin ) * wid_x_inv;
   if ( x < 0 || x >= nx ) return NULL;
   const int z = ( pos.z - w.platform_zmin ) * wid_z_inv;
@@ -450,6 +459,8 @@ My_Piece_Of_The_World::po_get(pCoor pos)
   overlay_xmin = w.platform_xmin + x * wid_x;
   overlay_zmin = w.platform_zmin + z * wid_z;
 
+  // Retrieve the overlay in which pos lies.
+  //
   Platform_Overlay* const po = &platform_overlays[x + z * nz];
 
   if ( !po->data )

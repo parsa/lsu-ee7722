@@ -184,6 +184,8 @@ vs_main_1()
 void
 gs_main_1()
 {
+  /// Final Exam Problem 1
+
   // Emit primitives for a cylinder. One end of the cylinder is
   // defined by data in In[0], the other end by data in In[1].
 
@@ -213,10 +215,20 @@ gs_main_1()
     }
   EndPrimitive();
 
+  /// SOLUTION -- Final Exam Problem 1
+
+  // Skip the first segment because we don't want to render a ring at
+  // the beginning of the link.
+  //
   if ( In[0].t == 0 ) return;
 
   gl_TexCoord[0] = vec2(0,0);
+
+  // Compute the normal based on the axes used to draw the cylinder.
+  //
   normal_e = cross(In[0].norm_e,In[0].binorm_e);
+
+  // Outer radius of ring. (Inner radius is rad)
   float rad2 = rad * 2;
 
   for ( int j=0; j<=sides; j++ )
@@ -224,7 +236,6 @@ gs_main_1()
       const float theta = j * ( 2 * M_PI / sides );
 
       vec3 vect0 = cos(theta) * In[0].norm_e + sin(theta) * In[0].binorm_e;
-      vec3 vect1 = cos(theta) * In[1].norm_e + sin(theta) * In[1].binorm_e;
 
       vertex_e = In[0].ctr_e + vec4(rad * vect0,0);
       gl_Position = gl_ProjectionMatrix * vertex_e;

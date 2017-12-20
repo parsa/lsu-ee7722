@@ -1,11 +1,49 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
 
 /// Purpose
 //
-//   Demonstrate simple dynamic simulation.
+//   To show the structure of a program that performs a simple dynamic
+//   simulation.
 
+#if 0
+/// Background
+
+/// Important Parts of Program
+//
+
+ /// Program Start
+//
+int  main(int argc, char** argv);
+//   Starts when the program starts.
+//
+//   - Initializes graphics system using library calls.
+//   - Initialized our simulated world using our routine, init.
+//   - Registers our event handler, frame_callback (see below).
+//   - Starts the event loop.
+
+
+ /// Frame Update
+//
+void World::frame_callback()
+//   Called each time screen needs to be updated.
+//
+//   - Advances time in simulated word to match current time ..
+//     .. by calling time_step_cpu_v0 (see below).
+//
+//   - Updates the frame buffer ..
+//     .. by calling our render routine, which uses OpenGL calls.
+
+
+ /// Time Step Routine
+//
+void World::time_step_cpu_v0(double delta_t)
+//
+//   - Advances the state of our simulated world by delta_t seconds.
+
+
+#endif
 
 /// What Code Does
 

@@ -1,0 +1,24 @@
+# -*- makefile -*-
+
+DEFAULT: vtx-xform-phi
+
+GP_ROOT =  ../..
+ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+
+CXX = icc
+ASM_GEN_FLAGS = -fverbose-asm
+
+CXXFLAGS =  -g -O3 -qopenmp -pthread -std=c++11
+LDFLAGS = -lrt
+
+%.o: %.cc Makefile
+	$(CXX) $(CXXFLAGS) -S $< $(ASM_GEN_FLAGS) -o - \
+	  | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $<
+
+vtx-xform-phi: vtx-xform-phi.o Makefile
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) $< -o $@ 
+
+clean:
+	/bin/rm -f *.o *.s *~ vtx-xform-phi
+

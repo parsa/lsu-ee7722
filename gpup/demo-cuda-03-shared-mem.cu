@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2017), GPU Programming
 //
 
  /// Shared memory CUDA Example, without LSU ECE helper classes.
@@ -20,7 +20,7 @@
  //
  //
  //  :Def: Shared Address Space
- //  An address space provided by CUDA (through CC 5.x) in which:
+ //  An address space provided by CUDA (through CC 7.x) in which:
  //
  //   - Each block has its own address space.
  //
@@ -28,7 +28,7 @@
  //
  //   - Locations can be read and written.
  //
- //   - Size of space is 48 kiB in CC 2.X to CC 5.x (so far).
+ //   - Size of space is 48 kiB in CC 2.X to CC 6.x.
  //
  //   - Shared address space uses shared memory.
  //

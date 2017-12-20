@@ -436,10 +436,11 @@ mxv_vls()
           fi4 f41 = f41x.fi4;
 
           fi4 fswap = offset ? f40 : f41;
-          fswap.i = __shfl_xor(fswap.i,1);
-          fswap.j = __shfl_xor(fswap.j,1);
-          fswap.k = __shfl_xor(fswap.k,1);
-          fswap.l = __shfl_xor(fswap.l,1);
+          const unsigned mask = ~0;
+          fswap.i = __shfl_xor_sync(mask,fswap.i,1);
+          fswap.j = __shfl_xor_sync(mask,fswap.j,1);
+          fswap.k = __shfl_xor_sync(mask,fswap.k,1);
+          fswap.l = __shfl_xor_sync(mask,fswap.l,1);
 
           fi4 v_03 = offset ? fswap : f40;
           fi4 v_47 = offset ? f41   : fswap;
@@ -579,22 +580,6 @@ print_gpu_and_kernel_info()
   info.GET_INFO(mxv_vls);
 #endif
 
-
-#if 0
-  info.GET_INFO(mxv_o_lbuf);
-  info.GET_INFO(mxv_o_per_thd);
-
-#if N / 4 == (N+3)/4 
-  info.GET_INFO(mxv_1);
-#endif
-  info.GET_INFO(mxv_sh);
-  info.GET_INFO(mxv_sh_ochunk);
-
-#ifdef SMALL
-  info.GET_INFO(mxv_sh_easy);
-#endif
-#endif
-
   // Print information about kernel.
   //
   printf("\nCUDA Kernel Resource Usage:\n");
@@ -625,7 +610,7 @@ was_main(int argc, char **argv)
       exit(1);
     }
 
-  string ldir = "/opt/pgi/linux86-64/16.10/lib";
+  string ldir = "/opt/pgi/linux86-64/17.10/lib";
   const char *libs[] =
     {
 //      "nspgc",

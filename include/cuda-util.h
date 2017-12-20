@@ -115,8 +115,20 @@ inline void from_dev_ds(T& dst, const char* const src_name)
 
 inline void vec_set(float4& a, pQuat b)
 {a.x = b.v.x; a.y = b.v.y; a.z = b.v.z;  a.w = b.w; }
+
+inline float4 m_float4(const pCoor b)
+{ float4 a; a.x = b.x; a.y = b.y; a.z = b.z;  a.w = b.w; return a;}
+
+inline pCoor m_pCoor(const float4 b)
+{ pCoor a; a.x = b.x; a.y = b.y; a.z = b.z;  a.w = b.w; return a;}
+
+inline void vec_set(float4& a, const pCoor b){ a = m_float4(b); }
+
 inline void vec_set(pQuat&a, float4 b)
 {a.v.x = b.x; a.v.y = b.y; a.v.z = b.z;  a.w = b.w; }
+
+inline void vec_set(pCoor&a, float4 b) { a = m_pCoor(b); }
+
 
 inline void vec_set(float3& a, pCoor b) {a.x = b.x; a.y = b.y; a.z = b.z;}
 inline void vec_sets(pCoor& a, float3 b) {a.x = b.x; a.y = b.y; a.z = b.z;}
@@ -373,7 +385,7 @@ public:
     pCM_Struc_Info* const si = struc_info.pushi();
     si->elt_size = elt_size;
     si->offset_aos = offset_aos;
-    si->soa_cpu_base = -1;
+    si->soa_cpu_base = uint(-1);
     si->soa_elt_idx = ((void**)soa_elt_ptr) - ((void**)&sample_soa);
   }
   void realloc(size_t nelem)
@@ -387,9 +399,6 @@ public:
         alloc(nelem);
         return;
       }
-    return;
-    pCM::realloc(nelem);
-    cuda_mem_all.realloc(nelem);
   }
 
   void alloc(size_t nelements){ pCM::alloc(nelements); }
