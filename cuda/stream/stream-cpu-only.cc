@@ -90,8 +90,9 @@ main(int argc, char **argv)
 
           const double elapsed_time_s = times[times.size()/2];
 
-          printf("Thds %2d   Time %.3f ms\n", nt, elapsed_time_s * 1000);
-
+          printf("Thds %2d   %6.3f ms  %7.3f GFLOPS\n",
+                 nt, elapsed_time_s * 1000,
+                 1e-9 * size * 4 / elapsed_time_s);
 
         }
     }
