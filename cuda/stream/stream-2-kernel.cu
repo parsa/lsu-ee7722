@@ -87,9 +87,10 @@ dots_iterate2()
   // This method is less efficient.
 
   int thread_count = blockDim.x * gridDim.x;
-  int elt_per_thread = array_size / thread_count;
-  int idx_start = ( threadIdx.x + blockIdx.x * blockDim.x ) * elt_per_thread;
-  int idx_stop = idx_start + elt_per_thread;
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int elt_per_thread = ( array_size + thread_count - 1 ) / thread_count;
+  int idx_start = tid * elt_per_thread;
+  int idx_stop = min(array_size,idx_start + elt_per_thread);
 
   for ( int idx = idx_start; idx < idx_stop; idx++ )
     b[idx] = v0 + v1 * a[idx].x + v2 * a[idx].y;
@@ -106,7 +107,8 @@ dots_iterate3()
 #define degree 4
 
   const int thread_count = blockDim.x * gridDim.x;
-  int idx_start = threadIdx.x + degree * blockIdx.x * blockDim.x;
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int idx_start = threadIdx.x % chunk + tid / chunk * chunk * degree;
 
   for ( int idx = idx_start; idx < array_size; idx += degree * thread_count )
     {

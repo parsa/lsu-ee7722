@@ -28,7 +28,7 @@ public:
   cudaDeviceProp *cuda_prop;
   int device_count;
 
-  bool init(int device_try)
+  bool init()
   {
     // Get information about GPU and its ability to run CUDA.
     //
@@ -103,7 +103,7 @@ public:
   void init(int argc, char **argv)
   {
     srand48(1);                   // Seed random number generator.
-    cuda_device_manager.init(0);
+    cuda_device_manager.init();
     cuda_prop = cuda_device_manager.get_cudaDeviceProp();
 
     // Prepare events used for timing.
@@ -195,6 +195,8 @@ public:
   {
     const int cpu_rounds = 5;
     const int gpu_rounds = 5;
+
+    CE( cudaMemset(b.get_dev_addr(),0,b.chars) );
 
     // Specify Launch Configuration
     //
