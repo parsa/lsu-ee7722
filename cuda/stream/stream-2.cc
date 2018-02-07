@@ -253,7 +253,7 @@ public:
         printed_header = true;
 
      //  "Array13 bl    32 th    1 wp     1.0 bl/mp   31.472 ms      7996 GB/s"
-        printf(" %6d bl  %4d th  %3d wp  %6.1f bl/mp  %7.3f ms  %8.0f GB/s\n",
+        printf(" %6d bl  %4d th  %3d wp  %6.1f bl/mp  %7.3f ms  %8.0f MB/s\n",
                dg.x, db.x, db.x + 31 >> 5,
                double(dg.x)/cuda_prop->multiProcessorCount,
                cuda_time_ms,
