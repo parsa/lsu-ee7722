@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <gp/misc.h>
 #include <gp/cuda-util.h>
+#include <gp/cuda-gpuinfo.h>
 #include "stream-2.cuh"
 
 class CUDA_Device_Manager {
@@ -41,34 +42,15 @@ public:
 
     cuda_prop = new cudaDeviceProp[device_count];
 
+    gpu_info_print();
+
     for ( int dev = 0; dev < device_count; dev ++ )
       {
         cudaDeviceProp* const cdp = &cuda_prop[dev];
         CE(cudaGetDeviceProperties(cdp,dev));
-
-        printf
-          ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-           dev, cdp->name, cdp->clockRate/1e6,
-           int(cdp->totalGlobalMem >> 20));
-
-        printf
-          ("GPU %d: CAP: %d.%d  MP: %2d  TH/WP: %3d  TH/BL: %4d  "
-           "BL/GR %d/%d/%d\n",
-           dev, cdp->major, cdp->minor,
-           cdp->multiProcessorCount,
-           cdp->warpSize, cdp->maxThreadsPerBlock,
-           cdp->maxGridSize[0], cdp->maxGridSize[1], cdp->maxGridSize[2]
-           );
-
-        printf
-          ("GPU %d: SHARED: %5d  CONST: %5d  # REGS: %5d\n",
-           dev,
-           int(cdp->sharedMemPerBlock), int(cdp->totalConstMem),
-           cdp->regsPerBlock
-           );
       }
 
-    const int dev = min(device_try,device_count-1);
+    const int dev = gpu_choose_index();
     CE(cudaSetDevice(dev));
     printf("Using GPU %d\n",dev);
 
