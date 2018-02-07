@@ -1,6 +1,7 @@
 
 #if 1
-struct Vector2 { float x, y; };
+struct __builtin_align__(2*sizeof(float)) __align__(2*sizeof(float))
+ Vector2 { float x, y; };
 #else
 typedef float2 Vector2;
 #endif
