@@ -274,20 +274,21 @@ kmain_tuned()
   const int strip_len = 4;
   // Data "strip" is 32 threads wide and strip_len threads long.
 
-  const int wp = tid >> 5;
-  const int ln = tid & 0x1f;
-  const int start = wp * 32 * strip_len + ln;
+  const int wp_sz = 32;         // Warp size.
+  const int wp = tid / wp_sz;   // This thd's warp number within kernel. (0-)
+  const int ln = tid % wp_sz;   // This thd's lane number within warp.  (0-31)
+  const int start = wp * wp_sz * strip_len + ln;
 
   for ( int h=start; h<d_app.array_size; h += strip_len * d_app.num_threads )
     {
       float soses[strip_len];
       for ( int i=0; i<strip_len; i++ )
         {
-          float4 p = d_app.d_in[ h + i * 32 ];
+          float4 p = d_app.d_in[ h + i * wp_sz ];
           soses[i] = p.x * p.x + p.y * p.y + p.z * p.z + p.w * p.w;
         }
       for ( size_t i=0; i<strip_len; i++ )
-        d_app.d_out[ h + i * 32 ] = soses[i];
+        d_app.d_out[ h + i * wp_sz ] = soses[i];
     }
 }
 
