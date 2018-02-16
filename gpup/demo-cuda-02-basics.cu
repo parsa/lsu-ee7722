@@ -58,6 +58,7 @@
 //
 //   :Def: Kernel
 //     A procedure that executes on the GPU.
+//     "I launched a kernel to multiply two 1000 by 1000 matrices."
 //
 //   :Def: Thread
 //     Similar to the definition of a thread on a CPU.
@@ -66,22 +67,25 @@
 //       Has its own id.
 //       The id consists of a thread index, in variable threadIdx, ..
 //       .. and a block index, in variable blockIdx.
+//     "My kernel consists of 16384 threads."
 //
 //   :Def: Block
 //     A grouping of threads.
 //
 //     The number of threads in a block is called the block size ..
 //     .. in variable blockDim.
-
+//     "My kernel has a block size of 1024 threads."
 
 //
 //   :Def: Grid
 //     A collection of blocks.
+//     "My kernel consists of 16 blocks of 1024 threads each."
 //
 //   :Def: Warp
 //     A group of threads that (usually) execute together.
 //     For all NV GPUs so far warp size is 32 threads
 //     One day the size of warp may change but it's been 32 through CC 7.0.
+//     "I chose my block size to be a multiple of the warp size."
 //
 
 
@@ -113,17 +117,22 @@
  /// Kernel Launch
 //
 //   :Def: Kernel Launch
-//         The initiation of execution of CUDA code.
-//         Done by a CUDA API call.
-//         Specify:
-//           The name of the CUDA C procedure to start. (E.g., my_kernel();)
-//           The grid size. (The number of blocks.)
-//           The block size.
+//     The initiation of execution of CUDA code.
+//     Done by a CUDA API call.
+//     Specify:
+//        The name of the CUDA C procedure to start. (E.g., my_kernel();)
+//        The grid size. (The number of blocks.)
+//        The block size.
+//
+//   :Def: Launch Configuration
+//     The block size and grid sized used for a kernel launch.
+//     Choosing the correct launch configuration is very important.
+//         
 //
  ///  Launch Configuration Criteria
 //
-//    Number of blocks is a multiple of number of SMs.
-//    Number of threads per block is a multiple of 32.
+//    - Number of blocks is a multiple of number of SMs.
+//    - Number of threads per block is a multiple of warp size (32).
 
 
  /// Global Memory Access
@@ -133,8 +142,8 @@
 //   Important rule:
 //
 //     Consecutive threads should access consecutive data items.
-//       As in:  mval = a[ tid ];
-//       Not:    mval = a[ tid * 1000 ];
+//       As in:  mval = a[ tid ];         // Good. ☺
+//       NOT:    mval = a[ tid * 1000 ];  // BAD.  ☹
 //
 //     Size of contiguous chunks (accessed by consecutive threads)     
 //     should be a multiple of 32 bytes.
