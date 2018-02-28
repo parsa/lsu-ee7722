@@ -27,7 +27,7 @@ using namespace std;
 
 /// Global Address Space
 
- /// Size:  32- or 64-bit address space. Usually 64 bits.
+ /// Size:  32- or 64-bit address space.  Matches size used by host OS, usually 64 bits.
 
  /// Scope:
  //
@@ -35,8 +35,18 @@ using namespace std;
  //   Readable and writeable by all threads and host.
  //   Difficult to use for sharing of data.
 
- /// Latency, Throughput
+ /// Latency, Bandwidth
  //
+ //  Cases
+ //    - Off-Chip Access. (Most common.)
+ //    - L2 Cache Hit.  (Fairly common. Possible through Volta [CC 7.x])
+ //    - L1 Cache Hit.  (Depends on CC.  Possible in CC 2.x, 7.0)
+ //    - Texture Cache Hit. (Depends on CC.)
+
+ //  Off-Chip Access
+ //    - Latency hundreds of cycles. Course default: 400 cycles.
+ //    - Limited by off-chip bandwidth. 400 GB/s for high-end devices. (2018)
+ //    
 
  /// Declaration
  //
