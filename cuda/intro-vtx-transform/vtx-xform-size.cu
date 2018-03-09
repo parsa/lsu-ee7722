@@ -260,7 +260,7 @@ mxv_sh()
               d_app.d_in[ hb * N + v * N + c + thd_x_offset ];
 
           // Copy the portion of the input vector just read to local
-          // memory (the vin array). We expect that the compiler will
+          // memory (the vin array). We hope that the compiler will
           // use registers for all values of vin.
           //
           __syncthreads();
@@ -348,7 +348,7 @@ mxv_sh_ochunk()
         {
           const int r = rr * CS + thd_r_offset;
           if ( r < M )
-            d_app.d_out[ hb * M + ( threadIdx.x / CS ) * M + r ] = vout[rr];
+            d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
         }
 
     }
