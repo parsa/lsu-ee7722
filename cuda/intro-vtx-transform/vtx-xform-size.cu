@@ -840,6 +840,8 @@ main(int argc, char **argv)
                 const int stars_len = 80;
                 const double comp_frac = 
                   4e9 * thpt_compute_gflops / info.chip_sp_flops;
+                const double comm_frac =
+                  1e9 * thpt_data_gbps / info.chip_bw_Bps;
 
                 // Number of warps, rounded up.
                 //
@@ -904,7 +906,7 @@ main(int argc, char **argv)
                 bw_util_hdr += string(max_st_len - bw_util_hdr.length(),'-');
                 table.entry
                   (bw_util_hdr,fmt,
-                   &stars[stars_len-int(comp_frac*max_st_len)],
+                   &stars[stars_len-int(comm_frac*max_st_len)],
                    pTable::pT_Left);
 
               } else {
