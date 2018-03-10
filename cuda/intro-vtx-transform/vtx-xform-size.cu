@@ -14,6 +14,7 @@
 #include <assert.h>
 #include <nperf.h>
 #include "util.h"
+#include <ptable.h>
 
 #define N 16
 #define M 16
@@ -655,15 +656,6 @@ main(int argc, char **argv)
   //
   GPU_Info info = print_gpu_and_kernel_info();
 
-  // Collect performance data using a wrapper to NVIDIA CUPTI event
-  // counter API.
-  //
-  NPerf_metric_collect("inst_executed");
-  NPerf_metric_collect("gld_efficiency");
-  //
-  // Note: The more metrics that are collected, the more times a kernel
-  // will need to be run.
-
   const int num_mp = info.cuda_prop.multiProcessorCount;
 
   // Examine argument 1, block count, default is number of MPs.
@@ -675,7 +667,8 @@ main(int argc, char **argv)
 
   // Examine argument 2, number of threads per block.
   //
-  const int thd_per_block_arg = argc < 3 ? 1024 : atoi(argv[2]);
+  const bool opt_p = argc >= 3 && string(argv[2]) == "p";
+  const int thd_per_block_arg = argc < 3 ? 1024 : opt_p ? 0 : atoi(argv[2]);
   const int thd_per_block_goal =
    thd_per_block_arg == 0 ? 1024 : thd_per_block_arg;
   const int num_threads = num_blocks * thd_per_block_goal;
@@ -688,15 +681,31 @@ main(int argc, char **argv)
 
   if ( num_threads <= 0 || app.num_vecs <= 0 )
     {
-      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK] "
+      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK|p] "
              "[DATA_SIZE_MiB]\n",
              argv[0]);
       exit(1);
     }
 
+  // Collect performance data using a wrapper to NVIDIA CUPTI event
+  // counter API.
+  //
+  NPerf_metric_collect("inst_executed");
+  NPerf_metric_collect("gld_efficiency");
+  if ( opt_p )
+    {
+      NPerf_metric_collect("l2_read_throughput");
+      NPerf_metric_collect("l2_write_throughput");
+      NPerf_metric_collect("dram_read_throughput");
+      NPerf_metric_collect("dram_write_throughput");
+    }
+  //
+  // Note: The more metrics that are collected, the more times a kernel
+  // will need to be run.
+
   // Don't collect performance data if we are varying warps. Why?
   // Because it takes too long.
-  if ( vary_warps )
+  if ( !opt_p && vary_warps )
     NPerf_metrics_off();
 
   const size_t in_size_elts = size_t(app.num_vecs) * N;
@@ -786,6 +795,8 @@ main(int argc, char **argv)
         const int wp_stop = vary_warps ? wp_limit : wp_start;
         const int wp_inc = 4;
 
+        pTable table;
+
         for ( int wp_cnt = wp_start; wp_cnt <= wp_stop; wp_cnt += wp_inc )
           {
             const int thd_per_block =
@@ -829,7 +840,6 @@ main(int argc, char **argv)
                 const int stars_len = 80;
                 const double comp_frac = 
                   4e9 * thpt_compute_gflops / info.chip_sp_flops;
-                const int max_st_len = 52;
 
                 // Number of warps, rounded up.
                 //
@@ -861,11 +871,41 @@ main(int argc, char **argv)
                 if ( wp_cnt == wp_start )
                   printf("Kernel %s:\n", info.ki[kernel].name);
 
-                printf("%2d %2d wp  %6.0f µs  %4.0f GF  %4.0f GB/s %s\n",
-                       num_wps, act_wps,
-                       this_elapsed_time_s * 1e6,
-                       thpt_compute_gflops, thpt_data_gbps,
-                       &stars[stars_len-int(comp_frac*max_st_len)]);
+                table.row_start();
+                table.entry("wp",num_wps);
+                table.entry("ac",act_wps);
+                table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
+                table.entry("FP θ","%4.0f", thpt_compute_gflops);
+                if ( opt_p )
+                  {
+                    table.entry
+                      ("Ld eff","%5.1f%%",
+                       NPerf_metric_value_get("gld_efficiency"));
+                    table.entry
+                      ("L2rθ","%5.1f",
+                       NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
+                    table.entry
+                      ("L2wθ","%5.1f",
+                       NPerf_metric_value_get("l2_write_throughput") * 1e-9 );
+                    table.entry
+                      ("DRrθ","%5.1f",
+                       NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
+                    table.entry
+                      ("DRwθ","%5.1f",
+                       NPerf_metric_value_get("dram_write_throughput") * 1e-9 );
+                  }
+
+                table.entry("GB/s","%4.0f", thpt_data_gbps);
+
+                const int max_st_len = 79 - table.row_len_get();
+                pStringF fmt("%%-%ds",max_st_len);
+
+                string bw_util_hdr = "Bandwidth Util";
+                bw_util_hdr += string(max_st_len - bw_util_hdr.length(),'-');
+                table.entry
+                  (bw_util_hdr,fmt,
+                   &stars[stars_len-int(comp_frac*max_st_len)],
+                   pTable::pT_Left);
 
               } else {
 
@@ -904,6 +944,7 @@ main(int argc, char **argv)
             if ( err_count )
               printf("Total errors %d\n", err_count);
           }
+        printf("%s",table.body_get());
       }
   }
 
