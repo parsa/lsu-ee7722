@@ -7,6 +7,7 @@
 #include <malloc.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string>
 
 template <typename Data, int size> class Linger_Pool {
 public:
@@ -67,8 +68,17 @@ public:
     append_substring(start,stop);
   }
 
+  pString(const std::string& s){ cpy(s.c_str()); }
   pString(const char *sp){ cpy(sp); }
-  pString(pString &str){ cpy(str.s); }
+  pString(const pString &str){ cpy(str.s); }
+  pString(pString&& str){
+    s = str.s;
+    occ = str.occ;
+    size = str.size;
+    str.s = NULL;
+    str.occ = str.size = 0;
+  }
+
   pString(){ cpy(NULL); }
   pString(int initial_string_size) { init_space(initial_string_size);}
   ~pString(){
@@ -129,6 +139,7 @@ public:
     operator += (c);
   }
   inline operator char*(){ return s;}
+  inline std::string ss(){ return std::string(s); }
   int len(){ return occ; }
   int col()
   {
@@ -136,10 +147,12 @@ public:
     while( i && s[i-1] != '\n' && s[i-1] != '\r' ) i--;
     return occ - i;
   }
-  inline pString operator + (pString &s2){ return operator +(s2.s); }
-  inline friend pString operator + (char *c, pString &s2)
+  inline pString operator + (const pString &s2){ return operator +(s2.s); }
+  inline friend pString operator + (std::string&& c, const pString& s2)
   { return pString(c) + s2; }
-  pString operator + (char *c) {pString rv(s); rv += c; return rv;}
+  inline friend pString operator + (const char *c, const pString& s2)
+  { return pString(c) + s2; }
+  pString operator + (const char *c) {pString rv(s); rv += c; return rv;}
   void operator += (char c)
   {
     if( occ == size )
@@ -167,7 +180,9 @@ public:
     memcpy(&s[occ],c,c_len+1);
     occ = new_occ;
   }
-  inline void operator += (pString &str) { operator += (str.s); }
+  inline void operator += (const std::string& str)
+  { operator += (str.c_str()); }
+  inline void operator += (const pString &str) { operator += (str.s); }
   void append(const char *c){ operator += (c); }
   void append_take(char *c)
   {
@@ -201,11 +216,14 @@ private:
 
 class pStringF: public pString {
 public:
-  pStringF(const char* fmt,...):pString()
+  pStringF(const char* fmt,...) __attribute__ ((format(printf,2,3)))
+    :pString()
   {va_list ap; va_start(ap,fmt); vsprintf(fmt,ap); va_end(ap);}
 };
 
-inline char*
+inline const char*
+pstringf(const char* fmt,...) __attribute__ ((format(printf,1,2)));
+inline const char*
 pstringf(const char* fmt,...)
 {
   pString rs;
