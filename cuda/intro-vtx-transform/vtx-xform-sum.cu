@@ -440,9 +440,9 @@ main(int argc, char **argv)
 
   // Examine argument 3, size of array in elements. Fractional values okay.
   //
-  const double arg3 = argc < 4 ? 1 << 24 : int( atof(argv[3]) * (1<<24) );
+  const double arg3 = argc < 4 ? -5 : atof(argv[3]);
 
-  app.array_size = arg3 <= 0 ? max(1.0,-arg3) * num_threads : arg3;
+  app.array_size = arg3 <= 0 ? max(1.0,-arg3) * num_threads : arg3 * (1<<24);
 
   const int sum_array_size = num_threads;
 
