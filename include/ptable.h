@@ -114,6 +114,9 @@ public:
   void entry
   (const string s, const char* fmt, T val, Justification jp = pT_Right)
   { entry(s.c_str(),fmt,val,jp); }
+  void entry
+  (const char *h, const char* fmt, const string val, Justification jp = pT_Left)
+  { entry(h,fmt,val.c_str(),jp); }
   void entry(const char* h, const int val)
   {
     pStringF fmt("%%%zdd",strlen(h));
