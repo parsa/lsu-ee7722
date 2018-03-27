@@ -359,9 +359,9 @@ main(int argc, char **argv)
   // counter API.
   //
   NPerf_metric_collect("inst_executed");
-  NPerf_metric_collect("gld_efficiency");
   if ( opt_p )
     {
+      NPerf_metric_collect("gld_efficiency");
       NPerf_metric_collect("l2_read_throughput");
       NPerf_metric_collect("l2_write_throughput");
       NPerf_metric_collect("dram_read_throughput");
@@ -373,7 +373,7 @@ main(int argc, char **argv)
 
   // Don't collect performance data if we are varying warps. Why?
   // Because it takes too long.
-  if ( !opt_p && vary_warps )
+  if ( false && !opt_p && vary_warps )
     NPerf_metrics_off();
 
   app.m = M;
@@ -457,6 +457,7 @@ main(int argc, char **argv)
     }
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
+  const int output_width = stdout_width_get();
 
   {
     // Prepare events used for timing.
@@ -546,12 +547,10 @@ main(int argc, char **argv)
 
             if ( vary_warps )
               {
-                const char* const stars = "********************************************************************************";
-                const int stars_len = 80;
                 const double __attribute__((unused)) comp_frac = 
                   4e9 * thpt_compute_gflops / info.chip_sp_flops;
                 const double comm_frac =
-                  1e9 * thpt_data_gbps / info.chip_bw_Bps;
+                  min(2.0,1e9 * thpt_data_gbps / info.chip_bw_Bps);
 
                 // Number of warps, rounded up.
                 //
@@ -588,6 +587,9 @@ main(int argc, char **argv)
                 table.entry("ac",act_wps);
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
                 table.entry("FP θ","%4.0f", thpt_compute_gflops);
+                table.entry
+                  ("I/op","%4.1f",
+                   NPerf_metric_value_get("inst_executed") * 32.0 / num_ops );
                 if ( opt_p )
                   {
                     table.entry
@@ -609,14 +611,15 @@ main(int argc, char **argv)
 
                 table.entry("GB/s","%4.0f", thpt_data_gbps);
 
-                const int max_st_len = 79 - table.row_len_get();
+                const int max_st_len =
+                  max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
 
                 string bw_util_hdr = "Bandwidth Util";
                 bw_util_hdr += string(max_st_len - bw_util_hdr.length(),'-');
                 table.entry
                   (bw_util_hdr,fmt,
-                   &stars[max(0,stars_len-int(comm_frac*max_st_len))],
+                   string( size_t(max(0.0,comm_frac*max_st_len)), '*' ),
                    pTable::pT_Left);
 
               } else {
