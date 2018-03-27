@@ -108,6 +108,31 @@ mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 }
 
 extern "C" __global__ void
+mxv_g_only_mn(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
+{
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int num_threads = blockDim.x * gridDim.x;
+
+  const int start = tid;
+  const int stop = d_app.num_vecs;
+  const int inc = num_threads;
+
+  const int m = d_app.m;
+  const int n = d_app.n;
+
+  for ( int h=start; h<stop; h += inc )
+
+    // Operate on vector number h.
+
+    for ( int r=0; r<m; r++ )
+      {
+        Elt_Type elt = 0;
+        for ( int c=0; c<n; c++ ) elt += d_app.matrix[r][c] * din[ h * n + c ];
+        dout[ h * m + r ] = elt;
+      }
+}
+
+extern "C" __global__ void
 mxv_i_lbuf()
 {
   // Local address space for input vector.
@@ -203,105 +228,7 @@ mxv_o_per_thd()
 
 
 extern "C" __global__ void
-mxv_sh()
-{
-  // Local memory for output vector, use shared memory to redistribute
-  // input- and output-vector elements so that global memory reads and
-  // writes are fully utilized.
-
-  // Chunk Size: Number of vector elements to redistribute at a time.
-  const int CS = 8;
-
-  const int num_threads = blockDim.x * gridDim.x;
-
-  // The vector number operated on by threadIdx.x 0 in the first iteration.
-  //
-  const int bl_start = blockIdx.x * blockDim.x;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
-
-  // Used to compute the vector element number to read or write from
-  // global memory.
-  //
-  const int thd_x_offset = threadIdx.x % CS;
-
-  // Used to compute the vector number to read or write from global memory.
-  //
-  const int thd_x_idx_st = threadIdx.x / CS;
-
-  const int64_t BLOCK_SIZE = blockDim.x;
-  const int64_t MAX_BLOCK_SIZE = 1024;
-
-  // Shared memory used to redistribute vector elements.
-  //
-  __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE][CS + 1];
-
-  for ( int hb = bl_start; hb<stop; hb += inc )
-    {
-      // Compute matrix-vector product for vector number  hb + threadIdx.x.
-
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ ) vout[r] = 0;
-
-      for ( int c=0; c<N; c += CS )
-        {
-          // Read and redistribute input vector elements c, c+1,
-          // ... c+CS-1, then use those to compute part of the
-          // matrix-vector product.
-
-          // Read input vector elements sequentially and place them in
-          // shared memory.
-          //
-          // The entire g loop reads CS elements of each thread's
-          // input vector. Each iteration of the g loop reads CS
-          // elements from BLOCK_SIZE / CS vectors.
-          //
-          __syncthreads();
-
-          for ( int v=thd_x_idx_st;  v<BLOCK_SIZE; v += BLOCK_SIZE/CS )
-            vxfer[v][thd_x_offset] =
-              d_app.d_in[ hb * N + v * N + c + thd_x_offset ];
-
-          // Copy the portion of the input vector just read to local
-          // memory (the vin array). We hope that the compiler will
-          // use registers for all values of vin.
-          //
-          __syncthreads();
-          Elt_Type vin[CS];
-          for ( int cc=0; cc<CS; cc++ ) vin[cc] = vxfer[threadIdx.x][cc];
-
-          // Perform the matrix-vector multiplication for the parts of
-          // the input vector just read.
-          //
-          for ( int r=0; r<M; r++ )
-            for ( int cc=0; cc<CS; cc++ )
-              if ( c+cc < N ) vout[r] += d_app.matrix[r][c+cc] * vin[cc];
-        }
-
-      // Use shared memory to redistribute the output vector elements to
-      // threads so that the write to global memory will be efficient.
-      //
-      for ( int r=0; r<M; r += CS )
-        {
-          __syncthreads();
-          for ( int rr=0; rr<CS; rr++ ) vxfer[threadIdx.x][rr] = vout[r+rr];
-
-          __syncthreads();
-          for ( int g=0; g<CS; g++ )
-            {
-              const int v = g * BLOCK_SIZE / CS + thd_x_idx_st;
-
-              // The if statement is needed of M is not a multiple of CS.
-              if ( thd_x_offset + r < M )
-                d_app.d_out[ hb * M + v * M + r + thd_x_offset ] =
-                  vxfer[v][thd_x_offset];
-            }
-        }
-    }
-}
-
-extern "C" __global__ void
-mxv_sh_ochunk()
+mxv_sh_ochunk_mn()
 {
   // Compute element number to start at.
   //
@@ -321,47 +248,48 @@ mxv_sh_ochunk()
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
-  //  const int M = d_app.m;
-  //  const int N = d_app.n;
+  const int m = d_app.m;
+  const int n = d_app.n;
 
   const int ML = ( M + CS - 1 ) / CS;
+  const int ml = ( m + CS - 1 ) / CS;
 
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
       Elt_Type vout[ML];
-      for ( int rl=0; rl<ML; rl++ ) vout[rl] = 0;
+      for ( int rl=0; rl<ml; rl++ ) vout[rl] = 0;
 
 #pragma unroll
-      for ( int c=0; c<N; c += CS )
+      for ( int c=0; c<n; c += CS )
         {
           vxfer[threadIdx.x] =
-            d_app.d_in[ ( hb + thd_v_offset ) * N + c + thd_c_offset ];
+            d_app.d_in[ ( hb + thd_v_offset ) * n + c + thd_c_offset ];
 
           Elt_Type vin[CS];
           for ( int cc=0; cc<CS; cc++ )
             vin[cc] = vxfer[ thd_v_offset * CS + cc ];
 
-          for ( int rr=0; rr<ML; rr++ )
+          for ( int rr=0; rr<ml; rr++ )
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < N )
+                if ( c+cc < n )
                   vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
 #pragma unroll
-      for ( int rr=0; rr<ML; rr++ )
+      for ( int rr=0; rr<ml; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < M )
-            d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
+          if ( r < m )
+            d_app.d_out[ ( hb + thd_v_offset ) * m + r ] = vout[rr];
         }
 
     }
 }
 
 extern "C" __global__ void
-mxv_sh_ochunk_orig()
+mxv_sh_ochunk()
 {
   // Compute element number to start at.
   //
@@ -484,11 +412,6 @@ mxv_vls()
   const int stop = d_app.num_vecs;
   const int inc = num_threads;
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
-#undef USE_SHARED
-#else
-#define USE_SHARED
-#endif
   __shared__ float4 v0[1024];
 
   for ( int h=start; h<stop; h += inc )
@@ -503,33 +426,8 @@ mxv_vls()
         {
           const int c = cc + 4 * offset;
 
-#if 1
-          const int64_t addr =
-            (int64_t) &d_app.d_in_f4[ ( h0 * N + c ) >> 2 ];
-
-          float4 v0_o, v1_o;
-          asm( "ld.global.v4.f32 {%0,%1,%2,%3}, [%4]; // Hello, world!"
-               : "=f"(v0_o.x), "=f"(v0_o.y), "=f"(v0_o.z),"=f"(v0_o.w)
-               : "l" ( addr ) );
-
-          asm( "ld.global.v4.f32 {%0,%1,%2,%3}, [%4];"
-               : "=f"(v1_o.x), "=f"(v1_o.y), "=f"(v1_o.z),"=f"(v1_o.w)
-               : "l" ( addr + N * sizeof(v1_o.x) ) );
-
-#else
           float4 v0_o = d_app.d_in_f4[ ( h0 * N + c ) >> 2 ];
           float4 v1_o = d_app.d_in_f4[ ( ( h0 + 1 ) * N + c ) >> 2 ];
-#endif
-
-#ifdef USE_SHARED
-
-          v0[threadIdx.x] = offset ? v0_o : v1_o;
-
-          float4 v_xfer = v0[threadIdx.x ^ 1];
-          float4 v_03 = offset ? v_xfer : v0_o;
-          float4 v_47 = offset ? v1_o : v_xfer;
-
-#else
 
           union { float4 fl4; fi4 fi4; } f40x, f41x;
           f40x.fl4 = v0_o;
@@ -546,7 +444,6 @@ mxv_vls()
 
           fi4 v_03 = offset ? fswap : f40;
           fi4 v_47 = offset ? f41   : fswap;
-#endif
 
           vin[cc] = v_03.x;
           vin[cc+1] = v_03.y;
@@ -596,63 +493,6 @@ mxv_vls()
 
 
 
-#ifdef SMALL
-
-extern "C" __global__ void
-mxv_sh_easy()
-{
-  // Compute element number to start at.
-  //
-  const int num_threads = blockDim.x * gridDim.x;
-
-  // First element used by this block.
-  const int bl_start = blockIdx.x * blockDim.x;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
-
-  const int64_t BLOCK_SIZE = 1024;
-#if N > M
-  const int sm_stride = N;
-#else
-  const int sm_stride = M;
-#endif
-  __shared__ Elt_Type vins[BLOCK_SIZE][sm_stride];
-
-  const int offset = threadIdx.x % N;
-  const int idx_start = threadIdx.x / N;
-
-  for ( int hb = bl_start; hb<stop; hb += inc )
-    {
-      for ( int g=0; g<N; g++ )
-        vins[ idx_start + g * BLOCK_SIZE/N ][ offset ] =
-          d_app.d_in[ g * BLOCK_SIZE + hb * N + threadIdx.x ];
-
-      __syncthreads();
-      Elt_Type vin[N];
-      for ( int c=0; c<N; c++ ) vin[c] = vins[ threadIdx.x ][ c ];
-
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ )
-        {
-          vout[r] = 0;
-          for ( int c=0; c<N; c++ )
-            vout[r] += d_app.matrix[r][c] * vin[c];
-        }
-
-      __syncthreads();
-
-      for ( int r=0; r<M; r++ ) vins[ threadIdx.x ][ r ] = vout[ r ];
-
-      __syncthreads();
-
-      for ( int r=0; r<M; r++ )
-        d_app.d_out[ hb * M + r * BLOCK_SIZE + threadIdx.x ] =
-          vins[ threadIdx.x / M + r * BLOCK_SIZE/M ] [ threadIdx.x % M ];
-    }
-}
-#endif
-
-
 
 GPU_Info
 print_gpu_and_kernel_info()
@@ -670,6 +510,7 @@ print_gpu_and_kernel_info()
   info.get_gpu_info(dev);
 
   info.GET_INFO(mxv_g_only);
+  info.GET_INFO(mxv_g_only_mn);
   info.GET_INFO(mxv_i_lbuf);
   info.GET_INFO(mxv_o_lbuf);
   info.GET_INFO(mxv_o_per_thd);
@@ -680,12 +521,8 @@ print_gpu_and_kernel_info()
 #if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
   info.GET_INFO(mxv_vls);
 #endif
-  info.GET_INFO(mxv_sh);
   info.GET_INFO(mxv_sh_ochunk);
-
-#ifdef SMALL
-  info.GET_INFO(mxv_sh_easy);
-#endif
+  info.GET_INFO(mxv_sh_ochunk_mn);
 
   // Print information about kernel.
   //
@@ -770,6 +607,9 @@ main(int argc, char **argv)
   if ( !opt_p && vary_warps )
     NPerf_metrics_off();
 
+  app.m = M;
+  app.n = N;
+
   const size_t in_size_elts = size_t(app.num_vecs) * N;
   const size_t in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
   const size_t out_size_elts = size_t(app.num_vecs) * M;
@@ -782,7 +622,7 @@ main(int argc, char **argv)
   //
   app.h_in = new Elt_Type[ in_size_elts ];
   app.h_out = new Elt_Type[ out_size_elts ];
-  app.h_out_check = new Elt_Type[ out_size_elts ];
+  app.h_out_check = NULL;
 
   // Allocate storage for GPU copy of data.
   //
@@ -800,27 +640,52 @@ main(int argc, char **argv)
     for ( int c=0; c<N; c++ )
       app.h_in[ i * N + c ] = debug ? Elt_Type(c) : drand48();
 
-  // Initialize transformation matrix.
+  // Initialize matrix.
   //
   for ( int r=0; r<M; r++ )
     for ( int c=0; c<N; c++ )
       app.matrix[r][c] = debug ? r == c : drand48();
 
-  // Compute correct answer.
+  struct Shape {
+    Shape(int np, int mp):n(np),m(mp),h_out_check(app.num_vecs*mp){};
+    int n, m;
+    vector<Elt_Type> h_out_check;
+  };
+
+  vector<Shape> sizes = { {N,M}, {N/2,M} };
+
+  // Compute correct answers.
   //
-  for ( int i=0; i<app.num_vecs; i++ )
-    for ( int r=0; r<M; r++ )
-      {
-        app.h_out_check[ i * M + r ] = 0;
-        for ( int c=0; c<N; c++ )
-          app.h_out_check[ i * M + r ] +=
-            app.h_in[ i * N + c ] * app.matrix[r][c];
-      }
+  for ( Shape& s: sizes )
+    for ( int i=0; i<app.num_vecs; i++ )
+      for ( int r=0; r<s.m; r++ )
+        {
+          s.h_out_check[ i * s.m + r ] = 0;
+          for ( int c=0; c<s.n; c++ )
+            s.h_out_check[ i * s.m + r ] +=
+              app.h_in[ i * s.n + c ] * app.matrix[r][c];
+        }
 
-  const int64_t num_ops = int64_t(M) * N * app.num_vecs;  // Multiply-adds.
+  app.h_out_check = sizes[0].h_out_check.data();
 
-  // Amount of data in and out of GPU chip.
-  const int64_t amt_data_bytes = in_size_bytes + out_size_bytes;
+  struct KShape {
+    KShape(int knop, Shape *sp, Kernel_Info *kip):kno(knop),s(sp),ki(kip){};
+    const int kno;
+    Shape* const s;
+    Kernel_Info* const ki;
+  };
+  vector<KShape> kshapes;
+
+  for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
+    {
+      Kernel_Info* const ki = &info.ki[kernel];
+      string kn = ki->name;
+      // Eagerly awaiting c++20 ends_with. RHEL should have it by 2035.
+      if ( kn.substr(kn.size()-3,3) == "_mn" )
+        for ( auto& s: sizes ) kshapes.emplace_back(kernel,&s,ki);
+      else
+        kshapes.emplace_back(kernel,(Shape*)NULL,ki);
+    }
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
 
@@ -836,18 +701,15 @@ main(int argc, char **argv)
     CE( cudaMemcpy
         ( app.d_in, app.h_in, in_size_bytes, cudaMemcpyHostToDevice ) );
 
-    // Copy App structure to GPU.
-    //
-    CE( cudaMemcpyToSymbol
-        ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
-
     // Launch kernel multiple times and keep track of the best time.
     printf("Launching with %d blocks of up to %d threads. \n",
            num_blocks, thd_per_block_goal);
 
-    for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
+    for ( KShape ks: kshapes )
       {
-        cudaFuncAttributes& cfa = info.ki[kernel].cfa;
+        const int kernel = ks.kno;
+        Kernel_Info* const ki = ks.ki;
+        cudaFuncAttributes& cfa = ki->cfa;
         const int wp_limit = cfa.maxThreadsPerBlock >> 5;
 
         const int thd_limit = wp_limit << 5;
@@ -856,6 +718,23 @@ main(int argc, char **argv)
         const int wp_start = 4;
         const int wp_stop = vary_warps ? wp_limit : wp_start;
         const int wp_inc = 4;
+
+        if ( ks.s ) { app.m = ks.s->m; app.n = ks.s->n; }
+        else        { app.m = M;       app.n = N;       }
+
+        const int64_t num_ops =   // Multiply-adds.
+          int64_t(app.m) * app.n * app.num_vecs;
+
+        // Amount of data in and out of GPU chip.
+        const int64_t amt_data_bytes =
+          sizeof(app.h_in[0]) * app.num_vecs * ( app.m + app.n );
+
+        // Copy App structure to GPU.
+        //
+        CE( cudaMemcpyToSymbol
+            ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
+
+        pString msize = pStringF("(%d,%d)",app.m,app.n);
 
         pTable table;
 
@@ -900,7 +779,7 @@ main(int argc, char **argv)
               {
                 const char* const stars = "********************************************************************************";
                 const int stars_len = 80;
-                const double comp_frac = 
+                const double __attribute__((unused)) comp_frac = 
                   4e9 * thpt_compute_gflops / info.chip_sp_flops;
                 const double comm_frac =
                   1e9 * thpt_data_gbps / info.chip_bw_Bps;
@@ -933,7 +812,7 @@ main(int argc, char **argv)
                 const int act_wps = num_wps * bl_per_mp;
 
                 if ( wp_cnt == wp_start )
-                  printf("Kernel %s:\n", info.ki[kernel].name);
+                  printf("Kernel %s%s:\n", info.ki[kernel].name, msize.s);
 
                 table.row_start();
                 table.entry("wp",num_wps);
@@ -968,7 +847,7 @@ main(int argc, char **argv)
                 bw_util_hdr += string(max_st_len - bw_util_hdr.length(),'-');
                 table.entry
                   (bw_util_hdr,fmt,
-                   &stars[stars_len-int(comm_frac*max_st_len)],
+                   &stars[max(0,stars_len-int(comm_frac*max_st_len))],
                    pTable::pT_Left);
 
               } else {
@@ -992,17 +871,19 @@ main(int argc, char **argv)
             CE( cudaMemcpy
                 ( app.h_out, app.d_out, out_size_bytes, cudaMemcpyDeviceToHost) );
             int err_count = 0;
+            Elt_Type* const h_out_check =
+              ks.s ? ks.s->h_out_check.data() : app.h_out_check;
             for ( int i=0; i<app.num_vecs; i++ )
-              for ( int r=0; r<M; r++ )
+              for ( int r=0; r<app.m; r++ )
                 {
-                  const int idx = i * M + r;
+                  const int idx = i * app.m + r;
 
-                  if ( fabs( app.h_out_check[idx] - app.h_out[idx] ) > 1e-5 )
+                  if ( fabs( h_out_check[idx] - app.h_out[idx] ) > 1e-5 )
                     {
                       err_count++;
                       if ( err_count < 5 )
                         printf("Error at vec %d elt %d: %.7f != %.7f (correct)\n",
-                               i, r, app.h_out[idx], app.h_out_check[idx] );
+                               i, r, app.h_out[idx], h_out_check[idx] );
                     }
                 }
             if ( err_count )
@@ -1011,5 +892,4 @@ main(int argc, char **argv)
         printf("%s",table.body_get());
       }
   }
-
 }
