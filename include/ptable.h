@@ -4,6 +4,7 @@
 
 #include "pstring.h"
 #include <algorithm>
+#include <sys/ioctl.h>
 
 using namespace std;
 
@@ -22,6 +23,23 @@ utf8_len(const string& str)
         else return 0;//invalid utf8
     }
     return q;
+}
+
+inline int
+stdout_width_get()
+{
+  const int wid_cred_min = 10;
+  const int wid_cred_max = 1000;
+  const int wid_default = 80;
+  auto cred = [&](int w){ return w >= wid_cred_min && w <= wid_cred_max; };
+  struct winsize wsize;
+  ioctl(STDOUT_FILENO, TIOCGWINSZ, &wsize);
+  const int output_width_io =
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &wsize) ? 0 : wsize.ws_col;
+  if ( cred(output_width_io) ) return output_width_io;
+  const int output_width_env = atoi( getenv("COLUMNS") ?: "0" );
+  if ( cred(output_width_env) ) return output_width_env;
+  return wid_default;
 }
 
 class pTable {
