@@ -19,10 +19,6 @@
 #define N 16
 #define M 16
 
-#if N * 1024 * 4 < 32769
-#define SMALL
-#endif
-
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
 //
@@ -122,8 +118,6 @@ mxv_g_only_mn(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 
   for ( int h=start; h<stop; h += inc )
 
-    // Operate on vector number h.
-
     for ( int r=0; r<m; r++ )
       {
         Elt_Type elt = 0;
@@ -132,98 +126,29 @@ mxv_g_only_mn(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
       }
 }
 
-extern "C" __global__ void
-mxv_i_lbuf()
-{
-  // Local address space for input vector.
-  //
-  // Use local address space to buffer entire input vector, and write
-  // each output vector element as soon as its computed.
 
+extern "C" __global__ void
+mxv_g_only_sol_mn
+(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
+{
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
 
-  const int start = tid;        // First vector number computed by this thread.
+  const int start = tid;
   const int stop = d_app.num_vecs;
   const int inc = num_threads;
 
-  for ( int h=start; h<stop; h += inc )
-    {
-      Elt_Type vin[N];
-      for ( int c=0; c<N; c++ ) vin[c] = d_app.d_in[ h * N + c ];
-
-      for ( int r=0; r<M; r++ )
-        {
-          Elt_Type elt = 0;
-          for ( int c=0; c<N; c++ ) elt += d_app.matrix[r][c] * vin[c];
-          d_app.d_out[ h * M + r ] = elt;
-        }
-    }
-}
-
-
-extern "C" __global__ void
-mxv_o_lbuf()
-{
-  // Local memory for output vector.
-  //
-  // Use local memory to buffer entire output vector.  Right after each
-  // input vector element is read use it to partially compute each
-  // of the M output vector elements.
-
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int num_threads = blockDim.x * gridDim.x;
-
-  const int start = tid;        // First vector number computed by this thread.
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
+  const int m = d_app.m;
+  const int n = d_app.n;
 
   for ( int h=start; h<stop; h += inc )
-    {
-      // Operate on vector number h.
 
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ ) vout[r] = 0;
-
-      for ( int c=0; c<N; c++ )
-        {
-          const Elt_Type vin = d_app.d_in[ h * N + c ];
-          for ( int r=0; r<M; r++ ) vout[r] += d_app.matrix[r][c] * vin;
-        }
-      for ( int r=0; r<M; r++ ) d_app.d_out[ h * M + r ] = vout[ r ];
-    }
-}
-
-
-extern "C" __global__ void
-mxv_o_per_thd()
-{
-  // Assign one vector to M threads, each thread computes one element.
-  //
-  // This arrangement avoids the need for any local memory buffering,
-  // results in efficient global memory writes. Global memory reads
-  // are still inefficient.
-
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int num_threads = blockDim.x * gridDim.x;
-
-  const int start = tid / M;  // First vector number computed by this thread.
-  const int r = tid % M;      // Vector element computed by this thread.
-
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads / M;
-
-  for ( int h=start; h<stop; h += inc )
-    {
-      // Operate on vector number h, compute output vector element r.
-
-      Elt_Type vout = 0;
-
-      for ( int c=0; c<N; c++ )
-        vout += d_app.matrix[r][c] * d_app.d_in[ h * N + c ];
-
-      d_app.d_out[ h * M + r ] = vout;
-    }
+    for ( int r=0; r<m; r++ )
+      {
+        Elt_Type elt = 0;
+        for ( int c=0; c<n; c++ ) elt += d_app.matrix[r][c] * din[ h * n + c ];
+        dout[ h * m + r ] = elt;
+      }
 }
 
 
@@ -345,154 +270,6 @@ mxv_sh_ochunk()
     }
 }
 
-extern "C" __global__ void
-mxv_vec_ld()
-{
-  // Compute an id number that will be in the range from 0 to num_threads-1.
-  //
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int num_threads = blockDim.x * gridDim.x;
-
-  // Compute element number to start at.
-  //
-  const int start = tid;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
-
-  for ( int h=start; h<stop; h += inc )
-    {
-      Elt_Type vin[N];
-      for ( int c=0; c<N; c += 4 )
-        {
-          // float4 f4 = d_app.d_in_f4[ ( h * N + c ) >> 2 ];
-          float4 f4 = d_app.d_in_f4[ h * ( N >> 2 ) + ( c >> 2 )];
-          vin[c] = f4.x;
-          vin[c+1] = f4.y;
-          vin[c+2] = f4.z;
-          vin[c+3] = f4.w;
-        }
-
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ )
-        {
-          vout[r] = 0;
-          for ( int c=0; c<N; c++ )
-            vout[r] += d_app.matrix[r][c] * vin[c];
-        }
-      for ( int r=0; r<M; r+=4 )
-        {
-          float4 f4 = { vout[r], vout[r+1], vout[r+2], vout[r+3] };
-          d_app.d_out_f4[ ( h * M + r ) >> 2 ] = f4;
-        }
-    }
-}
-
-typedef union { float f; int i; } float_int;
-
-struct fi4 {
-  union { float x; int i; };
-  union { float y; int j; };
-  union { float z; int k; };
-  union { float w; int l; };
-};
-
-extern "C" __global__ void
-mxv_vls()
-{
-  // Compute an id number that will be in the range from 0 to num_threads-1.
-  //
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int num_threads = blockDim.x * gridDim.x;
-
-  const int offset = threadIdx.x & 1;
-
-  // Compute element number to start at.
-  //
-  const int start = tid;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
-
-  __shared__ float4 v0[1024];
-
-  for ( int h=start; h<stop; h += inc )
-    {
-      const int h0 = h - offset;
-
-      __syncthreads();
-
-
-      Elt_Type vin[N];
-      for ( int cc=0; cc<N; cc += 8 )
-        {
-          const int c = cc + 4 * offset;
-
-          float4 v0_o = d_app.d_in_f4[ ( h0 * N + c ) >> 2 ];
-          float4 v1_o = d_app.d_in_f4[ ( ( h0 + 1 ) * N + c ) >> 2 ];
-
-          union { float4 fl4; fi4 fi4; } f40x, f41x;
-          f40x.fl4 = v0_o;
-          f41x.fl4 = v1_o;
-          fi4 f40 = f40x.fi4;
-          fi4 f41 = f41x.fi4;
-
-          fi4 fswap = offset ? f40 : f41;
-          const unsigned mask = ~0;
-          fswap.i = __shfl_xor_sync(mask,fswap.i,1);
-          fswap.j = __shfl_xor_sync(mask,fswap.j,1);
-          fswap.k = __shfl_xor_sync(mask,fswap.k,1);
-          fswap.l = __shfl_xor_sync(mask,fswap.l,1);
-
-          fi4 v_03 = offset ? fswap : f40;
-          fi4 v_47 = offset ? f41   : fswap;
-
-          vin[cc] = v_03.x;
-          vin[cc+1] = v_03.y;
-          vin[cc+2] = v_03.z;
-          vin[cc+3] = v_03.w;
-          if ( cc + 4 < N )
-            {
-              vin[cc+4] = v_47.x;
-              vin[cc+5] = v_47.y;
-              vin[cc+6] = v_47.z;
-              vin[cc+7] = v_47.w;
-            }
-        }
-
-      Elt_Type vbuf[8];
-      const int M8 = ( M + 7 ) & ~7;
-#pragma unroll
-      for ( int64_t r=0; r<M8; r++ )
-        {
-          const int bpos = r % 8;
-          Elt_Type elt = 0;
-          for ( int c=0; c<N; c++ )
-            elt += d_app.matrix[r][c] * vin[c];
-          vbuf[bpos] = elt;
-          if ( bpos == 7 )
-            {
-              float4 vo_0 = { vbuf[0], vbuf[1], vbuf[2], vbuf[3] };
-              float4 vo_1 = { vbuf[4], vbuf[5], vbuf[6], vbuf[7] };
-              v0[threadIdx.x] = offset ? vo_0 : vo_1;
-              float4 v_xfer = v0[threadIdx.x^1];
-              float4 v0_o = offset ? v_xfer : vo_0;
-              float4 v1_o = offset ? vo_1 : v_xfer;
-
-              const int rr = r - 7 + offset * 4;
-
-              if ( rr < M )
-                {
-                  d_app.d_out_f4[ ( h0 * M + rr ) >> 2 ] = v0_o;
-                  d_app.d_out_f4[ ( (h0+1) * M + rr ) >> 2 ] = v1_o;
-                }
-
-            }
-        }
-
-    }
-}
-
-
-
 
 GPU_Info
 print_gpu_and_kernel_info()
@@ -511,16 +288,8 @@ print_gpu_and_kernel_info()
 
   info.GET_INFO(mxv_g_only);
   info.GET_INFO(mxv_g_only_mn);
-  info.GET_INFO(mxv_i_lbuf);
-  info.GET_INFO(mxv_o_lbuf);
-  info.GET_INFO(mxv_o_per_thd);
+  info.GET_INFO(mxv_g_only_sol_mn);
 
-#if N / 4 == (N+3)/4
-  info.GET_INFO(mxv_vec_ld);
-#endif
-#if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
-  info.GET_INFO(mxv_vls);
-#endif
   info.GET_INFO(mxv_sh_ochunk);
   info.GET_INFO(mxv_sh_ochunk_mn);
 
