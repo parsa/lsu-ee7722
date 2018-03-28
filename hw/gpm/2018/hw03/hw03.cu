@@ -1,5 +1,14 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
+ ///  Homework 3 - Spring 2018
+//
+//  Assignment: http://www.ece.lsu.edu/koppel/gp/2018/hw03.pdf
+
+ /// Documentation
+//
+//   c++:  http://en.cppreference.com
+//   CUDA: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
+//
 
 #include <pthread.h>
 #include <string.h>
@@ -16,8 +25,8 @@
 #include "util.h"
 #include <ptable.h>
 
-#define N 16
-#define M 16
+// Maximum size of matrix.
+#define N 32
 
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
@@ -31,7 +40,7 @@ struct App
   //
   int num_vecs;
 
-  Elt_Type matrix[M][N];
+  Elt_Type matrix[N][N];
 
   // Host pointers to the input and output arrays, and to a CPU-computed
   // output array used for checking results.
@@ -54,7 +63,8 @@ struct App
   //
   // Note: These "_f4" pointers only work when Elt_Type is a float.
 
-  int m, n;
+  // Size of matrix to use.
+  int n;
 };
 
 // In host address space.
@@ -65,100 +75,103 @@ __constant__ App d_app;
 
 typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 
-
-extern "C" __global__ void
-mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
+template <int eN> __device__ void
+mxv_sh_ochunk()
 {
-  // No local memory.
-  //
-  // In the inner loop use global memory accesses to access the input
-  // vector elements. Hope that the compiler recognizes the repeated
-  // accesses and so keeps each input vector element in a register
-  // rather than reading global memory M times per input element.
-  //
-  // The compiler will avoid the repeated reads if it is convinced
-  // that the input and output arrays don't overlap.  For the NVIDIA
-  // compiler (CUDA 7.0) that seems to require declaring the array
-  // pointers with the __restrict__ attributes as kernel arguments.
-  //
-  // Note that dout and d_app.d_out hold the same address, as do din
-  // and d_app.d_in.
+  /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
+  //  Instead, modify mxv_sh_ochunk_sol_mn.
 
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  // Matrix size is eN by eN.
+  // Since size in this case is a compile-time constant code will
+  // be of higher quality.
+
+  // First things, first. Make sure that the problem size
+  // matches the specialization.
+
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  assert( tid != 0 || eN == d_app.n );
+
+  const int CS = 8;  // Chunk Size: Number of input vector components to read.
   const int num_threads = blockDim.x * gridDim.x;
 
-  const int start = tid;        // First vector number computed by this thread.
+  // First element used by this block.
+  const int bl_start = blockIdx.x * blockDim.x / CS;
   const int stop = d_app.num_vecs;
-  const int inc = num_threads;
+  const int inc = num_threads / CS;
 
-  for ( int h=start; h<stop; h += inc )
+  const int thd_c_offset = threadIdx.x % CS;
+  const int thd_r_offset = threadIdx.x % CS;
+  const int thd_v_offset = threadIdx.x / CS;
 
-    // Operate on vector number h.
+  const int MAX_BLOCK_SIZE = 1024;
+  __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
-    for ( int r=0; r<M; r++ )
-      {
-        Elt_Type elt = 0;
-        for ( int c=0; c<N; c++ ) elt += d_app.matrix[r][c] * din[ h * N + c ];
-        dout[ h * M + r ] = elt;
-      }
+  // Maximum number of output vector components written per thread,
+  // based on vector size, eN. Actual number may be eN-1 when eN is
+  // not a multiple of CS.
+  const int NL = ( eN + CS - 1 ) / CS;
+
+  /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
+  //  Instead, modify mxv_sh_ochunk_sol_mn.
+
+  for ( int hb = bl_start; hb<stop; hb += inc )
+    {
+      // Initialize output vector components to zero.
+      Elt_Type vout[NL];
+      for ( auto& v: vout ) v = 0;
+
+#pragma unroll
+      for ( int c=0; c<eN; c += CS )
+        {
+          // This thread along width CS-1 of its neighbors load CS
+          // components of an input vector.
+          //
+          vxfer[threadIdx.x] =
+            d_app.d_in[ ( hb + thd_v_offset ) * eN + c + thd_c_offset ];
+
+          // Copy input vector components from shared to local address space.
+          //
+          Elt_Type vin[CS];
+          for ( int cc=0; cc<CS; cc++ )
+            vin[cc] = vxfer[ thd_v_offset * CS + cc ];
+
+          // Using the CS input vector components, compute part
+          // of our NL output vector components.
+          for ( int rr=0; rr<NL; rr++ )
+            {
+              const int r = rr * CS + thd_r_offset;
+              for ( int cc=0; cc<CS; cc++ )
+                if ( c+cc < eN ) // If needed when eN not a multiple of CS.
+                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+            }
+        }
+
+#pragma unroll
+      // Write output vector components to global memory.
+      for ( int rr=0; rr<NL; rr++ )
+        {
+          const int r = rr * CS + thd_r_offset;
+          if ( r < eN )
+            d_app.d_out[ ( hb + thd_v_offset ) * eN + r ] = vout[rr];
+        }
+
+    }
 }
 
-extern "C" __global__ void
-mxv_g_only_mn(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
-{
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int num_threads = blockDim.x * gridDim.x;
-
-  const int start = tid;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
-
-  const int m = d_app.m;
-  const int n = d_app.n;
-
-  for ( int h=start; h<stop; h += inc )
-
-    for ( int r=0; r<m; r++ )
-      {
-        Elt_Type elt = 0;
-        for ( int c=0; c<n; c++ ) elt += d_app.matrix[r][c] * din[ h * n + c ];
-        dout[ h * m + r ] = elt;
-      }
-}
-
-
-extern "C" __global__ void
-mxv_g_only_sol_mn
-(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
-{
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int num_threads = blockDim.x * gridDim.x;
-
-  const int start = tid;
-  const int stop = d_app.num_vecs;
-  const int inc = num_threads;
-
-  const int m = d_app.m;
-  const int n = d_app.n;
-
-  for ( int h=start; h<stop; h += inc )
-
-    for ( int r=0; r<m; r++ )
-      {
-        Elt_Type elt = 0;
-        for ( int c=0; c<n; c++ ) elt += d_app.matrix[r][c] * din[ h * n + c ];
-        dout[ h * m + r ] = elt;
-      }
-}
+// Instantiate versions for 16 by 16 and 32 by 32 matrices.
+extern "C" __global__ void mxv_sh_ochunk_32(){ mxv_sh_ochunk<32>(); }
+extern "C" __global__ void mxv_sh_ochunk_16(){ mxv_sh_ochunk<16>(); }
 
 
 extern "C" __global__ void
 mxv_sh_ochunk_mn()
 {
-  // Compute element number to start at.
-  //
+  /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
+  //  Instead, modify mxv_sh_ochunk_sol_mn.
 
-  const int CS = 8;  // Chunk Size: Number of input vector elts to read.
+  // Matrix size is in d_app structure. d_app.n by d_app.n.
+
+  const int CS = 8;  // Chunk Size: Number of input vector components to read.
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -167,59 +180,82 @@ mxv_sh_ochunk_mn()
   const int inc = num_threads / CS;
 
   const int thd_c_offset = threadIdx.x % CS;
-  const int thd_r_offset = threadIdx.x % CS;
+  const int thd_r_offset = thd_c_offset;
   const int thd_v_offset = threadIdx.x / CS;
 
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
-  const int m = d_app.m;
   const int n = d_app.n;
 
-  const int ML = ( M + CS - 1 ) / CS;
-  const int ml = ( m + CS - 1 ) / CS;
+  // Maximum number of output vector components written per thread,
+  // based on maximum vector size, N.
+  const int NL = ( N + CS - 1 ) / CS;
+  // Number of output vector components written per thread based on
+  // vector size, n.
+  const int nl = ( n + CS - 1 ) / CS;
+
+  /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
+  //  Instead, modify mxv_sh_ochunk_sol_mn.
 
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
-      Elt_Type vout[ML];
-      for ( int rl=0; rl<ml; rl++ ) vout[rl] = 0;
+      // Initialize output vector components to zero. Note that the
+      // code initializes for the maximum number of components
+      // assigned to this thread, NL, not the actual number, nl or
+      // nl-1.
+      Elt_Type vout[NL];
+      for ( auto& v: vout ) v = 0;
 
-#pragma unroll
       for ( int c=0; c<n; c += CS )
         {
+          // This thread along width CS-1 of its neighbors load CS
+          // components of an input vector.
+          //
           vxfer[threadIdx.x] =
             d_app.d_in[ ( hb + thd_v_offset ) * n + c + thd_c_offset ];
 
+          // Copy input vector components from shared to local address space.
+          //
           Elt_Type vin[CS];
           for ( int cc=0; cc<CS; cc++ )
             vin[cc] = vxfer[ thd_v_offset * CS + cc ];
 
-          for ( int rr=0; rr<ml; rr++ )
+          // Using the CS input vector components, compute part
+          // of our nl output vector components.
+          for ( int rr=0; rr<nl; rr++ )
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < n )
+                if ( c+cc < n ) // If needed when n not a multiple of CS.
                   vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
-#pragma unroll
-      for ( int rr=0; rr<ml; rr++ )
+
+      /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
+      //  Instead, modify mxv_sh_ochunk_sol_mn.
+
+      // Write output vector components to global memory.
+      for ( int rr=0; rr<nl; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < m )
-            d_app.d_out[ ( hb + thd_v_offset ) * m + r ] = vout[rr];
+          if ( r < n )
+            d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
         }
-
     }
+  /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
+  //  Instead, modify mxv_sh_ochunk_sol_mn.
 }
 
-extern "C" __global__ void
-mxv_sh_ochunk()
-{
-  // Compute element number to start at.
-  //
 
-  const int CS = 8;  // Chunk Size: Number of input vector elts to read.
+extern "C" __global__ void
+mxv_sh_ochunk_sol_mn()
+{
+  /// PUT SOLUTION IN THIS ROUTINE.
+
+  // Matrix size is in d_app structure. d_app.n by d_app.n.
+
+  const int CS = 8;  // Chunk Size: Number of input vector components to read.
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -228,47 +264,65 @@ mxv_sh_ochunk()
   const int inc = num_threads / CS;
 
   const int thd_c_offset = threadIdx.x % CS;
-  const int thd_r_offset = threadIdx.x % CS;
+  const int thd_r_offset = thd_c_offset;
   const int thd_v_offset = threadIdx.x / CS;
 
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
-  const int ML = ( M + CS - 1 ) / CS;
+  const int n = d_app.n;
+
+  // Maximum number of output vector components written per thread,
+  // based on maximum vector size, N.
+  const int NL = ( N + CS - 1 ) / CS;
+  // Number of output vector components written per thread based on
+  // vector size, n.
+  const int nl = ( n + CS - 1 ) / CS;
 
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
-      Elt_Type vout[ML];
-      for ( int rl=0; rl<ML; rl++ ) vout[rl] = 0;
+      // Initialize output vector components to zero. Note that the
+      // code initializes for the maximum number of components
+      // assigned to this thread, NL, not the actual number, nl or
+      // nl-1.
+      Elt_Type vout[NL];
+      for ( auto& v: vout ) v = 0;
 
-#pragma unroll
-      for ( int c=0; c<N; c += CS )
+      for ( int c=0; c<n; c += CS )
         {
+          // This thread along width CS-1 of its neighbors load CS
+          // components of an input vector.
+          //
           vxfer[threadIdx.x] =
-            d_app.d_in[ ( hb + thd_v_offset ) * N + c + thd_c_offset ];
+            d_app.d_in[ ( hb + thd_v_offset ) * n + c + thd_c_offset ];
 
+          // Copy input vector components from shared to local address space.
+          //
           Elt_Type vin[CS];
           for ( int cc=0; cc<CS; cc++ )
             vin[cc] = vxfer[ thd_v_offset * CS + cc ];
 
-          for ( int rr=0; rr<ML; rr++ )
+          // Using the CS input vector components, compute part
+          // of our nl output vector components.
+          for ( int rr=0; rr<nl; rr++ )
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < N )
+                if ( c+cc < n ) // If needed when n not a multiple of CS.
                   vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
-#pragma unroll
-      for ( int rr=0; rr<ML; rr++ )
+
+      // Write output vector components to global memory.
+      for ( int rr=0; rr<nl; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < M )
-            d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
+          if ( r < n )
+            d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
         }
-
     }
 }
+
 
 
 GPU_Info
@@ -286,12 +340,10 @@ print_gpu_and_kernel_info()
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
-  info.GET_INFO(mxv_g_only);
-  info.GET_INFO(mxv_g_only_mn);
-  info.GET_INFO(mxv_g_only_sol_mn);
-
-  info.GET_INFO(mxv_sh_ochunk);
+  info.GET_INFO(mxv_sh_ochunk_32);
+  info.GET_INFO(mxv_sh_ochunk_16);
   info.GET_INFO(mxv_sh_ochunk_mn);
+  info.GET_INFO(mxv_sh_ochunk_sol_mn);
 
   // Print information about kernel.
   //
@@ -315,6 +367,8 @@ print_gpu_and_kernel_info()
 int
 main(int argc, char **argv)
 {
+  // When debug true: matrix is identity and for each vector v_i=i
+  // (component i is set to value i).
   const bool debug = false;
 
   // Must be called before any CUDA API calls.
@@ -371,20 +425,14 @@ main(int argc, char **argv)
   // Note: The more metrics that are collected, the more times a kernel
   // will need to be run.
 
-  // Don't collect performance data if we are varying warps. Why?
-  // Because it takes too long.
-  if ( false && !opt_p && vary_warps )
-    NPerf_metrics_off();
-
-  app.m = M;
-  app.n = N;
+  if ( false ) NPerf_metrics_off();
 
   const size_t in_size_elts = size_t(app.num_vecs) * N;
   const size_t in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
-  const size_t out_size_elts = size_t(app.num_vecs) * M;
+  const size_t out_size_elts = size_t(app.num_vecs) * N;
   const size_t out_size_bytes = out_size_elts * sizeof( app.h_out[0] );
 
-  const int overrun_size_elts = thd_per_block_goal * max(N,M);
+  const int overrun_size_elts = thd_per_block_goal * N * 32;
   const int overrun_size_bytes = overrun_size_elts * sizeof( app.h_out[0] );
 
   // Allocate storage for CPU copy of data.
@@ -401,7 +449,7 @@ main(int argc, char **argv)
   app.d_out_f4 = (float4*) app.d_out;
 
   printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
-         N, M, app.num_vecs, num_blocks, thd_per_block_goal);
+         N, N, app.num_vecs, num_blocks, thd_per_block_goal);
 
   // Initialize input array.
   //
@@ -411,31 +459,38 @@ main(int argc, char **argv)
 
   // Initialize matrix.
   //
-  for ( int r=0; r<M; r++ )
+  for ( int r=0; r<N; r++ )
     for ( int c=0; c<N; c++ )
       app.matrix[r][c] = debug ? r == c : drand48();
 
   struct Shape {
-    Shape(int np, int mp):n(np),m(mp),h_out_check(app.num_vecs*mp){};
-    int n, m;
+    Shape(int np):n(np),h_out_check(app.num_vecs*np){};
+    Shape():n(0){};
+    int n;
     vector<Elt_Type> h_out_check;
   };
 
-  vector<Shape> sizes = { {N,M}, {N/2,M} };
+  vector<int> sizes = { 32, 16, 12 };
+  map<int,Shape> shapes;
+  for ( auto n: sizes ) shapes.emplace(n,n);
 
   // Compute correct answers.
   //
-  for ( Shape& s: sizes )
-    for ( int i=0; i<app.num_vecs; i++ )
-      for ( int r=0; r<s.m; r++ )
-        {
-          s.h_out_check[ i * s.m + r ] = 0;
-          for ( int c=0; c<s.n; c++ )
-            s.h_out_check[ i * s.m + r ] +=
-              app.h_in[ i * s.n + c ] * app.matrix[r][c];
-        }
+  for ( auto& sh: shapes )
+    {
+      Shape& s = sh.second;
+      assert( s.n <= N );
+      for ( int i=0; i<app.num_vecs; i++ )
+        for ( int r=0; r<s.n; r++ )
+          {
+            s.h_out_check[ i * s.n + r ] = 0;
+            for ( int c=0; c<s.n; c++ )
+              s.h_out_check[ i * s.n + r ] +=
+                app.h_in[ i * s.n + c ] * app.matrix[r][c];
+          }
+    }
 
-  app.h_out_check = sizes[0].h_out_check.data();
+  app.h_out_check = shapes[N].h_out_check.data();
 
   struct KShape {
     KShape(int knop, Shape *sp, Kernel_Info *kip):kno(knop),s(sp),ki(kip){};
@@ -450,10 +505,13 @@ main(int argc, char **argv)
       Kernel_Info* const ki = &info.ki[kernel];
       string kn = ki->name;
       // Eagerly awaiting c++20 ends_with. RHEL should have it by 2035.
-      if ( kn.substr(kn.size()-3,3) == "_mn" )
-        for ( auto& s: sizes ) kshapes.emplace_back(kernel,&s,ki);
-      else
-        kshapes.emplace_back(kernel,(Shape*)NULL,ki);
+      string suffix = kn.substr(kn.size()-3,3);
+      if ( suffix == "_mn" )
+        for ( auto& sh: shapes ) kshapes.emplace_back(kernel,&sh.second,ki);
+      else if ( suffix == "_32" )
+        kshapes.emplace_back(kernel,&shapes[32],ki);
+      else if ( suffix == "_16" )
+        kshapes.emplace_back(kernel,&shapes[16],ki);
     }
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
@@ -489,24 +547,25 @@ main(int argc, char **argv)
         const int wp_stop = vary_warps ? wp_limit : wp_start;
         const int wp_inc = 4;
 
-        if ( ks.s ) { app.m = ks.s->m; app.n = ks.s->n; }
-        else        { app.m = M;       app.n = N;       }
+        app.n = ks.s ? ks.s->n : N;
+        assert( app.n > 0 );
 
         const int64_t num_ops =   // Multiply-adds.
-          int64_t(app.m) * app.n * app.num_vecs;
+          int64_t(app.n) * app.n * app.num_vecs;
 
         // Amount of data in and out of GPU chip.
         const int64_t amt_data_bytes =
-          sizeof(app.h_in[0]) * app.num_vecs * ( app.m + app.n );
+          sizeof(app.h_in[0]) * app.num_vecs * ( app.n + app.n );
 
         // Copy App structure to GPU.
         //
         CE( cudaMemcpyToSymbol
             ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
-        pString msize = pStringF("(%d,%d)",app.m,app.n);
+        pString msize = pStringF("(%d,%d)",app.n,app.n);
 
         pTable table;
+        table.stream = stdout;
 
         for ( int wp_cnt = wp_start; wp_cnt <= wp_stop; wp_cnt += wp_inc )
           {
@@ -547,7 +606,7 @@ main(int argc, char **argv)
 
             if ( vary_warps )
               {
-                const double __attribute__((unused)) comp_frac = 
+                const double __attribute__((unused)) comp_frac =
                   4e9 * thpt_compute_gflops / info.chip_sp_flops;
                 const double comm_frac =
                   min(2.0,1e9 * thpt_data_gbps / info.chip_bw_Bps);
@@ -636,32 +695,35 @@ main(int argc, char **argv)
                  );
             }
 
+            table.row_end();
+
             elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);
 
             // Copy output array from GPU to CPU.
             //
             CE( cudaMemcpy
-                ( app.h_out, app.d_out, out_size_bytes, cudaMemcpyDeviceToHost) );
+                ( app.h_out, app.d_out, out_size_bytes,
+                  cudaMemcpyDeviceToHost) );
             int err_count = 0;
             Elt_Type* const h_out_check =
               ks.s ? ks.s->h_out_check.data() : app.h_out_check;
             for ( int i=0; i<app.num_vecs; i++ )
-              for ( int r=0; r<app.m; r++ )
+              for ( int r=0; r<app.n; r++ )
                 {
-                  const int idx = i * app.m + r;
+                  const int idx = i * app.n + r;
 
                   if ( fabs( h_out_check[idx] - app.h_out[idx] ) > 1e-5 )
                     {
                       err_count++;
                       if ( err_count < 5 )
-                        printf("Error at vec %d elt %d: %.7f != %.7f (correct)\n",
+                        printf
+                          ("Error at vec %d elt %d: %.7f != %.7f (correct)\n",
                                i, r, app.h_out[idx], h_out_check[idx] );
                     }
                 }
             if ( err_count )
               printf("Total errors %d\n", err_count);
           }
-        printf("%s",table.body_get());
       }
   }
 }
