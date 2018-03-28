@@ -44,11 +44,12 @@ stdout_width_get()
 
 class pTable {
 public:
-  pTable():num_lines(0),line(""),body(""),opt_underline(false){};
+  pTable():num_lines(0),line(""),body(""),opt_underline(false),stream(NULL){};
 
   int num_lines;
   pString line, body;
   bool opt_underline;
+  FILE *stream;
   enum Justification { pT_Unset, pT_Left, pT_Center, pT_Right };
 
   struct Col_Info {
@@ -105,8 +106,10 @@ public:
               }
             body += ul + "\n";
           }
+        if ( stream ) fprintf(stream,"%s",body.s);
       }
     body += line + "\n";
+    if ( stream ) fprintf(stream,"%s\n",line.s);
     line = "";
   }
   template <typename T>
