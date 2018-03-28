@@ -684,14 +684,13 @@ main(int argc, char **argv)
               } else {
 
               printf
-                ("%-15s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
-                 "%5.2f I/F  %5.1f%%\n",
+                ("%-20s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
+                 "%5.2f I/F\n",
                  info.ki[kernel].name,
                  (thd_per_block + 31 ) >> 5,
                  this_elapsed_time_s * 1e6,
                  thpt_compute_gflops, thpt_data_gbps,
-                 NPerf_metric_value_get("inst_executed") * 32 / num_ops,
-                 NPerf_metric_value_get("gld_efficiency")
+                 NPerf_metric_value_get("inst_executed") * 32 / num_ops
                  );
             }
 
