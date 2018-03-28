@@ -835,7 +835,7 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
 
 
 void
-NPerf_init(bool turn_on)
+NPerf_init_(bool turn_on)
 {
   assert( !rt_info || rt_info->cupti_on == turn_on ); // Pending testing.
   if ( rt_info ) return;
@@ -1150,7 +1150,15 @@ NPerf_metrics_off()
 void
 NPerf_data_reset()
 {
-  if ( !rt_info ) return;
+  if ( !rt_info )
+    {
+      fprintf
+      (stderr,
+       R"--(Attempt to use an NPerf function without first calling NPerf_init.
+  Call NPerf_init(false); when NPerf not wanted.
+)--");
+      assert( false );
+    }
   rt_info->data_reset();
 }
 

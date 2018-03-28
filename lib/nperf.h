@@ -15,7 +15,18 @@ typedef enum
     NPerf_Status_ENUME_SIZE }
   NPerf_Status;
 
-void NPerf_init(bool turn_on = true);
+void NPerf_init_(bool turn_on = true);
+
+inline void
+NPerf_init(bool turn_on = true)
+{
+#ifdef __CUDACC_DEBUG__
+  NPerf_init_(false);
+#else
+  NPerf_init_(turn_on);
+#endif
+}
+
 void NPerf_atend();
 
 int NPerf_min_launches_get(); 
