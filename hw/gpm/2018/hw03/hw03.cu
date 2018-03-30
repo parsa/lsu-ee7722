@@ -26,7 +26,7 @@
 #include <ptable.h>
 
 // Maximum size of matrix.
-#define N 32
+#define N 64
 
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
@@ -107,9 +107,8 @@ mxv_sh_ochunk()
   __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
   // Maximum number of output vector components written per thread,
-  // based on vector size, eN. Actual number may be eN-1 when eN is
-  // not a multiple of CS.
-  const int NL = ( eN + CS - 1 ) / CS;
+  // based on vector size, eN.
+  const int NL = eN / CS;
 
   /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
   //  Instead, modify mxv_sh_ochunk_sol_mn.
@@ -141,8 +140,7 @@ mxv_sh_ochunk()
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < eN ) // If needed when eN not a multiple of CS.
-                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
 
@@ -151,14 +149,13 @@ mxv_sh_ochunk()
       for ( int rr=0; rr<NL; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < eN )
-            d_app.d_out[ ( hb + thd_v_offset ) * eN + r ] = vout[rr];
+          d_app.d_out[ ( hb + thd_v_offset ) * eN + r ] = vout[rr];
         }
-
     }
 }
 
 // Instantiate versions for 16 by 16 and 32 by 32 matrices.
+extern "C" __global__ void mxv_sh_ochunk_64(){ mxv_sh_ochunk<64>(); }
 extern "C" __global__ void mxv_sh_ochunk_32(){ mxv_sh_ochunk<32>(); }
 extern "C" __global__ void mxv_sh_ochunk_16(){ mxv_sh_ochunk<16>(); }
 
@@ -190,10 +187,10 @@ mxv_sh_ochunk_mn()
 
   // Maximum number of output vector components written per thread,
   // based on maximum vector size, N.
-  const int NL = ( N + CS - 1 ) / CS;
+  const int NL = N / CS;
   // Number of output vector components written per thread based on
   // vector size, n.
-  const int nl = ( n + CS - 1 ) / CS;
+  const int nl =  n / CS;
 
   /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
   //  Instead, modify mxv_sh_ochunk_sol_mn.
@@ -227,8 +224,7 @@ mxv_sh_ochunk_mn()
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < n ) // If needed when n not a multiple of CS.
-                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
 
@@ -239,8 +235,7 @@ mxv_sh_ochunk_mn()
       for ( int rr=0; rr<nl; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < n )
-            d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
+          d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
         }
     }
   /// DO NOT MODIFY THIS ROUTINE. USE IT FOR COMPARISON.
@@ -251,7 +246,7 @@ mxv_sh_ochunk_mn()
 extern "C" __global__ void
 mxv_sh_ochunk_sol_mn()
 {
-  /// PUT SOLUTION IN THIS ROUTINE.
+  /// PUT SOLUTION IN ↓↓ THIS ROUTINE ↓↓.
 
   // Matrix size is in d_app structure. d_app.n by d_app.n.
 
@@ -274,10 +269,12 @@ mxv_sh_ochunk_sol_mn()
 
   // Maximum number of output vector components written per thread,
   // based on maximum vector size, N.
-  const int NL = ( N + CS - 1 ) / CS;
+  const int NL = N / CS;
   // Number of output vector components written per thread based on
   // vector size, n.
-  const int nl = ( n + CS - 1 ) / CS;
+  const int nl =  n / CS;
+
+  /// PUT SOLUTION IN ↕↕ THIS ROUTINE ↕↕.
 
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
@@ -308,8 +305,7 @@ mxv_sh_ochunk_sol_mn()
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < n ) // If needed when n not a multiple of CS.
-                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
 
@@ -317,10 +313,11 @@ mxv_sh_ochunk_sol_mn()
       for ( int rr=0; rr<nl; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < n )
-            d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
+          d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
         }
     }
+
+  /// PUT SOLUTION IN ↑↑ THIS ROUTINE ↑↑.
 }
 
 
@@ -339,11 +336,15 @@ print_gpu_and_kernel_info()
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
-
-  info.GET_INFO(mxv_sh_ochunk_32);
-  info.GET_INFO(mxv_sh_ochunk_16);
-  info.GET_INFO(mxv_sh_ochunk_mn);
+#if 0
   info.GET_INFO(mxv_sh_ochunk_sol_mn);
+#else
+  info.GET_INFO(mxv_sh_ochunk_16);
+  info.GET_INFO(mxv_sh_ochunk_32);
+  info.GET_INFO(mxv_sh_ochunk_64);
+  info.GET_INFO(mxv_sh_ochunk_sol_mn);
+  info.GET_INFO(mxv_sh_ochunk_mn);
+#endif
 
   // Print information about kernel.
   //
@@ -418,8 +419,8 @@ main(int argc, char **argv)
       NPerf_metric_collect("gld_efficiency");
       NPerf_metric_collect("l2_read_throughput");
       NPerf_metric_collect("l2_write_throughput");
-      NPerf_metric_collect("dram_read_throughput");
-      NPerf_metric_collect("dram_write_throughput");
+      NPerf_metric_collect("flop_sp_efficiency");
+      NPerf_metric_collect("shared_efficiency");
     }
   //
   // Note: The more metrics that are collected, the more times a kernel
@@ -450,6 +451,9 @@ main(int argc, char **argv)
 
   printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
          N, N, app.num_vecs, num_blocks, thd_per_block_goal);
+  printf("Elements per thread: %.1f (4 wp) - %.1f (32 wp)\n",
+         double(app.num_vecs) / ( num_blocks * 4 * 32 ),
+         double(app.num_vecs) / ( num_blocks * 32 * 32 ));
 
   // Initialize input array.
   //
@@ -470,7 +474,7 @@ main(int argc, char **argv)
     vector<Elt_Type> h_out_check;
   };
 
-  vector<int> sizes = { 32, 16, 12 };
+  vector<int> sizes = { 64, 32, 16 };
   map<int,Shape> shapes;
   for ( auto n: sizes ) shapes.emplace(n,n);
 
@@ -508,6 +512,8 @@ main(int argc, char **argv)
       string suffix = kn.substr(kn.size()-3,3);
       if ( suffix == "_mn" )
         for ( auto& sh: shapes ) kshapes.emplace_back(kernel,&sh.second,ki);
+      else if ( suffix == "_64" )
+        kshapes.emplace_back(kernel,&shapes[64],ki);
       else if ( suffix == "_32" )
         kshapes.emplace_back(kernel,&shapes[32],ki);
       else if ( suffix == "_16" )
@@ -567,7 +573,9 @@ main(int argc, char **argv)
         pTable table;
         table.stream = stdout;
 
-        for ( int wp_cnt = wp_start; wp_cnt <= wp_stop; wp_cnt += wp_inc )
+        for ( int wp_cnt = 0, wp_iter = wp_start;
+              wp_cnt < wp_stop && ( wp_cnt = min(wp_iter,wp_stop) );
+              wp_iter += wp_inc )
           {
             const int thd_per_block =
               vary_warps ? wp_cnt << 5 : thd_per_block_no_vary;
@@ -606,8 +614,10 @@ main(int argc, char **argv)
 
             if ( vary_warps )
               {
-                const double __attribute__((unused)) comp_frac =
-                  4e9 * thpt_compute_gflops / info.chip_sp_flops;
+                const double comp_frac =
+                  1e9 * thpt_compute_gflops
+                  / ( sizeof(Elt_Type) == 4 ? info.chip_sp_flops :
+                      sizeof(Elt_Type) == 8 ? info.chip_dp_flops : 1 );
                 const double comm_frac =
                   min(2.0,1e9 * thpt_data_gbps / info.chip_bw_Bps);
 
@@ -645,7 +655,6 @@ main(int argc, char **argv)
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
-                table.entry("FP θ","%4.0f", thpt_compute_gflops);
                 table.entry
                   ("I/op","%4.1f",
                    NPerf_metric_value_get("inst_executed") * 32.0 / num_ops );
@@ -655,30 +664,35 @@ main(int argc, char **argv)
                       ("Ld eff","%5.1f%%",
                        NPerf_metric_value_get("gld_efficiency"));
                     table.entry
+                      ("SM eff","%5.1f%%",
+                       NPerf_metric_value_get("shared_efficiency"));
+                    table.entry
                       ("L2rθ","%5.1f",
                        NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
                     table.entry
                       ("L2wθ","%5.1f",
                        NPerf_metric_value_get("l2_write_throughput") * 1e-9 );
                     table.entry
-                      ("DRrθ","%5.1f",
-                       NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
-                    table.entry
-                      ("DRwθ","%5.1f",
-                       NPerf_metric_value_get("dram_write_throughput") * 1e-9 );
+                      ("FP%","%5.1f%%",
+                       NPerf_metric_value_get("flop_sp_efficiency"));
                   }
 
+                const bool plot_bandwidth = false;
+
                 table.entry("GB/s","%4.0f", thpt_data_gbps);
+                table.entry("FP θ","%4.0f", thpt_compute_gflops);
 
                 const int max_st_len =
                   max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
 
-                string bw_util_hdr = "Bandwidth Util";
-                bw_util_hdr += string(max_st_len - bw_util_hdr.length(),'-');
+                string util_hdr =
+                  plot_bandwidth ? "Bandwidth Util" : "FP Utilization";
+                const double frac = plot_bandwidth ? comm_frac : comp_frac;
+                util_hdr += string(max_st_len - util_hdr.length(),'-');
                 table.entry
-                  (bw_util_hdr,fmt,
-                   string( size_t(max(0.0,comm_frac*max_st_len)), '*' ),
+                  (util_hdr,fmt,
+                   string( size_t(max(0.0,frac*max_st_len)), '*' ),
                    pTable::pT_Left);
 
               } else {
