@@ -8,7 +8,7 @@
 //
 //   c++:  http://en.cppreference.com
 //   CUDA: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
-//
+//   CUDA debugger: https://docs.nvidia.com/cuda/cuda-gdb/index.html
 
 #include <pthread.h>
 #include <string.h>
@@ -449,8 +449,9 @@ main(int argc, char **argv)
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
   app.d_out_f4 = (float4*) app.d_out;
 
-  printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
-         N, N, app.num_vecs, num_blocks, thd_per_block_goal);
+  printf
+    ("Max matrix: %d x %d.  Num vectors (S): %d.   Grid size: %d blocks.\n",
+         N, N, app.num_vecs, num_blocks);
   printf("Elements per thread: %.1f (4 wp) - %.1f (32 wp)\n",
          double(app.num_vecs) / ( num_blocks * 4 * 32 ),
          double(app.num_vecs) / ( num_blocks * 32 * 32 ));
