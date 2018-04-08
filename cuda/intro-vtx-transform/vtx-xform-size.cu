@@ -705,7 +705,7 @@ main(int argc, char **argv)
 
   // Don't collect performance data if we are varying warps. Why?
   // Because it takes too long.
-  if ( !opt_p && vary_warps )
+  if ( false )
     NPerf_metrics_off();
 
   const size_t in_size_elts = size_t(app.num_vecs) * N;
@@ -761,6 +761,7 @@ main(int argc, char **argv)
   const int64_t amt_data_bytes = in_size_bytes + out_size_bytes;
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
+  const int output_width = stdout_width_get();
 
   {
     // Prepare events used for timing.
@@ -836,12 +837,12 @@ main(int argc, char **argv)
 
             if ( vary_warps )
               {
-                const char* const stars = "********************************************************************************";
-                const int stars_len = 80;
-                const double comp_frac = 
-                  4e9 * thpt_compute_gflops / info.chip_sp_flops;
+                const double comp_frac =
+                  1e9 * thpt_compute_gflops
+                  / ( sizeof(Elt_Type) == 4 ? info.chip_sp_flops :
+                      sizeof(Elt_Type) == 8 ? info.chip_dp_flops : 1 );
                 const double comm_frac =
-                  1e9 * thpt_data_gbps / info.chip_bw_Bps;
+                  min(2.0,1e9 * thpt_data_gbps / info.chip_bw_Bps);
 
                 // Number of warps, rounded up.
                 //
@@ -877,7 +878,9 @@ main(int argc, char **argv)
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
-                table.entry("FP θ","%4.0f", thpt_compute_gflops);
+                table.entry
+                  ("I/op","%4.1f",
+                   NPerf_metric_value_get("inst_executed") * 32.0 / num_ops );
                 if ( opt_p )
                   {
                     table.entry
@@ -897,16 +900,22 @@ main(int argc, char **argv)
                        NPerf_metric_value_get("dram_write_throughput") * 1e-9 );
                   }
 
+                const bool plot_bandwidth = true;
+
+                table.entry("FP θ","%4.0f", thpt_compute_gflops);
                 table.entry("GB/s","%4.0f", thpt_data_gbps);
 
-                const int max_st_len = 79 - table.row_len_get();
+                const int max_st_len =
+                  max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
 
-                string bw_util_hdr = "Bandwidth Util";
-                bw_util_hdr += string(max_st_len - bw_util_hdr.length(),'-');
+                string util_hdr =
+                  plot_bandwidth ? "Data BW Util" : "FP Utilization";
+                const double frac = plot_bandwidth ? comm_frac : comp_frac;
+                util_hdr += string(max_st_len - util_hdr.length(),'-');
                 table.entry
-                  (bw_util_hdr,fmt,
-                   &stars[stars_len-int(comm_frac*max_st_len)],
+                  (util_hdr,fmt,
+                   string( size_t(max(0.0,frac*max_st_len)), '*' ),
                    pTable::pT_Left);
 
               } else {
