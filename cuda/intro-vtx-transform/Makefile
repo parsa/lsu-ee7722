@@ -58,12 +58,12 @@ CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
 
 all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
- vtx-xform-local vtx-xform-size
+ vtx-xform-local vtx-xform-size vtx-xform-sparse
 
 SRC_FILES = $(all:=.cu)
 
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better vtx-xform-phi
+	  vtx-xform-omp vtx-xform-better vtx-xform-phi vtx-xform-sparse
 
 default: $(TARGETS)
 
