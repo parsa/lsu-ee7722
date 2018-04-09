@@ -60,15 +60,14 @@ __constant__ App d_app;
 
 typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 
-__device__ __host__ bool skip(Elt_Type elt0) { return elt0 < 0.5; }
-
 extern "C" __global__ void
 mxv()
 {
-  // Compute element number to start at.
+  // Group (chunk) size: The number of threads that cooperate to read
+  // and write vectors.
   //
-
-  const int CS = 32/sizeof(Elt_Type);
+  const int req_size_bytes = 32;
+  const int CS = req_size_bytes / sizeof(Elt_Type);
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -108,7 +107,6 @@ mxv()
               vout[r] += d_app.matrix[r][c+cc] * vin[cc];
         }
 
-      if(1)
 #pragma unroll
       for ( int rr=0; rr<M; rr += CS )
         {
@@ -118,21 +116,88 @@ mxv()
             d_app.d_out[ ( hb + thd_g_offset + g ) * M + rr + thd_c_offset ]
               = vxfer[g][threadIdx.x];
         }
-      else
-#pragma unroll
-      for ( int r=0; r<M; r++ )
-        d_app.d_out[ ( hb + threadIdx.x ) * M + r ] = vout[r];
-
     }
 }
 
-extern "C" __global__ void
-mxv_wq()
+struct CData
+{
+  __device__ CData(int t, int a):thd(t),amt_work(a){};
+  const int thd, amt_work;
+};
+
+typedef CData (*Compress_Func)(bool active, short* const &prefix);
+
+__device__ CData
+compress_atomic(bool active, short* const &workq)
+{
+  __shared__ int work_pos;
+  __syncthreads();
+  if ( threadIdx.x == 0 ) work_pos = 0;
+  __syncthreads();
+  if ( active ) workq[atomicAdd(&work_pos,1)] = threadIdx.x;
+  __syncthreads();
+  return CData( threadIdx.x < work_pos ? workq[threadIdx.x] : -1, work_pos );
+}
+
+__device__ CData
+compress(bool active, short* const &prefix)
+{
+  const int MAX_BLOCK_SIZE = 1024;
+  prefix[threadIdx.x] = active;
+  short my_val = active;
+  for ( int dist = 1; dist < MAX_BLOCK_SIZE; dist <<= 1 )
+    {
+      __syncthreads();
+      prefix[threadIdx.x] = my_val;
+      __syncthreads();
+      if ( dist <= threadIdx.x ) my_val += prefix[threadIdx.x-dist];
+      if ( dist >= blockDim.x ) break;
+    }
+  __shared__ short num_active;
+  if ( threadIdx.x == blockDim.x - 1 ) num_active = my_val;
+  __syncthreads();
+  if ( active ) prefix[my_val-1] = threadIdx.x;
+  __syncthreads();
+  return CData( threadIdx.x<num_active ? prefix[threadIdx.x] : -1, num_active );
+}
+
+__device__ CData
+compress2(bool active, short* const &prefix)
+{
+  const int wp_lg = 5;
+  const int wp_sz = 1 << wp_lg;
+  const int wp_mk = wp_sz - 1;
+  __shared__ int num_act_blk;
+  if ( threadIdx.x == 0 ) num_act_blk = 0;
+  const int lane = threadIdx.x & wp_mk;
+  const uint32_t msk = 0xffffffff;
+
+  const uint32_t active_wp_v = __ballot_sync(msk,active);
+  const uint32_t active_pf_v = active_wp_v << ( 31 - lane );
+  const uint32_t my_pf = __popc(active_pf_v);
+
+  int pfx_wp = 0;
+  __syncthreads();
+  if ( lane == wp_mk ) pfx_wp = atomicAdd( &num_act_blk, my_pf );
+  pfx_wp = __shfl_sync(msk,pfx_wp,wp_mk);
+  const int pfx_me = pfx_wp + my_pf;
+  if ( active ) prefix[pfx_me-1] = threadIdx.x;
+  __syncthreads();
+  int thd_num = threadIdx.x < num_act_blk ? prefix[threadIdx.x] : threadIdx.x;
+  return CData( thd_num, num_act_blk );
+}
+
+template <Compress_Func compress> __device__ void
+mxv_compress()
 {
   // Compute element number to start at.
   //
 
-  const int CS = 32/sizeof(Elt_Type);
+  // Group (chunk) size: The number of threads that cooperate to read
+  // and write vectors.
+  //
+  const int req_size_bytes = 32;
+  const int CS = req_size_bytes / sizeof(Elt_Type);
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -140,29 +205,32 @@ mxv_wq()
   const int stop = d_app.num_vecs;
 
   const int thd_c_offset = threadIdx.x % CS;
-  const int thd_v_offset = threadIdx.x;
   const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
 
   const int MAX_BLOCK_SIZE = 1024;
-  assert( threadIdx.x || blockDim.x <= MAX_BLOCK_SIZE );
   __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
 
-  __shared__ int workq[MAX_BLOCK_SIZE];
+  __shared__ short workq[MAX_BLOCK_SIZE];
   workq[threadIdx.x] = threadIdx.x;
-  __shared__ unsigned int work_pos;
 
   for ( int hb = bl_start; hb<stop; hb += num_threads )
     {
-      __syncthreads();
-      if ( threadIdx.x == 0 ) work_pos = 0;
-      __syncthreads();
-      const bool work = d_app.d_op[hb + thd_v_offset] <= d_app.norm_threshold;
-      if ( work ) workq[atomicAdd(&work_pos,1)] = threadIdx.x;
-      __syncthreads();
-      const int work_pos_rnd_up = ( work_pos + CS - 1 ) & ~ ( CS - 1 );
+      const bool work = d_app.d_op[hb + threadIdx.x] <= d_app.norm_threshold;
 
-      if ( thd_v_offset >= work_pos_rnd_up ) continue;
-      const bool skip = thd_v_offset >= work_pos;
+      CData planb = compress(work,workq);
+      const int work_pos = planb.amt_work;
+
+      // If true, no vector assigned to this thread.
+      const bool skip = threadIdx.x >= work_pos;
+
+      // If true, this thread is in a group in which at least one thread
+      // has a vector and at least one thread does not have a vector.
+      //
+      const bool tail_chunk =
+        thd_g_offset < work_pos && thd_g_offset + CS >= work_pos;
+
+      if ( skip && !tail_chunk ) continue;
+
       const int work_v_offset = workq[threadIdx.x];
 
       Elt_Type vout[M];
@@ -186,262 +254,29 @@ mxv_wq()
               vout[r] += d_app.matrix[r][c+cc] * vin[cc];
         }
 
-      if ( skip ) continue;
+      if ( skip && tail_chunk ) continue;
 
+      if ( tail_chunk )
 #pragma unroll
-      for ( int r=0; r<M; r++ )
-        d_app.d_out[ ( hb + work_v_offset ) * M + r ] = vout[r];
-
-    }
-}
-
-struct CData { int thd; int amt_work; };
-
-__device__ CData
-compress(bool active)
-{
-  const int MAX_BLOCK_SIZE = 1024;
-  __volatile__ __shared__ short prefix[MAX_BLOCK_SIZE];
-  prefix[threadIdx.x] = active;
-  short my_val = active;
-  for ( int dist = 1; dist <= blockDim.x; dist <<= 1 )
-    {
-      __syncthreads();
-      prefix[threadIdx.x] = my_val;
-      __syncthreads();
-      if ( dist <= threadIdx.x ) my_val += prefix[threadIdx.x-dist];
-    }
-  __shared__ short num_active;
-  if ( threadIdx.x == blockDim.x - 1 ) num_active = my_val;
-  __syncthreads();
-  if ( active ) prefix[my_val-1] = threadIdx.x;
-  __syncthreads();
-  int thd_num = threadIdx.x < num_active ? prefix[threadIdx.x] : threadIdx.x;
-  CData rv; rv.thd = thd_num; rv.amt_work = num_active;
-  return rv;
-}
-
-__device__ CData
-compress2(bool active)
-{
-  const int MAX_BLOCK_SIZE = 1024;
-  const int wp_lg = 5;
-  const int wp_sz = 1 << wp_lg;
-  const int wp_mk = wp_sz - 1;
-  __shared__ int num_act_blk;
-  if ( threadIdx.x == 0 ) num_act_blk = 0;
-  __shared__ short prefix[MAX_BLOCK_SIZE];
-  const int lane = threadIdx.x & wp_mk;
-  const uint32_t msk = 0xffffffff;
-
-  const uint32_t active_wp_v = __ballot_sync(msk,active);
-  const uint32_t active_pf_v = active_wp_v << ( 31 - lane );
-  const uint32_t my_pf = __popc(active_pf_v);
-
-  int pfx_wp = 0;
-  __syncthreads();
-  if ( lane == wp_mk ) pfx_wp = atomicAdd( &num_act_blk, my_pf );
-  pfx_wp = __shfl_sync(msk,pfx_wp,wp_mk);
-  const int pfx_me = pfx_wp + my_pf;
-  if ( active ) prefix[pfx_me-1] = threadIdx.x;
-  __syncthreads();
-  int thd_num = threadIdx.x < num_act_blk ? prefix[threadIdx.x] : threadIdx.x;
-  CData rv; rv.thd = thd_num; rv.amt_work = num_act_blk;
-  return rv;
-}
-
-extern "C" __global__ void
-mxv_prefix()
-{
-  // Compute element number to start at.
-  //
-
-  const int CS = 32/sizeof(Elt_Type);
-  const int num_threads = blockDim.x * gridDim.x;
-
-  // First element used by this block.
-  const int bl_start = blockIdx.x * blockDim.x;
-  const int stop = d_app.num_vecs;
-
-  const int thd_c_offset = threadIdx.x % CS;
-  const int thd_v_offset = threadIdx.x;
-  const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
-
-  const int MAX_BLOCK_SIZE = 1024;
-  assert( threadIdx.x || blockDim.x <= MAX_BLOCK_SIZE );
-  __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
-
-  __shared__ short workq[MAX_BLOCK_SIZE];
-
-  for ( int hb = bl_start; hb<stop; hb += num_threads )
-    {
-      const bool work = d_app.d_op[hb + thd_v_offset] <= d_app.norm_threshold;
-      CData planb = compress(work);
-      const int work_pos = planb.amt_work;
-      const int work_pos_rnd_up = ( work_pos + CS - 1 ) & ~ ( CS - 1 );
-
-      if ( thd_v_offset >= work_pos_rnd_up ) continue;
-      workq[threadIdx.x] = planb.thd;
-      const bool skip = thd_v_offset >= work_pos;
-      const int work_v_offset = planb.thd;
-
-      Elt_Type vout[M];
-      for ( auto& e: vout ) e = 0;
-
-      for ( int c=0; c<N; c += CS )
-        {
-          for ( int g=0; g<CS; g++ )
-            vxfer[g][threadIdx.x] =
-              d_app.d_in[ ( hb + workq[thd_g_offset + g] ) * N
-                          + c + thd_c_offset ];
-
-          if ( skip ) continue;
-
-          Elt_Type vin[CS];
-          for ( int cc=0; cc<CS; cc++ )
-            vin[cc] = vxfer[ thd_c_offset ][ thd_g_offset + cc ];
-
-          for ( int r=0; r<M; r++ )
-            for ( int cc=0; cc<CS; cc++ )
-              vout[r] += d_app.matrix[r][c+cc] * vin[cc];
-        }
-
-      if ( skip ) continue;
-
+        for ( int r=0; r<M; r++ )
+          d_app.d_out[ ( hb + work_v_offset ) * M + r ] = vout[r];
+      else
 #pragma unroll
-      for ( int r=0; r<M; r++ )
-        d_app.d_out[ ( hb + work_v_offset ) * M + r ] = vout[r];
-
-    }
-}
-extern "C" __global__ void
-mxv_prefix2()
-{
-  // Compute element number to start at.
-  //
-
-  const int CS = 32/sizeof(Elt_Type);
-  const int num_threads = blockDim.x * gridDim.x;
-
-  // First element used by this block.
-  const int bl_start = blockIdx.x * blockDim.x;
-  const int stop = d_app.num_vecs;
-
-  const int thd_c_offset = threadIdx.x % CS;
-  const int thd_v_offset = threadIdx.x;
-  const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
-
-  const int MAX_BLOCK_SIZE = 1024;
-  assert( threadIdx.x || blockDim.x <= MAX_BLOCK_SIZE );
-  __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
-
-  __shared__ short workq[MAX_BLOCK_SIZE];
-
-  for ( int hb = bl_start; hb<stop; hb += num_threads )
-    {
-      const bool work = d_app.d_op[hb + thd_v_offset] <= d_app.norm_threshold;
-      CData planb = compress2(work);
-      const int work_pos = planb.amt_work;
-      const int work_pos_rnd_up = ( work_pos + CS - 1 ) & ~ ( CS - 1 );
-
-      if ( thd_v_offset >= work_pos_rnd_up ) continue;
-      workq[threadIdx.x] = planb.thd;
-      const bool skip = thd_v_offset >= work_pos;
-      const int work_v_offset = planb.thd;
-
-      Elt_Type vout[M];
-      for ( auto& e: vout ) e = 0;
-
-      for ( int c=0; c<N; c += CS )
-        {
-          for ( int g=0; g<CS; g++ )
-            vxfer[g][threadIdx.x] =
-              d_app.d_in[ ( hb + workq[thd_g_offset + g] ) * N
-                          + c + thd_c_offset ];
-
-          if ( skip ) continue;
-
-          Elt_Type vin[CS];
-          for ( int cc=0; cc<CS; cc++ )
-            vin[cc] = vxfer[ thd_c_offset ][ thd_g_offset + cc ];
-
-          for ( int r=0; r<M; r++ )
-            for ( int cc=0; cc<CS; cc++ )
-              vout[r] += d_app.matrix[r][c+cc] * vin[cc];
-        }
-
-      if ( skip ) continue;
-
-#pragma unroll
-      for ( int r=0; r<M; r++ )
-        d_app.d_out[ ( hb + work_v_offset ) * M + r ] = vout[r];
-
+        for ( int rr=0; rr<M; rr += CS )
+          {
+            for ( int g=0; g<CS; g++ )
+              vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
+            for ( int g=0; g<CS; g++ )
+              d_app.d_out
+                [ ( hb + workq[thd_g_offset + g] ) * M + rr + thd_c_offset ]
+                = vxfer[g][threadIdx.x];
+          }
     }
 }
 
-
-
-#if 0
-template <int block_lg, int RADIX_LG>
-__device__ void
-sort_block_1_bit_split
-(int bit_low, int bit_count, Pass_1_Stuff<block_lg,RADIX_LG>& p1s)
-{
-  const int block_size = 1 << block_lg;
-  const int elt_per_tile = elt_per_thread * block_size;
-
-      // Initialize data for prefix sum of bit bit_pos, and make copy of key.
-      //
-      int my_ones_write = 0;
-
-      const int sidx = threadIdx.x;
-
-      // Make a copy of key.
-      //
-      const Sort_Elt key = p1s.keys[ sidx ];
-
-      p1s.prefix[ threadIdx.x + 1 ] = bool(key);
-      if ( threadIdx.x == 0 ) p1s.prefix[ 0 ] = 0;
-
-      uint my_prefix = my_ones_write;
-
-      // Compute a prefix sum of vectors.
-      for ( int tree_level = 0; tree_level < block_lg; tree_level++ )
-        {
-          int dist = 1 << tree_level;
-          int idx_neighbor = threadIdx.x - dist;
-          __syncthreads();
-          uint neighbor_prefix =
-            threadIdx.x >= dist ? p1s.prefix[ idx_neighbor + 1 ] : 0;
-
-          my_prefix += neighbor_prefix;
-          __syncthreads();
-          p1s.prefix[ threadIdx.x + 1 ] = my_prefix;
-        }
-
-      // At this point my_prefix contains exclusive prefix of each group.
-
-      __syncthreads();
-
-      const int all_threads_num_ones = p1s.prefix[ block_size ];
-      const int idx_one_tid_0 = elt_per_tile - all_threads_num_ones;
-      const int smaller_tids_num_ones = p1s.prefix[ threadIdx.x ];
-
-      int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
-      int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;
-
-      for ( int i = 0;  i < elt_per_thread;  i++ )
-        {
-          const int key = keys[i];
-          const int new_idx = key & bit_mask ? idx_one_me++ : idx_zero_me++;
-          p1s.keys[ new_idx ] = key;
-        }
-
-  __syncthreads();
-}
-#endif
-
-
+extern "C" __global__ void mxv_wq() { mxv_compress<compress_atomic>(); }
+extern "C" __global__ void mxv_prefix() { mxv_compress<compress>(); }
+extern "C" __global__ void mxv_prefix2() { mxv_compress<compress2>(); }
 
 GPU_Info
 print_gpu_and_kernel_info()
@@ -459,6 +294,8 @@ print_gpu_and_kernel_info()
   info.get_gpu_info(dev);
 
 #if 0
+  info.GET_INFO(mxv);
+  info.GET_INFO(new_mxv_prefix2);
   info.GET_INFO(mxv_prefix);
 #else
   info.GET_INFO(mxv);
@@ -533,11 +370,10 @@ main(int argc, char **argv)
   // counter API.
   //
   NPerf_metric_collect("inst_executed");
-  NPerf_metric_collect("gld_efficiency");
   if ( opt_p )
     {
-      NPerf_metric_collect("l2_read_throughput");
-      NPerf_metric_collect("l2_write_throughput");
+      NPerf_metric_collect("gst_efficiency");
+      NPerf_metric_collect("shared_efficiency");
       NPerf_metric_collect("dram_read_throughput");
       NPerf_metric_collect("dram_write_throughput");
     }
@@ -552,7 +388,7 @@ main(int argc, char **argv)
 
   const size_t in_size_elts = size_t(app.num_vecs) * N;
   const size_t in_size_bytes = in_size_elts * sizeof( app.h_in[0] );
-  const size_t op_size_bytes = in_size_elts * sizeof( app.h_op[0] );
+  const size_t op_size_bytes = app.num_vecs * sizeof( app.h_op[0] );
   const size_t out_size_elts = size_t(app.num_vecs) * M;
   const size_t out_size_bytes = out_size_elts * sizeof( app.h_out[0] );
 
@@ -623,9 +459,6 @@ main(int argc, char **argv)
     }
 
   const int64_t num_ops = int64_t(M) * N * app.num_vecs;  // Multiply-adds.
-
-  // Amount of data in and out of GPU chip.
-  const int64_t amt_data_bytes = in_size_bytes + op_size_bytes + out_size_bytes;
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
   const int output_width = stdout_width_get();
@@ -723,6 +556,9 @@ main(int argc, char **argv)
               NPerf_metrics_collection_get()
               ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
+            const int64_t amt_data_bytes =
+              op_size_bytes + work_frac * ( in_size_bytes + out_size_bytes );
+
             const double thpt_compute_gflops =
               work_frac * num_ops / this_elapsed_time_s * 1e-9;
             const double thpt_data_gbps =
@@ -771,14 +607,11 @@ main(int argc, char **argv)
                 if ( opt_p )
                   {
                     table.entry
-                      ("Ld eff","%5.1f%%",
-                       NPerf_metric_value_get("gld_efficiency"));
+                      ("St eff","%5.1f%%",
+                       NPerf_metric_value_get("gst_efficiency"));
                     table.entry
-                      ("L2rθ","%5.1f",
-                       NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
-                    table.entry
-                      ("L2wθ","%5.1f",
-                       NPerf_metric_value_get("l2_write_throughput") * 1e-9 );
+                      ("SM eff","%5.1f%%",
+                       NPerf_metric_value_get("shared_efficiency"));
                     table.entry
                       ("DRrθ","%5.1f",
                        NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
