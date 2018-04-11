@@ -125,66 +125,79 @@ struct CData
   const int thd, amt_work;
 };
 
-typedef CData (*Compress_Func)(bool active, short* const &prefix);
+typedef CData (*Compress_Func)(bool have_work, short* const &work_assignments);
 
 __device__ CData
-compress_atomic(bool active, short* const &workq)
+compress_atomic(bool have_work, short* const &worka)
 {
-  __shared__ int work_pos;
+  __shared__ int n_w_work; // Number of threads with work.
   __syncthreads();
-  if ( threadIdx.x == 0 ) work_pos = 0;
+  if ( threadIdx.x == 0 ) n_w_work = 0;
   __syncthreads();
-  if ( active ) workq[atomicAdd(&work_pos,1)] = threadIdx.x;
+  if ( have_work ) worka[atomicAdd(&n_w_work,1)] = threadIdx.x;
   __syncthreads();
-  return CData( threadIdx.x < work_pos ? workq[threadIdx.x] : -1, work_pos );
+  return CData( threadIdx.x < n_w_work ? worka[threadIdx.x] : -1, n_w_work );
 }
 
 __device__ CData
-compress(bool active, short* const &prefix)
+compress(bool have_work, short* const &worka)
 {
   const int MAX_BLOCK_SIZE = 1024;
-  prefix[threadIdx.x] = active;
-  short my_val = active;
+  worka[threadIdx.x] = have_work;
+  short my_val = have_work;
   for ( int dist = 1; dist < MAX_BLOCK_SIZE; dist <<= 1 )
     {
       __syncthreads();
-      prefix[threadIdx.x] = my_val;
+      worka[threadIdx.x] = my_val;
       __syncthreads();
-      if ( dist <= threadIdx.x ) my_val += prefix[threadIdx.x-dist];
+      if ( dist <= threadIdx.x ) my_val += worka[threadIdx.x-dist];
       if ( dist >= blockDim.x ) break;
     }
-  __shared__ short num_active;
-  if ( threadIdx.x == blockDim.x - 1 ) num_active = my_val;
+  __shared__ short n_w_work;
+  if ( threadIdx.x == blockDim.x - 1 ) n_w_work = my_val;
   __syncthreads();
-  if ( active ) prefix[my_val-1] = threadIdx.x;
+  if ( have_work ) worka[my_val-1] = threadIdx.x;
   __syncthreads();
-  return CData( threadIdx.x<num_active ? prefix[threadIdx.x] : -1, num_active );
+  return CData( threadIdx.x<n_w_work ? worka[threadIdx.x] : -1, n_w_work );
 }
 
 __device__ CData
-compress2(bool active, short* const &prefix)
+compress2(bool have_work, short* const &worka)
 {
   const int wp_lg = 5;
   const int wp_sz = 1 << wp_lg;
   const int wp_mk = wp_sz - 1;
-  __shared__ int num_act_blk;
-  if ( threadIdx.x == 0 ) num_act_blk = 0;
   const int lane = threadIdx.x & wp_mk;
   const uint32_t msk = 0xffffffff;
 
-  const uint32_t active_wp_v = __ballot_sync(msk,active);
-  const uint32_t active_pf_v = active_wp_v << ( 31 - lane );
-  const uint32_t my_pf = __popc(active_pf_v);
+  __shared__ int n_w_work;
+  if ( threadIdx.x == 0 ) n_w_work = 0;
+
+  // Bit vector indicating which threads in this warp have work.
+  const uint32_t have_work_wp_v = __ballot_sync(msk,have_work);
+
+  // Shift off bits corresponding to higher-numbered lanes.
+  const uint32_t have_work_pf_v = have_work_wp_v << ( 31 - lane );
+
+  // Use population count function to compute the number of threads
+  // that have work in this warp at this and lower-numbered lanes.
+  // Note: pf is an abbreviation for prefix sum.
+  //
+  const uint32_t my_pf = __popc(have_work_pf_v);
+  //
+  // Note: __popc compiles to a single machine instruction in Kepler to
+  // Pascal GPUs (and hopefully future models too).
 
   int pfx_wp = 0;
   __syncthreads();
-  if ( lane == wp_mk ) pfx_wp = atomicAdd( &num_act_blk, my_pf );
+  if ( lane == wp_mk ) pfx_wp = atomicAdd( &n_w_work, my_pf );
   pfx_wp = __shfl_sync(msk,pfx_wp,wp_mk);
+
   const int pfx_me = pfx_wp + my_pf;
-  if ( active ) prefix[pfx_me-1] = threadIdx.x;
+  if ( have_work ) worka[pfx_me-1] = threadIdx.x;
   __syncthreads();
-  int thd_num = threadIdx.x < num_act_blk ? prefix[threadIdx.x] : threadIdx.x;
-  return CData( thd_num, num_act_blk );
+  int thd_num = threadIdx.x < n_w_work ? worka[threadIdx.x] : threadIdx.x;
+  return CData( thd_num, n_w_work );
 }
 
 template <Compress_Func compress> __device__ void
@@ -210,15 +223,15 @@ mxv_compress()
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
 
-  __shared__ short workq[MAX_BLOCK_SIZE];
-  workq[threadIdx.x] = threadIdx.x;
+  __shared__ short worka[MAX_BLOCK_SIZE]; // Work assignment.
+  worka[threadIdx.x] = threadIdx.x;
 
   for ( int hb = bl_start; hb<stop; hb += num_threads )
     {
       const bool work = d_app.d_op[hb + threadIdx.x] <= d_app.norm_threshold;
 
-      CData planb = compress(work,workq);
-      const int work_pos = planb.amt_work;
+      CData work_info = compress(work,worka);
+      const int work_pos = work_info.amt_work;
 
       // If true, no vector assigned to this thread.
       const bool skip = threadIdx.x >= work_pos;
@@ -231,7 +244,7 @@ mxv_compress()
 
       if ( skip && !tail_chunk ) continue;
 
-      const int work_v_offset = workq[threadIdx.x];
+      const int work_v_offset = worka[threadIdx.x];
 
       Elt_Type vout[M];
       for ( auto& e: vout ) e = 0;
@@ -240,7 +253,7 @@ mxv_compress()
         {
           for ( int g=0; g<CS; g++ )
             vxfer[g][threadIdx.x] =
-              d_app.d_in[ ( hb + workq[thd_g_offset + g] ) * N
+              d_app.d_in[ ( hb + worka[thd_g_offset + g] ) * N
                           + c + thd_c_offset ];
 
           if ( skip ) continue;
@@ -268,7 +281,7 @@ mxv_compress()
               vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
             for ( int g=0; g<CS; g++ )
               d_app.d_out
-                [ ( hb + workq[thd_g_offset + g] ) * M + rr + thd_c_offset ]
+                [ ( hb + worka[thd_g_offset + g] ) * M + rr + thd_c_offset ]
                 = vxfer[g][threadIdx.x];
           }
     }
