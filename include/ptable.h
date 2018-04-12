@@ -5,6 +5,7 @@
 #include "pstring.h"
 #include <algorithm>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 using namespace std;
 
