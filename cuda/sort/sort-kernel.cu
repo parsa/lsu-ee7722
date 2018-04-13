@@ -362,6 +362,8 @@ sort_block_batcher_1()
         }
     }
 
+  __syncthreads();
+
   for ( int sidx = threadIdx.x, i = 0;
         i < elt_per_thread; i++, sidx += blockDim.x )
     sort_out[ idx_block_start + sidx ] = s[sidx];

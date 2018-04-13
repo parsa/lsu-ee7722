@@ -288,6 +288,11 @@ public:
     run_sort(10,2,2);
     run_sort(10,2,3);
 
+    run_sort(10,1,0);
+    run_sort(10,1,1);
+    run_sort(10,1,2);
+    run_sort(10,1,3);
+
     return;
     //
     run_sort(8,4,1);
@@ -364,6 +369,18 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
+    int sort_total_rounds = 0;
+
+    switch ( version ) {
+    case 0: // 1-bit split
+      sort_total_rounds = 32; break;
+    case 1: case 2: case 3: // Batcher
+      sort_total_rounds = ( block_lg + 2 ) * ( block_lg + 2 );
+      break;
+    default:
+      sort_total_rounds = 0;
+    }
+
     table.row_start();
     table.entry("wp",warps_per_block);
     table.entry("ac",active_wp);
@@ -433,6 +450,8 @@ public:
 
         table.entry("t/ms","%7.3f", cuda_time_ms);
         table.entry("G elt/s","%7.3f", array_size / ( cuda_time_ms * 1e6 ));
+        table.entry("Per R","%8.4f",
+                    1e3 * cuda_time_ms / sort_total_rounds);
         table.entry("K Name",ki.name);
         table.row_end();
 
