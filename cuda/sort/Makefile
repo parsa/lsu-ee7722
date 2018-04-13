@@ -2,7 +2,7 @@
 GP_ROOT =  ../..
 
 .PHONY: default
-default: radix-sort
+default: radix-sort sort
 
 SRC_FILES = scan.cc scan-kernel.cu sort.cc sort-kernel.cu \
 	radix-sort.cc radix-sort-kernel.cu

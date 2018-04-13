@@ -51,7 +51,9 @@ kernels_get_attr(GPU_Info *gpu_info)
   GETATTR(sort_segments_1_bit_split);
   GETATTR(sort_block_batcher);
   GETATTR(sort_block_batcher_1);
+  GETATTR(sort_block_batcher_opt<6>);
   GETATTR(sort_block_batcher_opt<8>);
+  GETATTR(sort_block_batcher_opt<10>);
   GETATTR((radix_sort_1_pass_1<6,4>));
   GETATTR(radix_sort_1_pass_2);
 #undef GETATTR
@@ -106,6 +108,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       case 64: sort_block_batcher_opt<6><<<dg,db,shared_size>>>(); break;
       case 128: sort_block_batcher_opt<7><<<dg,db,shared_size>>>(); break;
       case 256: sort_block_batcher_opt<8><<<dg,db,shared_size>>>(); break;
+      case 1024: sort_block_batcher_opt<10><<<dg,db,shared_size>>>(); break;
       default:break;
       }
     }
@@ -422,6 +425,8 @@ sort_block_batcher_opt()
             }
         }
     }
+
+  __syncthreads();
 
   for ( int sidx = threadIdx.x, i = 0;
         i < elt_per_thread; i++, sidx += block_size )

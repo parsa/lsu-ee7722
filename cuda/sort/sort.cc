@@ -7,6 +7,7 @@
 #include <gp/misc.h>
 #include <gp/cuda-util.h>
 #include "sort.cuh"
+#include <ptable.h>
 
 
 typedef unsigned Sort_Elt;
@@ -38,6 +39,8 @@ public:
 
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
+
+  pTable table;
 
   void init(int argc, char **argv)
   {
@@ -248,6 +251,7 @@ public:
 
   void start()
   {
+    table.stream = stdout;
     if ( false )
       {
         // Run just 1-bit-split block sort.
@@ -260,7 +264,7 @@ public:
         return;
       }
 
-    if ( true )
+    if ( false )
       {
         run_sort(6,16,4);
         run_sort(7,16,4);
@@ -268,15 +272,22 @@ public:
         return;
       }
 
-    //  run(8,0,0);
-    //  run_sort(6,4,4);
-    //  run_sort(7,4,4);
     run_sort(6,4,0);
     run_sort(6,4,1);
     run_sort(6,4,2);
+    run_sort(6,4,3);
+
+
     run_sort(8,4,0);
     run_sort(8,4,1);
     run_sort(8,4,2);
+    run_sort(8,4,3);
+
+    run_sort(10,2,0);
+    run_sort(10,2,1);
+    run_sort(10,2,2);
+    run_sort(10,2,3);
+
     return;
     //
     run_sort(8,4,1);
@@ -351,15 +362,11 @@ public:
       gpu_info.get_max_active_blocks_per_mp(version,db.x,dynamic_sm_bytes);
     const int warps_per_block = (31 + db.x ) >> 5;
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
-    // Ignoring memory and regs.
     const int active_wp = active_bl_per_mp * warps_per_block;
 
-    printf("Grid Sz %3d,  Block Sz %3d,  BL/MP %.2f,  Active WP, %2d   %s\n",
-           dg.x, db.x,
-           double(dg.x)/cuda_prop.multiProcessorCount,
-           active_wp,
-           ki.name
-           );
+    table.row_start();
+    table.entry("wp",warps_per_block);
+    table.entry("ac",active_wp);
 
     if ( int(dg.x) > cuda_prop.maxGridSize[0] )
       {
@@ -424,13 +431,10 @@ public:
         const double peak_insn =
           cuda_time_ms * 1e-3 * gpu_info.chip_sp_flops;
 
-        printf("CUDA Time %7.3f ms  Throughput %7.3f G elt/s  Eff %.4f  "
-               "Eff ac %.4f\n",
-               cuda_time_ms,
-               array_size / ( cuda_time_ms * 1e6 ),
-               computation_insn / peak_insn,
-               0.0
-               );
+        table.entry("t/ms","%7.3f", cuda_time_ms);
+        table.entry("G elt/s","%7.3f", array_size / ( cuda_time_ms * 1e6 ));
+        table.entry("K Name",ki.name);
+        table.row_end();
 
 #if 0
         printf("CUDA Time %6.3f ms  Throughput %7.3f GFlop/s  Cycles %d  "
