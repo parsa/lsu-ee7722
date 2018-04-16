@@ -164,7 +164,7 @@ __device__ int lg_ceil(uint n)
   return 32 - __clz(n-1);
 }
 
-__device__ int div_ceil(int a, int b){return int( ceilf( ((float)a)/b ) );}
+__device__ int div_ceil(int a, int b){return (a+b-1)/b;}
 
 #ifdef DEBUG_SORT
 const int debug_sort = true;
