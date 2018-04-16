@@ -1,6 +1,6 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
- ///  Homework 3 - Spring 2018
+ ///  Homework 3 -- SOLUTION -- Spring 2018
 //
 //  Assignment: http://www.ece.lsu.edu/koppel/gp/2018/hw03.pdf
 
@@ -246,78 +246,112 @@ mxv_sh_ochunk_mn()
 extern "C" __global__ void
 mxv_sh_ochunk_sol_mn()
 {
-  /// PUT SOLUTION IN ↓↓ THIS ROUTINE ↓↓.
+  /// SOLUTION IS IN ↓↓ THIS ROUTINE ↓↓.
 
   // Matrix size is in d_app structure. d_app.n by d_app.n.
 
   const int CS = 8;  // Chunk Size: Number of input vector components to read.
   const int num_threads = blockDim.x * gridDim.x;
 
+  // SOLUTION: Specify a grouping factor, g.
+  // Use it to read g input vectors at a time, to reduce the overhead
+  // of reading shared memory elements, etc.
+  //
+  const int g = 4;
+  // Distance between vectors in a group in units of elements.
+  const int STRIDE = N; // First group member: vin[hb]. Second: vin[hb+STRIDE] 
+
   // First element used by this block.
-  const int bl_start = blockIdx.x * blockDim.x / CS;
   const int stop = d_app.num_vecs;
-  const int inc = num_threads / CS;
+
+  const int n = d_app.n;
+
+  const int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  const int tgid = tid / CS;
+
+  // SOLUTION:  Distance between vectors in a group in units of vectors.
+  const int vin_per_str = STRIDE / n;
+  assert( tid != 0 || STRIDE == vin_per_str * n );
+  // First group member: vin[hb]; 2nd group member: vin[hb + vin_per_str * n].
+
+  const int idx1 = tgid % vin_per_str;
+  const int idx2 = ( tgid / vin_per_str ) * vin_per_str * g;
+  const int h_thd_start = idx2 + idx1;
+
+  const int h_inc = ( num_threads / CS / vin_per_str ) * vin_per_str * g;
+  assert( tid != 0 || h_inc > 0 );
 
   const int thd_c_offset = threadIdx.x % CS;
   const int thd_r_offset = thd_c_offset;
   const int thd_v_offset = threadIdx.x / CS;
 
   const int MAX_BLOCK_SIZE = 1024;
-  __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
+  __shared__ Elt_Type vxfer[g][MAX_BLOCK_SIZE];
 
-  const int n = d_app.n;
 
   // Maximum number of output vector components written per thread,
   // based on maximum vector size, N.
   const int NL = N / CS;
   // Number of output vector components written per thread based on
   // vector size, n.
-  const int nl =  n / CS;
-
-  /// PUT SOLUTION IN ↕↕ THIS ROUTINE ↕↕.
-
-  for ( int hb = bl_start; hb<stop; hb += inc )
+  const int nl = n / CS;
+  __shared__ Elt_Type matrix[N][N];
+  if ( threadIdx.x < n )
     {
       // Initialize output vector components to zero. Note that the
       // code initializes for the maximum number of components
       // assigned to this thread, NL, not the actual number, nl or
       // nl-1.
-      Elt_Type vout[NL];
-      for ( auto& v: vout ) v = 0;
+      const int r = threadIdx.x;
+      for ( int c=0; c<n; c++ ) matrix[c][r] = d_app.matrix[r][c];
+      for ( int c=n; c<N; c++ ) matrix[c][r] = 0;
+    }
+  __syncthreads();
+
+  for ( int h = h_thd_start; h<stop; h += h_inc )
+    {
+      Elt_Type vout[g][NL];
+      for ( auto& vo: vout ) for ( auto&v: vo ) v = 0;
 
       for ( int c=0; c<n; c += CS )
         {
           // This thread along with CS-1 of its neighbors load CS
-          // components of an input vector.
+          // components of each of g input vectors.
           //
-          vxfer[threadIdx.x] =
-            d_app.d_in[ ( hb + thd_v_offset ) * n + c + thd_c_offset ];
+          for ( int hh = 0; hh < g; hh++ )
+            vxfer[hh][threadIdx.x] =
+              d_app.d_in[ h * n + hh * STRIDE + c + thd_c_offset ];
+          //
+          // Note: since STRIDE is a compile-time constant the g
+          // global addresses differ by a constant. The compiler will
+          // compute the address once and use a constant offset.
 
           // Copy input vector components from shared to local address space.
           //
-          Elt_Type vin[CS];
-          for ( int cc=0; cc<CS; cc++ )
-            vin[cc] = vxfer[ thd_v_offset * CS + cc ];
+          Elt_Type vin[g][CS];
+          for ( int hh = 0; hh < g; hh++ )
+            for ( int cc=0; cc<CS; cc++ )
+              vin[hh][cc] = vxfer[hh][ thd_v_offset * CS + cc ];
 
-          // Using the CS input vector components, compute part
-          // of our nl output vector components.
-          for ( int rr=0; rr<nl; rr++ )
+          // Use NL as loop limit so that compiler can unroll loop.
+          for ( int rr=0; rr<NL; rr++ )
+            if ( rr < nl )
+              for ( int hh = 0; hh < g; hh++ )
+                {
+                  const int r = rr * CS + thd_r_offset;
+                  for ( int cc=0; cc<CS; cc++ )
+                    vout[hh][rr] += matrix[c+cc][r] * vin[hh][cc];
+                }
+        }
+
+      for ( int rr=0; rr<NL; rr++ )
+        if ( rr < nl )
+          for ( int hh = 0; hh < g; hh++ )
             {
               const int r = rr * CS + thd_r_offset;
-              for ( int cc=0; cc<CS; cc++ )
-                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+              d_app.d_out[ h * n + hh * STRIDE + r ] = vout[hh][rr];
             }
-        }
-
-      // Write output vector components to global memory.
-      for ( int rr=0; rr<nl; rr++ )
-        {
-          const int r = rr * CS + thd_r_offset;
-          d_app.d_out[ ( hb + thd_v_offset ) * n + r ] = vout[rr];
-        }
     }
-
-  /// PUT SOLUTION IN ↑↑ THIS ROUTINE ↑↑.
 }
 
 
