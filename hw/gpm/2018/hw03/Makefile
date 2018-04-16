@@ -6,7 +6,7 @@
 SRC_FILES = hw03.cu hw03-sol.cu
 
 .PHONY: default
-default: hw03
+default: hw03 hw03-sol
 
 GP_ROOT =  ../../../..
 
