@@ -122,7 +122,7 @@ mxv_sh_ochunk()
 #pragma unroll
       for ( int c=0; c<eN; c += CS )
         {
-          // This thread along width CS-1 of its neighbors load CS
+          // This thread along with CS-1 of its neighbors load CS
           // components of an input vector.
           //
           vxfer[threadIdx.x] =
@@ -206,7 +206,7 @@ mxv_sh_ochunk_mn()
 
       for ( int c=0; c<n; c += CS )
         {
-          // This thread along width CS-1 of its neighbors load CS
+          // This thread along with CS-1 of its neighbors load CS
           // components of an input vector.
           //
           vxfer[threadIdx.x] =
@@ -287,7 +287,7 @@ mxv_sh_ochunk_sol_mn()
 
       for ( int c=0; c<n; c += CS )
         {
-          // This thread along width CS-1 of its neighbors load CS
+          // This thread along with CS-1 of its neighbors load CS
           // components of an input vector.
           //
           vxfer[threadIdx.x] =
