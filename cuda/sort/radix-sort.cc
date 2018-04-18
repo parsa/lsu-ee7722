@@ -39,7 +39,7 @@ public:
   pCUDA_Memory<int> scan_out;
   pCUDA_Memory<int> scan_r2;
 
-  int grid_size;
+  int grid_size_max;
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
 
@@ -112,7 +112,7 @@ public:
     // Examine argument 1, block count, default is number of MPs.
     //
     const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
-    grid_size =
+    grid_size_max =
       arg1_int == 0 ? num_mp :
       arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
 
@@ -129,7 +129,7 @@ public:
     const int ref_block_size = 256;
     const int ref_num_tiles =
       div_ceil( array_size, ref_block_size * elt_per_thread );
-    const double ref_tiles_per_block = double(ref_num_tiles) / grid_size;
+    const double ref_tiles_per_block = double(ref_num_tiles) / grid_size_max;
 
     printf("List size %d ( 0x%x )  Tiles / %d-thd Bl %.1f\n",
            array_size, array_size, ref_block_size, ref_tiles_per_block );
@@ -186,7 +186,7 @@ public:
 
   }
 
-  void shadow_sort_advance(int digit_pos)
+  void shadow_sort_advance(int digit_pos, int grid_size)
   {
     const int bit_pos = digit_pos * dapp.radix_lg;
     const int elt_per_tile = dapp.elt_per_tile;
@@ -278,7 +278,7 @@ public:
     assert( serr_count == 0 );
   }
 
-  void shadow_sort_check_pass_2(int digit_pos)
+  void shadow_sort_check_pass_2(int digit_pos, int grid_size)
   {
     sort_out.from_cuda();
 
@@ -356,19 +356,24 @@ public:
       }
   }
 
+  vector<function<void()>> tab_bar_row_finish;
+
   void start()
   {
     table.stream = stdout;
     pass_plot_scale = 0;
+    const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
 
     for ( int b=6; b<=10; b++ )
       for ( int r: {4,6,8} )
-        run_sort(b,r);
+        run_sort(b,min(grid_size_max,num_mp << (10-b)), r);
+
+    for ( auto& f: tab_bar_row_finish ) f();
 
     printf("%s\n",tab_bars.body_get());
   }
 
-  void run_sort(int block_lg, int sort_radix_lg)
+  void run_sort(int block_lg, int grid_size, int sort_radix_lg)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
@@ -436,13 +441,15 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
-    for ( auto t: { &table, &tab_bars } )
+    auto pop = [=](pTable *t)
       {
         t->row_start();
         t->entry("Wp","%2d",warps_per_block);
         t->entry("Ac","%2d",active_wp);
         t->entry("Rd","%2d",sort_radix_lg);
-      }
+      };
+
+    pop(&table);
 
     TO_DEV(dapp);
     const bool ss_check = true;
@@ -475,7 +482,7 @@ public:
             const bool first_iter = digit_pos == 0;
             const bool last_iter = digit_pos + 1 == ndigits;
 
-            if ( ss_check ) shadow_sort_advance(digit_pos);
+            if ( ss_check ) shadow_sort_advance(digit_pos,grid_size);
 
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
@@ -506,7 +513,7 @@ public:
                 NPerf_kernel_data_append(kid2);
               }
 
-            if ( ss_check ) shadow_sort_check_pass_2(digit_pos);
+            if ( ss_check ) shadow_sort_check_pass_2(digit_pos,grid_size);
           }
         assert( next_ce_idx <= cuda_ces.size() );
 
@@ -544,23 +551,30 @@ public:
           nperf_avail ? pass_2_np_time_s : pass_2_ce_time_s;
         const double rs_time_s = pass_1_time_s + pass_2_time_s;
 
-        if ( pass_plot_scale == 0 ) pass_plot_scale = rs_time_s;
-        const int pass_plot_len = 70;
-        const double pass_plot_tscale = pass_plot_len / pass_plot_scale;
-        double pass_plot_t = 0;
-        string pass_plot_txt = "";
-        for ( int i=0; i<ndigits; i++ )
-          for ( int j=0; j<2; j++ )
-            {
-              const char c = j ? '.' : '1';
-              pass_plot_t += pass_times[2*i+j];
-              const int pp_len = pass_plot_t * pass_plot_tscale;
-              assert( pp_len <= pass_plot_len );
-              const int numc = pp_len - pass_plot_txt.length();
-              if ( numc > 0 ) pass_plot_txt += string(numc,c);
-            }
+        if ( rs_time_s > pass_plot_scale ) pass_plot_scale = rs_time_s;
 
-        tab_bars.entry("Time","%-70s",pass_plot_txt);
+        auto finish =
+          [=]()
+          {
+            const int pass_plot_len = 70;
+            const double pass_plot_tscale = pass_plot_len / pass_plot_scale;
+            double pass_plot_t = 0;
+            string pass_plot_txt = "";
+            for ( int i=0; i<ndigits; i++ )
+              for ( int j=0; j<2; j++ )
+                {
+                  const char c = j ? '.' : '1';
+                  pass_plot_t += pass_times[2*i+j];
+                  const int pp_len = pass_plot_t * pass_plot_tscale;
+                  const int numc = pp_len - pass_plot_txt.length();
+                  if ( numc > 0 ) pass_plot_txt += string(numc,c);
+                }
+            pop(&tab_bars);
+            tab_bars.entry("Time","%-70s",pass_plot_txt);
+            tab_bars.row_end();
+          };
+
+        tab_bar_row_finish.push_back(finish);
 
         sort_tile_histo.from_cuda();
         sort_histo.from_cuda();
@@ -588,11 +602,11 @@ public:
 
         const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;
 
-        table.entry("Pass 1","%6.3f",pass_1_time_s*1e3);
+        table.entry("Pass 1","%5.2f",pass_1_time_s*1e3);
         //  table.entry("NPa","%6.3f",pass_2_npa_time_s*1e3);
-        table.entry("Pass 2","%6.3f",pass_2_time_s*1e3);
-        table.entry("G elt/s","%5.3f", array_size / ( rs_time_s * 1e9 ));
-        table.entry("GB/s","%7.3f", thpt_data_gbps);
+        table.entry("Pass 2","%5.2f",pass_2_time_s*1e3);
+        table.entry("M elt/s","%4.0f", array_size / ( rs_time_s * 1e6 ));
+        table.entry("GB/s","%5.1f", thpt_data_gbps);
 
         if ( nperf_avail )
           for ( auto ker : { kid1, kid2 } )
@@ -617,7 +631,7 @@ public:
                  NPerf_metric_value_get("inst_executed", ker)
                  * 32 / ( work_per_round * ndigits ));
               table.entry
-                ("GB/s","%4.1f", comm_bytes * 1e-9 / time_s);
+                ("GB/s","%5.1f", comm_bytes * 1e-9 / time_s);
 
               if ( 0 )
               table.entry
