@@ -148,6 +148,19 @@ public:
     event_info.clear();
     event_info_live.clear();
   };
+
+  void data_append(Metrics_Data *md)
+    {
+      assert( event_info.size() == md->event_info.size() );
+      assert( values.size() == md->values.size() );
+#define ADD_TO(m) m += md->m;
+      ADD_TO(set_rounds);
+      ADD_TO(num_launches);
+      ADD_TO(elapsed_time_ns);
+#undef ADD_TO
+      for ( auto& elt : md->event_info )
+        event_info[elt.first].value += elt.second.value;
+    }
   int set_next;
   int set_rounds;
   int num_launches;
@@ -187,9 +200,28 @@ public:
     display = false;
     et_print_mult_txt = "ms";
   }
+  RTI_Kernel_Info(RTI_Kernel_Info *ki)
+    {
+      *this = *ki;
+    }
+
   ~RTI_Kernel_Info()
   {
     if ( func_name_demangled ) free( func_name_demangled );
+  }
+
+  void time_normalize()
+  {
+    if ( call_count_lite > 1 )
+      {
+        elapsed_time_lite_ns /= call_count_lite;
+        call_count_lite = 1;
+      }
+    if ( call_count > 1 )
+      {
+        elapsed_time_ns /= call_count;
+        call_count = 1;
+      }
   }
 
   RT_Info *rti;
@@ -219,6 +251,7 @@ public:
 public:
 
   void data_reset(RT_Info *rti);
+  void data_append(RTI_Kernel_Info *k);
 
   // Members initialized at end of run when preparing report, applies
   // to any launch of the kernel.
@@ -260,6 +293,9 @@ public:
     kernel_last = NULL;
     metrics_inited = false;
   };
+  ~RT_Info(){
+    for ( auto ki: kernel_info_store ) free(ki);
+  }
   static int need_run_get_call_count;
   bool cupti_inited;      // True if CUPTI successfully initialized.
   bool cupti_on; // True if user wants CUPTI instrumentation. 
@@ -290,6 +326,14 @@ public:
   // The most recent kernel for which event has been collected.
   RTI_Kernel_Info *kernel_last;
 
+  vector<RTI_Kernel_Info*> kernel_info_store;
+
+  RTI_Kernel_Info *kernel_get(NPerf_Kernel_Data kd)
+  {
+    if ( kd.id == -1 ) return NULL;
+    assert( kd.id < int(kernel_info_store.size()) );
+    return kernel_info_store[kd.id];
+  }
   RTI_Kernel_Info *kernel_get(const char *kernel_name)
   {
     if ( !kernel_name ) return kernel_last;
@@ -301,6 +345,9 @@ public:
       if ( !kernel_last ) return NULL;
       return kernel_last->func_name_demangled;
     }
+
+  NPerf_Kernel_Data nperf_kernel_data_dup();
+  void nperf_kernel_data_append(NPerf_Kernel_Data& kd);
 
   CUdevice dev;                 // Device on which info being collected.
   CUcontext context;            // Make sure that only one context used.
@@ -379,9 +426,13 @@ private:
   bool metrics_inited;
 public:
   bool metric_add(string metric_name);
-  double kernel_et_get(const char *kernel_name);
+  template<typename T> double kernel_et_get(T k);
   int kernel_nlaunches_get(const char *kernel_name);
   bool need_run_get(const char *kernel_name);
+  NPerf_Metric_Value
+  metric_value_get(const char *metric_name, RTI_Kernel_Info *ki);
+  NPerf_Metric_Value
+  metric_value_get(const char *metric_name, NPerf_Kernel_Data kd);
   NPerf_Metric_Value
   metric_value_get(const char *metric_name, const char *kernel_name);
   NPerf_Metric_Value
@@ -410,6 +461,18 @@ RTI_Kernel_Info::data_reset(RT_Info *rti)
   call_count_lite = 0;
   elapsed_time_lite_ns = 0;
   md.reset();
+}
+
+void
+RTI_Kernel_Info::data_append(RTI_Kernel_Info *ki)
+{
+  assert( ki && ki->cu_function == cu_function );
+  assert( call_count_lite == 1 );
+  if ( ki->call_count_lite )
+    elapsed_time_lite_ns += ki->elapsed_time_lite_ns / ki->call_count_lite;
+  if ( ki->call_count )
+    elapsed_time_ns += ki->elapsed_time_ns / ki->call_count;
+  md.data_append(&ki->md);
 }
 
 
@@ -958,6 +1021,33 @@ NPerf_Status
 NPerf_metric_data_status(const char* kernel_name)
 { return rt_info->metric_data_status(kernel_name); }
 
+
+NPerf_Kernel_Data NPerf_kernel_data_dup()
+{ return rt_info->nperf_kernel_data_dup(); }
+void NPerf_kernel_data_append(NPerf_Kernel_Data& kd)
+{ rt_info->nperf_kernel_data_append(kd); }
+
+NPerf_Kernel_Data
+RT_Info::nperf_kernel_data_dup()
+{
+  if ( ! NPerf_metrics_collection_get() ) return NPerf_Kernel_Data();
+  assert( kernel_last );
+  RTI_Kernel_Info* const kcpy = new RTI_Kernel_Info(kernel_last);
+  kcpy->time_normalize();
+  const int idx = kernel_info_store.size();
+  kernel_info_store.push_back(kcpy);
+  return NPerf_Kernel_Data(idx);
+}
+
+void
+RT_Info::nperf_kernel_data_append(NPerf_Kernel_Data& kd)
+{
+  if ( ! NPerf_metrics_collection_get() ) return;
+  assert( kernel_last );
+  if ( kd.id < 0 ) { kd = nperf_kernel_data_dup(); return; }
+  kernel_info_store[kd.id]->data_append(kernel_last);
+}
+
 const char*
 NPerf_kernel_last_name_get()
 { return rt_info->kernel_last_name_get(); }
@@ -999,9 +1089,13 @@ RT_Info::kernel_nlaunches_get(const char *kernel_name)
 double
 NPerf_kernel_et_get(const char* kernel_name)
 { return rt_info->kernel_et_get(kernel_name); }
-
 double
-RT_Info::kernel_et_get(const char *kernel_name)
+NPerf_kernel_et_get(NPerf_Kernel_Data kernel_name)
+{ return rt_info->kernel_et_get(kernel_name); }
+
+template<typename T>
+double
+RT_Info::kernel_et_get(T kernel_name)
 {
   if ( !rt_info ) return -1;
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
@@ -1016,7 +1110,20 @@ RT_Info::metric_value_get(const char *metric_name, const char* kernel_name)
 {
   if ( !rt_info || !rt_info->cupti_on )
     return NPerf_Metric_Value(NPerf_Status_Off);
-  RTI_Kernel_Info* const ki = kernel_get(kernel_name);
+  return metric_value_get(metric_name, kernel_get(kernel_name));
+}
+
+NPerf_Metric_Value
+RT_Info::metric_value_get(const char *metric_name, NPerf_Kernel_Data kd)
+{
+  if ( !rt_info || !rt_info->cupti_on )
+    return NPerf_Metric_Value(NPerf_Status_Off);
+  return metric_value_get(metric_name, kernel_get(kd));
+}
+
+NPerf_Metric_Value
+RT_Info::metric_value_get(const char *metric_name, RTI_Kernel_Info *ki)
+{
   if ( !ki ) return NPerf_Metric_Value(NPerf_Status_Kernel_Not_Found);
   auto mii = metrics.metric_info.find(metric_name);
   if ( mii == metrics.metric_info.end() )
@@ -1083,6 +1190,13 @@ NPerf_metric_value_get
 (const char* metric_name, const char *kernel_name)
 {
   return rt_info->metric_value_get(metric_name,kernel_name).d;
+}
+
+double
+NPerf_metric_value_get
+(const char* metric_name, NPerf_Kernel_Data kd)
+{
+  return rt_info->metric_value_get(metric_name,kd).d;
 }
 
 double
