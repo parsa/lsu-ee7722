@@ -11,6 +11,7 @@
 #include "radix-sort.cuh"
 #include <vector>
 #include <algorithm>
+#include <ptable.h>
 using namespace std;
 
 class Sort {
@@ -42,6 +43,10 @@ public:
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
 
+  pTable table;
+  pTable tab_bars;
+  double pass_plot_scale;
+
   // Variables below are valid only during the current run.
   //
   int thisto_array_size_elts;
@@ -54,11 +59,7 @@ public:
   void init(int argc, char **argv)
   {
     // Must be called before any CUDA API calls.
-#   ifdef __P_CUDA_DEBUG__
-    NPerf_init(false);
-#   else
     NPerf_init(true);
-#   endif
 
     gpu_info_print();
 
@@ -83,7 +84,7 @@ public:
 
     // Prepare events used for timing.
     //
-    const int max_digits = sizeof(Sort_Elt) * 8;
+    const int max_digits = sizeof(Sort_Elt) * 8 * 4;
     cuda_ces.resize(max_digits);
     for ( auto& e: cuda_ces ) CE(cudaEventCreate(&e));
 
@@ -164,7 +165,7 @@ public:
           }
         else
           {
-            sort_in[i] = random() | 1;
+            sort_in[i] = random() + 1;
           }
         sort_check.insert(sort_in[i],sort_in[i]);
       }
@@ -357,9 +358,14 @@ public:
 
   void start()
   {
+    table.stream = stdout;
+    pass_plot_scale = 0;
+
     for ( int b=6; b<=10; b++ )
       for ( int r: {4,6,8} )
         run_sort(b,r);
+
+    printf("%s\n",tab_bars.body_get());
   }
 
   void run_sort(int block_lg, int sort_radix_lg)
@@ -430,9 +436,13 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
-    printf("Radix Lg %2d,  Grid Sz %3d,  Block Sz %3d,  BL/MP %2d,  "
-           "Active WP %2d\n",
-           sort_radix_lg, grid_size, block_size, active_bl_per_mp, active_wp);
+    for ( auto t: { &table, &tab_bars } )
+      {
+        t->row_start();
+        t->entry("Wp","%2d",warps_per_block);
+        t->entry("Ac","%2d",active_wp);
+        t->entry("Rd","%2d",sort_radix_lg);
+      }
 
     TO_DEV(dapp);
     const bool ss_check = true;
@@ -451,11 +461,15 @@ public:
 
         sort_in.to_cuda(); // Move input array to CUDA.
 
-        NPerf_data_reset();
-        const char* kname_1 = NULL;
-        const char* kname_2 = NULL;
+        double pass_1_npa_time_s = 0, pass_2_npa_time_s = 0;
 
         uint next_ce_idx = 0;
+
+        NPerf_Kernel_Data kid1, kid2;
+
+        vector<double> pass_times;
+        const bool nperf_avail = NPerf_metrics_collection_get();
+
         for ( int digit_pos = 0; digit_pos < ndigits;  digit_pos++ )
           {
             const bool first_iter = digit_pos == 0;
@@ -464,20 +478,36 @@ public:
             if ( ss_check ) shadow_sort_advance(digit_pos);
 
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
-            sort_launch_pass_1
-              ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
-            kname_1 = NPerf_kernel_last_name_get();
+            for ( NPerf_data_reset(); NPerf_need_run_get(); )
+              sort_launch_pass_1
+                ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
+            CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
+
+            if ( nperf_avail )
+              {
+                const double p1t = NPerf_kernel_et_get();
+                pass_times.push_back(p1t);
+                pass_1_npa_time_s += p1t;
+                NPerf_kernel_data_append(kid1);
+              }
 
             if ( ss_check ) shadow_sort_check_pass_1(digit_pos);
 
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
-            sort_launch_pass_2
-              ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
-            kname_2 = NPerf_kernel_last_name_get();
+            for ( NPerf_data_reset(); NPerf_need_run_get(); )
+              sort_launch_pass_2
+                ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
+            CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
+
+            if ( nperf_avail )
+              {
+                pass_times.push_back(NPerf_kernel_et_get());
+                pass_2_npa_time_s += NPerf_kernel_et_get();
+                NPerf_kernel_data_append(kid2);
+              }
 
             if ( ss_check ) shadow_sort_check_pass_2(digit_pos);
           }
-        CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
         assert( next_ce_idx <= cuda_ces.size() );
 
         // Retrieve data from CUDA.
@@ -490,27 +520,47 @@ public:
         for ( int pos = 0; pos < ndigits;  pos++ )
           {
             float cuda_time_ms;
-            int p1_idx = pos * 2;
+            int p1_idx = pos * 4;
             CE(cudaEventElapsedTime
                ( &cuda_time_ms, cuda_ces[p1_idx], cuda_ces[p1_idx+1]) );
+            if ( !nperf_avail )
+              pass_times.push_back( cuda_time_ms * 1e-3 );
             pass_1_ce_time_s += cuda_time_ms * 1e-3;
             CE(cudaEventElapsedTime
-               ( &cuda_time_ms, cuda_ces[p1_idx+1], cuda_ces[p1_idx+2]) );
+               ( &cuda_time_ms, cuda_ces[p1_idx+2], cuda_ces[p1_idx+3]) );
+            if ( !nperf_avail )
+              pass_times.push_back( cuda_time_ms * 1e-3 );
             pass_2_ce_time_s += cuda_time_ms * 1e-3;
           }
 
         if ( cpu_round + 1 < cpu_rounds ) continue;
 
-        const double pass_1_np_time_s = NPerf_kernel_et_get(kname_1) * ndigits;
-        const double pass_2_np_time_s = NPerf_kernel_et_get(kname_2) * ndigits;
-
-        const bool nperf_avail = NPerf_metrics_collection_get();
+        const double pass_1_np_time_s = NPerf_kernel_et_get(kid1);
+        const double pass_2_np_time_s = NPerf_kernel_et_get(kid2);
 
         const double pass_1_time_s =
           nperf_avail ? pass_1_np_time_s : pass_1_ce_time_s;
         const double pass_2_time_s =
           nperf_avail ? pass_2_np_time_s : pass_2_ce_time_s;
         const double rs_time_s = pass_1_time_s + pass_2_time_s;
+
+        if ( pass_plot_scale == 0 ) pass_plot_scale = rs_time_s;
+        const int pass_plot_len = 70;
+        const double pass_plot_tscale = pass_plot_len / pass_plot_scale;
+        double pass_plot_t = 0;
+        string pass_plot_txt = "";
+        for ( int i=0; i<ndigits; i++ )
+          for ( int j=0; j<2; j++ )
+            {
+              const char c = j ? '.' : '1';
+              pass_plot_t += pass_times[2*i+j];
+              const int pp_len = pass_plot_t * pass_plot_tscale;
+              assert( pp_len <= pass_plot_len );
+              const int numc = pp_len - pass_plot_txt.length();
+              if ( numc > 0 ) pass_plot_txt += string(numc,c);
+            }
+
+        tab_bars.entry("Time","%-70s",pass_plot_txt);
 
         sort_tile_histo.from_cuda();
         sort_histo.from_cuda();
@@ -520,7 +570,9 @@ public:
 
         assert( is_sorted( ss_keys_2.begin(), ss_keys_2.end() ) );
 
-        for ( int tile = 0; tile < 4; tile ++ )
+        const bool show_tile = false;
+        if ( show_tile )
+        for ( int tile = 0; tile < 4; tile++ )
           {
             int bin_sum = 0;
             printf("T %2d: ",tile);
@@ -536,33 +588,44 @@ public:
 
         const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;
 
-        printf("Time %7.3f + %7.3f = %7.3f ms  Rate %7.3f G elt/s  "
-               "Data Thpt %.1f GB/s\n",
-               pass_1_time_s * 1e3, pass_2_time_s * 1e3, rs_time_s * 1e3,
-               array_size / ( rs_time_s * 1e9 ),
-               thpt_data_gbps);
+        table.entry("Pass 1","%6.3f",pass_1_time_s*1e3);
+        //  table.entry("NPa","%6.3f",pass_2_npa_time_s*1e3);
+        table.entry("Pass 2","%6.3f",pass_2_time_s*1e3);
+        table.entry("G elt/s","%5.3f", array_size / ( rs_time_s * 1e9 ));
+        table.entry("GB/s","%7.3f", thpt_data_gbps);
+
         if ( nperf_avail )
-          for ( auto ker : { kname_1, kname_2 } )
+          for ( auto ker : { kid1, kid2 } )
             {
-              const bool pass_1 = ker == kname_1;
+              const bool pass_1 = ker == kid1;
               const size_t work_per_round =
                 pass_1 ? work_per_round_pass_1 : work_per_round_pass_2;
               const size_t comm_bytes =
                 pass_1 ? comm_bytes_pass_1 : comm_bytes_pass_2;
               const double time_s = pass_1 ? pass_1_time_s : pass_2_time_s;
-              printf
-                ("Wp/Cy %4.1f  Eff Ld %3.0f%% St %3.0f%%  "
-                 "Sh Eff %3.0f%%  I/W %2.0f  IS Util %5.1f%% %.1f GB/s\n",
-                 NPerf_metric_value_get("eligible_warps_per_cycle",ker),
-                 NPerf_metric_value_get("gld_efficiency",ker),
-                 NPerf_metric_value_get("gst_efficiency",ker),
-                 NPerf_metric_value_get("shared_efficiency", ker),
+              table.entry
+                ("W/Cy","%4.1f",
+                 NPerf_metric_value_get("eligible_warps_per_cycle",ker));
+              table.entry
+                ("EfSt","%3.0f",
+                 NPerf_metric_value_get("gst_efficiency",ker));
+              table.entry
+                ("EfSh","%3.0f",
+                 NPerf_metric_value_get("shared_efficiency",ker));
+              table.entry
+                ("I/W","%2.0f%",
                  NPerf_metric_value_get("inst_executed", ker)
-                 * 32 / work_per_round,
-                 NPerf_metric_value_get("issue_slot_utilization", ker),
-                 comm_bytes * 1e-9 / time_s
-                 );
+                 * 32 / ( work_per_round * ndigits ));
+              table.entry
+                ("GB/s","%4.1f", comm_bytes * 1e-9 / time_s);
+
+              if ( 0 )
+              table.entry
+                ("UtilIS","%3.0f",
+                 NPerf_metric_value_get("issue_slot_utilization", ker));
             }
+
+        table.row_end();
 
         check_sort(block_size,array_size);
 

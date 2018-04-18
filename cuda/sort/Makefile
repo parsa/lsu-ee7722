@@ -44,8 +44,8 @@ OPT_FLAG = -O3
 
 ## CUDA Debug Flags
 #
-CUDA_DEBUG_FLAGS = -G -lineinfo -D__P_CUDA_DEBUG__
-CUDA_DEBUG_CXX_FLAGS = -D__P_CUDA_DEBUG__
+CUDA_DEBUG_FLAGS = -G -lineinfo
+CUDA_DEBUG_CXX_FLAGS =
 
 # Recognized both by nvcc and g++
 #
