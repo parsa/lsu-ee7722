@@ -76,7 +76,8 @@ public:
     NPerf_metric_collect("eligible_warps_per_cycle");
     NPerf_metric_collect("gld_efficiency");
     NPerf_metric_collect("gst_efficiency");
-    NPerf_metric_collect("shared_efficiency");
+    //  NPerf_metric_collect("shared_efficiency"); // WRT 16 * 4 bytes / cycle.
+    //  NPerf_metric_collect("shared_replay_overhead");
     NPerf_metric_collect("issue_slot_utilization");
     //
     // Note: The more metrics that are collected, the more times a kernel
@@ -90,18 +91,24 @@ public:
 
     // Print information about kernel.
     //
-    printf("\nCUDA Kernel Resource Usage:\n");
 
-    for ( int i=0; i<gpu_info.num_kernels; i++ )
+    const bool show_resource_usage = false;
+
+    if ( show_resource_usage )
       {
-        printf("For %s:\n", gpu_info.ki[i].name);
-        printf("  %6zd shared, %zd const, %zd loc, %d regs; "
-               "%d max threads per block.\n",
-               gpu_info.ki[i].cfa.sharedSizeBytes,
-               gpu_info.ki[i].cfa.constSizeBytes,
-               gpu_info.ki[i].cfa.localSizeBytes,
-               gpu_info.ki[i].cfa.numRegs,
-               gpu_info.ki[i].cfa.maxThreadsPerBlock);
+        printf("\nCUDA Kernel Resource Usage:\n");
+
+        for ( int i=0; i<gpu_info.num_kernels; i++ )
+          {
+            printf("For %s:\n", gpu_info.ki[i].name);
+            printf("  %6zd shared, %zd const, %zd loc, %d regs; "
+                   "%d max threads per block.\n",
+                   gpu_info.ki[i].cfa.sharedSizeBytes,
+                   gpu_info.ki[i].cfa.constSizeBytes,
+                   gpu_info.ki[i].cfa.localSizeBytes,
+                   gpu_info.ki[i].cfa.numRegs,
+                   gpu_info.ki[i].cfa.maxThreadsPerBlock);
+          }
       }
 
 
@@ -364,8 +371,8 @@ public:
     pass_plot_scale = 0;
     const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
 
-    for ( int b=6; b<=10; b++ )
-      for ( int r: {4,6,8} )
+    for ( int r: {4,6,8} )
+      for ( int b=6; b<=10; b++ )
         run_sort(b,min(grid_size_max,num_mp << (10-b)), r);
 
     for ( auto& f: tab_bar_row_finish ) f();
@@ -397,6 +404,7 @@ public:
       div_ceil( array_size, dapp.elt_per_tile );
     const int key_size_bits = 8 * sizeof(Sort_Elt);
     const int ndigits = div_ceil( key_size_bits, sort_radix_lg );
+    const int tiles_per_block = div_ceil(num_tiles,grid_size);
 
     dapp.thisto_array_size_elts = sort_radix * num_tiles;
     dapp.bhisto_array_size_elts = sort_radix * grid_size;
@@ -415,18 +423,13 @@ public:
 
     const size_t comm_keys_bytes_pass_1 = size_keys_bytes * ndigits * 2;
     const size_t comm_keys_bytes_pass_2 = size_keys_bytes * ndigits * 2;
-    const size_t comm_keys_bytes =
-      comm_keys_bytes_pass_1 + comm_keys_bytes_pass_2;
 
     const size_t size_histo_bytes =
       ( num_tiles + 1 ) * sort_radix * sizeof(int);
 
     const size_t comm_histo_bytes_pass_1 = size_histo_bytes * ndigits;
     const size_t comm_histo_bytes_pass_2 = size_histo_bytes * ndigits;
-    const size_t comm_histo_bytes =
-      comm_histo_bytes_pass_1 + comm_histo_bytes_pass_2;
 
-    const size_t comm_bytes = comm_keys_bytes + comm_histo_bytes;
     const size_t comm_bytes_pass_1 =
       comm_keys_bytes_pass_1 + comm_histo_bytes_pass_1;
     const size_t comm_bytes_pass_2 =
@@ -441,6 +444,7 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
+    // Function to write columns common to each output table.
     auto pop = [=](pTable *t)
       {
         t->row_start();
@@ -468,12 +472,11 @@ public:
 
         sort_in.to_cuda(); // Move input array to CUDA.
 
-        double pass_1_npa_time_s = 0, pass_2_npa_time_s = 0;
-
         uint next_ce_idx = 0;
 
         NPerf_Kernel_Data kid1, kid2;
 
+        // Amount of time for each pass of each round.
         vector<double> pass_times;
         const bool nperf_avail = NPerf_metrics_collection_get();
 
@@ -484,32 +487,37 @@ public:
 
             if ( ss_check ) shadow_sort_advance(digit_pos,grid_size);
 
+            //
+            // Pass 1
+            //
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
               sort_launch_pass_1
                 ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
 
+            // Collect any performance-counter data (from CUpti API).
             if ( nperf_avail )
               {
-                const double p1t = NPerf_kernel_et_get();
-                pass_times.push_back(p1t);
-                pass_1_npa_time_s += p1t;
+                pass_times.push_back(NPerf_kernel_et_get());
                 NPerf_kernel_data_append(kid1);
               }
 
             if ( ss_check ) shadow_sort_check_pass_1(digit_pos);
 
+            //
+            // Pass 2
+            //
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
               sort_launch_pass_2
                 ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
 
+            // Collect any performance-counter data (from CUpti API).
             if ( nperf_avail )
               {
                 pass_times.push_back(NPerf_kernel_et_get());
-                pass_2_npa_time_s += NPerf_kernel_et_get();
                 NPerf_kernel_data_append(kid2);
               }
 
@@ -517,13 +525,15 @@ public:
           }
         assert( next_ce_idx <= cuda_ces.size() );
 
-        // Retrieve data from CUDA.
+        // Retrieve data from GPU.
         //
         sort_out.from_cuda();
 
         double pass_1_ce_time_s = 0;
         double pass_2_ce_time_s = 0;
 
+        // Retrieve timing collected using cudaEvent API. 
+        //
         for ( int pos = 0; pos < ndigits;  pos++ )
           {
             float cuda_time_ms;
@@ -542,6 +552,7 @@ public:
 
         if ( cpu_round + 1 < cpu_rounds ) continue;
 
+        // Retrieve timing data from NPerf (uses CUpti API).
         const double pass_1_np_time_s = NPerf_kernel_et_get(kid1);
         const double pass_2_np_time_s = NPerf_kernel_et_get(kid2);
 
@@ -553,9 +564,13 @@ public:
 
         if ( rs_time_s > pass_plot_scale ) pass_plot_scale = rs_time_s;
 
+        // Function to write row of execution time bar-graph table.
+        // Function is executed after all runs are completed so that
+        // time of longest run can be used to scale bar lengths.
         auto finish =
           [=]()
           {
+            pop(&tab_bars);  // Write first few columns of table.
             const int pass_plot_len = 70;
             const double pass_plot_tscale = pass_plot_len / pass_plot_scale;
             double pass_plot_t = 0;
@@ -569,11 +584,11 @@ public:
                   const int numc = pp_len - pass_plot_txt.length();
                   if ( numc > 0 ) pass_plot_txt += string(numc,c);
                 }
-            pop(&tab_bars);
             tab_bars.entry("Time","%-70s",pass_plot_txt);
             tab_bars.row_end();
           };
 
+        // Put function above in a list of things to execute later.
         tab_bar_row_finish.push_back(finish);
 
         sort_tile_histo.from_cuda();
@@ -600,13 +615,10 @@ public:
             printf("  Sum = %d\n",bin_sum);
           }
 
-        const double thpt_data_gbps = comm_bytes / rs_time_s * 1e-9;
-
+        table.entry("T/B","%3d",tiles_per_block);
         table.entry("Pass 1","%5.2f",pass_1_time_s*1e3);
-        //  table.entry("NPa","%6.3f",pass_2_npa_time_s*1e3);
         table.entry("Pass 2","%5.2f",pass_2_time_s*1e3);
         table.entry("M elt/s","%4.0f", array_size / ( rs_time_s * 1e6 ));
-        table.entry("GB/s","%5.1f", thpt_data_gbps);
 
         if ( nperf_avail )
           for ( auto ker : { kid1, kid2 } )
@@ -620,12 +632,15 @@ public:
               table.entry
                 ("W/Cy","%4.1f",
                  NPerf_metric_value_get("eligible_warps_per_cycle",ker));
+              if ( 1 )
+              table.entry
+                ("UIS","%3.0f",
+                 NPerf_metric_value_get("issue_slot_utilization", ker));
+
               table.entry
                 ("EfSt","%3.0f",
                  NPerf_metric_value_get("gst_efficiency",ker));
-              table.entry
-                ("EfSh","%3.0f",
-                 NPerf_metric_value_get("shared_efficiency",ker));
+
               table.entry
                 ("I/W","%2.0f%",
                  NPerf_metric_value_get("inst_executed", ker)
@@ -633,10 +648,6 @@ public:
               table.entry
                 ("GB/s","%5.1f", comm_bytes * 1e-9 / time_s);
 
-              if ( 0 )
-              table.entry
-                ("UtilIS","%3.0f",
-                 NPerf_metric_value_get("issue_slot_utilization", ker));
             }
 
         table.row_end();
