@@ -11,6 +11,7 @@
 #include "radix-sort.cuh"
 #include <vector>
 #include <algorithm>
+#include <functional>
 #include <ptable.h>
 using namespace std;
 
