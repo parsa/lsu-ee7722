@@ -332,7 +332,7 @@ sort_block_1_bit_split
           p1s.prefix[ threadIdx.x + 1 ] = my_prefix;
         }
 
-      // At this point my_prefix contains exclusive prefix of each group.
+      // At this point p1s.prefix contains exclusive prefix of each group.
 
       __syncthreads();
 
