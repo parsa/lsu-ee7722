@@ -1,150 +1,33 @@
-#include "hw04.cuh"
-#include <gp/cuda-util-kernel.h>
-#include <assert.h>
-
-// Constants holding array sizes and pointers and coefficients.
+/// LSU EE 7722 GPU Microarchitecture
 //
-// Values are set by cuda calls, they don't automatically take values
-// of variables in the C program with the same name.
+ ///  Homework 4 - Spring 2018
 //
+//  Assignment: http://www.ece.lsu.edu/koppel/gp/2018/hw04.pdf
 
-__constant__ Radix_Sort_GPU_Constants dapp;
-
-__constant__ int *scan_out;
-__constant__ int *scan_r2;
-
-__device__ int lg_ceil(uint n)
-{
-  if ( n == 0 ) return 0;
-  return 32 - __clz(n-1);
-}
-
-__constant__ Sort_Elt *sort_in, *sort_out, *sort_out_b;
-__constant__ int *sort_tile_histo;
-__constant__ int *sort_histo;
-
-template <int BLOCK_LG, int RADIX_LG>
-__global__ void radix_sort_1_pass_1(int digit_pos, bool first_iter);
-template <int BLOCK_LG, int RADIX_LG>
-__global__ void radix_sort_1_pass_2(int digit_pos, bool last_iter);
-
-__host__ void
-kernels_get_attr(GPU_Info *gpu_info)
-{
-  CU_SYM(dapp);
-  CU_SYM(scan_out);
-  CU_SYM(scan_r2);
-
-  CU_SYM(sort_in); CU_SYM(sort_out); CU_SYM(sort_out_b);
-  CU_SYM(sort_tile_histo);
-  CU_SYM(sort_histo);
-
-#define GETATTR(func) gpu_info->GET_INFO(func)
-
-#define GAPAIR(block_lg,radix_lg) \
-  GETATTR((radix_sort_1_pass_1<block_lg,radix_lg>)); \
-  GETATTR((radix_sort_1_pass_2<block_lg,radix_lg>));
-
-#define GASET(radix_lg) \
-  GAPAIR(6,radix_lg); GAPAIR(7,radix_lg); GAPAIR(8,radix_lg); \
-  GAPAIR(9,radix_lg); GAPAIR(10,radix_lg);
-
-  GASET(4);
-  GASET(6);
-  GASET(8);
-#undef GETATTR
-#undef GASET
-#undef GAPAIR
-}
+ /// PUT SOLUTION IN THIS FILE. 
 
 
-// This routine executes on the CPU.
+ /// Documentation
 //
-__host__ void
-sort_launch_pass_1(int dg, int db, int radix_lg, int digit_pos, bool first_iter)
-{
-# define LAUNCH_RD(BLG,RD_LG) \
-  case 1<<BLG: \
-  radix_sort_1_pass_1<BLG,RD_LG><<<dg,db>>>(digit_pos,first_iter); \
-  break;
+//   c++:  http://en.cppreference.com
+//   CUDA: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
+//   CUDA debugger: https://docs.nvidia.com/cuda/cuda-gdb/index.html
 
-#define LAUNCH_BLKS(RD_LG)                                                    \
-  case RD_LG: switch ( db ){                                                  \
-    LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                                   \
-    LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);              \
-  default: assert( false );                                                   \
-  } break;
-
-  switch ( radix_lg ) {
-    LAUNCH_BLKS(4);
-    LAUNCH_BLKS(6);
-    LAUNCH_BLKS(8);
-    default: assert( false );
-  }
-
-
-# undef LAUNCH_RD
-# undef LAUNCH_BLKS
-}
-
-__host__ void
-sort_launch_pass_2
-(int dg, int db, int radix_lg, int digit_pos, bool last_iter)
-{
-# define LAUNCH_RD(BLG,RD_LG) \
-  case 1<<BLG: \
-  radix_sort_1_pass_2<BLG,RD_LG><<<dg,db>>>(digit_pos,last_iter); \
-  break;
-
-#define LAUNCH_BLKS(RD_LG)                                                    \
-  case RD_LG: switch ( db ){                                                  \
-    LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                                   \
-    LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);              \
-  default: assert( false );                                                   \
-  } break;
-
-  switch ( radix_lg ) {
-    LAUNCH_BLKS(4);
-    LAUNCH_BLKS(6);
-    LAUNCH_BLKS(8);
-    default: assert( false );
-  }
-
-
-# undef LAUNCH_RD
-# undef LAUNCH_BLKS
-}
-
-
-#ifdef DEBUG_SORT
-const int debug_sort = true;
-#else
-const int debug_sort = false;
-#endif
-
-template<int BLOCK_LG, int RADIX_LG>
-struct Pass_1_Stuff
-{
-  Sort_Elt keys[elt_per_thread+(elt_per_thread<<BLOCK_LG)];
-  int prefix[4 + (1<<BLOCK_LG)];
-  int runend[1<<RADIX_LG];
-  int thisto[1<<RADIX_LG];
-  int ghisto[1<<RADIX_LG];
-};
 
 template <int BLOCK_LG, int RADIX_LG>
 __device__ void
-sort_block_1_bit_split
+sort_block_sol_1_bit_split
 (int bit_low, int bit_count,
  Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
 template <int BLOCK_LG, int RADIX_LG>
-__device__ void radix_sort_1_pass_1_tile
+__device__ void radix_sort_sol_pass_1_tile
 (int digit_pos, int tile_idx, bool first_iter,
  Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
+
 template <int BLOCK_LG, int RADIX_LG> __global__ void
-radix_sort_1_pass_1(int digit_pos, bool first_iter)
+radix_sort_sol_pass_1(int digit_pos, bool first_iter)
 {
   __shared__ Pass_1_Stuff<BLOCK_LG,RADIX_LG> p1s;
   int block_size = 1 << BLOCK_LG;
@@ -164,7 +47,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
       p1s.ghisto[ DIG(i) ] = 0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
-    radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>
+    radix_sort_sol_pass_1_tile<BLOCK_LG,RADIX_LG>
       (digit_pos,tile_idx,first_iter,p1s);
 
   if ( !rad_participant ) return;
@@ -177,7 +60,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
 }
 
 template <int BLOCK_LG, int RADIX_LG> __device__ void
-radix_sort_1_pass_1_tile
+radix_sort_sol_pass_1_tile
 (int digit_pos, int tile_idx,
  bool first_iter, Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s)
 {
@@ -207,7 +90,7 @@ radix_sort_1_pass_1_tile
 
   // Sort based upon current digit position
   //
-  sort_block_1_bit_split<BLOCK_LG,RADIX_LG>(start_bit,RADIX_LG,p1s);
+  sort_block_sol_1_bit_split<BLOCK_LG,RADIX_LG>(start_bit,RADIX_LG,p1s);
 
   // Write sorted elements to global memory and prepare for histogram.
   //
@@ -280,7 +163,7 @@ radix_sort_1_pass_1_tile
 
 template <int block_lg, int RADIX_LG>
 __device__ void
-sort_block_1_bit_split
+sort_block_sol_1_bit_split
 (int bit_low, int bit_count, Pass_1_Stuff<block_lg,RADIX_LG>& p1s)
 {
   const int block_size = 1 << block_lg;
@@ -357,7 +240,7 @@ sort_block_1_bit_split
 
 template <int BLOCK_LG, int RADIX_LG>
 __global__ void
-radix_sort_1_pass_2(int digit_pos, bool last_iter)
+radix_sort_sol_pass_2(int digit_pos, bool last_iter)
 {
   const int block_size = 1 << BLOCK_LG;
   int elt_per_tile = elt_per_thread * block_size;

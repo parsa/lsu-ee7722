@@ -37,9 +37,6 @@ public:
   pCUDA_Memory<int> sort_tile_histo;  // First elt in tile with dig val.
   PSList<Sort_Elt,Sort_Elt> sort_check;
 
-  pCUDA_Memory<int> scan_out;
-  pCUDA_Memory<int> scan_r2;
-
   int grid_size_max;
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
@@ -119,7 +116,7 @@ public:
 
     // Examine argument 1, block count, default is number of MPs.
     //
-    const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
+    const int arg1_int = argc < 2 ? -16 : atoi(argv[1]);
     grid_size_max =
       arg1_int == 0 ? num_mp :
       arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
@@ -145,9 +142,6 @@ public:
     sort_in.alloc(array_size);
     sort_out.alloc(array_size);
     sort_out_b.alloc(array_size);
-
-    scan_out.alloc(array_size);
-    scan_out.ptrs_to_cuda("scan_out");
 
     // Send address of array to a CUDA constant variable named "a".
     //
@@ -374,14 +368,15 @@ public:
 
     for ( int r: {4,6,8} )
       for ( int b=6; b<=10; b++ )
-        run_sort(b,min(grid_size_max,num_mp << (10-b)), r);
+        for ( bool sol: { false, true } )
+          run_sort(b,min(grid_size_max,num_mp << (10-b)), r, sol);
 
     for ( auto& f: tab_bar_row_finish ) f();
 
     printf("%s\n",tab_bars.body_get());
   }
 
-  void run_sort(int block_lg, int grid_size, int sort_radix_lg)
+  void run_sort(int block_lg, int grid_size, int sort_radix_lg, bool sol)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
@@ -396,9 +391,6 @@ public:
 
     dapp.radix_lg = sort_radix_lg;
     dapp.radix = sort_radix;
-
-    scan_r2.realloc(array_size);
-    scan_r2.ptrs_to_cuda("scan_r2");
 
     dapp.elt_per_tile = block_size * elt_per_thread;
     const int num_tiles = dapp.num_tiles =
@@ -449,6 +441,7 @@ public:
     auto pop = [=](pTable *t)
       {
         t->row_start();
+        t->entry("S","%c", sol ? 'S' : ' ');
         t->entry("Wp","%2d",warps_per_block);
         t->entry("Ac","%2d",active_wp);
         t->entry("Rd","%2d",sort_radix_lg);
@@ -494,7 +487,8 @@ public:
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
               sort_launch_pass_1
-                ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
+                ( grid_size, block_size, sort_radix_lg, digit_pos,
+                  first_iter, sol );
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
 
             // Collect any performance-counter data (from CUpti API).
@@ -512,7 +506,8 @@ public:
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
               sort_launch_pass_2
-                ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
+                ( grid_size, block_size, sort_radix_lg, digit_pos,
+                  last_iter, sol );
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
 
             // Collect any performance-counter data (from CUpti API).
@@ -572,7 +567,7 @@ public:
           [=]()
           {
             pop(&tab_bars);  // Write first few columns of table.
-            const int pass_plot_len = 70;
+            const int pass_plot_len = 66;
             const double pass_plot_tscale = pass_plot_len / pass_plot_scale;
             double pass_plot_t = 0;
             string pass_plot_txt = "";
@@ -595,8 +590,6 @@ public:
         sort_tile_histo.from_cuda();
         sort_histo.from_cuda();
         sort_out_b.from_cuda();
-        scan_out.from_cuda();
-        scan_r2.from_cuda();
 
         assert( is_sorted( ss_keys_2.begin(), ss_keys_2.end() ) );
 
@@ -638,9 +631,10 @@ public:
                 ("UIS","%3.0f",
                  NPerf_metric_value_get("issue_slot_utilization", ker));
 
-              table.entry
-                ("EfSt","%3.0f",
-                 NPerf_metric_value_get("gst_efficiency",ker));
+              if ( !pass_1 )
+                table.entry
+                  ("EfSt","%3.0f",
+                   NPerf_metric_value_get("gst_efficiency",ker));
 
               table.entry
                 ("I/W","%2.0f%",

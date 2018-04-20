@@ -3,11 +3,11 @@ GP_ROOT =  ../../../..
 .PHONY: default
 default: hw04
 
-SRC_FILES = hw04.cc hw04-kernel.cu
+SRC_FILES = hw04.cc hw04-launch.cu
 
 all = hw04
 
-hw04: hw04-kernel.o hw04.o
+hw04: hw04-launch.o hw04.o
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
