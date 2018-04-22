@@ -886,18 +886,22 @@ main(int argc, char **argv)
                     table.entry
                       ("Ld eff","%5.1f%%",
                        NPerf_metric_value_get("gld_efficiency"));
+                    table.header_span_start("L2 Cache");
                     table.entry
-                      ("L2rθ","%5.1f",
+                      ("Rd θ","%5.1f",
                        NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
                     table.entry
-                      ("L2wθ","%5.1f",
+                      ("Wr θ","%5.1f",
                        NPerf_metric_value_get("l2_write_throughput") * 1e-9 );
+                    table.header_span_end();
+                    table.header_span_start("DRAM");
                     table.entry
-                      ("DRrθ","%5.1f",
+                      ("Rd θ","%5.1f",
                        NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
                     table.entry
-                      ("DRwθ","%5.1f",
+                      ("Wr θ","%5.1f",
                        NPerf_metric_value_get("dram_write_throughput") * 1e-9 );
+                    table.header_span_end();
                   }
 
                 const bool plot_bandwidth = true;
