@@ -6,19 +6,21 @@
 #include <gp/cuda-gpuinfo.h>
 
 typedef unsigned Sort_Elt;
-const int elt_per_thread = 4;
+const int elt_per_thread = 8;
 
 inline __device__ __host__
 int div_ceil(int a, int b){ return ( a + b - 1 ) / b; }
 
 __host__ void kernels_get_attr(GPU_Info *gpu_info);
 
-__host__ void
+__host__ Kernel_Info*
 sort_launch_pass_1
-(int dg, int db, int radix_lg, int digit_pos, bool first_iter, bool sol);
-__host__ void
+(GPU_Info *gpu_info, int dg, int db,
+ int radix_lg, int digit_pos, bool first_iter, bool sol);
+__host__ Kernel_Info*
 sort_launch_pass_2
-(int dg, int db, int radix_lg, int digit_pos, bool last_iter, bool sol);
+(GPU_Info *gpu_info, int dg, int db,
+ int radix_lg, int digit_pos, bool last_iter, bool sol);
 
 struct Radix_Sort_GPU_Constants
 {

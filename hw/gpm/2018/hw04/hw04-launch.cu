@@ -75,19 +75,56 @@ kernels_get_attr(GPU_Info *gpu_info)
 #undef GAPAIR
 }
 
+typedef void (*KPtr)(int,bool);
+
 // This routine executes on the CPU.
 //
-__host__ void
+__host__ Kernel_Info*
 sort_launch_pass_1
-(int dg, int db, int radix_lg, int digit_pos, bool first_iter, bool sol)
+(GPU_Info *gpu_info, int dg, int db,
+ int radix_lg, int digit_pos, bool first_iter, bool sol)
 {
 
 #define LAUNCH_RD(BLG,RD_LG)                                                  \
+  case 1<<BLG: kfunc =                                                        \
+    sol ? radix_sort_sol_pass_1<BLG,RD_LG> : radix_sort_1_pass_1<BLG,RD_LG>;  \
+    break;
+
+#define LAUNCH_BLKS(RD_LG)                                              \
+    case RD_LG: switch ( db ){                                          \
+      LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                           \
+      LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);      \
+    default: assert( false );                                           \
+    } break;
+
+    KPtr kfunc = NULL;
+
+    switch ( radix_lg ) {
+      LAUNCH_BLKS(4);
+      LAUNCH_BLKS(6);
+      LAUNCH_BLKS(8);
+    default: assert( false );
+    }
+
+# undef LAUNCH_RD
+# undef LAUNCH_BLKS
+
+    if ( dg == 0 ) return &gpu_info->get_info(GPU_Info_Func(kfunc));
+
+    kfunc<<<dg,db>>>(digit_pos,first_iter);
+
+    return NULL;
+}
+
+__host__ Kernel_Info*
+sort_launch_pass_2
+(GPU_Info *gpu_info, int dg, int db,
+ int radix_lg, int digit_pos, bool last_iter, bool sol)
+{
+#define LAUNCH_RD(BLG,RD_LG)                                                  \
   case 1<<BLG:                                                                \
-    if ( sol )                                                                \
-      radix_sort_sol_pass_1<BLG,RD_LG><<<dg,db>>>(digit_pos,first_iter);      \
-    else                                                                      \
-      radix_sort_1_pass_1<BLG,RD_LG><<<dg,db>>>(digit_pos,first_iter);        \
+    kfunc =                                                                    \
+      sol ? radix_sort_sol_pass_2<BLG,RD_LG> : radix_sort_1_pass_2<BLG,RD_LG>; \
     break;
 
 #define LAUNCH_BLKS(RD_LG)                                                    \
@@ -97,36 +134,7 @@ sort_launch_pass_1
   default: assert( false );                                                   \
   } break;
 
-  switch ( radix_lg ) {
-    LAUNCH_BLKS(4);
-    LAUNCH_BLKS(6);
-    LAUNCH_BLKS(8);
-    default: assert( false );
-  }
-
-
-# undef LAUNCH_RD
-# undef LAUNCH_BLKS
-}
-
-__host__ void
-sort_launch_pass_2
-(int dg, int db, int radix_lg, int digit_pos, bool last_iter, bool sol)
-{
-#define LAUNCH_RD(BLG,RD_LG)                                                  \
-  case 1<<BLG:                                                                \
-    if ( sol )                                                                \
-      radix_sort_sol_pass_2<BLG,RD_LG><<<dg,db>>>(digit_pos,last_iter);       \
-    else                                                                      \
-      radix_sort_1_pass_2<BLG,RD_LG><<<dg,db>>>(digit_pos,last_iter);         \
-  break;
-
-#define LAUNCH_BLKS(RD_LG)                                                    \
-  case RD_LG: switch ( db ){                                                  \
-    LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                                   \
-    LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);              \
-  default: assert( false );                                                   \
-  } break;
+  KPtr kfunc = NULL;
 
   switch ( radix_lg ) {
     LAUNCH_BLKS(4);
@@ -135,6 +143,11 @@ sort_launch_pass_2
     default: assert( false );
   }
 
+  if ( dg == 0 ) return &gpu_info->get_info(GPU_Info_Func(kfunc));
+
+  kfunc<<<dg,db>>>(digit_pos,last_iter);
+
+  return NULL;
 
 # undef LAUNCH_RD
 # undef LAUNCH_BLKS
