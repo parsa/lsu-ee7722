@@ -6,6 +6,7 @@
 #define CUDA_GPUINFO_H
 
 #include <stdio.h>
+#include <assert.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <string.h>
@@ -185,6 +186,15 @@ struct Kernel_Info {
         return block_size_okay_user_func(block_size);
       return true;
     }
+  int get_max_active_blocks_per_mp
+  (int block_size, int dynamic_shared_memory_bytes = 0) const
+    {
+      int num_blocks = -1;
+      CE( cudaOccupancyMaxActiveBlocksPerMultiprocessor
+          (&num_blocks, (void*)func_ptr, block_size,
+           dynamic_shared_memory_bytes) );
+      return num_blocks;
+    }
 };
 
 // Info about GPU and each kernel.
@@ -193,9 +203,18 @@ class GPU_Info {
 public:
   GPU_Info() { num_kernels = 0; }
   GPU_Info(int dev) { num_kernels = 0; get_gpu_info(dev); }
+  Kernel_Info dummy;
+  Kernel_Info& get_info(GPU_Info_Func k_ptr)
+  {
+    if ( ki_map.find(k_ptr) != ki_map.end() ) return ki[ki_map[k_ptr]];
+    assert( false );
+    return dummy;
+  }
   Kernel_Info& get_info(GPU_Info_Func k_ptr, const char *k_name)
   {
+    if ( ki_map.find(k_ptr) != ki_map.end() ) return ki[ki_map[k_ptr]];
     ki.push_back(Kernel_Info());
+    ki_map[k_ptr] = num_kernels;
     ki[num_kernels].name = k_name;
     ki[num_kernels].func_ptr = k_ptr;
     ki[num_kernels].block_size_okay_user_func = NULL;
@@ -247,6 +266,7 @@ public:
   double chip_dp_flops; // MADD counted as 1 FLOP.
   int cc_per_mp, dp_per_mp;
   std::vector<Kernel_Info> ki;
+  std::map<GPU_Info_Func,int> ki_map;
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
   int num_kernels;
 };
