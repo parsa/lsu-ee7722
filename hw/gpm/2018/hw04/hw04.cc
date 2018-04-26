@@ -57,7 +57,11 @@ public:
   void init(int argc, char **argv)
   {
     // Must be called before any CUDA API calls.
+#ifdef __CUDA_DEBUG_EXE__
+    NPerf_init(false);
+#else
     NPerf_init(true);
+#endif
 
     gpu_info_print();
 

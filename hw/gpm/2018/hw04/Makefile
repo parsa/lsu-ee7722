@@ -40,7 +40,7 @@ OPT_FLAG = -O3
 ## CUDA Debug Flags
 #
 CUDA_DEBUG_FLAGS = -G
-CUDA_DEBUG_CXX_FLAGS =
+CUDA_DEBUG_CXX_FLAGS = -D__CUDA_DEBUG_EXE__
 
 # Recognized both by nvcc and g++
 #
@@ -56,7 +56,7 @@ CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11
+CXX_ONLY_FLAGS = -std=c++11 -DCDEBUG_FLAGS=\"$(CUDA_DEBUG_CXX_FLAGS)\"
 
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
