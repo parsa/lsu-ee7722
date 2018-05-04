@@ -361,6 +361,7 @@ public:
     pass_plot_scale = 0;
 
     for ( int r: {4,6,8} )
+    //  for ( int r: {8} )
       for ( int b=6; b<=10; b++ )
         for ( bool sol: { false, true } )
           run_sort(b, opt_wp_per_mp, r, sol);
