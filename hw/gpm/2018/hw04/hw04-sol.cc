@@ -449,7 +449,24 @@ public:
       comm_keys_bytes_pass_2 + comm_histo_bytes_pass_2;
 
     const size_t work_per_round_pass_1 = array_size * sort_radix_lg;
-    const size_t work_per_round_pass_2 = array_size;
+
+    /// SOLUTION: Homework 4, Problem 1
+    //
+    const size_t rR = sort_radix_lg << sort_radix_lg;  // Radix * lg Radix
+    const size_t work_per_round_pass_2 =
+      // Combine per-block histograms. Redundantly performed by each block.
+      grid_size * grid_size * sort_radix
+      // Compute per-block prefix sum from global histogram.
+      + grid_size * rR
+      // Compute per-tile prefix sum.
+      + num_tiles * rR
+      // Scatter keys.
+      + array_size;
+    //
+    // Note: The work calculation above assumes that the amount of
+    // work (say, instructions) for each component is the same. The
+    // components are combine per-block histograms, compute per-block
+    // prefix sum, compute -er-tile prefix sum, and scatter keys.
 
     // Function to write columns common to each output table.
     auto pop = [=](pTable *t)
@@ -663,7 +680,7 @@ public:
                      NPerf_metric_value_get("gst_efficiency",ker));
 
                 table.entry
-                  ("IW","%2.0f%",
+                  ("IW","%4.1f%",
                    NPerf_metric_value_get("inst_executed", ker)
                    * 32 / ( work_per_round * ndigits ));
               }

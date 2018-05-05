@@ -435,6 +435,10 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
 
       if ( rad_participant )
         {
+
+          //
+          // Compute Global Histogram
+          //
           for ( int gh_idx = 0; gh_idx < gridDim.x; gh_idx++ )
             {
               for ( int i = 0;  i < dig_per_thd;  i++ )
@@ -446,10 +450,6 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
                   global_bin_sum[i] += sort_histo[gh_bin_idx];
                 }
             }
-
-          //
-          // Compute Global Prefix Sum
-          //
 
           for ( int i = 0;  i < dig_per_thd;  i++ )
             {
@@ -463,6 +463,8 @@ radix_sort_1_pass_2(int digit_pos, bool last_iter)
             global_bin_prefix[i] = global_bin_sum[i];
         }
 
+      // Compute prefix sum for this block.
+      //
       for ( int lev=0; lev<RADIX_LG; lev++ )
         {
           const int dist = 1 << lev;
