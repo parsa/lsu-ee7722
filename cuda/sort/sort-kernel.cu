@@ -23,6 +23,7 @@ __constant__ int sort_all_bin_count, sort_all_bin_lg;
 __constant__ int sort_bin_lg;
 
 __global__ void sort_segments_1_bit_split();
+__global__ void sort_segments_1_bit_split_opt();
 __global__ void sort_block_batcher();
 __global__ void sort_block_batcher_1();
 template <int BLOCK_LG> __global__ void sort_block_batcher_opt();
@@ -49,6 +50,7 @@ kernels_get_attr(GPU_Info *gpu_info)
 
 #define GETATTR(func) gpu_info->GET_INFO(func)
   GETATTR(sort_segments_1_bit_split);
+  GETATTR(sort_segments_1_bit_split_opt);
   GETATTR(sort_block_batcher);
   GETATTR(sort_block_batcher_1);
   GETATTR(sort_block_batcher_opt<6>);
@@ -68,23 +70,16 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
   // Launch the kernel, using the provided configuration (block size, etc).
   //
   switch ( version ){
-  case 0:
+  case 0: case 1:
     {
       int elt_per_thread = 4;
       int size_per_elt = 4 + 2;
       int shared_size = db.x * size_per_elt * elt_per_thread;
       if ( !dg.x ) return shared_size;
-      sort_segments_1_bit_split<<<dg,db,shared_size>>>();
-    }
-    break;
-
-  case 1:
-    {
-      int elt_per_thread = 4;
-      int size_per_elt = 4;
-      int shared_size = db.x * size_per_elt * elt_per_thread;
-      if ( !dg.x ) return shared_size;
-      sort_block_batcher<<<dg,db,shared_size>>>();
+      if ( version == 0 )
+        sort_segments_1_bit_split<<<dg,db,shared_size>>>();
+      else
+        sort_segments_1_bit_split_opt<<<dg,db,shared_size>>>();
     }
     break;
 
@@ -94,11 +89,21 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
       int size_per_elt = 4;
       int shared_size = db.x * size_per_elt * elt_per_thread;
       if ( !dg.x ) return shared_size;
-      sort_block_batcher_1<<<dg,db,shared_size>>>();
+      sort_block_batcher<<<dg,db,shared_size>>>();
     }
     break;
 
   case 3:
+    {
+      int elt_per_thread = 4;
+      int size_per_elt = 4;
+      int shared_size = db.x * size_per_elt * elt_per_thread;
+      if ( !dg.x ) return shared_size;
+      sort_block_batcher_1<<<dg,db,shared_size>>>();
+    }
+    break;
+
+  case 4:
     {
       int elt_per_thread = 4;
       int size_per_elt = 4;
@@ -114,7 +119,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
     }
     break;
 
-  case 4:
+  case 5:
     {
       const int bin_lg = 4;
       const int bin_size = 1 << bin_lg;
@@ -153,6 +158,7 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
     break;
 
   default:
+    assert( false );
     break;
   }
   return 0;
@@ -174,9 +180,11 @@ const int debug_sort = false;
 
 
 __device__ void sort_block_1_bit_split(int bit_low, int bit_count);
+__device__ void sort_block_1_bit_split_opt(int bit_low, int bit_count);
 
-__global__ void
-sort_segments_1_bit_split()
+template<bool method_opt>
+__device__ void
+sort_segments_1_bit_split_method()
 {
   int elt_per_thread = 4;
   int elt_per_block = elt_per_thread * blockDim.x;
@@ -192,7 +200,10 @@ sort_segments_1_bit_split()
       s[ sidx ] = sort_in[ idx_block_start + sidx ];
     }
 
-  sort_block_1_bit_split(0,32);
+  if ( method_opt )
+    sort_block_1_bit_split_opt(0,32);
+  else
+    sort_block_1_bit_split(0,32);
 
   for ( int i = 0;  i < elt_per_thread; i++ )
     {
@@ -201,6 +212,15 @@ sort_segments_1_bit_split()
       sort_out[idx] = s[ sidx ];
     }
 }
+
+__global__ void
+sort_segments_1_bit_split()
+{ sort_segments_1_bit_split_method<false>(); }
+__global__ void
+sort_segments_1_bit_split_opt()
+{ sort_segments_1_bit_split_method<true>(); }
+
+
 
 __device__ void
 sort_block_1_bit_split(int bit_low, int bit_count)
@@ -272,6 +292,143 @@ sort_block_1_bit_split(int bit_low, int bit_count)
       const int all_threads_num_ones = s[ pfe_base_rd + blockDim.x ];
       const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
       const int smaller_tids_num_ones = s[ pfe_base_rd + threadIdx.x ];
+
+      int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
+      int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;
+
+      for ( int i = 0;  i < elt_per_thread;  i++ )
+        {
+          const int key = keys[i];
+          const int new_idx = key & bit_mask ? idx_one_me++ : idx_zero_me++;
+          s[ new_idx ] = key;
+        }
+
+    }
+  __syncthreads();
+}
+
+__device__ void
+sort_block_1_bit_split_opt(int bit_low, int bit_count)
+{
+  const int block_size = blockDim.x;
+
+  // Number of elements operated on per thread.
+  //
+  const int elt_per_thread = 4;
+
+  int elt_per_block = elt_per_thread * block_size;
+
+  int* const prefix = &s[ elt_per_block ];
+
+  if ( threadIdx.x == 0 ) prefix[ 0 ] = 0;
+
+  // Sort Elements From LSB to MSB.
+  //
+  for ( int bit_pos=bit_low; bit_pos<bit_low+bit_count; bit_pos++ )
+    {
+      const uint bit_mask = 1 << bit_pos;
+
+      // Storage for thread's keys.
+      //
+      int keys[elt_per_thread];
+
+      __syncthreads();
+
+      // Initialize data for prefix sum of bit bit_pos, and make copy of key.
+      //
+      int my_ones_write = 0;
+
+      const bool use_pop = true;
+
+      const int wp_lg = 5;
+      const int wp_sz = 1 << wp_lg;
+      const int wp_mk = wp_sz - 1;
+      const int lane = threadIdx.x & wp_mk;
+      const int wp_idx = threadIdx.x >> wp_lg;
+      const uint32_t msk = 0xffffffff;
+      int my_pf_wp = 0;
+
+      for ( int i = 0; i < elt_per_thread; i++ )
+        {
+          const int sidx = threadIdx.x * elt_per_thread + i;
+
+          // Make a copy of key.
+          //
+          const int key = s[ sidx ];
+          keys[i] = key;
+          const bool one = key & bit_mask;
+          if ( one ) my_ones_write++;
+          if ( !use_pop ) continue;
+
+          // Compute intra-warp prefix sum for one set of 32 keys.
+
+          // Get vector showing which lanes have a 1.
+          //
+          const uint32_t have_work_wp_v = __ballot_sync(msk,one);
+
+          // Shift off bits corresponding to higher-numbered lanes.
+          //
+          const uint32_t have_work_pf_v = have_work_wp_v << ( 31 - lane );
+
+          // Use popc (population count, which is number of bits = 1)
+          // to compute prefix.
+          //
+          const uint32_t my_pf_wp_i = __popc(have_work_pf_v);
+
+          my_pf_wp += my_pf_wp_i;
+        }
+
+      if ( !use_pop )
+        {
+          my_pf_wp = my_ones_write;
+
+          // Compute intra-warp prefix sum. (Sum within warp.)
+          //
+          for ( int tree_level = 0; tree_level < wp_lg; tree_level++ )
+            {
+              int dist = 1 << tree_level;
+              uint neighbor_prefix = __shfl_up_sync(msk,my_pf_wp,dist);
+              if ( dist <= lane ) my_pf_wp += neighbor_prefix;
+            }
+        }
+
+      // Write total number of 1's in warp to shared memory. This
+      // will be used to compute prefix sum between warps.
+      //
+      if ( lane == wp_mk ) prefix[wp_idx+1] = my_pf_wp;
+
+      __syncthreads();
+
+      // Compute inter-warp prefix sum.  Only warp 0 does this.
+      //
+      if ( wp_idx == 0 )
+        {
+          uint wp_prefix = prefix[threadIdx.x+1];
+          for ( int tree_level = 0; tree_level < block_lg - wp_lg;
+                tree_level++ )
+            {
+              int dist = 1 << tree_level;
+              uint neighbor_prefix = __shfl_up_sync(msk,wp_prefix,dist);
+              if ( dist <= threadIdx.x ) wp_prefix += neighbor_prefix;
+            }
+          prefix[threadIdx.x+1] = wp_prefix;
+        }
+      __syncthreads();
+      const uint wp_prefix = prefix[wp_idx];
+      __syncthreads();
+
+      // Combine inter-warp prefix (wp_prefix) with intra-warp prefix
+      // (my_pf_wp) to get prefix sum within block.
+      //
+      prefix[threadIdx.x+1] = wp_prefix + my_pf_wp;
+
+      // At this point p1s.prefix contains exclusive prefix of each group.
+
+      __syncthreads();
+
+      const int all_threads_num_ones = prefix[ block_size ];
+      const int idx_one_tid_0 = elt_per_block - all_threads_num_ones;
+      const int smaller_tids_num_ones = prefix[ threadIdx.x ];
 
       int idx_zero_me = threadIdx.x * elt_per_thread - smaller_tids_num_ones;
       int idx_one_me = idx_one_tid_0 + smaller_tids_num_ones;

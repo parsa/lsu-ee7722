@@ -37,10 +37,7 @@ public:
   pCUDA_Memory<int> sort_tile_histo;  // First elt in tile with dig val.
   PSList<Sort_Elt,Sort_Elt> sort_check;
 
-  pCUDA_Memory<int> scan_out;
-  pCUDA_Memory<int> scan_r2;
-
-  int grid_size_max;
+  int opt_wp_per_mp;
   int array_size;               // Number of elements in array.
   int array_size_lg;            // ceil( log_2 ( array_size ) )
 
@@ -115,14 +112,10 @@ public:
 
     srand48(1);                   // Seed random number generator.
 
-    const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
-
     // Examine argument 1, block count, default is number of MPs.
     //
-    const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
-    grid_size_max =
-      arg1_int == 0 ? num_mp :
-      arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
+    const int arg1_int = argc < 2 ? 64 : atoi(argv[1]);
+    opt_wp_per_mp = arg1_int;
 
     array_size_lg = argc > 2 ? atoi(argv[2]) : 20;
 
@@ -134,20 +127,12 @@ public:
     dapp.array_size = array_size;
     dapp.array_size_lg = array_size_lg;
 
-    const int ref_block_size = 256;
-    const int ref_num_tiles =
-      div_ceil( array_size, ref_block_size * elt_per_thread );
-    const double ref_tiles_per_block = double(ref_num_tiles) / grid_size_max;
-
-    printf("List size %d ( 0x%x )  Tiles / %d-thd Bl %.1f\n",
-           array_size, array_size, ref_block_size, ref_tiles_per_block );
+    printf("Occ Limit %d warps.  List size %d ( 0x%x )  Elt / Thd %d\n",
+           opt_wp_per_mp, array_size, array_size, elt_per_thread );
 
     sort_in.alloc(array_size);
     sort_out.alloc(array_size);
     sort_out_b.alloc(array_size);
-
-    scan_out.alloc(array_size);
-    scan_out.ptrs_to_cuda("scan_out");
 
     // Send address of array to a CUDA constant variable named "a".
     //
@@ -370,35 +355,56 @@ public:
   {
     table.stream = stdout;
     pass_plot_scale = 0;
-    const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
 
     for ( int r: {4,6,8} )
       for ( int b=6; b<=10; b++ )
-        run_sort(b,min(grid_size_max,num_mp << (10-b)), r);
+        run_sort(b, opt_wp_per_mp, r);
 
     for ( auto& f: tab_bar_row_finish ) f();
 
     printf("%s\n",tab_bars.body_get());
   }
 
-  void run_sort(int block_lg, int grid_size, int sort_radix_lg)
+  void run_sort(int block_lg, int wp_per_mp_limit, int sort_radix_lg)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
     const int num_mp = gpu_info.cuda_prop.multiProcessorCount;
+    const int wp_lg = 5;
 
-    Kernel_Info& ki = gpu_info.ki[0];
-    cudaFuncAttributes& cfa = ki.cfa;
+    Kernel_Info* const ki1 =
+      sort_launch_pass_1(&gpu_info,0,block_size,sort_radix_lg, -1, false );
+    Kernel_Info* const ki2 =
+      sort_launch_pass_2(&gpu_info,0,block_size,sort_radix_lg, -1, false );
 
-    if ( block_size > cfa.maxThreadsPerBlock ) return;
+    // The maximum number of active blocks per MP for pass 1 and pass 2
+    // kernels when launched with a block size of thd_per_block.
+    //
+    const int max_bl_per_mp_1 = ki1->get_max_active_blocks_per_mp(block_size);
+    const int max_bl_per_mp_2 = ki2->get_max_active_blocks_per_mp(block_size);
+
+    const int wp_per_bl_lg = block_lg - wp_lg;
+
+    const int max_wp_per_mp_1 = max_bl_per_mp_1 << wp_per_bl_lg;
+    const int max_wp_per_mp_2 = max_bl_per_mp_2 << wp_per_bl_lg;
+
+    const int use_wp_per_mp_1 = min(max_wp_per_mp_1,wp_per_mp_limit);
+    const int use_wp_per_mp_2 = min(max_wp_per_mp_2,wp_per_mp_limit);
+    const int use_bl_per_mp_1 = max( 1, use_wp_per_mp_1 >> wp_per_bl_lg );
+    const int use_bl_per_mp_2 = max( 1, use_wp_per_mp_2 >> wp_per_bl_lg );
+    const int grid_size_1 = num_mp * use_bl_per_mp_1;
+    const int grid_size_2 = num_mp * use_bl_per_mp_2;
+    const int active_wp_1 =
+      min(use_bl_per_mp_1,max_bl_per_mp_1) << wp_per_bl_lg;
+    const int active_wp_2 =
+      min(use_bl_per_mp_2,max_bl_per_mp_2) << wp_per_bl_lg;
+
+    const int grid_size = max(grid_size_1,grid_size_2);
 
     const int sort_radix = 1 << sort_radix_lg;
 
     dapp.radix_lg = sort_radix_lg;
     dapp.radix = sort_radix;
-
-    scan_r2.realloc(array_size);
-    scan_r2.ptrs_to_cuda("scan_r2");
 
     dapp.elt_per_tile = block_size * elt_per_thread;
     const int num_tiles = dapp.num_tiles =
@@ -437,20 +443,33 @@ public:
       comm_keys_bytes_pass_2 + comm_histo_bytes_pass_2;
 
     const size_t work_per_round_pass_1 = array_size * sort_radix_lg;
-    const size_t work_per_round_pass_2 = array_size;
-    const int block_per_mp = div_ceil( grid_size, num_mp );
-    const int active_bl_per_mp_max =
-      gpu_info.get_max_active_blocks_per_mp(0,block_size,0);
-    const int warps_per_block = (31 + block_size ) >> 5;
-    const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
-    const int active_wp = active_bl_per_mp * warps_per_block;
+
+    const size_t rR = sort_radix_lg << sort_radix_lg;  // Radix * lg Radix
+    const size_t work_per_round_pass_2 =
+      // Combine per-block histograms. Redundantly performed by each block.
+      grid_size * grid_size * sort_radix
+      // Compute per-block prefix sum from global histogram.
+      + grid_size * rR
+      // Compute per-tile prefix sum.
+      + num_tiles * rR
+      // Scatter keys.
+      + array_size;
+    //
+    // Note: The work calculation above assumes that the amount of
+    // work (say, instructions) for each component is the same. The
+    // components are combine per-block histograms, compute per-block
+    // prefix sum, compute -er-tile prefix sum, and scatter keys.
 
     // Function to write columns common to each output table.
     auto pop = [=](pTable *t)
       {
         t->row_start();
-        t->entry("Wp","%2d",warps_per_block);
-        t->entry("Ac","%2d",active_wp);
+        t->entry("Wp","%2d",1<<wp_per_bl_lg);
+        t->header_span_start("Ac Wp");
+        t->entry("P1","%2d",active_wp_1);
+        t->entry("P2","%2d",active_wp_2);
+        t->header_span_end();
+        t->entry("Bl","%2d",grid_size / num_mp );
         t->entry("Rd","%2d",sort_radix_lg);
       };
 
@@ -494,7 +513,8 @@ public:
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
               sort_launch_pass_1
-                ( grid_size, block_size, sort_radix_lg, digit_pos, first_iter );
+                ( &gpu_info, grid_size, block_size, sort_radix_lg, digit_pos,
+                  first_iter );
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
 
             // Collect any performance-counter data (from CUpti API).
@@ -512,7 +532,8 @@ public:
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
               sort_launch_pass_2
-                ( grid_size, block_size, sort_radix_lg, digit_pos, last_iter );
+                ( &gpu_info, grid_size, block_size, sort_radix_lg, digit_pos,
+                  last_iter );
             CE(cudaEventRecord(cuda_ces[next_ce_idx++]));
 
             // Collect any performance-counter data (from CUpti API).
@@ -572,12 +593,15 @@ public:
           [=]()
           {
             pop(&tab_bars);  // Write first few columns of table.
-            const int pass_plot_len = 70;
+            const int row_len_so_far = tab_bars.row_len_get();
+            const int line_len = stdout_width_get();
+            const int pass_plot_len = line_len - row_len_so_far - 3;
+            pStringF fmt("%%-%ds",pass_plot_len);
             const double pass_plot_tscale = pass_plot_len / pass_plot_scale;
             double pass_plot_t = 0;
             string pass_plot_txt = "";
-            for ( int i=0; i<ndigits; i++ )
-              for ( int j=0; j<2; j++ )
+            for ( int j=0; j<2; j++ )
+              for ( int i=0; i<ndigits; i++ )
                 {
                   const char c = j ? '.' : '1';
                   pass_plot_t += pass_times[2*i+j];
@@ -585,7 +609,7 @@ public:
                   const int numc = pp_len - pass_plot_txt.length();
                   if ( numc > 0 ) pass_plot_txt += string(numc,c);
                 }
-            tab_bars.entry("Time","%-70s",pass_plot_txt);
+            tab_bars.entry("Time",fmt,pass_plot_txt);
             tab_bars.row_end();
           };
 
@@ -595,8 +619,6 @@ public:
         sort_tile_histo.from_cuda();
         sort_histo.from_cuda();
         sort_out_b.from_cuda();
-        scan_out.from_cuda();
-        scan_r2.from_cuda();
 
         assert( is_sorted( ss_keys_2.begin(), ss_keys_2.end() ) );
 
@@ -617,39 +639,45 @@ public:
           }
 
         table.entry("T/B","%3d",tiles_per_block);
-        table.entry("Pass 1","%5.2f",pass_1_time_s*1e3);
-        table.entry("Pass 2","%5.2f",pass_2_time_s*1e3);
-        table.entry("M elt/s","%4.0f", array_size / ( rs_time_s * 1e6 ));
+        table.entry("Me/s","%4.0f", array_size / ( rs_time_s * 1e6 ));
 
-        if ( nperf_avail )
-          for ( auto ker : { kid1, kid2 } )
-            {
-              const bool pass_1 = ker == kid1;
-              const size_t work_per_round =
-                pass_1 ? work_per_round_pass_1 : work_per_round_pass_2;
-              const size_t comm_bytes =
-                pass_1 ? comm_bytes_pass_1 : comm_bytes_pass_2;
-              const double time_s = pass_1 ? pass_1_time_s : pass_2_time_s;
-              table.entry
-                ("W/Cy","%4.1f",
-                 NPerf_metric_value_get("eligible_warps_per_cycle",ker));
-              if ( 1 )
-              table.entry
-                ("UIS","%3.0f",
-                 NPerf_metric_value_get("issue_slot_utilization", ker));
+        for ( int pass : { 1, 2 } )
+          {
+            auto ker = pass == 1 ? kid1 : kid2;
+            const size_t work_per_round =
+              pass == 1 ? work_per_round_pass_1 : work_per_round_pass_2;
+            const size_t comm_bytes =
+              pass == 1 ? comm_bytes_pass_1 : comm_bytes_pass_2;
+            const double time_s = pass == 1 ? pass_1_time_s : pass_2_time_s;
 
-              table.entry
-                ("EfSt","%3.0f",
-                 NPerf_metric_value_get("gst_efficiency",ker));
+            table.header_span_start( pass == 1 ? "Pass 1" : "Pass 2");
 
-              table.entry
-                ("I/W","%2.0f%",
-                 NPerf_metric_value_get("inst_executed", ker)
-                 * 32 / ( work_per_round * ndigits ));
-              table.entry
-                ("GB/s","%5.1f", comm_bytes * 1e-9 / time_s);
+            table.entry("t/ms", "%6.3f", time_s * 1e3);
+            table.entry("GB/s","%5.1f", comm_bytes * 1e-9 / time_s);
 
-            }
+            if ( nperf_avail )
+              {
+                table.entry
+                  ("W/Cy","%4.1f",
+                   NPerf_metric_value_get("eligible_warps_per_cycle",ker));
+                if ( 0 )
+                  table.entry
+                    ("UIS","%3.0f",
+                     NPerf_metric_value_get("issue_slot_utilization", ker));
+
+                if ( pass == 2 )
+                  table.entry
+                    ("EfSt","%3.0f%%",
+                     NPerf_metric_value_get("gst_efficiency",ker));
+
+                table.entry
+                  ("IW","%4.1f%",
+                   NPerf_metric_value_get("inst_executed", ker)
+                   * 32 / ( work_per_round * ndigits ));
+              }
+
+            table.header_span_end();
+          }
 
         table.row_end();
 

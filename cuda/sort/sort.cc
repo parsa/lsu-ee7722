@@ -276,22 +276,26 @@ public:
     run_sort(6,4,1);
     run_sort(6,4,2);
     run_sort(6,4,3);
+    run_sort(6,4,4);
 
 
     run_sort(8,4,0);
     run_sort(8,4,1);
     run_sort(8,4,2);
     run_sort(8,4,3);
+    run_sort(8,4,4);
 
     run_sort(10,2,0);
     run_sort(10,2,1);
     run_sort(10,2,2);
     run_sort(10,2,3);
+    run_sort(10,2,4);
 
     run_sort(10,1,0);
     run_sort(10,1,1);
     run_sort(10,1,2);
     run_sort(10,1,3);
+    run_sort(10,1,4);
 
     return;
     //
@@ -302,7 +306,7 @@ public:
 
   }
 
-  void run_sort(int block_lg, int bl_per_mp = 1, int version = 2)
+  void run_sort(int block_lg, int bl_per_mp = 1, int version = 3)
   {
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
@@ -372,9 +376,9 @@ public:
     int sort_total_rounds = 0;
 
     switch ( version ) {
-    case 0: // 1-bit split
+    case 0: case 1:// 1-bit split
       sort_total_rounds = 32; break;
-    case 1: case 2: case 3: // Batcher
+    case 2: case 3: case 4: // Batcher
       sort_total_rounds = ( block_lg + 2 ) * ( block_lg + 2 );
       break;
     default:
@@ -431,7 +435,7 @@ public:
         scan_out.from_cuda();
         scan_r2.from_cuda();
 
-        if ( version == 4 ) for ( int tile = 0; tile < 4; tile ++ )
+        if ( false && version == 4 ) for ( int tile = 0; tile < 4; tile ++ )
           {
             printf("T %2d: ",tile);
             const int idx_base = tile * sort_bin_size;
@@ -441,12 +445,6 @@ public:
               }
             printf("\n");
           }
-
-        const double computation_insn = // Currently bogus!!
-          gpu_rounds * double(array_size) * ( 0 + 3.0 );
-
-        const double peak_insn =
-          cuda_time_ms * 1e-3 * gpu_info.chip_sp_flops;
 
         table.entry("t/ms","%7.3f", cuda_time_ms);
         table.entry("G elt/s","%7.3f", array_size / ( cuda_time_ms * 1e6 ));
@@ -464,7 +462,7 @@ public:
                comp_ratios.get_key(t_compute.elements>>1)
                );
 #endif
-        check_sort(db.x,version==4?array_size:4*db.x);
+        check_sort(db.x,version==5?array_size:4*db.x);
 
       }
   }

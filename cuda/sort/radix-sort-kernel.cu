@@ -1,3 +1,6 @@
+/// LSU EE 7722 GPU Microarchitecture
+//
+
 #include "radix-sort.cuh"
 #include <gp/cuda-util-kernel.h>
 #include <assert.h>
@@ -10,9 +13,6 @@
 
 __constant__ Radix_Sort_GPU_Constants dapp;
 
-__constant__ int *scan_out;
-__constant__ int *scan_r2;
-
 __device__ int lg_ceil(uint n)
 {
   if ( n == 0 ) return 0;
@@ -24,16 +24,14 @@ __constant__ int *sort_tile_histo;
 __constant__ int *sort_histo;
 
 template <int BLOCK_LG, int RADIX_LG>
-__global__ void radix_sort_1_pass_1(int digit_pos, bool first_iter);
+__global__ void radix_sort_pass_1(int digit_pos, bool first_iter);
 template <int BLOCK_LG, int RADIX_LG>
-__global__ void radix_sort_1_pass_2(int digit_pos, bool last_iter);
+__global__ void radix_sort_pass_2(int digit_pos, bool last_iter);
 
 __host__ void
 kernels_get_attr(GPU_Info *gpu_info)
 {
   CU_SYM(dapp);
-  CU_SYM(scan_out);
-  CU_SYM(scan_r2);
 
   CU_SYM(sort_in); CU_SYM(sort_out); CU_SYM(sort_out_b);
   CU_SYM(sort_tile_histo);
@@ -41,12 +39,12 @@ kernels_get_attr(GPU_Info *gpu_info)
 
 #define GETATTR(func) gpu_info->GET_INFO(func)
 
-#define GAPAIR(block_lg,radix_lg) \
-  GETATTR((radix_sort_1_pass_1<block_lg,radix_lg>)); \
-  GETATTR((radix_sort_1_pass_2<block_lg,radix_lg>));
+#define GAPAIR(block_lg,radix_lg)                                             \
+  GETATTR((radix_sort_pass_1<block_lg,radix_lg>));                          \
+  GETATTR((radix_sort_pass_2<block_lg,radix_lg>));
 
-#define GASET(radix_lg) \
-  GAPAIR(6,radix_lg); GAPAIR(7,radix_lg); GAPAIR(8,radix_lg); \
+#define GASET(radix_lg)                                                       \
+  GAPAIR(6,radix_lg); GAPAIR(7,radix_lg); GAPAIR(8,radix_lg);                 \
   GAPAIR(9,radix_lg); GAPAIR(10,radix_lg);
 
   GASET(4);
@@ -57,44 +55,52 @@ kernels_get_attr(GPU_Info *gpu_info)
 #undef GAPAIR
 }
 
+typedef void (*KPtr)(int,bool);
 
 // This routine executes on the CPU.
 //
-__host__ void
-sort_launch_pass_1(int dg, int db, int radix_lg, int digit_pos, bool first_iter)
+__host__ Kernel_Info*
+sort_launch_pass_1
+(GPU_Info *gpu_info, int dg, int db,
+ int radix_lg, int digit_pos, bool first_iter)
 {
-# define LAUNCH_RD(BLG,RD_LG) \
-  case 1<<BLG: \
-  radix_sort_1_pass_1<BLG,RD_LG><<<dg,db>>>(digit_pos,first_iter); \
-  break;
 
-#define LAUNCH_BLKS(RD_LG)                                                    \
-  case RD_LG: switch ( db ){                                                  \
-    LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                                   \
-    LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);              \
-  default: assert( false );                                                   \
-  } break;
+#define LAUNCH_RD(BLG,RD_LG)                                                  \
+  case 1<<BLG: kfunc = radix_sort_pass_1<BLG,RD_LG>; break;
 
-  switch ( radix_lg ) {
-    LAUNCH_BLKS(4);
-    LAUNCH_BLKS(6);
-    LAUNCH_BLKS(8);
+#define LAUNCH_BLKS(RD_LG)                                              \
+    case RD_LG: switch ( db ){                                          \
+      LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                           \
+      LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);      \
+    default: assert( false );                                           \
+    } break;
+
+    KPtr kfunc = NULL;
+
+    switch ( radix_lg ) {
+      LAUNCH_BLKS(4);
+      LAUNCH_BLKS(6);
+      LAUNCH_BLKS(8);
     default: assert( false );
-  }
-
+    }
 
 # undef LAUNCH_RD
 # undef LAUNCH_BLKS
+
+    if ( dg == 0 ) return &gpu_info->get_info(GPU_Info_Func(kfunc));
+
+    kfunc<<<dg,db>>>(digit_pos,first_iter);
+
+    return NULL;
 }
 
-__host__ void
+__host__ Kernel_Info*
 sort_launch_pass_2
-(int dg, int db, int radix_lg, int digit_pos, bool last_iter)
+(GPU_Info *gpu_info, int dg, int db,
+ int radix_lg, int digit_pos, bool last_iter)
 {
-# define LAUNCH_RD(BLG,RD_LG) \
-  case 1<<BLG: \
-  radix_sort_1_pass_2<BLG,RD_LG><<<dg,db>>>(digit_pos,last_iter); \
-  break;
+#define LAUNCH_RD(BLG,RD_LG)                                                  \
+  case 1<<BLG: kfunc = radix_sort_pass_2<BLG,RD_LG>; break;
 
 #define LAUNCH_BLKS(RD_LG)                                                    \
   case RD_LG: switch ( db ){                                                  \
@@ -103,6 +109,8 @@ sort_launch_pass_2
   default: assert( false );                                                   \
   } break;
 
+  KPtr kfunc = NULL;
+
   switch ( radix_lg ) {
     LAUNCH_BLKS(4);
     LAUNCH_BLKS(6);
@@ -110,6 +118,11 @@ sort_launch_pass_2
     default: assert( false );
   }
 
+  if ( dg == 0 ) return &gpu_info->get_info(GPU_Info_Func(kfunc));
+
+  kfunc<<<dg,db>>>(digit_pos,last_iter);
+
+  return NULL;
 
 # undef LAUNCH_RD
 # undef LAUNCH_BLKS
@@ -139,12 +152,12 @@ sort_block_1_bit_split
  Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
 template <int BLOCK_LG, int RADIX_LG>
-__device__ void radix_sort_1_pass_1_tile
+__device__ void radix_sort_pass_1_tile
 (int digit_pos, int tile_idx, bool first_iter,
  Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s);
 
 template <int BLOCK_LG, int RADIX_LG> __global__ void
-radix_sort_1_pass_1(int digit_pos, bool first_iter)
+radix_sort_pass_1(int digit_pos, bool first_iter)
 {
   __shared__ Pass_1_Stuff<BLOCK_LG,RADIX_LG> p1s;
   int block_size = 1 << BLOCK_LG;
@@ -164,7 +177,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
       p1s.ghisto[ DIG(i) ] = 0;
 
   for ( int tile_idx = tile_start; tile_idx < tile_stop; tile_idx++ )
-    radix_sort_1_pass_1_tile<BLOCK_LG,RADIX_LG>
+    radix_sort_pass_1_tile<BLOCK_LG,RADIX_LG>
       (digit_pos,tile_idx,first_iter,p1s);
 
   if ( !rad_participant ) return;
@@ -177,7 +190,7 @@ radix_sort_1_pass_1(int digit_pos, bool first_iter)
 }
 
 template <int BLOCK_LG, int RADIX_LG> __device__ void
-radix_sort_1_pass_1_tile
+radix_sort_pass_1_tile
 (int digit_pos, int tile_idx,
  bool first_iter, Pass_1_Stuff<BLOCK_LG,RADIX_LG>& p1s)
 {
@@ -286,6 +299,8 @@ sort_block_1_bit_split
   const int block_size = 1 << block_lg;
   const int elt_per_tile = elt_per_thread * block_size;
 
+  if ( threadIdx.x == 0 ) p1s.prefix[0] = 0;
+
   // Sort Elements From LSB to MSB.
   //
   for ( int bit_pos=bit_low; bit_pos<bit_low+bit_count; bit_pos++ )
@@ -302,6 +317,16 @@ sort_block_1_bit_split
       //
       int my_ones_write = 0;
 
+      const bool use_pop = false;
+
+      const int wp_lg = 5;
+      const int wp_sz = 1 << wp_lg;
+      const int wp_mk = wp_sz - 1;
+      const int lane = threadIdx.x & wp_mk;
+      const int wp_idx = threadIdx.x >> wp_lg;
+      const uint32_t msk = 0xffffffff;
+      int my_pf_wp = 0;
+
       for ( int i = 0; i < elt_per_thread; i++ )
         {
           const int sidx = threadIdx.x * elt_per_thread + i;
@@ -310,27 +335,71 @@ sort_block_1_bit_split
           //
           const Sort_Elt key = p1s.keys[ sidx ];
           keys[i] = key;
-          if ( key & bit_mask ) my_ones_write++;
+          const bool one = key & bit_mask;
+          if ( one ) my_ones_write++;
+          if ( !use_pop ) continue;
+
+          // Compute intra-warp prefix sum for one set of 32 keys.
+
+          // Get vector showing which lanes have a 1.
+          //
+          const uint32_t have_work_wp_v = __ballot_sync(msk,one);
+
+          // Shift off bits corresponding to higher-numbered lanes.
+          //
+          const uint32_t have_work_pf_v = have_work_wp_v << ( 31 - lane );
+
+          // Use popc (population count, which is number of bits = 1)
+          // to compute prefix.
+          //
+          const uint32_t my_pf_wp_i = __popc(have_work_pf_v);
+
+          my_pf_wp += my_pf_wp_i;
         }
 
-      p1s.prefix[ threadIdx.x + 1 ] = my_ones_write;
-      if ( threadIdx.x == 0 ) p1s.prefix[ 0 ] = 0;
-
-      uint my_prefix = my_ones_write;
-
-      // Compute a prefix sum of vectors.
-      for ( int tree_level = 0; tree_level < block_lg; tree_level++ )
+      if ( !use_pop )
         {
-          int dist = 1 << tree_level;
-          int idx_neighbor = threadIdx.x - dist;
-          __syncthreads();
-          uint neighbor_prefix =
-            threadIdx.x >= dist ? p1s.prefix[ idx_neighbor + 1 ] : 0;
+          my_pf_wp = my_ones_write;
 
-          my_prefix += neighbor_prefix;
-          __syncthreads();
-          p1s.prefix[ threadIdx.x + 1 ] = my_prefix;
+          // Compute intra-warp prefix sum. (Sum within warp.)
+          //
+          for ( int tree_level = 0; tree_level < wp_lg; tree_level++ )
+            {
+              int dist = 1 << tree_level;
+              uint neighbor_prefix = __shfl_up_sync(msk,my_pf_wp,dist);
+              if ( dist <= lane ) my_pf_wp += neighbor_prefix;
+            }
         }
+
+      // Write total number of 1's in warp to shared memory. This
+      // will be used to compute prefix sum between warps.
+      //
+      if ( lane == wp_mk ) p1s.prefix[wp_idx+1] = my_pf_wp;
+
+      __syncthreads();
+
+      // Compute inter-warp prefix sum.  Only warp 0 does this.
+      //
+      if ( wp_idx == 0 )
+        {
+          uint wp_prefix = p1s.prefix[threadIdx.x+1];
+          for ( int tree_level = 0; tree_level < block_lg - wp_lg;
+                tree_level++ )
+            {
+              int dist = 1 << tree_level;
+              uint neighbor_prefix = __shfl_up_sync(msk,wp_prefix,dist);
+              if ( dist <= threadIdx.x ) wp_prefix += neighbor_prefix;
+            }
+          p1s.prefix[threadIdx.x+1] = wp_prefix;
+        }
+      __syncthreads();
+      const uint wp_prefix = p1s.prefix[wp_idx];
+      __syncthreads();
+
+      // Combine inter-warp prefix (wp_prefix) with intra-warp prefix
+      // (my_pf_wp) to get prefix sum within block.
+      //
+      p1s.prefix[threadIdx.x+1] = wp_prefix + my_pf_wp;
 
       // At this point p1s.prefix contains exclusive prefix of each group.
 
@@ -357,7 +426,7 @@ sort_block_1_bit_split
 
 template <int BLOCK_LG, int RADIX_LG>
 __global__ void
-radix_sort_1_pass_2(int digit_pos, bool last_iter)
+radix_sort_pass_2(int digit_pos, bool last_iter)
 {
   const int block_size = 1 << BLOCK_LG;
   int elt_per_tile = elt_per_thread * block_size;
