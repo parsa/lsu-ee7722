@@ -354,8 +354,8 @@ public:
 
   // GPU Characteristics
   bool device_data_collected;
-  CUdevprop devprop;
   int numMultiprocessors;
+  double clock_freq_hz;
   static const int gpu_name_size = 80;
   char gpu_name[gpu_name_size+1];
   int wp_lg;
@@ -367,11 +367,16 @@ public:
     if ( device_data_collected ) return;
     if ( dev == device_null ) return;
     device_data_collected = true;
-    CE( cuDeviceGetProperties(&devprop,dev) );
     CE( cuDeviceGetName(gpu_name,gpu_name_size,dev) );
 
+    int clock_freq_khz = 0;
+    CE( cuDeviceGetAttribute
+        (&clock_freq_khz, CU_DEVICE_ATTRIBUTE_CLOCK_RATE, dev) );
+    clock_freq_hz = clock_freq_khz * 1000.0;
+
+    CE( cuDeviceGetAttribute(&wp_sz, CU_DEVICE_ATTRIBUTE_WARP_SIZE, dev) );
+
     wp_lg = 5; // Checked by the assertion below.
-    wp_sz = devprop.SIMDWidth;
     wp_mask = wp_sz - 1;
     assert( 1 << wp_lg == wp_sz );
 
@@ -1406,8 +1411,6 @@ RT_Info::atend()
                  ki->api_grid.x, ki->api_grid.y, ki->api_grid.z,
                  api_block_count, api_blocks_per_mp);
         }
-
-      const double clock_freq_hz = devprop.clockRate * 1000.0;
 
       if ( ki->md.set_rounds > 0 )
         {
