@@ -49,7 +49,7 @@ CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
 LIBRARIES = -lrt -lcuda \
   -L$(CUDAPATH)/extras/CUPTI/lib64 \
-  -Xlinker -rpath,$(CUDAPATH)/extras/CUPTI/lib64 -lcupti
+  -Xlinker -rpath,$(CUDAPATH)/extras/CUPTI/lib64 -lcupti -lnvidia-ml
 
 
 SRC_FILES = nperf.cc
