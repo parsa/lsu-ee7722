@@ -8,19 +8,25 @@
 ///  Keyboard Commands
  //
  /// Object (Eye, Light, Ball) Location or Push
- //   Arrows, Page Up, Page Down
- //   Will move object or push end of spring, depending on mode:
+ //   Arrows (←,→,↑,↓) Page Up, Page Down
+ //        Move object or push ball, depending on mode.
+ //        Shift + KEY: motion is 5x faster.
+ //        Ctrl + KEY : motion is 5x slower.
  //   'e': Move eye.
- //   'b': Grab top (last segment of) of spring.
  //   'l': Move light.
- //   'B': Release top (last segment of) spring.
+ //   'b': Move head (first) ball. (Change position but not velocity.)
+ //   'B': Push head ball. (Add velocity.)
  //
- /// Eye Direction
- //   Home, End, Delete, Insert
- //   Turn the eye direction.
- //   Home should rotate eye direction up, End should rotate eye
- //   down, Delete should rotate eye left, Insert should rotate eye
- //   right.  The eye direction vector is displayed in the upper left.
+ /// Eye Direction and GUI Options
+ //
+ //   'Home', 'End', 'Delete', 'Insert'
+ //         Turn the eye direction. Home should rotate eye direction
+ //         up, End should rotate eye down, Delete should rotate eye
+ //         left, Insert should rotate eye right. The eye direction
+ //         vector is displayed in the upper left.
+ //  'C-='  (Ctrl =) Increase green text size.
+ //  'C--'  (Ctrl -) Decrease green text size.
+ //  'F12'  Write screenshot to PNG file.
 
  /// Simulation Options
  //  (Also see variables below.)
@@ -36,7 +42,6 @@
  //  'g'    Toggle gravity on and off.
  //  't'    Toggle state of Boolean opt_test, use it as you like.
  //  'S'    Switch between different shaders in reverse direction.
- //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
 
  /// Variables
@@ -93,6 +98,9 @@
 #include "shapes.h"
 
 #include <gp/cuda-util.h>
+
+#include <vector>
+using namespace std;
 
 #include "spring.cuh"
 
@@ -738,6 +746,7 @@ World::render()
         wall_delta_t;
 
       const double world_time_target = world_time + duration;
+      const double wall_time_limit = time_now + 0.05;
 
       while ( world_time < world_time_target )
         {
@@ -760,6 +769,8 @@ World::render()
           FROM_DEV(timing_data);
           time_inter_cyc =
             timing_data.inter_time / max(1,timing_data.inter_count);
+          const double time_right_now = time_wall_fp();
+          if ( time_right_now > wall_time_limit ) break;
         }
       // Reset these, just in case they were set.
       //
@@ -902,9 +913,9 @@ World::render()
 
   glColor3f(0.5,1,0.5);
 
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
+
+  ogl_helper.user_text_reprint();
 
   glutSwapBuffers();
 }
@@ -920,6 +931,7 @@ World::time_step_cpu()
 
   /// Initialize wire segment variables for time step.
   //
+#pragma omp parallel for
   for ( int i=0; i<phys_helix_segments; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];
@@ -988,10 +1000,13 @@ World::time_step_cpu()
       const int min_idx_dist = 0.999 + wire_radius / helix_seg_hlength;
 
       const float four_wire_radius_sq = 4 * wire_radius * wire_radius;
+      struct Pen_Item { pNorm dist; int nbr; };
+      vector<vector<Pen_Item>> pen_items(phys_helix_segments);
 
       // Use a brute force, O(n^2), search of all possible pairs of
       // segments.
       //
+#pragma omp parallel for
       for ( int i=1; i<phys_helix_segments; i++ )
         for ( int j=i+min_idx_dist; j<phys_helix_segments; j++ )
           {
@@ -1002,12 +1017,20 @@ World::time_step_cpu()
             // Use bounding sphere to quickly rule out contact.
             //
             if ( dist.mag_sq > four_wire_radius_sq ) continue;
+            pen_items[i].push_back({dist,j});
+          }
+
+      for ( int i=1; i<phys_helix_segments; i++ )
+        for ( Pen_Item pi: pen_items[i] )
+          {
+            Wire_Segment* const aseg = &wire_segments[i];
+            Wire_Segment* const bseg = &wire_segments[pi.nbr];
 
             // As a crude approximation, compute depth of
             // interpenetration using bounding sphere.
             //
-            const float pen_depth = 2 * wire_radius - dist.magnitude;
-            pVect sep_force = pen_depth * opt_spring_constant * dist;
+            const float pen_depth = 2 * wire_radius - pi.dist.magnitude;
+            pVect sep_force = pen_depth * opt_spring_constant * pi.dist;
             aseg->force -= sep_force;
             bseg->force += sep_force;
           }
@@ -1015,6 +1038,7 @@ World::time_step_cpu()
 
   /// Using force and torque, update velocity, omega, position, and orientation.
   //
+#pragma omp parallel for
   for ( int i=1; i<phys_helix_segments; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];
@@ -1081,54 +1105,11 @@ World::cuda_init()
 
   /// Print information about the available GPUs.
   //
-  for ( int dev=0; dev<device_count; dev++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
+  gpu_info_print();
 
-      const int cc_per_mp =
-        cuda_prop.major == 1 ? 8 :
-        cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
-        cuda_prop.major == 3 ? 192 : 0;
-
-      const double chip_bw_Bps = gpu_info.bw_Bps =
-        2 * cuda_prop.memoryClockRate * 1000.0
-        * ( cuda_prop.memoryBusWidth >> 3 );
-      const double chip_sp_flops =
-        1000.0 * cc_per_mp * cuda_prop.clockRate
-        * cuda_prop.multiProcessorCount;
-
-      printf
-        ("GPU %d: CC: %d.%d  MP: %2d  CC/MP: %3d  TH/BL: %4d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cc_per_mp,
-         cuda_prop.maxThreadsPerBlock);
-
-      printf
-        ("GPU %d: SHARED: %5d B  CONST: %5d B  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock);
-
-      printf
-        ("GPU %d: L2: %d kiB   MEM to L2: %.1f GB/s  SP %.1f GFLOPS  "
-         "OP/ELT %.2f\n",
-         dev,
-         cuda_prop.l2CacheSize >> 10,
-         chip_bw_Bps * 1e-9,
-         chip_sp_flops * 1e-9,
-         4 * chip_sp_flops / chip_bw_Bps);
-
-    }
-
-  // Choose GPU 0 because we don't have time to provide a way to let
-  // the user choose.
+  // Use course library routine to choose a good GPU for CUDA.
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
 

@@ -1,19 +1,5 @@
-// Info about a specific kernel.
-//
-struct Kernel_Info {
-  void (*func_ptr)();           // Pointer to kernel function.
-  const char *name;             // ASCII version of kernel name.
-  cudaFuncAttributes cfa;       // Kernel attributes reported by CUDA.
-};
 
-// Info about GPU and each kernel.
-//
-struct GPU_Info {
-  double bw_Bps;
-  static const int num_kernels_max = 4;
-  int num_kernels;
-  Kernel_Info ki[num_kernels_max];
-};
+#include <gp/cuda-gpuinfo.h>
 
 __host__ cudaError_t cuda_setup(GPU_Info *gpu_info);
 

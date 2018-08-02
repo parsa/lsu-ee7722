@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2013), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
  /// Spring Project Base
@@ -44,20 +44,6 @@ cuda_setup(GPU_Info *gpu_info)
   // maximum number of threads.
 
   cudaError_t e1 = cudaSuccess;
-
-#define GET_INFO(proc_name) {                                                 \
-  const int idx = gpu_info->num_kernels++;                                    \
-  if ( idx >= gpu_info->num_kernels_max ) return e1;                          \
-  gpu_info->ki[idx].name = #proc_name;                                        \
-  gpu_info->ki[idx].func_ptr = (void(*)())proc_name;                          \
-  e1 = cudaFuncGetAttributes(&gpu_info->ki[idx].cfa,proc_name);               \
-  if ( e1 != cudaSuccess ) return e1; }
-
-  GET_INFO(time_step);
-  GET_INFO(time_step_intersect);
-  GET_INFO(time_step_update_pos);
-
-#undef GET_INFO
 
   return e1;
 }
