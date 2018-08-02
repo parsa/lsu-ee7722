@@ -44,10 +44,11 @@ kernels_get_attr(GPU_Info *gpu_info)
   GETATTR((radix_sort_pass_2<block_lg,radix_lg>));
 
 #define GASET(radix_lg)                                                       \
-  GAPAIR(6,radix_lg); GAPAIR(7,radix_lg); GAPAIR(8,radix_lg);                 \
-  GAPAIR(9,radix_lg); GAPAIR(10,radix_lg);
+  GAPAIR(5,radix_lg); GAPAIR(6,radix_lg); GAPAIR(7,radix_lg);                 \
+  GAPAIR(8,radix_lg); GAPAIR(9,radix_lg); GAPAIR(10,radix_lg);
 
   GASET(4);
+  GASET(5);
   GASET(6);
   GASET(8);
 #undef GETATTR
@@ -68,17 +69,18 @@ sort_launch_pass_1
 #define LAUNCH_RD(BLG,RD_LG)                                                  \
   case 1<<BLG: kfunc = radix_sort_pass_1<BLG,RD_LG>; break;
 
-#define LAUNCH_BLKS(RD_LG)                                              \
-    case RD_LG: switch ( db ){                                          \
-      LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                           \
-      LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);      \
-    default: assert( false );                                           \
+#define LAUNCH_BLKS(RD_LG)                                                    \
+    case RD_LG: switch ( db ){                                                \
+      LAUNCH_RD(5,RD_LG); LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);             \
+      LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);            \
+    default: assert( false );                                                 \
     } break;
 
     KPtr kfunc = NULL;
 
     switch ( radix_lg ) {
       LAUNCH_BLKS(4);
+      LAUNCH_BLKS(5);
       LAUNCH_BLKS(6);
       LAUNCH_BLKS(8);
     default: assert( false );
@@ -104,7 +106,7 @@ sort_launch_pass_2
 
 #define LAUNCH_BLKS(RD_LG)                                                    \
   case RD_LG: switch ( db ){                                                  \
-    LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);                                   \
+    LAUNCH_RD(5,RD_LG); LAUNCH_RD(6,RD_LG); LAUNCH_RD(7,RD_LG);               \
     LAUNCH_RD(8,RD_LG); LAUNCH_RD(9,RD_LG); LAUNCH_RD(10,RD_LG);              \
   default: assert( false );                                                   \
   } break;
@@ -113,6 +115,7 @@ sort_launch_pass_2
 
   switch ( radix_lg ) {
     LAUNCH_BLKS(4);
+    LAUNCH_BLKS(5);
     LAUNCH_BLKS(6);
     LAUNCH_BLKS(8);
     default: assert( false );
