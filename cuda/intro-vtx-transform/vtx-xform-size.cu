@@ -762,20 +762,19 @@ main(int argc, char **argv)
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
   const int output_width = stdout_width_get();
-
+#if 0
   // Analysis of mvx_o_lbuf:
   const double lat_mem_cyc = 400;
   const double lat_iter_cyc = lat_mem_cyc + M * N + M;
   const double lat_iter_s = lat_iter_cyc / ( info.cuda_prop.clockRate * 1e3 );
   const double data_iter_B = sizeof(Elt_Type) * ( M + N );
-  const double p = info.chip_bw_Bps * lat_iter_s / dat_iter_B;
+  const double p = info.chip_bw_Bps * lat_iter_s / data_iter_B;
   const int sm_thpt_ls = 64;
   const double ni_fp = N * M;
   const double ni_mem = N + M;
   const double t_issue_1 = ni_fp / info.cc_per_mp + ni_mem / sm_thpt_ls;
   const double q = lat_iter_cyc / t_issue_1;
-  
-
+#endif
   {
     // Prepare events used for timing.
     //
