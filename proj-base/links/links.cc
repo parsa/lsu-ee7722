@@ -1243,8 +1243,7 @@ World::init(int argc, char **argv)
   //
   gpu_info_print();
 
-  // Choose GPU 0 because we don't have time to provide a way to let
-  // the user choose.
+  // Use course library routine to choose a good GPU for CUDA.
   //
   int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
