@@ -17,6 +17,8 @@ typedef enum
 
 void NPerf_init_(bool turn_on = true);
 
+#if 0
+
 inline void
 NPerf_init(bool turn_on = true)
 {
@@ -26,6 +28,33 @@ NPerf_init(bool turn_on = true)
   NPerf_init_(turn_on);
 #endif
 }
+
+#else
+
+inline void
+NPerf_init(bool turn_on = true)
+{
+#ifndef __CUDACC__
+  // Make sure that debug macros defined for non-nvcc compilations.
+  const std::string check_corr = "-D__CUDA_DEBUG_EXE__";
+#ifndef CDEBUG_FLAGS
+  const std::string check = "cdebug not defined";
+#else
+  const std::string check = CDEBUG_FLAGS;
+#endif
+  if ( turn_on && check != check_corr )
+    fprintf
+      (stderr,"\n** WARNING: Compiled without CDEBUG_FLAGS set.  This may cause errors when running under cuda-gdb.");
+#endif
+
+#if defined __CUDACC_DEBUG__ || defined __CUDA_DEBUG_EXE__
+  NPerf_init_(false);
+#else
+  NPerf_init_(turn_on);
+#endif
+}
+
+#endif
 
 
 class NPerf_Kernel_Data {
