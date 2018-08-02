@@ -15,6 +15,7 @@
 #include <math.h>
 #include <Magick++.h>
 #include <assert.h>
+#include <vector>
 
 #define ALSO_GL
 
