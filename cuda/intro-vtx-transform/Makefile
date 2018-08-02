@@ -44,8 +44,7 @@ COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
-   --ptxas-options=-v -lineinfo
+CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
