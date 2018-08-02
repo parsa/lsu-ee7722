@@ -115,5 +115,6 @@ $(all):%: %.o
 
 clean:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
-	$(all) $(all:=-debug) *.s
+	$(all) $(all:=-debug) *.s *.html
+
 
