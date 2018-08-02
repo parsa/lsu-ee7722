@@ -23,7 +23,7 @@ CUCC = $(CUDAPATH)/bin/nvcc
 CXX = g++
 
 INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
-LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
+LIBRARIES = -lrt -lpthread -lcuda
 
 # Include the course libraries. So far a CUPTI interface.
 #
@@ -115,6 +115,7 @@ $(all):%: %.o
 
 
 clean:
+	$(MAKE) -C $(GP_ROOT)/lib clean
 	/bin/rm -f *.o *.ptx *.sass *.cubin *.s \
 	$(all) $(all:=-debug) $(all:=-cuda-debug) \
 	build-cc \
