@@ -26,7 +26,8 @@ __global__ void sort_segments_1_bit_split();
 __global__ void sort_segments_1_bit_split_opt();
 __global__ void sort_block_batcher();
 __global__ void sort_block_batcher_1();
-template <int BLOCK_LG> __global__ void sort_block_batcher_opt();
+template <int BLOCK_LG, int elt_per_thread_lg = 2>
+ __global__ void sort_block_batcher_opt();
 template <int BLOCK_LG, int BIN_LG>
 __global__ void radix_sort_1_pass_1(int bin_idx, bool first_iter);
 __global__ void radix_sort_1_pass_2(int bin_idx, bool last_iter);
@@ -56,6 +57,7 @@ kernels_get_attr(GPU_Info *gpu_info)
   GETATTR(sort_block_batcher_opt<6>);
   GETATTR(sort_block_batcher_opt<8>);
   GETATTR(sort_block_batcher_opt<10>);
+  GETATTR((sort_block_batcher_opt<10,0>));
   GETATTR((radix_sort_1_pass_1<6,4>));
   GETATTR(radix_sort_1_pass_2);
 #undef GETATTR
@@ -65,14 +67,15 @@ kernels_get_attr(GPU_Info *gpu_info)
 // This routine executes on the CPU.
 //
 __host__ int
-sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
+sort_launch(dim3 dg, dim3 db, int version, int array_size,
+            int array_size_lg, int elt_per_thread_lg)
 {
   // Launch the kernel, using the provided configuration (block size, etc).
   //
+  const int elt_per_thread = 1 << elt_per_thread_lg;
   switch ( version ){
   case 0: case 1:
     {
-      int elt_per_thread = 4;
       int size_per_elt = 4 + 2;
       int shared_size = db.x * size_per_elt * elt_per_thread;
       if ( !dg.x ) return shared_size;
@@ -85,7 +88,6 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
 
   case 2:
     {
-      int elt_per_thread = 4;
       int size_per_elt = 4;
       int shared_size = db.x * size_per_elt * elt_per_thread;
       if ( !dg.x ) return shared_size;
@@ -95,7 +97,6 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
 
   case 3:
     {
-      int elt_per_thread = 4;
       int size_per_elt = 4;
       int shared_size = db.x * size_per_elt * elt_per_thread;
       if ( !dg.x ) return shared_size;
@@ -105,16 +106,20 @@ sort_launch(dim3 dg, dim3 db, int version, int array_size, int array_size_lg)
 
   case 4:
     {
-      int elt_per_thread = 4;
-      int size_per_elt = 4;
-      int shared_size = db.x * size_per_elt * elt_per_thread;
-      if ( !dg.x ) return shared_size;
+      if ( !dg.x ) return 0;
+#define LBbt(blg,tlg) \
+      case tlg: sort_block_batcher_opt<blg,tlg><<<dg,db>>>(); break;
+
+#define LBb(blg)                                                              \
+      case 1<<blg:                                                            \
+        switch(elt_per_thread_lg)                                             \
+          { LBbt(blg,0); LBbt(blg,1); LBbt(blg,2); LBbt(blg,3);               \
+          default: break; };                                                  \
+        break;
+
       switch ( db.x ) {
-      case 64: sort_block_batcher_opt<6><<<dg,db,shared_size>>>(); break;
-      case 128: sort_block_batcher_opt<7><<<dg,db,shared_size>>>(); break;
-      case 256: sort_block_batcher_opt<8><<<dg,db,shared_size>>>(); break;
-      case 1024: sort_block_batcher_opt<10><<<dg,db,shared_size>>>(); break;
-      default:break;
+        LBb(6); LBb(7); LBb(8); LBb(9); LBb(10);
+        default: break;
       }
     }
     break;
@@ -526,20 +531,23 @@ sort_block_batcher_1()
     sort_out[ idx_block_start + sidx ] = s[sidx];
 }
 
-template <int BLOCK_LG>
+template <int BLOCK_LG, int elt_per_thread_lg>
 __global__ void
 sort_block_batcher_opt()
 {
-  int block_size = 1 << BLOCK_LG;
-  int elt_per_thread = 4;
-  int elt_per_thread_half = elt_per_thread >> 1;
-  int elt_per_block = elt_per_thread * block_size;
-  int chunk_lg = 2 + BLOCK_LG;
+  const int elt_per_thread = 1 << elt_per_thread_lg;
+  const int block_size = 1 << BLOCK_LG;
+  const int elt_per_thread_half = elt_per_thread >> 1;
+  const int elt_per_block = elt_per_thread * block_size;
+  int chunk_lg = elt_per_thread_lg + BLOCK_LG;
   int idx_block_start = elt_per_block * blockIdx.x;
+  __shared__ uint keys[elt_per_block];
 
   for ( int sidx = threadIdx.x, i = 0;
         i < elt_per_thread; i++, sidx += block_size )
-    s[sidx] = sort_in[ idx_block_start + sidx ];
+    keys[sidx] = sort_in[ idx_block_start + sidx ];
+
+  const bool participant = elt_per_thread_lg || threadIdx.x < block_size/2;
 
   for ( int m_lg=0; m_lg<BLOCK_LG; m_lg++ )
     {
@@ -552,14 +560,15 @@ sort_block_batcher_opt()
           int idx_0_t = threadIdx.x + ( threadIdx.x & shift_mask );
           int idx_1_t = idx_0_t + bit_vector;
           __syncthreads();
+          if ( participant )
           for ( int i=0; i<elt_per_thread; i += 2 )
             {
               int idx_0 = idx_0_t + ( i << BLOCK_LG );
               int idx_1 = idx_1_t + ( i << BLOCK_LG );
-              uint key_0 = s[idx_0];
-              uint key_1 = s[idx_1];
+              uint key_0 = keys[idx_0];
+              uint key_1 = keys[idx_1];
               if ( (key_0 < key_1 ) == sort_dir )
-                { s[idx_0] = key_1;  s[idx_1] = key_0; }
+                { keys[idx_0] = key_1;  keys[idx_1] = key_0; }
             }
         }
     }
@@ -577,10 +586,10 @@ sort_block_batcher_opt()
               int idx_0 = idx_ref + ( idx_ref & shift_mask );
               int idx_1 = idx_0 + bit_vector;
               bool sort_dir = idx_0 & sort_dir_vector;
-              uint key_0 = s[idx_0];
-              uint key_1 = s[idx_1];
+              uint key_0 = keys[idx_0];
+              uint key_1 = keys[idx_1];
               if ( (key_0 < key_1 ) == sort_dir )
-                { s[idx_0] = key_1;  s[idx_1] = key_0; }
+                { keys[idx_0] = key_1;  keys[idx_1] = key_0; }
             }
         }
     }
@@ -589,7 +598,7 @@ sort_block_batcher_opt()
 
   for ( int sidx = threadIdx.x, i = 0;
         i < elt_per_thread; i++, sidx += block_size )
-    sort_out[ idx_block_start + sidx ] = s[sidx];
+    sort_out[ idx_block_start + sidx ] = keys[sidx];
 
 }
 

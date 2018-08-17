@@ -20,6 +20,8 @@ public:
 
   GPU_Info gpu_info;
   cudaEvent_t cuda_start_ce, cuda_stop_ce;
+  static const int max_gpu_rounds = 4;
+  cudaEvent_t cuda_ce[max_gpu_rounds+1];
 
   // Data Arrays.
   //
@@ -56,6 +58,7 @@ public:
     //
     CE(cudaEventCreate(&cuda_start_ce));
     CE(cudaEventCreate(&cuda_stop_ce));
+    for ( auto& ce: cuda_ce ) CE( cudaEventCreate( &ce ) );
 
     // Print information about kernel.
     //
@@ -272,6 +275,22 @@ public:
         return;
       }
 
+    for ( int bl = 6;  bl <= 10;  bl++ )
+      {
+        run_sort(bl,1,0);
+        run_sort(bl,1,1);
+        run_sort(bl,1,2);
+        run_sort(bl,1,3);
+        for ( int elt_per_thread_lg: {0,1,2,3} )
+          {
+            const int bl_lg = bl + 3 - elt_per_thread_lg;
+            if ( bl_lg > 10 ) continue;
+            run_sort(bl_lg,1,4,elt_per_thread_lg);
+          }
+      }
+
+    return;
+
     run_sort(6,4,0);
     run_sort(6,4,1);
     run_sort(6,4,2);
@@ -306,11 +325,14 @@ public:
 
   }
 
-  void run_sort(int block_lg, int bl_per_mp = 1, int version = 3)
+  void run_sort(int block_lg, int bl_per_mp = 1, int version = 3,
+                int elt_per_thread_lg = 2)
   {
+    const int elt_per_thread = 1 << elt_per_thread_lg;
     const int block_size = 1 << block_lg;
     const int cpu_rounds = 1;
-    const int gpu_rounds = 1;
+    const int gpu_rounds = 3;
+    assert( gpu_rounds <= max_gpu_rounds );
 
     Kernel_Info& ki = gpu_info.ki[version];
     cudaFuncAttributes& cfa = ki.cfa;
@@ -373,13 +395,16 @@ public:
     const int active_bl_per_mp = min(block_per_mp,active_bl_per_mp_max);
     const int active_wp = active_bl_per_mp * warps_per_block;
 
+    const int elt_per_block = elt_per_thread << block_lg;
+
     int sort_total_rounds = 0;
 
     switch ( version ) {
     case 0: case 1:// 1-bit split
       sort_total_rounds = 32; break;
     case 2: case 3: case 4: // Batcher
-      sort_total_rounds = ( block_lg + 2 ) * ( block_lg + 2 );
+      sort_total_rounds =
+        ( block_lg + elt_per_thread_lg ) * ( block_lg + elt_per_thread_lg );
       break;
     default:
       sort_total_rounds = 0;
@@ -388,6 +413,7 @@ public:
     table.row_start();
     table.entry("wp",warps_per_block);
     table.entry("ac",active_wp);
+    table.entry("tl",elt_per_thread_lg);
 
     if ( int(dg.x) > cuda_prop.maxGridSize[0] )
       {
@@ -409,14 +435,18 @@ public:
 
         sort_in.to_cuda(); // Move input array to CUDA.
 
-        // Launch Kernel  (Actually, call code in stream-kernel.cu to launch).
-        //
-        CE(cudaEventRecord(cuda_start_ce));
-
         for ( int i=0; i<gpu_rounds; i++ )
-          sort_launch(dg,db,version,array_size,array_size_lg);
+          {
+            CE( cudaEventRecord(cuda_ce[i]) );
+            // Launch Kernel
+            //
+            sort_launch
+              (dg,db,version,array_size,array_size_lg,elt_per_thread_lg);
+            //
+            // (Actually, call code in stream-kernel.cu to launch).
+          }
 
-        CE(cudaEventRecord(cuda_stop_ce));
+        CE( cudaEventRecord(cuda_ce[gpu_rounds]) );
 
         // When execution reaches this point kernel has completed.
 
@@ -424,8 +454,15 @@ public:
         //
         sort_out.from_cuda();
 
-        float cuda_time_ms;
-        CE(cudaEventElapsedTime(&cuda_time_ms,cuda_start_ce,cuda_stop_ce));
+        CE( cudaEventSynchronize( cuda_ce[gpu_rounds] ) );
+
+        float cuda_time_ms = -1;
+        for ( int i=0; i<gpu_rounds; i++ )
+          {
+            float time_ms;
+            CE(cudaEventElapsedTime(&time_ms,cuda_ce[i],cuda_ce[i+1]));
+            if ( i == 0 || time_ms < cuda_time_ms ) cuda_time_ms = time_ms;
+        }
 
         if ( cpu_round + 1 < cpu_rounds ) continue;
 
@@ -448,6 +485,8 @@ public:
 
         table.entry("t/ms","%7.3f", cuda_time_ms);
         table.entry("G elt/s","%7.3f", array_size / ( cuda_time_ms * 1e6 ));
+        table.entry("M elt/s","%6.2f",
+                    elt_per_block * active_bl_per_mp / ( cuda_time_ms * 1e3 ));
         table.entry("Per R","%8.4f",
                     1e3 * cuda_time_ms / sort_total_rounds);
         table.entry("K Name",ki.name);
@@ -462,7 +501,7 @@ public:
                comp_ratios.get_key(t_compute.elements>>1)
                );
 #endif
-        check_sort(db.x,version==5?array_size:4*db.x);
+        check_sort(db.x,version==5?array_size:elt_per_thread*db.x);
 
       }
   }
