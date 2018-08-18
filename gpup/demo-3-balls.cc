@@ -321,6 +321,8 @@ World::shadow_transform_create(pMatrix& m, pCoor light_location)
   pCoor test_pt_b = to_platform * test_pt;  test_pt_b.homogenize();
   pCoor test_pt_pr = project * test_pt;  test_pt_pr.homogenize();
   pCoor test_pt2_pr = project * test_pt2;  test_pt2_pr.homogenize();
+
+  assert( test_pt_a.v() ); // Avoid compiler warnings.
 }
 
 

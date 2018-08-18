@@ -291,5 +291,4 @@ main(int argv, char **argc)
   popengl_helper.display_cb_set(world.frame_callback_w,&world);
 
   // This point will only be reached when the program exits normally.
-
 }
