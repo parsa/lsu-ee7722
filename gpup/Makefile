@@ -115,6 +115,7 @@ $(all):%: %.o
 
 clean:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
-	$(all) $(all:=-debug) *.s *.html
+	$(filter-out demo-1-simple,$(all)) $(all:=-debug) *.s *.html \
+	*.d.[0-9][0-9][0-9][0-9] *.d.[0-9][0-9][0-9][0-9][0-9]
 
 
