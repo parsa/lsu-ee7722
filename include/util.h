@@ -99,12 +99,14 @@ pOpenGL_Helper* opengl_helper_self_ = NULL;
 
 
 struct pTimer_Info {
+  pTimer_Info(const char *labelp, bool pf)
+    :label(labelp),per_frame(pf),timing(false),duration(0),end_count(0){};
   pString label;
-  bool timing;
   bool per_frame;
+  bool timing;
+  double duration;
   int end_count;
   double start;
-  double duration;
   double frac;
   double last;
 };
@@ -187,7 +189,7 @@ private:
   uint xfcount;  // Frame count provided by glx.
   pString frame_rate_text;
 
-  PStack<pTimer_Info> timer_info;
+  vector<pTimer_Info> timer_info;
 };
 
 #ifndef GP_UTIL_DECLARE_ONLY
@@ -212,13 +214,8 @@ pFrame_Timer::init()
 int 
 pFrame_Timer::user_timer_define(const char *label, bool per_frame)
 {
-  const int timer_id = timer_info.occ();
-  pTimer_Info* const ti = timer_info.pushi();
-  ti->label = label;
-  ti->timing = false;
-  ti->duration = 0;
-  ti->end_count = 0;
-  ti->per_frame = per_frame;
+  const int timer_id = timer_info.size();
+  timer_info.emplace_back(label,per_frame);
   return timer_id;
 }
 
@@ -260,13 +257,13 @@ pFrame_Timer::frame_rate_group_start()
   const double group_duration = frame_group_start_time - last_wall_time;
   const double group_duration_inv = 1.0 / group_duration;
 
-  while ( pTimer_Info* const ti = timer_info.iterate() )
+  for ( pTimer_Info& ti: timer_info )
     {
-      ti->frac = ti->duration * group_duration_inv;
-      ti->last = ti->per_frame
-        ? ti->duration * last_frame_count_inv
-        : ti->duration / max(1,ti->end_count);
-      ti->duration = 0;  ti->end_count = 0;
+      ti.frac = ti.duration * group_duration_inv;
+      ti.last = ti.per_frame
+        ? ti.duration * last_frame_count_inv
+        : ti.duration / max(1,ti.end_count);
+      ti.duration = 0;  ti.end_count = 0;
     }
 
   gpu_tlast = 1e-9 * gpu_tsum_ns * last_frame_count_inv;
@@ -421,14 +418,14 @@ pFrame_Timer::frame_end()
   if ( work_description )
     frame_rate_text.sprintf("  %s %7.1f", work_description, work_rate);
 
-  while ( pTimer_Info* const ti = timer_info.iterate() )
+  for ( pTimer_Info& ti: timer_info )
     {
       struct { double mult; const char* lab; } fmt;
-      if ( ti->last >= 0.001 ) { fmt.mult = 1000; fmt.lab = "ms"; } 
+      if ( ti.last >= 0.001 ) { fmt.mult = 1000; fmt.lab = "ms"; } 
       else { fmt.mult =1e6; fmt.lab= "us"; }
       frame_rate_text.sprintf
-        ("  %s %7.3f %s (%4.1f%%)", ti->label.s,
-         fmt.mult * ti->last, fmt.lab, 100 * ti->frac);
+        ("  %s %7.3f %s (%4.1f%%)", ti.label.s,
+         fmt.mult * ti.last, fmt.lab, 100 * ti.frac);
     }
 
   if ( opt_show_pipeline )
