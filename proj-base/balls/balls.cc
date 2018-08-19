@@ -610,7 +610,7 @@ public:
   bool opt_shadow_volumes;
   bool opt_mirror;
   int opt_mirror_method;
-  bool opt_normals_visible;
+  bool opt_normals_visible, opt_normal_tri_surface;
   bool opt_color_events;
   bool opt_color_events_hide_black;
   int opt_hide_stuff;
@@ -820,6 +820,7 @@ World::init()
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   opt_normals_visible = false;
+  opt_normal_tri_surface = true; // If true, use surface normal for tri.
   opt_shadows = true;
   opt_shadow_volumes = false;
   opt_mirror = true;
@@ -859,7 +860,7 @@ World::init()
   vs_fixed = new pShader();
 
   s_sphere = new pShader
-    ("balls-shdr.cc", "vs_main_sphere();");
+    ("balls-shdr.cc", "vs_main_sphere();", "gs_main_sphere();", NULL);
   s_sv_instances = new pShader
     ("balls-shdr.cc", "vs_main_sv_instances();");
 
@@ -3488,6 +3489,7 @@ World::balls_render_instances()
   glUniform2i(1, opt_debug, opt_debug2);
   glUniform1i(2, light_state);
   glUniform1i(3,1);
+  glUniform1i(4,opt_normal_tri_surface);
 
   sphere.render_bunch_render();
 }
@@ -3845,13 +3847,14 @@ World::render()
   const bool hide_spheres = opt_hide_stuff & OH_Spheres;
 
   ogl_helper.fbprintf
-    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('wm')  Evnt Color %s-%s ('cC')  "
+    ("Hide: %c%c%c ('!@#')  Norm: %c%c ('nN') "
+     "Evnt Color %s-%s ('cC')  "
      "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')\n",
      hide_spheres ? 'S' : '_',
      hide_tiles ? 'T' : '_',
      hide_platform ? 'P' : '_',
-     opt_shadows ? 'S' : '_',
-     opt_mirror ? 'M' : '_',
+     opt_normal_tri_surface ? 'S' : 'T',
+     opt_normals_visible ? 'V' : '_',
      opt_color_events ? BLINK("ON ","   ") : "OFF",
      opt_color_events_hide_black
      ? ( opt_color_events ? BLINK("ON ","   ") : "ON " ) : "OFF",
@@ -4172,7 +4175,8 @@ World::cb_keyboard()
   case 'M': opt_mirror_method++;
     if ( opt_mirror_method == 4 ) opt_mirror_method = 0;
     break;
-  case 'n': case 'N': opt_normals_visible = !opt_normals_visible; break;
+  case 'n': opt_normal_tri_surface = !opt_normal_tri_surface; break;
+  case 'N': opt_normals_visible = !opt_normals_visible; break;
   case 'p': case 'P': opt_pause = !opt_pause;
     if ( !opt_pause ) world_time = time_wall_fp();
     break;

@@ -28,6 +28,7 @@ layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
 layout ( location = 1 ) uniform bvec2 opt_debug;
 layout ( location = 2 ) uniform int lighting_options;
 layout ( location = 3 ) uniform int sphere_instances;
+layout ( location = 4 ) uniform bool opt_normal_tri_surface;
 
 struct Coord_Norm
 {
@@ -356,6 +357,7 @@ alhazan(vec2 eye, vec2 vertex)
 
 }
 
+#ifdef _VERTEX_SHADER_
 void
 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 {
@@ -400,9 +402,6 @@ generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e)
 }
 
 
-
-#ifdef _VERTEX_SHADER_
-
 /// Sphere Instance (Non-Reflection) Shaders
 
 void
@@ -421,6 +420,43 @@ vs_main_sphere()
   gl_Position = gl_ModelViewProjectionMatrix * cn.vertex_o;
 }
 
+#endif
+#ifdef _GEOMETRY_SHADER_
+
+void
+gs_main_sphere()
+{
+  if ( !opt_normal_tri_surface )
+    {
+      vec4 fcolor = vec4(0);
+      vec4 fscolor = vec4(0);
+      for ( int i=0; i<3; i++ )
+        {
+          fcolor += gl_FrontColorIn[i];
+          fscolor += gl_FrontSecondaryColorIn[i];
+        }
+      gl_FrontColor = fcolor * 1.0/3;
+      gl_FrontSecondaryColor = fscolor * 1.0/3;
+    }
+
+  for ( int i=0; i<3; i++ )
+    {
+      if ( opt_normal_tri_surface )
+        {
+          gl_FrontColor = gl_FrontColorIn[i];
+          gl_FrontSecondaryColor = gl_FrontSecondaryColorIn[i];
+        }
+
+      gl_Position = gl_PositionIn[i];
+      gl_TexCoord[0] = gl_TexCoordIn[i][0];
+      EmitVertex();
+    }
+  EndPrimitive();
+}
+
+#endif
+
+#ifdef _VERTEX_SHADER_
 
 void
 vs_main_sv_instances()
