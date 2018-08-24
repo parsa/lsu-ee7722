@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Fall 2015), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Fall 2018), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -25,7 +25,7 @@ public:
   void render_simple(float radius, pVect position);
   void render(float radiusp, pVect position, pVect axisp, double anglep)
   {
-    radius = radius; center = position; axis = axisp;  angle = anglep;
+    radius = radiusp; center = position; axis = axisp;  angle = anglep;
     rotation_matrix_compute();
     render();
   }
