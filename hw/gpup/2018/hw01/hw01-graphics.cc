@@ -71,7 +71,7 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
-  bool opt_time_step_easy;
+  bool opt_time_step_hw01;
 
   // Tiled platform for ball.
   //
@@ -98,14 +98,21 @@ public:
   pVect eye_direction;
   pMatrix modelview;
   pMatrix transform_mirror;
+  int curr_setup;
 
+  pCoor hw01_center;
+  pVect hw01_dir;
+  float hw01_r;
+  bool hw01_show_cyl;
+
+  void hw01(pCoor ctr, pVect dir, float r);
   void ball_setup_1();
   void ball_setup_2();
   void ball_setup_3();
   void ball_setup_4();
   void ball_setup_5();
-  void time_step_cpu_easy(double);
-  void time_step_cpu_full(double);
+  void time_step_cpu_orig(double);
+  void time_step_cpu_hw01(double);
   void balls_stop();
   void balls_freeze();
   void balls_translate(pVect amt, int idx);
@@ -157,6 +164,8 @@ World::init_graphics()
 
   platform_update();
   modelview_update();
+
+  hw01_show_cyl = false;
 }
 
 
@@ -281,6 +290,15 @@ World::render_objects(Render_Option option)
           Ball *const ball2 = &balls[i];
           cone.render(ball1->position,0.3*ball1->radius,
                       ball2->position-ball1->position);
+        }
+
+      if ( ( curr_setup == 3 || curr_setup == 4 ) && hw01_show_cyl )
+        {
+          Cone c;
+          c.apex_radius = 1;
+          c.render_sides = 100;
+          c.set_color(color_gray);
+          c.render(hw01_center,hw01_r,hw01_dir);
         }
     }
 
@@ -407,8 +425,11 @@ World::render()
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
-    ("Physics: %s ('v')  Time Step: %8d  World Time: %11.6f  %s\n",
-     opt_time_step_easy ? "EASY" : "FULL",
+    ("Physics: %s ('v')  Cylinder: %s ('c')  "
+     "Time Step: %8d  World Time: %11.6f  %s\n",
+     opt_time_step_hw01 ? "HW01" : "ORIG",
+     curr_setup < 3 || curr_setup > 4 ? "       " :
+     hw01_show_cyl ? BLINK("VISIBLE","       ") : "HIDDEN ",
      time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
      "Press 'p' to pause."
@@ -646,6 +667,7 @@ World::cb_keyboard()
   case '5': ball_setup_5(); break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
+  case 'c': hw01_show_cyl = !hw01_show_cyl; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H': opt_head_lock = !opt_head_lock; break;
@@ -654,7 +676,7 @@ World::cb_keyboard()
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 's': case 'S': balls_stop(); break;
-  case 'v': case 'V': opt_time_step_easy = !opt_time_step_easy; break;
+  case 'v': case 'V': opt_time_step_hw01 = !opt_time_step_hw01; break;
   case ' ': 
     if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true; 
@@ -665,6 +687,9 @@ World::cb_keyboard()
   case '+':case '=': variable_control.adjust_higher(); break;
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
+
+  uint32_t key_dig = ogl_helper.keyboard_key - '0';
+  if ( key_dig < 6 ) curr_setup = key_dig;
 
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
 

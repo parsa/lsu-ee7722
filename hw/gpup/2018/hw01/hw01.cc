@@ -1,6 +1,15 @@
 /// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
- /// Simple Demo of Point Masses and Springs
+ /// Homework 1
+ //
+
+ /// Instructions
+ //
+ //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2018/hw01.pdf
+ //
+ //  Search for "Problem" in this file to find the places to modify.
+ //
+ //  Only this file will be collected.
 
 
 /// Purpose
@@ -122,7 +131,7 @@ public:
 void
 World::init()
 {
-  chain_length = 20;
+  chain_length = 40;
   balls = new Ball[chain_length];
  
   distance_relaxed = 15.0 / chain_length;
@@ -134,7 +143,7 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   variable_control.insert(opt_gravity_accel,"Gravity");
 
-  opt_time_step_easy = false;
+  opt_time_step_hw01 = false;
 
   opt_air_resistance = 0.001;
   variable_control.insert(opt_air_resistance,"Air Resistance");  
@@ -146,7 +155,7 @@ World::init()
 
   init_graphics();
 
-  ball_setup_2();
+  curr_setup = 1; ball_setup_1();
 }
 
 ///
@@ -158,7 +167,7 @@ World::init()
 void
 World::ball_setup_1()
 {
-  /// Arrange balls vertically.
+  /// Arrange balls almost vertically.
 
   // Desired position of bottom ball.
   //
@@ -166,7 +175,7 @@ World::ball_setup_1()
 
   // Desired distance between adjacent balls.
   //
-  pVect ball_separation(0, distance_relaxed, 0);  // Points up.
+  pVect ball_separation(0.02, distance_relaxed, 0.01);  // Points up.
 
   for ( int i=0; i<chain_length; i++ )
     {
@@ -180,7 +189,8 @@ World::ball_setup_1()
       ball->contact = false;
     }
 
-  opt_head_lock = true;
+  opt_head_lock = false;
+  opt_tail_lock = false;
 }
 
 void
@@ -213,11 +223,49 @@ World::ball_setup_2()
 void
 World::ball_setup_3()
 {
+  hw01_center = pCoor(13.4,17.8,-9.2);
+  hw01_dir = pVect(0,-10,0);
+  hw01_r = 3;
+  hw01(hw01_center, hw01_dir,hw01_r);
 }
 
 void
 World::ball_setup_4()
 {
+  hw01_center = pCoor(13.4,17.8,-9.2);
+  hw01_dir = pVect(drand48(),drand48()*4-10,drand48());
+  hw01_r = 1 + drand48() * 3;
+  hw01(hw01_center,hw01_dir,hw01_r);
+}
+
+void
+World::hw01(pCoor center, pVect dir, float r)
+{
+  /// Homework 1 Problem 2 Solution Goes Here
+  //
+  //  Replace the code below.
+  //  Be neat -- delete [unused code].
+
+  /// Arrange balls almost vertically.
+
+  // Desired distance between adjacent balls.
+  //
+  pVect ball_separation = pNorm(dir) * distance_relaxed;
+
+  for ( int i=0; i<chain_length; i++ )
+    {
+      Ball* const ball = &balls[chain_length-i-1];
+
+      ball->position = center + i * ball_separation;
+
+      ball->velocity = pVect(0,0,0);
+      ball->radius = 0.3 * distance_relaxed;
+      ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
+      ball->contact = false;
+    }
+
+  opt_head_lock = false;
+  opt_tail_lock = false;
 }
 
 void
@@ -229,8 +277,10 @@ World::ball_setup_5()
  /// Advance Simulation State by delta_t Seconds
 //
 void
-World::time_step_cpu_easy(double delta_t)
+World::time_step_cpu_hw01(double delta_t)
 {
+  /// Homework 1 Problem 1 Solution Goes In This Routine
+
   time_step_count++;
 
   //
@@ -253,8 +303,6 @@ World::time_step_cpu_easy(double delta_t)
       // Gravitational Force
       //
       force += ball->mass * gravity_accel;
-      //
-      // Newton's most famous equation.
 
       // Spring Force from Neighbor Balls
       //
@@ -283,12 +331,25 @@ World::time_step_cpu_easy(double delta_t)
           const float spring_stretch =
             distance_between_balls - distance_relaxed;
 
-          // Add on the force due to the neighbor_ball.
+          // Compute the speed of ball towards neighbor_ball.
           //
-          force += opt_spring_constant * spring_stretch * ball_to_neighbor;
-          //              h               ( l - l_r )         u_12
+          pVect delta_v = neighbor_ball->velocity - ball->velocity;
+          float delta_s = dot( delta_v, ball_to_neighbor );
+
+
+          // Determine whether spring is gaining energy (whether its length
+          // is getting further from its relaxed length).
           //
-          // Comments above show symbols used in notes.
+          const bool gaining_e = ( delta_s > 0.0 ) == ( spring_stretch > 0 );
+
+          // Use a smaller spring constant when spring is loosing energy,
+          // a quick and dirty way of simulating energy loss due to spring
+          // friction.
+          //
+          const float spring_constant =
+            gaining_e ? opt_spring_constant : opt_spring_constant * 0.7;
+
+          force += spring_constant * spring_stretch * ball_to_neighbor;
         }
 
       // Update Velocity
@@ -337,9 +398,10 @@ World::time_step_cpu_easy(double delta_t)
     }
 }
 
-
+ /// Advance Simulation State by delta_t Seconds
+//
 void
-World::time_step_cpu_full(double delta_t)
+World::time_step_cpu_orig(double delta_t)
 {
   time_step_count++;
 
@@ -371,7 +433,7 @@ World::time_step_cpu_full(double delta_t)
           const int n_idx = i + direction;  // Compute neighbor index.
 
           if ( n_idx < 0 ) continue;
-          if ( n_idx == chain_length ) break;
+          if ( n_idx == chain_length ) continue;
 
           Ball* const neighbor_ball = &balls[n_idx];
 
@@ -531,10 +593,10 @@ World::frame_callback()
 
       while ( world_time < world_time_target )
         {
-          if ( opt_time_step_easy )
-            time_step_cpu_easy(time_step_duration);
+          if ( opt_time_step_hw01 )
+            time_step_cpu_hw01(time_step_duration);
           else
-            time_step_cpu_full(time_step_duration);
+            time_step_cpu_orig(time_step_duration);
           world_time += time_step_duration;
         }
 

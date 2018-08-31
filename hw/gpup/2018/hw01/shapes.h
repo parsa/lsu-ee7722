@@ -274,7 +274,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 
 class Cone {
 public:
-  Cone(){ apex_radius = 0.1; dont_set_color = true; };
+  Cone(){ apex_radius = 0.1; dont_set_color = true; render_sides = 10; };
   void render_shadow_volume(pCoor base, float radius, pVect to_apex)
   {
     const int sides = 10;
@@ -345,7 +345,7 @@ public:
   }
   void render(pCoor base, float radius, pVect to_apex)
   {
-    const int sides = 10;
+    const int sides = render_sides;
     const double delta_theta = 2 * M_PI / sides;
     const double base_radius = 1;
     const double apex_height = 1;
@@ -383,6 +383,7 @@ public:
 
   void set_color(const pColor &c) { color = c;  dont_set_color = false; }
 
+  int render_sides;
   bool dont_set_color;
   pColor color;
   pCoor light_pos;
