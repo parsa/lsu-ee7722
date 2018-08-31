@@ -627,6 +627,7 @@ public:
     pVect::set(v2);
   }
   void operator = (pVect v) { set(v); }
+  operator float() const { return magnitude; }
   float magnitude;
   float mag_sq;
 };
