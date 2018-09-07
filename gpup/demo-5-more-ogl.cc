@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
  /// Simple Demo of OpenGL
 
@@ -17,27 +17,31 @@
 
  /// References
 //
-// :ogl45: OpenGL Specification Version 4.5
-//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+// :ogl46: OpenGL Specification Version 4.6
+//         http://www.opengl.org/registry/doc/glspec46.compatibility.pdf
 
  /// Coordinate Spaces
 //
-//  :ogl45: Section 12.1 - Coordinate space descriptions.
+//  :ogl46: Section 12.1 - Coordinate space descriptions.
 //
 //  :Def: Object Space
 //        Coordinate space of user's choosing.
 //        E.g., Flight Simulator: y is feet, x and z are nautical miles.
+          glVertex3f(1,2,3); // These coordinates are in object space.
 //              
 //  :Def: Eye Space
 //        User's eye at origin, monitor facing -z.
+//        Lighting calculations may be performed in eye space.
 //
 //  :Def: Clip Space
-//        Visible space inside a cube with corners (-1,-1,-1) and (1,1,1)
+//        Visible space (view volume) inside 
+//         a cube with corners (-1,-1,-1) and (1,1,1)
+//        Used by fixed-function hardware to clip.
 
 
  /// Transformation Matrices
 //
-//   :ogl45: Section 12.1.1
+//   :ogl46: Section 12.1.1
 //
 //   Some Important Transformations:
 //
