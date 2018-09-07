@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
  /// Minimal OpenGL Program
 
@@ -20,8 +20,8 @@
 
  /// References
 //
-// :ogl45: OpenGL Specification Version 4.5
-//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+// :ogl46: OpenGL Specification Version 4.6
+//         http://www.opengl.org/registry/doc/glspec46.compatibility.pdf
 
 /// Software Used in This Demo
 //
@@ -48,9 +48,12 @@
  //
  /// OpenGL Rendering Pass
  //
- /// OpenGL Transformation Matrix Handling
- //
  /// OpenGL Function Naming Conventions
+
+/// Concepts Covered in the Next Demo, more-ogl.cc
+ //
+ //  Coordinate spaces and transformation matrices.
+ //  Color and other vertex attributes.
 
 
 /// Organization of This Demo
@@ -69,7 +72,7 @@
 
 /// OpenGL Primitives and The Rendering Pass
 //
-// :ogl45: Section 10.1  Primitives
+// :ogl46: Section 10.1  Primitives
 
  // :Def: OpenGL Primitive
  // A shape (or collection of shapes) that OpenGL can render on to the
@@ -126,22 +129,24 @@
  //   Tell OpenGL that we are no longer rendering PRIMITIVE.
  //
 
- /// GL_TRIANGLES
- //
+ /// Primitive Type:  GL_TRIANGLES
+     glBegin(GL_TRIANGLES);
+//
  //  Isolated triangles.
  //
- //  Let v1, v2, v3, v4, ... be the vertices sent.
+ //  Let v1, v2, v3, v4, v5, v6 be the vertices specified in glVertex.
  //
  //  Triangle 1: (v1,v2,v3)
  //  Triangle 2: (v4,v5,v6)
  //
  //  To render T triangles need 3T vertices.
 
- /// GL_TRIANGLE_STRIP
+ /// Primitive Type:  GL_TRIANGLE_STRIP
+     glBegin(GL_TRIANGLE_STRIP);
  //
  //  Triangles sharing an edge with neighbors.
  //
- //  Let v1, v2, v3, v4, ... be the vertices sent.
+ //  Let v1, v2, v3, v4, v5 be the vertices specified in glVertex.
  //
  //  Triangle 1: (v1,v2,v3)
  //  Triangle 2: (v4,v3,v2)  // Note backward order.
@@ -149,10 +154,36 @@
  //
  //  To render T triangles need T+2 vertices.
 
+ /// Primitive Type:  GL_TRIANGLE_FAN
+     glBegin(GL_TRIANGLE_FAN);
+ //
+ //  Triangles sharing an edge with neighbors, and all sharing one vertex.
+ //
+ //  Let v1, v2, v3, v4, v5 be the vertices specified in glVertex.
+ //
+ //  Triangle 1: (v1,v2,v3)
+ //  Triangle 2: (v1,v3,v4)
+ //  Triangle 3: (v1,v4,v5)
+ //
+ //  To render T triangles need T+2 vertices.
 
- /// GL_LINES
+ /// Primitive Types: GL_LINES, GL_LINE_STRIPS, GL_LINE_LOOP
+     glBegin(GL_LINES);
+ //
+ //  Lines. Or more precisely, thin rectangles.
 
- /// GL_POINTS
+ /// Primitive Type: GL_POINTS
+     glBegin(GL_POINTS);
+ //
+ //  Dots.
+
+
+ /// Deprecated Primitives
+ //
+ //  These primitives are deprecated because the only advantage over
+ //  other primitives is convenience.
+ //
+ //  Primitive Type: GL_QUADS, GL_QUAD_STRIP, GL_POLYGON
 
 #endif
 
@@ -196,6 +227,9 @@ render()
   /// Specify Transformation Matrices
   ///
 
+  // Note: Coordinate spaces and transformation matrices described
+  // in demo-5-more-ogl.cc.
+
   // Tell OpenGL that subsequent matrix commands are for modelview matrix.
   //
   glMatrixMode(GL_MODELVIEW);
@@ -228,6 +262,9 @@ render()
   //
   // Left, Right, Top, Bottom, Front, Back
   glFrustum( -0.8, +0.8, -0.8, 0.8, 1, 5000 );
+
+  // Note: Coordinate spaces and transformation matrices described
+  // in demo-5-more-ogl.cc.
 
 
   ///
