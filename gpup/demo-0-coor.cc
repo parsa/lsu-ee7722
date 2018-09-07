@@ -128,7 +128,8 @@ sample_code()
 
     // Get the distance from c1 to c2.
     //
-    float distance_c1_c2 = nvec.magnitude;
+    float distance_c1_c2 = nvec.magnitude;  // Using data member.
+    float also_distance_c1_c2 = nvec;       // Using overloaded float cast.
 
     pVect c1_velocity(7,8,9);
     float speed_c1_to_c2 = dot( c1_velocity, nvec );
