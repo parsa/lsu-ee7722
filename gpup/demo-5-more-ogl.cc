@@ -293,6 +293,8 @@ public:
   //
   pFrame_Timer frame_timer;
 
+  bool opt_show_lines; // Set normal to triangle normal.
+
   pCoor light_location;
   float opt_light_intensity;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
@@ -328,6 +330,8 @@ World::init()
   variable_control.insert(sphere_size,"Sphere Size");
 
   opt_move_item = MI_Eye;
+
+  opt_show_lines = false;
 }
 
 void
@@ -483,7 +487,7 @@ World::render()
   //
   //  OpenGL state is now set up, start sending triangles!
 
-  glBegin(GL_TRIANGLES);
+  glBegin(opt_show_lines ? GL_LINE_STRIP : GL_TRIANGLES);
 
   // Set current color.  This is carried with vertex.
   //
@@ -615,6 +619,7 @@ World::cb_keyboard()
   case 'b': case 'B': opt_move_item = MI_Ball; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
+  case 'n': opt_show_lines = !opt_show_lines; break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
