@@ -505,19 +505,19 @@ World::render()
       const double slice_r0 = sin(eta0),  slice_r1 = sin(eta1);
       const double delta_theta = delta_eta * slice_r1;
 
-      for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
+      for ( double theta0 = 0; theta0 < 2 * M_PI; theta0 += delta_theta )
         {
-          const double theta1 = theta + delta_theta;
+          const double theta1 = theta0 + delta_theta;
 
           /// Triangle 1
 
           // Vertex 1
-          glNormal3f( slice_r1 * cos(theta), y1, slice_r1 * sin(theta) );
-          glVertex3f( slice_r1 * cos(theta), y1, slice_r1 * sin(theta) );
+          glNormal3f( slice_r1 * cos(theta0), y1, slice_r1 * sin(theta0) );
+          glVertex3f( slice_r1 * cos(theta0), y1, slice_r1 * sin(theta0) );
 
           // Vertex 2
-          glNormal3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
-          glVertex3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
+          glNormal3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
+          glVertex3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
 
           // Vertex 3      
           glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
@@ -530,8 +530,8 @@ World::render()
           glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
 
           // Vertex 2
-          glNormal3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
-          glVertex3f( slice_r0 * cos(theta), y0, slice_r0 * sin(theta) );
+          glNormal3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
+          glVertex3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
 
           // Vertex 4
           glNormal3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
