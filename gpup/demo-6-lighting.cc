@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
  /// Lighting
 
@@ -244,6 +244,7 @@ public:
   pMatrix modelview;
 
   bool opt_scene, opt_ambient, opt_specular, opt_diffuse, opt_emissive;
+  bool opt_show_cones;
   float opt_shininess;
 
 };
@@ -267,7 +268,8 @@ World::init()
   opt_diffuse = true;
   opt_specular = false;
   opt_emissive = false;
-  opt_shininess = 1;
+  opt_show_cones = true;
+  opt_shininess = 5.5;
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
   variable_control.insert(opt_shininess, "Shininess");
@@ -385,7 +387,7 @@ World::render()
     glLightfv(GL_LIGHT0, GL_AMBIENT, dark);
 
   if ( opt_specular )
-    glLightfv(GL_LIGHT0, GL_SPECULAR, white * opt_light_intensity);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, 1000 * white * opt_light_intensity);
   else
     glLightfv(GL_LIGHT0, GL_SPECULAR, dark);
 
@@ -420,6 +422,8 @@ World::render()
   // If 1, use back color and -normal if back side facing user.
   //
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,1);
+
+  glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,1);
 
 
   // Set shininess. Will use this for all subsequent primitives.
@@ -542,6 +546,8 @@ World::render()
       glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE, red);
       glMaterialfv(GL_FRONT,GL_SPECULAR, red);
 
+      if ( !opt_show_cones ) continue;
+
       const float rad = 0.1 * 2 * M_PI / slices;
 
       /// Draw Cones on Sphere Surface
@@ -626,6 +632,7 @@ World::cb_keyboard()
   case 'b': case 'B': opt_move_item = MI_Ball; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
+  case 'c': case 'C': opt_show_cones = !opt_show_cones; break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
