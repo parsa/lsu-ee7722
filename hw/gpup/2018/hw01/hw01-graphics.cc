@@ -72,6 +72,7 @@ public:
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
   bool opt_time_step_hw01;
+  int s4_call_count;
 
   // Tiled platform for ball.
   //
@@ -106,6 +107,7 @@ public:
   bool hw01_show_cyl;
 
   void hw01(pCoor ctr, pVect dir, float r);
+  void hw01_alt(pCoor ctr, pVect dir, float r);
   void ball_setup_1();
   void ball_setup_2();
   void ball_setup_3();
@@ -292,7 +294,7 @@ World::render_objects(Render_Option option)
                       ball2->position-ball1->position);
         }
 
-      if ( ( curr_setup == 3 || curr_setup == 4 ) && hw01_show_cyl )
+      if ( curr_setup >= 3 && hw01_show_cyl )
         {
           Cone c;
           c.apex_radius = 1;
@@ -428,7 +430,7 @@ World::render()
     ("Physics: %s ('v')  Cylinder: %s ('c')  "
      "Time Step: %8d  World Time: %11.6f  %s\n",
      opt_time_step_hw01 ? "HW01" : "ORIG",
-     curr_setup < 3 || curr_setup > 4 ? "       " :
+     curr_setup < 3 ? "       " :
      hw01_show_cyl ? BLINK("VISIBLE","       ") : "HIDDEN ",
      time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
