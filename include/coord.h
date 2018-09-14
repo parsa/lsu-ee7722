@@ -279,6 +279,15 @@ public:
 typedef pMatrix3x3x<3> pMatrix3x3;
 typedef pMatrix3x3x<4> pMatrix3x3p;
 
+pMatrix
+transpose(const pMatrix m)
+{
+  pMatrix rv;
+  rv.set_transpose(m);
+  return rv;
+}
+
+
 inline pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
 
 inline void
@@ -627,7 +636,6 @@ public:
     pVect::set(v2);
   }
   void operator = (pVect v) { set(v); }
-  operator float() const { return magnitude; }
   float magnitude;
   float mag_sq;
 };
@@ -725,6 +733,10 @@ inline float pDistance_sq(pCoor a, pCoor b)
 //
 // Pre-Initialized Matrices
 //
+
+class pMatrix_Transpose : public pMatrix {
+  pMatrix_Transpose(const pMatrix m){ set_transpose(m); }
+};
 
 class pMatrix_Rows : public pMatrix {
 public:
