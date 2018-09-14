@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -128,7 +128,7 @@
 
 enum VTX_Spec_Method { VM_Individual, VM_Strip, VM_Array, VM_Buffer, VM_SIZE };
 const char* const spec_method_str[] =
-  {"Individual", "Strip", "Array", "Buffer"};
+  {"INDIVIDUAL", "STRIP", "ARRAY", "BUFFER"};
 
 class World {
 public:
@@ -249,14 +249,30 @@ World::render()
 
   glShadeModel(GL_SMOOTH);
 
+  const double time_now = time_wall_fp();
+  const bool blink_visible __attribute__((unused)) = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
+    ("Compiled: %s\n",
+#ifdef __OPTIMIZE__
+     "WITH OPTIMIZATION"
+#else
+     BLINK("WITHOUT OPTIMIZATION","")
+#endif
+     );
+
+  ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
-     "Eye direction: [%+.2f, %+.2f, %+.2f]\n",
+     "Eye direction: [%+.2f, %+.2f, %+.2f]  "
+     "Light location: [%5.1f, %5.1f, %5.1f]  "
+     "Sphere Location[%5.1f, %5.1f, %5.1f]\n",
      eye_location.x, eye_location.y, eye_location.z,
-     eye_direction.x, eye_direction.y, eye_direction.z);
+     eye_direction.x, eye_direction.y, eye_direction.z,
+     light_location.x, light_location.y, light_location.z,
+     sphere_location.x, sphere_location.y, sphere_location.z);
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -264,19 +280,13 @@ World::render()
 
 
   ogl_helper.fbprintf
-    ("Light location: [%5.1f, %5.1f, %5.1f]  "
-     "Sphere Location[%5.1f, %5.1f, %5.1f]\n",
-     light_location.x, light_location.y, light_location.z,
-     sphere_location.x, sphere_location.y, sphere_location.z
-     );
-
-  ogl_helper.fbprintf
     ("Vertex Specification Method: %s ('m' to change),  Recompute Coords: %s ('r')\n",
      spec_method_str[opt_method], opt_recompute ? "YES" : "NO");
 
   ogl_helper.fbprintf
-    ("Estimated triangles: %6d  Vertices: %6d  Data: %7.3f kiB/frame\n",
-     pf_triangles, pf_vertices, pf_gpu_cpu_bytes / 1024.0);
+    ("Estimated triangles: %8s  Vertices: %8s  Data: %7.3f kiB/frame\n",
+     commaize(pf_triangles).c_str(),
+     commaize(pf_vertices).c_str(), pf_gpu_cpu_bytes / 1024.0);
 
 
   const int win_width = ogl_helper.get_width();
@@ -701,11 +711,9 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
+
+  ogl_helper.user_text_reprint();
 
   glutSwapBuffers();
 }
@@ -786,7 +794,11 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
+# ifdef __OPTIMIZE__
+  popengl_helper.ogl_debug_set(false);
+# else
   popengl_helper.ogl_debug_set(true);
+# endif
 
   World world(popengl_helper);
 
