@@ -670,6 +670,11 @@ public:
       if ( setting ) glEnable(GL_DEBUG_OUTPUT);
       else           glDisable(GL_DEBUG_OUTPUT);
     }
+    // Turn off notification messages.
+    glDebugMessageControl
+      (GL_DONT_CARE,GL_DONT_CARE,
+       GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
+
     return rv;
   }
 
