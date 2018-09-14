@@ -553,10 +553,10 @@ World::render()
   //    the coordinates) should be saved in an array and re-used, only
   //    to be recomputed if necessary, for example, if slices changes.
   //
-  //  * There are vertices of six triangles at a single point (three
-  //    along one slice). It would be more efficient to compute and
-  //    emit a vertex once and share it. In demo-6 this is done using
-  //    the triangle strip feature.
+  //  * There are vertices of three triangles at a single point. It
+  //    would be more efficient to compute and emit a vertex once and
+  //    share it. In demo-6 this is done using the triangle strip
+  //    feature.
   //
   //  * Even if vertex and normal coordinates were pre-computed, there
   //    would still be substantial overhead in the individual function
