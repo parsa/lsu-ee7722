@@ -754,8 +754,11 @@ World::cb_keyboard()
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'r': case 'R': opt_recompute = !opt_recompute; break;
-  case 'm': case 'M': opt_method++;
+  case 'm': opt_method++;
     if ( opt_method == VM_SIZE ) opt_method = 0;
+    break;
+  case 'M': if ( !opt_method ) opt_method = VM_SIZE;
+    opt_method--;
     break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
