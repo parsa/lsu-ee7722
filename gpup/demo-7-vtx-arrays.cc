@@ -59,6 +59,12 @@
  //  -- Buffer Objects.
 
 
+/// Data Bandwidth
+//
+//  PCie v4 x16:            30 GB/s
+//  Pascal-generation GPU: 300 GB/s
+
+
 
 /// Vertex Arrays
 //
@@ -519,8 +525,7 @@ World::render()
       //       Type: 
       //         Data type. Other possibilities: GL_DOUBLE, GL_INT, ..
       //       Stride:
-      //         Easy but not 100% correct:  size of data for vertex coord.
-      //         Correct answer: Number of bytes between vertex i and i + 1.
+      //         Number of bytes between vertex i and i + 1.
       //         A value of 0 means set stride to N * sizeof(Type)
       //       Pointer:
       //         Address of first coordinate.
@@ -528,8 +533,8 @@ World::render()
       // Ditto for normals.
       //
       glEnableClientState(GL_NORMAL_ARRAY);
-      glNormalPointer( GL_FLOAT,sizeof(sphere_coords[0]),sphere_coords.data());
-      //               Type      Stride                  Pointer
+      glNormalPointer( GL_FLOAT, sizeof(sphere_coords[0]),sphere_coords.data());
+      //               Type      Stride                   Pointer
       //
       // Fewer arguments than glNormalPointer because normals always have
       // three dimensions.
@@ -587,15 +592,18 @@ World::render()
 #ifdef XXX
       /// Steps:
       //
+      ///  The steps shown below are samples, they are not executed here.
+
+      //
       //  - Get a buffer object name.
       //    Just do this once.
-
+      //
       glGenBuffers(n, &gpu_buffer);
 
 
       //  - Copy data from CPU into buffer object.
       //    Do this whenever data changes.
-
+      //
       glBufferData
         (GL_ARRAY_BUFFER,   // Kind of buffer object.
          n_bytes ,          // Amount of data (bytes) to copy.
@@ -605,8 +613,11 @@ World::render()
       //   - Use buffer object in place of a CPU (client) array.
       //     Do this each time a command, like glVertexPointer, reads
       //      array data.
-
+      //
       glBindBuffer(GL_ARRAY_BUFFER, gpu_buffer);
+
+      /// Note: The code above is an exampe, it doesn't execute. The real code
+      /// appears below.
 
 #endif
 
