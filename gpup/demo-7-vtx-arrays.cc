@@ -59,10 +59,49 @@
  //  -- Buffer Objects.
 
 
-/// Data Bandwidth
+/// Performance
 //
-//  PCie v4 x16:            30 GB/s
-//  Pascal-generation GPU: 300 GB/s
+ /// Goal: Estimate performance of rendering pipeline.
+ //
+ //  Approximate:
+ //
+ //   - Amount of data transferred from CPU memory to GPU memory.
+ //   - Amount of data transferred from GPU memory to GPU.
+ //   - Number of vertex shader invocations.
+ //   - Number of fragment shader invocations.
+ //
+ /// Hardware Capabilities
+ //
+ //  Bandwidth From CPU Memory to GPU Memory
+ //
+ //    Affects loading of buffer objects.
+ //    Affects sending of vertex attributes, etc, from CPU.
+ //
+ //    Does not apply if same memory used for both.
+ //
+ //    If not, bandwidth usually determined by PCIe bus.
+ //     PCIe v4 x16: 30 GB/s.
+ //
+ //  Bandwidth From GPU Memory to GPU
+ //
+ //    Affects inputs and outputs to rendering pipeline stages.
+ //
+ //    Determined by GPU.
+ //      Pascal-generation desktop GPU: 300 GB/s.
+ //
+ //  GPU Computation
+ //
+ //    Affects computation in rendering pipeline.
+ //
+ //    One measurement is rate of floating-point operations.
+ //
+ //    For NVidia devices:
+ //      Product of number of "CUDA Cores" and graphics clock frequency.
+ //        GTX 1080: 2560 * 1.911 GHz = 4892 10^9
+ //
+ //      This indicates the number of multiply/add operations per second.
+ //
+
 
 
 
