@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
  /// Textures, Blending, the Alpha Test, and Stencils
 
@@ -102,6 +102,19 @@
 
 //    Load data into the texture object.
       glTexImage2D
+      ( GL_TEXTURE_2D,    // There are also 1-d and 3-d textures.
+        MIPMAP_LEVEL,     // An integer. Base image is zero.
+        INTERNAL_FORMAT,  // Specifies order of colors. Eg GL_RGBA.
+        WIDTH, HEIGHT,
+        0,
+        FORMAT,           // Specifies order of colors of input data ..
+        // .. some possible values: GL_RGBA, GL_BGRA, GL_RED,..
+
+        TYPE,             // Specifies data type of input data ..
+        // .. some possible values: GL_UNSIGNED_SHORT, GL_FLOAT, ..
+
+        IMAGE_ARRAY       // A pointer to the image data.
+        );
 
 
 
@@ -110,6 +123,56 @@
 //   A rendering pass can use zero or more texture units.
 //
 //   Texture units are set up before a rendering pass.
+
+
+
+ /// Typical Steps to Prepare a Texture
+//
+ /// Start With
+//
+//   An image in some standard format ..
+//   .. or an array containing a custom-drawn image.
+//
+ /// Finish With
+//
+//   An OpenGL texture object corresponding to the image ..
+//   .. with MIPMAP levels computed by OpenGL ..
+//   .. that can be used with texture commands.
+//
+ /// Steps
+//
+//   - Create a Texture Object
+//     In example below tid will contain id of texture object.
+//
+  GLuint tid;  // A texture object ID.
+  glGenTextures(1,&tid);
+//
+//   - Set new Texture Object to Create MIPMAP levels.
+//
+  glBindTexture(GL_TEXTURE_2D,tid);
+  glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
+//
+//   - Load image into memory.
+//     Example below uses the Image Magick library
+//
+  Magick::Image image( "my_cool_picture.jpeg" );
+//
+//   - Put image in Texture Object tid.
+//
+  glTexImage2D
+    (GL_TEXTURE_2D,
+     0,                // Level of Detail (a.k.a. mipmap level, 0 is base).
+     GL_RGBA,          // Internal format to be used for texture.
+     image.columns(), image.rows(),
+     0,                // Border Width
+     GL_BGRA,          // GL_BGRA: Order of color components in image,
+     // Below: Data type of each color component,
+     sizeof(Magick::PixelPacket) == 8 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
+     (void*)image.getPixels(0,0,image.columns(), image.rows()) );
+//
+// See: 
+//   rpBuild_Texture_File in this file.
+//   P_Image_Read in file ../include/texture-util.h
 
 
 
