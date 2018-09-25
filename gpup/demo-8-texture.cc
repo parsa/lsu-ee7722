@@ -504,9 +504,8 @@ public:
   GLuint gpu_buffer;
   enum { MI_Eye, MI_Light, MI_Ball, MI_Ball_V, MI_COUNT } opt_move_item;
 
-  float *coords;
-  float *tcoords;
-  int coords_size;
+  vector<pCoor> sphere_coords;
+  vector<float> texture_coords;
 
   pCoor sphere_location;
   float sphere_size;
@@ -534,7 +533,6 @@ void
 World::init()
 {
   frame_timer.work_unit_set("Steps / s");
-  coords = NULL;
   gpu_buffer = 0;
 
   opt_method = 0;
@@ -749,13 +747,8 @@ World::render()
   /// Construct a Sphere
   ///
 
-  if ( coords == NULL )
+  if ( sphere_coords.empty() )
     {
-      // Declare a self-resizing stack for storing coordinates.
-      //
-      PStack<float> sphere_coords;
-      PStack<float> texture_coords;
-
       const int slices = 40;
       const double delta_eta = M_PI / slices;
 
@@ -769,43 +762,47 @@ World::render()
           const float t0 = eta / M_PI;
           const float t1 = eta1 / M_PI;
 
-          texture_coords += 1;
-          texture_coords += t1;
+          // Add first two vertices of triangle strip.
+          //
+          // Note that a texture coordinate is added to list one
+          // component at a time.
+          //
 
-          sphere_coords += slice_r1;
-          sphere_coords += y1;
-          sphere_coords += 0;
+          // Vertex 1
+          //
+          sphere_coords.push_back( pCoor( slice_r1, y1, 0 ) );
 
-          texture_coords += 1;
-          texture_coords += t0;
+          texture_coords.push_back( 1 );
+          texture_coords.push_back( t1 );
 
-          sphere_coords += slice_r0;
-          sphere_coords += y0;
-          sphere_coords += 0;
+          // Vertex 2
+          //
+          sphere_coords.push_back( pCoor( slice_r0, y0, 0 ) );
+
+          texture_coords.push_back( 1 );
+          texture_coords.push_back( t0 );
 
           for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
             {
               const double theta1 = theta + delta_theta;
 
-              texture_coords += 1 - theta1 / ( 2 * M_PI );
-              texture_coords += t1;
+              // Vertex 3  (Used for three triangles.)
+              //
+              sphere_coords.push_back
+                ( pCoor( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) ) );
 
-              sphere_coords += slice_r1 * cos(theta1);
-              sphere_coords += y1;
-              sphere_coords += slice_r1 * sin(theta1);
+              texture_coords.push_back( 1 - theta1 / ( 2 * M_PI ) );
+              texture_coords.push_back( t1 );
 
-              texture_coords += 1 - theta1 / ( 2 * M_PI );
-              texture_coords += t0;
+              // Vertex 4  (Used for three triangles.)
+              //
+              sphere_coords.push_back
+                ( pCoor( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) ) );
 
-              sphere_coords += slice_r0 * cos(theta1);
-              sphere_coords += y0;
-              sphere_coords += slice_r0 * sin(theta1);
+              texture_coords.push_back( 1 - theta1 / ( 2 * M_PI ) );
+              texture_coords.push_back( t0 );
             }
         }
-
-      coords_size = sphere_coords.occ();
-      coords = sphere_coords.take_storage();
-      tcoords = texture_coords.take_storage();
     }
 
 
@@ -852,12 +849,12 @@ World::render()
 
   // Specify pointer into array to use for texture coordinates.
   //
-  glTexCoordPointer(2,GL_FLOAT,0,tcoords);
+  glTexCoordPointer(2,GL_FLOAT,0,texture_coords.data());
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
   // Specify pointer into array to use for normals.
   //
-  glNormalPointer(GL_FLOAT,0,coords);
+  glNormalPointer(GL_FLOAT,sizeof(sphere_coords[0]),sphere_coords.data());
 
   // Specify that normals should come from an array.
   //
@@ -865,7 +862,7 @@ World::render()
 
   // Ditto.
   //
-  glVertexPointer(3,GL_FLOAT,3*sizeof(float),coords);
+  glVertexPointer(3,GL_FLOAT,sizeof(sphere_coords[0]),sphere_coords.data());
   glEnableClientState(GL_VERTEX_ARRAY);
 
   // Specify color. Since it's not an array the same color
@@ -878,7 +875,7 @@ World::render()
   // Draw triangle strips using enabled arrays.
   // Start at element 0, render a total of coords_size/3 vertices.
   //
-  glDrawArrays(GL_TRIANGLE_STRIP,0,coords_size/3);
+  glDrawArrays(GL_TRIANGLE_STRIP,0,sphere_coords.size());
 
   glDisableClientState(GL_NORMAL_ARRAY);
   glDisableClientState(GL_VERTEX_ARRAY);
@@ -888,8 +885,8 @@ World::render()
 
   if ( opt_recompute )
     {
-      free( coords );  coords = NULL;
-      free( tcoords );  tcoords = NULL;
+      sphere_coords.clear();
+      texture_coords.clear();
     }
 
   glPopMatrix();
