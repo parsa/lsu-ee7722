@@ -234,10 +234,21 @@
  //   Specify blend operator (Equation) and blend factors (BF)
  //
       glBlendEquation( EQ );
+ //   Specifies how fragment (source) and pixel (dest) should be combined.
+ //
  //   EQ -> GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_MIN, GL_MAX
  //
       glBlendFunc( SRC_BF, DST_BF );
+ //   Specifies how fragment and pixel components should be weighted.
+ //   
  //   BF -> GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_DST_COLOR, 
+ //
+ //
+ //   Let s denote fragment being processed ..
+ //   .. and d denote the current pixel value (the destination).
+ //   Let s.a indicate the fragment alpha channel, etc.
+ //
+ //
 
 
 ///  Background -- Stencil Operations
