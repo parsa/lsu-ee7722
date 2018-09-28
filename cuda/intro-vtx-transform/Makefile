@@ -17,8 +17,10 @@ LIBRARIES = -lrt -lpthread -lcuda -lnvidia-ml
 
 # Include the course libraries. So far a CUPTI interface.
 #
-DUMMY:= $(shell $(MAKE) -C $(GP_ROOT)/lib)
-LIBRARIES += $(shell $(GP_ROOT)/lib/ld-flags)
+ifneq ($(MAKECMDGOALS),clean)
+  DUMMY:= $(shell $(MAKE) -C $(GP_ROOT)/lib)
+  LIBRARIES += $(shell $(GP_ROOT)/lib/ld-flags)
+endif
 INCLUDE += -I$(GP_ROOT)/lib
 
 
@@ -26,9 +28,11 @@ ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
-DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
-GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
-DHASH := $(shell $(GPU_GET_PATH) -dhash)
+ifneq ($(MAKECMDGOALS),clean)
+  DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+  GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+  DHASH := $(shell $(GPU_GET_PATH) -dhash)
+endif
 
 # Optimization Flag (Omitted from debug builds by make rules.)
 #
@@ -75,7 +79,7 @@ $(BUILD_CC_FILE_PATH):
 
 # Include dependencies that were created by %.d rules.
 #
-ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(DHASH),)
 -include $(SRC_FILES:=.$(DHASH))
 endif
 

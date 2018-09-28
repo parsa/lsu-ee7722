@@ -22,9 +22,11 @@ ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
-DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
-GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
-DHASH := $(shell $(GPU_GET_PATH) -dhash)
+ifneq ($(MAKECMDGOALS),clean)
+  DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+  GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+  DHASH := $(shell $(GPU_GET_PATH) -dhash)
+endif
 
 # Optimization Flag (Omitted from debug builds by make rules.)
 #
@@ -59,7 +61,7 @@ build-cc:  # Let make know that build-cc now exists, though not by this rule.
 
 # Include dependencies that were created by %.d rules.
 #
-ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(DHASH),)
 -include $(SRC_FILES:=.$(DHASH))
 endif
 

@@ -18,8 +18,10 @@ ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
-DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
-GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+ifneq ($(MAKECMDGOALS),clean)
+  DUMMY := $(shell  $(MAKE) -C $(dir $(GPU_GET_PATH)))
+  GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
+endif
 
 # Optimization Flag (Omitted from debug builds by make rules.)
 #
