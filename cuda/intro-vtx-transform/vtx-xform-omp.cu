@@ -1,4 +1,4 @@
-/// LSU EE 7722 (Spring 2015), GPU Microarchitecture
+/// LSU EE 7722 (Spring 2018), GPU Microarchitecture
 //
 
 #include <pthread.h>
@@ -461,7 +461,7 @@ main(int argc, char **argv)
 
       // Launch the threads.
       //
-      for ( int i=0; i<app.num_threads; i++ )
+      for ( ptrdiff_t i=0; i<app.num_threads; i++ )
         pthread_create(&ptid[i], &attr, pt_thread_start, (void*)i);
 
       // Wait for each thread to finish.
