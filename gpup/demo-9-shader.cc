@@ -28,7 +28,7 @@
 //  A piece of code (compiled OGSL code) that is invoked by OpenGL.
 
 
-// Similar to C.
+ /// Similar to C.
 //
 // Important Differences
 //
@@ -38,11 +38,36 @@
 //   Types of storage.
 //   Inputs and outputs.
 
- /// OGSL Vector Type
+ /// Basic Data Types
+//   :ogsl46: Section 4.1
+//
+//   Integer Types
+//   :Keyword: bool,int,uint
+//
+//     bool: Literal values are true, false
+//     int: 32-bit 2's complement.
+//     Arithmetic: As with C, overflow ignored, result is low 32-bits.
+//
+//   Floating-Point Types
+//   :Keyword: float,double
+//
+//   Opaque Types
+//   :Keyword: sampler2D,sampler2DArray, ...
+//
+//     Used for GL-managed items such as texture units.
+//     Can be used as arguments to certain OGSL library functions.
+//     :Example:
+  uniform sampler2D tex_unit_0;
+  void main() { vec4 texel = texture(tex_unit_0,gl_TexCoord[0].xy);
+    // Etc.
+  }
+
+
+ /// OGSL Vector Types
 //   :ogsl45: Section 5.5
 //
 //  Vector sizes: 2, 3, 4 elements.
-//  Vector element types: Boolean, int, float, double.
+//  Vector element types: Boolean, int, unsigned int, float, double.
 //
 //  :Syntax: vecN,  where N ->2, 3, 4.  An N-element vector of floats.
 //  :Syntax: TvecN,  where T -> b, u, i, d.
