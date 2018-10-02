@@ -162,9 +162,6 @@ World::init()
 void
 World::hw03_render(bool shadows)
 {
-  pColor fcolors[] = { color_salmon, color_tomato };
-  pColor bcolors[] = { color_spring_green, color_chartreuse };
-
   switch ( opt_shader ){
   case SO_Fixed: sp_fixed->use(); break;
   case SO_Plain: sp_plain->use(); break;
@@ -175,6 +172,14 @@ World::hw03_render(bool shadows)
   glMaterialfv( GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color_salmon );
   glMaterialfv( GL_BACK, GL_AMBIENT_AND_DIFFUSE, color_spring_green );
   glDisable(GL_COLOR_MATERIAL); // Don't worry about re-enabling it.
+
+  glEnable(GL_TEXTURE_2D);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D,texid_syl);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+  glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
   for ( int i=2; i<chain_length; i++ )
     {
@@ -242,11 +247,6 @@ World::hw03_render(bool shadows)
                 }
               else
                 {
-                  // Set colors to use for this position.
-                  //
-                  glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, fcolors[j&1] );
-                  glMaterialfv(GL_BACK, GL_AMBIENT_AND_DIFFUSE, bcolors[j&1] );
-
                   glBegin(GL_TRIANGLE_STRIP);
                   glNormal3fv(n);
                   glVertex3fv(pprev + vz);
