@@ -7,9 +7,9 @@
  //
  //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2018/hw03.pdf
  //
- //  Search for "Problem" in this file to find the places to modify.
+ //  Modify the code in routine hw03_render.
  //
- //  Only this file will be collected.
+ //  This file and hw03-shdr.cc will be collected.
 
 
 /// Purpose
@@ -131,10 +131,12 @@ public:
 void
 World::init()
 {
-  chain_length = 20;
+  chain_length = 7;
   balls = new Ball[chain_length];
 
-  opt_n_segs = 10;
+  variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
+
+  opt_n_segs = 17;
   variable_control.insert(opt_n_segs,"Number of louver segments.");
  
   distance_relaxed = 30.0 / chain_length;
@@ -162,6 +164,8 @@ World::init()
 void
 World::hw03_render(bool shadows)
 {
+  // Homework 3 -- Problem 2, and maybe other problems.
+
   switch ( opt_shader ){
   case SO_Fixed: sp_fixed->use(); break;
   case SO_Plain: sp_plain->use(); break;
@@ -169,13 +173,29 @@ World::hw03_render(bool shadows)
   default: assert( false );
   }
 
-  glMaterialfv( GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color_salmon );
-  glMaterialfv( GL_BACK, GL_AMBIENT_AND_DIFFUSE, color_spring_green );
-  glDisable(GL_COLOR_MATERIAL); // Don't worry about re-enabling it.
+  pColor color_inside = 0.5 * color_salmon;
+  pColor color_outside = 0.5 * color_chartreuse;
+
+  if ( opt_shader != SO_Fixed )
+    {
+      glUniform2i(3, opt_tryout_1, opt_tryout_2);
+      glUniform1f(4, opt_tryoutf);
+    }
+
+  if ( opt_shader == SO_Plain )
+    {
+      glColor3fv( color_outside );
+    }
+  else
+    {
+      glDisable(GL_COLOR_MATERIAL); // Don't worry about re-enabling it.
+      glMaterialfv( GL_FRONT, GL_AMBIENT_AND_DIFFUSE, color_inside );
+      glMaterialfv( GL_BACK, GL_AMBIENT_AND_DIFFUSE, color_outside );
+    }
 
   glEnable(GL_TEXTURE_2D);
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D,texid_syl);
+  glBindTexture(GL_TEXTURE_2D,texid_spiral_image);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
   glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
@@ -204,7 +224,8 @@ World::hw03_render(bool shadows)
       for ( auto& p: pa ) va.emplace_back( ctr, p );
 
       pNorm nz = cross(p0,p1,p2);
-      pVect vz = 0.1 * nz;
+      const float vz_len = 0.1;
+      pVect vz = vz_len * nz;
 
       const float delta_a = 0.8 / opt_n_segs;
 
@@ -212,40 +233,30 @@ World::hw03_render(bool shadows)
       //
       pCoor pprev(0,0,0);
 
-      for ( int j=0; j<opt_n_segs; j++ )
+      if ( opt_shader != SO_HW03 )
         {
-          // Distance from triangle center.
+          /// Small Strips Rendering
           //
-          const float a = j * delta_a;
-
-          // The vector to use for the current iteration.
+          // Render spiral using many triangle strips ..
+          // .. one triangle strip for each louver.
           //
-          pVect v = va[j%3];
 
-          // Compute point on bend of spiral, and its normal.
-          //
-          pCoor p = ctr + a * v;
-          pNorm n = cross(pVect(pprev,p),vz);
-
-          if ( j )
+          for ( int j=0; j<opt_n_segs; j++ )
             {
-              if ( shadows )
-                {
-                  const bool facing_light = dot(n,pVect(p,light_location)) > 0;
-                  glBegin(GL_TRIANGLE_STRIP);
+              // Distance from triangle center.
+              //
+              const float a = j * delta_a;
 
-                  // Iterate around vertices of segment. The first and
-                  // last vertices are the same.
-                  //
-                  for ( pCoor c: { pprev+vz, pprev-vz, p-vz, p+vz, pprev+vz } )
-                    {
-                      pCoor c2 = c + 1000 * pNorm(light_location,c);
-                      glVertex3fv(facing_light ? c : c2);
-                      glVertex3fv(facing_light ? c2 : c);
-                    }
-                  glEnd();
-                }
-              else
+              // The vector to use for the current iteration.
+              //
+              pVect v = va[j%3];
+
+              // Compute point on bend of spiral, and its normal.
+              //
+              pCoor p = ctr + a * v;
+              pNorm n = cross(pVect(pprev,p),vz);
+
+              if ( j )
                 {
                   glBegin(GL_TRIANGLE_STRIP);
                   glNormal3fv(n);
@@ -255,10 +266,43 @@ World::hw03_render(bool shadows)
                   glVertex3fv(p - vz);
                   glEnd();
                 }
+              pprev = p;
             }
-          pprev = p;
         }
-    }
+      else
+        {
+          /// Large Strip Rendering
+          //
+          // Render entire spiral using one triangle strip.
+          //
+
+          glBegin(GL_TRIANGLE_STRIP);
+
+          for ( int j=0; j<opt_n_segs; j++ )
+            {
+              // Distance from triangle center.
+              //
+              const float a = j * delta_a;
+
+              // The vector to use for the current iteration.
+              //
+              pVect v = va[j%3];
+
+              // Compute point on bend of spiral, and its normal.
+              //
+              pCoor p = ctr + a * v;
+              pNorm n = cross(pVect(pprev,p),vz);
+
+              glNormal3fv(n);
+              glVertex3fv(p + vz);
+              glVertex3fv(p - vz);
+
+              pprev = p;
+            }
+
+          glEnd();
+        }
+  }
 
   sp_fixed->use();
 }

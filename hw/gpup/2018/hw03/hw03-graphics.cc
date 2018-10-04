@@ -73,6 +73,7 @@ public:
   bool opt_head_lock, opt_tail_lock;
   bool opt_shadows;
   bool opt_tryout_1, opt_tryout_2;
+  float opt_tryoutf;
 
   // Tiled platform for ball.
   //
@@ -83,6 +84,7 @@ public:
   pVect platform_normal;
   GLuint texid_syl;
   GLuint texid_emacs;
+  GLuint texid_spiral_image;
   bool opt_platform_texture;
   void platform_update();
   bool platform_collision_possible(pCoor pos);
@@ -143,6 +145,7 @@ World::init_graphics()
   /// Graphical Model Initialization
   ///
 
+  opt_tryout_1 = opt_tryout_2 = false;
   opt_platform_texture = true;
   opt_head_lock = false;
   opt_tail_lock = false;
@@ -155,9 +158,10 @@ World::init_graphics()
   platform_zmin = -40; platform_zmax = 40;
   texid_syl = pBuild_Texture_File("gpup.png",false,255);
   texid_emacs = pBuild_Texture_File("mult.png", false,-1);
+  texid_spiral_image = pBuild_Texture_File("n.png");
 
   opt_light_intensity = 100.2;
-  light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
+  light_location = pCoor(15.45,40,-48);
 
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
@@ -174,14 +178,14 @@ World::init_graphics()
   sp_fixed = new pShader();
 
   sp_plain = new pShader
-    ("shdr-plain.cc",   // File holding shader program.
-     "vs_main(); ",     // Name of vertex shader main routine.
-     "fs_main();"       // Name of fragment shader main routine.
+    ("hw03-shdr.cc",   // File holding shader program.
+     "vs_main_plain(); ",     // Name of vertex shader main routine.
+     "fs_main_plain();"       // Name of fragment shader main routine.
      );
   sp_hw03 = new pShader
     ("hw03-shdr.cc",    // File holding shader program.
-     "vs_main(); ",     // Name of vertex shader main routine.
-     "fs_main();"       // Name of fragment shader main routine.
+     "vs_main_hw03(); ",     // Name of vertex shader main routine.
+     "fs_main_hw03();"       // Name of fragment shader main routine.
      );
 
   sphere.init(40);
@@ -293,7 +297,6 @@ World::render_objects(Render_Option option)
     }
   else
     {
-      sp_plain->use();
       for ( int i=0; i<chain_length; i++ )
         {
           if ( balls[i].contact )
@@ -313,7 +316,6 @@ World::render_objects(Render_Option option)
                       ball2->position-ball1->position);
         }
 
-      sp_fixed->use();
       hw03_render(false);
     }
 
@@ -458,9 +460,11 @@ World::render()
 
   ogl_helper.fbprintf
     ("Eye location: [%5.1f, %5.1f, %5.1f]  "
-     "Eye direction: [%+.2f, %+.2f, %+.2f]\n",
+     "Eye direction: [%+.2f, %+.2f, %+.2f]  "
+     "Light Location: [%+.2f, %+.2f, %+.2f]\n",
      eye_location.x, eye_location.y, eye_location.z,
-     eye_direction.x, eye_direction.y, eye_direction.z);
+     eye_direction.x, eye_direction.y, eye_direction.z,
+     light_location.x, light_location.y, light_location.z);
 
   Ball& ball = balls[0];
 

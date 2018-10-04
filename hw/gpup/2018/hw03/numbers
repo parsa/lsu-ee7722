@@ -1,0 +1,95 @@
+#!/usr/bin/perl -w
+
+
+@to19 = ( '', qw( one two three four five six seven eight nine ten
+                  eleven twelve thirteen fourteen fifteen sixteen
+                  seventeen eighteen nineteen ) );
+
+@tens = qw{ zero ten twenty thirty forty fifty sixty seventy eighty ninety };
+
+@hierarchy = ( '', qw ( thousand million billion trillion
+                        quadrillion quintillion sextillion septillion
+                        octillion nonillion decillion undecillion
+                        duodecillion tredecillion quatuordecillion
+                        quindecillion sexdecillion septendecillion
+                        octodecillion novemdecillion vigintillion  ) );;
+
+sub to_words;
+
+$ofile = 'n.tex';
+
+open O, ">$ofile" or die "Could not open $ofile for output.\n";
+
+@nuts = qw{ all work and no play makes Johnny a dull boy };
+
+print O <<'EOS;';
+\magnification 1200
+\hoffset=-20truemm
+\voffset=-20truemm
+\hsize=205truemm
+\vsize=269truemm
+\nopagenumbers
+\noindent
+EOS;
+
+for ( my $n=0; $n<250; $n++ )
+  {
+    print O to_words($n) . ", ".($nuts[$n % scalar(@nuts)]).", \n";
+  }
+
+print O "\\bye\n";
+
+close O;
+
+
+
+sub to_words {
+    $_ = shift;
+
+    s/\A\s+//; s/\s+\Z//;
+
+    return $_ unless /\A-?[0-9]+\Z/;
+
+    my $minus = s/\A-// ? "minus " : "";
+
+    return "${minus}zero" if /\A0+\Z/;
+
+    s/\A0+//;
+
+    my $pad = 3 - length($_) % 3;
+    $_ = ( "0" x $pad ) . $_ if $pad < 3;
+
+    return("Number too long.\n") if length( $_ ) > 3 * @hierarchy;
+
+    my @mytriples = @hierarchy;
+    my @words = ();
+
+    while( s/(.)(.)(.)\Z// )
+    {
+        my( $h, $t, $u ) = ( $1, $2, $3 );
+        my $triple = shift @mytriples;
+
+        next unless $h + $t + $u;
+
+        unshift @words, $triple, ",";
+
+        if( $t < 2 )
+        {
+            unshift @words, $to19[ 10*$t + $u ] if $t + $u;
+        }
+        else
+        {
+            unshift @words, '-', $to19[$u] if $u;
+            unshift @words, $tens[$t];
+        }
+
+        unshift @words, $to19[$h], "hundred" if $h;
+
+    }
+
+    $_ = join(" ",@words);
+    s/ - /-/g; s/ ,/,/g; s/,\Z//;
+    s/ +$//;
+    $minus.$_
+
+    }
