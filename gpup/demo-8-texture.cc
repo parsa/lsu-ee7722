@@ -779,6 +779,16 @@ World::render()
           // component at a time.
           //
 
+          // Mapping of Texture Coordinates to Position on Sphere
+          //
+          //  Assuming that the texture image is a rectangle ..
+          //  .. there is no right way to assign a texture coordinate ..
+          //  .. to a position on a sphere.
+          //
+          //  The method used below is simple.
+          //
+          //  See rectangular images in https://xkcd.com/977/
+
           // Vertex 1
           //
           sphere_coords.push_back( pCoor( slice_r1, y1, 0 ) );
