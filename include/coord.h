@@ -279,7 +279,7 @@ public:
 typedef pMatrix3x3x<3> pMatrix3x3;
 typedef pMatrix3x3x<4> pMatrix3x3p;
 
-pMatrix
+inline pMatrix
 transpose(const pMatrix m)
 {
   pMatrix rv;
