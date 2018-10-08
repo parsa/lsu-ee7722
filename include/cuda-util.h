@@ -179,8 +179,7 @@ public:
 #ifdef ALSO_GL
     if ( bid )
       {
-        CE(cudaGLUnmapBufferObject(bid));
-        CE(cudaGLUnregisterBufferObject(bid));
+        CE( cudaGraphicsUnregisterResource( bo_cuda_resource ) );
         glDeleteBuffers(1,&bid);
         bid = 0;
       }
@@ -262,7 +261,9 @@ private:
     glBindBuffer(GL_ARRAY_BUFFER,bid);
     glBufferData(GL_ARRAY_BUFFER,chars,NULL,GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER,0);
-    CE(cudaGLRegisterBufferObject(bid));
+    CE( cudaGraphicsGLRegisterBuffer
+        ( &bo_cuda_resource, bid,
+          cudaGraphicsRegisterFlagsNone ) ); // UNTESTED.
   }
 #endif
 
@@ -326,11 +327,16 @@ public:
   void cuda_to_gl()
   {
     if ( !elements ) return;
+    assert( false ); // No problem, just needed a test case. Uncomment & verify.
     alloc_gl_buffer();
     // Due to a bug in CUDA 2.1 this is slower than copying through host.
-    CE(cudaGLMapBufferObject(&bo_ptr,bid));
+    CE( cudaGraphicsMapResources( 1, &bo_cuda_resource ) );
+    size_t size_bytes = 0;
+    CE( cudaGraphicsResourceGetMappedPointer
+        ( &bo_ptr, &size_bytes, bo_cuda_resource ) );
+    assert( chars <= size_bytes );
     CE(cudaMemcpy(bo_ptr, dev_addr[current], chars, cudaMemcpyDeviceToDevice));
-    CE(cudaGLUnmapBufferObject(bid));
+    CE( cudaGraphicsUnmapResources( 1, &bo_cuda_resource ) );
   }
 #endif
 
@@ -342,6 +348,7 @@ public:
   pString dev_ptr_name[2];
   bool dev_addr_seen[2];
   GLuint bid;
+  cudaGraphicsResource_t bo_cuda_resource;
   int current;
   T *data;
   bool locked;
