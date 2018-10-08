@@ -2,6 +2,13 @@
 #include <string.h>
 #include "../include/coord.h"
 
+// Suppress warnings about unused variables.
+//
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+//
+// DO NOT do this sort of thing in code that's supposed to be run!
+
 void
 sample_code()
 {
