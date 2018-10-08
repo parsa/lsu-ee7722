@@ -278,7 +278,7 @@ gpu_info_print()
   // Get information about GPU and its ability to run CUDA.
   //
   int device_count;
-  cudaGetDeviceCount(&device_count); // Get number of GPUs.
+  CE( cudaGetDeviceCount(&device_count) ); // Get number of GPUs.
   if ( device_count == 0 )
     {
       fprintf(stderr,"No GPU found, exiting.\n");
