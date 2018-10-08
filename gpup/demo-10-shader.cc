@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
  /// More Shaders
@@ -255,21 +255,13 @@ out Data_GF
 
 
 #define GL_GLEXT_PROTOTYPES
-#define GLX_GLXEXT_PROTOTYPES
 
-#define GL_GLEXT_LEGACY
 #include <GL/gl.h>
-#include <GL/glx.h>
-#include <GL/glext.h>
-#include <GL/glxext.h>
-
-#include <GL/glu.h>
 #include <GL/freeglut.h>
 
 // Include files provided for this course.
 //
 #include <gp/util.h>
-#include <gp/glextfuncs.h>
 #include <gp/coord.h>
 #include <gp/shader.h>
 #include <gp/pstring.h>

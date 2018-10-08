@@ -4,9 +4,6 @@
 #define GL_BUFFER_H
 
 #include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
 
 #include "util.h"
 #include "misc.h"

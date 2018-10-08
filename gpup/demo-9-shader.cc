@@ -302,19 +302,13 @@ layout ( binding = 7 ) buffer Helix_Coord  { vec4  helix_coord[];  };
 
 
 #define GL_GLEXT_PROTOTYPES
-#define GLX_GLXEXT_PROTOTYPES
 
 #include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
-#include <GL/glu.h>
 #include <GL/freeglut.h>
 
 // Include files provided for this course.
 //
 #include <gp/util.h>
-#include <gp/glextfuncs.h>
 #include <gp/coord.h>
 #include <gp/shader.h>
 #include <gp/pstring.h>

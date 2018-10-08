@@ -23,6 +23,9 @@
 #include "pstring.h"
 #include "misc.h"
 
+// To avoid an include file issue when including glx.h
+#define GLX_SGI_video_sync 1
+
 // Rename keys so a single namespace can be used for regular (ASCII)
 // keys and "special" ones.
 
@@ -632,7 +635,7 @@ public:
 # ifdef GLX_SGI_video_sync
     glutIdleFunc(cb_idle_w);
 # else
-    glutTimerFunc(10,cb_timer,0);
+    glutTimerFunc(10,cb_timer_w,0);
     cbTimer(0);
 # endif
     glutMainLoop();

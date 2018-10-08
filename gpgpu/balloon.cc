@@ -2,8 +2,6 @@
 //
  /// Balloon Simulation
 
-// $Id:$
-
 /// Purpose
 //
 //   Demonstrate use of gpu for physics.
@@ -104,13 +102,8 @@
 
 
 #define GL_GLEXT_PROTOTYPES
-#define GLX_GLXEXT_PROTOTYPES
 
 #include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
-#include <GL/glu.h>
 #include <GL/freeglut.h>
 #include <Magick++.h>
 
@@ -118,7 +111,6 @@
 #include <cuda_gl_interop.h>
 
 #include <gp/util.h>
-#include <gp/glextfuncs.h>
 #include <gp/coord.h>
 #include <gp/shader.h>
 #include <gp/pstring.h>
@@ -1699,7 +1691,7 @@ Balloon::init_cuda()
   const int dev = 0;
   cudaDeviceProp prop;
   CE(cudaGetDeviceProperties(&prop,dev));
-  CE(cudaGLSetGLDevice(dev));
+  CE(cudaSetDevice(dev));
   printf
     ("GPU: %s @ %.2f GHz WITH %zd MiB GLOBAL MEM\n",
      prop.name, prop.clockRate/1e6, prop.totalGlobalMem >> 20);

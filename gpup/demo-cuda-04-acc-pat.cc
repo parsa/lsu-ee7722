@@ -79,9 +79,7 @@
 
 #define GL_GLEXT_LEGACY
 #include <GL/gl.h>
-#include <GL/glx.h>
 #include <GL/glext.h>
-#include <GL/glxext.h>
 
 #include <GL/glu.h>
 #include <GL/freeglut.h>
