@@ -34,7 +34,7 @@ default: hw02 hw02-sol
 .cc.o:
 	$(CXX) $(CXXFLAGS) -c $*.cc
 
-INCLUDES_BASE = util.h glextfuncs.h coord.h shader.h pstring.h misc.h \
+INCLUDES_BASE = util.h coord.h shader.h pstring.h misc.h \
 	        gl-buffer.h texture-util.h 
 
 INCLUDES = $(patsubst %,$(COURSE_INCLUDE_DIR)/%,$(INCLUDES_BASE)) \

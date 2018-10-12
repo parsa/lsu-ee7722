@@ -7,20 +7,13 @@
  //  If you'd like to modify something in this file, ask the
  //  instructor, and then copy it in to hw02.cc.
 
-// $Id:$
 
 #define GL_GLEXT_PROTOTYPES
-#define GLX_GLXEXT_PROTOTYPES
 
 #include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
-#include <GL/glu.h>
 #include <GL/freeglut.h>
 
 #include <gp/util.h>
-#include <gp/glextfuncs.h>
 #include <gp/shader.h>
 #include <gp/pstring.h>
 #include <gp/misc.h>
