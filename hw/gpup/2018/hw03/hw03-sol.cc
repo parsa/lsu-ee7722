@@ -151,7 +151,7 @@ World::init()
   last_frame_wall_time = time_wall_fp();
   frame_timer.work_unit_set("Steps / s");
 
-  init_graphics();
+  init_graphics(true);
 
   curr_setup = 1; ball_setup_1();
 }

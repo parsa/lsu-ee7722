@@ -47,7 +47,7 @@ class World {
 public:
   World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
   void init();
-  void init_graphics();
+  void init_graphics(bool is_solution = false);
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
   void frame_callback();
   void render();
@@ -133,7 +133,7 @@ public:
 
 
 void
-World::init_graphics()
+World::init_graphics(bool is_solution)
 {
   ///
   /// Graphical Model Initialization
@@ -167,17 +167,20 @@ World::init_graphics()
 
   opt_shadows = true;
 
+  const char* const shdr_path =
+    is_solution ? "hw03-shdr-sol.cc" : "hw03-shdr.cc";
+
   // Declared like a programmable shader, but used for fixed-functionality.
   //
   sp_fixed = new pShader();
 
   sp_plain = new pShader
-    ("hw03-shdr.cc",   // File holding shader program.
+    (shdr_path,               // File holding shader program.
      "vs_main_plain(); ",     // Name of vertex shader main routine.
      "fs_main_plain();"       // Name of fragment shader main routine.
      );
   sp_hw03 = new pShader
-    ("hw03-shdr.cc",    // File holding shader program.
+    (shdr_path,              // File holding shader program.
      "vs_main_hw03(); ",     // Name of vertex shader main routine.
      "fs_main_hw03();"       // Name of fragment shader main routine.
      );
