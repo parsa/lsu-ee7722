@@ -1,8 +1,9 @@
 /// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
- /// Homework 3
+ /// Homework 3 -- SOLUTION
  //
+ //  Search for SOLUTION in this file to find solution code.
 
  /// Instructions
  //
@@ -135,16 +136,36 @@ fs_main_hw03()
 {
   /// Homework 3:  Can put solution here, and other places.
 
-  /// SOLUTION -- Problem 2
+  /// SOLUTION -- Problem 2b
   //
-  //  Texture x coordinate:
-  //    Values are >= 0.
-  //    A value of 0.5 is half way across the first "line" of the image,
-  //    a value of 1.2 is 20% across the second "line" of the image, etc.
-  //    Rely on texture unit to wrap in the x dimension.
-  //  For texture y coordinate:
+  //  The value of tex_coord.x indicates distance along the triangular
+  //  spiral. The value at the beginning of the spiral is zero and it
+  //  increases based on the length of the spiral segments. This value
+  //  is passed unmodified to the texture library call. The texture
+  //  object for the image has been set to wrap along the x (called s
+  //  in OpenGL) dimension, and so a tex_coord.x value of 1.1 is
+  //  equivalent to a value of 0.1.
+  //
+  //  The value of tex_coord.y varies from 0 to 1, a 0 indicates that
+  //  the fragment is on the back edge of the segment, 0.5 indicates
+  //  the middle, and so on. If tex_coord.y were used in the call to
+  //  texture, below, then a segment, rather than showing about two
+  //  lines of text, would be the height of an entire page. The actual
+  //  value used in the call to texture, tc.y, is computed below. The
+  //  computation uses line_num, which is the integer portion of
+  //  tex_coord.x. The idea is that if tex_coord.x is, say, 0.1, then
+  //  we should be near the top of the image, lets call that the first
+  //  line. If tex_coord.x is 1.1 then we have gone off the right edge
+  //  (since tex_coord.x > 1 ) and so we advance down in the y
+  //  direction to the second line. Variable line_num is the number of
+  //  lines down to go. Basically, we are adding the integer part of
+  //  tex_coord.x to tex_coord.y, then scaling it by tex_ht. (Recall
+  //  that tex_ht is the fraction of a page covered by one "line". If
+  //  tex_ht = 0.1, that means that the text applied to a segment is
+  //  1/10 the height of the texture image.
+
   float line_num = floor(tex_coord.x);
-  vec2 tc = vec2( tex_coord.x, ( tex_coord.y + line_num ) * tex_ht );
+  vec2 tc = vec2( tex_coord.x, ( line_num + tex_coord.y ) * tex_ht );
 
   // Get filtered texel.
   //
@@ -161,12 +182,15 @@ fs_main_hw03()
   // to something based on fragment's position within primitive.
   //
   /// SOLUTION - Compute edge distance from texture y coordinate.
+  //
+  //  Use tex_coord.y unmodified.
+  //
   float edge_dist = tex_coord.y;
   //
   // Range [0,1].  0.5, center of segment; 0, back edge; 1, front edge.
 
-  // Homework 3: This is a placeholder value. It needs to be changed
-  // to the correct spiral normal.
+  // Homework 3: This was a placeholder value. It has been commented
+  // out since spiral_normal has been declared as a uniform.
   //
   /// SOLUTION - Problem 3
   //  Use spiral normal value sent as a uniform.

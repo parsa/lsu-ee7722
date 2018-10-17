@@ -2,7 +2,7 @@
 //
  /// Homework 3 -- SOLUTION
  //
- //  Search for SOLUTION in this file to find solution.
+ //  Search for SOLUTION in this file to find solution code.
 
  /// Instructions
  //
@@ -196,9 +196,6 @@ World::hw03_render(bool shadows)
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
-  /// SOLUTION
-  const float tex_scale = 0.2;
-
   for ( int i=2; i<chain_length; i++ )
     {
       // Put ball structures and coordinates into convenient variables.
@@ -231,15 +228,30 @@ World::hw03_render(bool shadows)
       //
       pCoor pprev(0,0,0);
 
-      /// SOLUTION
+      /// SOLUTION -- Problem 2
+      //
+      //  Choose scaling factors for texture image.
+      //
+      const float tex_scale = 0.2;
       const float tex_ht = 2 * vz_len * tex_scale;
-      float tex_x = opt_tryoutf; // Wraps around.
-      float tex_y = tex_ht * floor(tex_x);
+      //
+      //  Start the position within the texture image at the
+      //  upper-left corner. For Problem 2a the y component is
+      //  computed further below. For Problem 2b the y component is
+      //  computed in the fragment shader.
+      //
+      float tex_x = 0;
 
-      /// SOLUTION
+      /// SOLUTION -- Problem 2 and 3
+      //
       if ( opt_shader == SO_HW03 )
         {
+          // Send the spiral normal needed for Problem 3.
+          //
           glUniform3fv(5, 1, nz);
+
+          // Send the texture height used in Problem 2.
+          //
           glUniform1f(6, tex_ht);
         }
 
@@ -268,25 +280,46 @@ World::hw03_render(bool shadows)
 
               if ( j )
                 {
-                  /// SOLUTION
+                  /// SOLUTION -- Problem 2a
+                  //
+                  //  Compute the length of the segment. This determines
+                  //  how wide a piece of the texture image is used.
+                  //
                   const float llen = pVect(p,pprev).mag();
+
+                  /// SOLUTION -- Problem 2a
+                  //
+                  //  Set the y coordinate based on the x coordinate.
+                  //
+                  const float tex_y = tex_ht * floor(tex_x);
 
                   glBegin(GL_TRIANGLE_STRIP);
                   glNormal3fv(n);
-                  glTexCoord2f(tex_x,tex_y);
+
+                  /// SOLUTION -- Problem 2a -- provide texture coordinate.
+                  glTexCoord2f( tex_x, tex_y );
                   glVertex3fv(pprev + vz);
-                  glTexCoord2f(tex_x,tex_y+tex_ht);
+
+                  /// SOLUTION -- Problem 2a -- provide texture coordinate.
+                  glTexCoord2f( tex_x, tex_y + tex_ht );
                   glVertex3fv(pprev - vz);
 
+                  /// SOLUTION -- Problem 2a
+                  //
+                  //  Advance texture x component based on length of
+                  //  segment.
+                  //
                   tex_x += llen * tex_scale;
 
-                  glTexCoord2f(tex_x,tex_y);
+                  /// SOLUTION -- Problem 2a -- provide texture coordinate.
+                  glTexCoord2f( tex_x, tex_y );
                   glVertex3fv(p + vz);
-                  glTexCoord2f(tex_x,tex_y+tex_ht);
+
+                  /// SOLUTION -- Problem 2a -- provide texture coordinate.
+                  glTexCoord2f( tex_x, tex_y + tex_ht );
                   glVertex3fv(p - vz);
                   glEnd();
 
-                  tex_y = tex_ht * floor(tex_x);
                 }
               pprev = p;
             }
@@ -315,20 +348,33 @@ World::hw03_render(bool shadows)
               pCoor p = ctr + a * v;
               pNorm n = cross(pVect(pprev,p),vz);
 
-              /// SOLUTION
-              if ( j )
-                {
-                  const float llen = pVect(p,pprev).mag();
-                  tex_x += llen * tex_scale;
-                }
-
               glNormal3fv(n);
 
-              glTexCoord2f(tex_x,0);
+              /// SOLUTION -- Problem 2b
+              //
+              //  The texture x component is computed in the same way
+              //  as for Problem 2a: it is incremented by the width of
+              //  the segment.
+              //
+              //  However, the texture y component is either 0 or 1.
+              //  The fragment shader will compute the correct value
+              //  based on the value of the x component.
 
+
+              /// SOLUTION -- Problem 2b -- provide texture coordinate.
+              glTexCoord2f(tex_x,0);
               glVertex3fv(p + vz);
+
+              /// SOLUTION -- Problem 2b -- provide texture coordinate.
               glTexCoord2f(tex_x,1);
               glVertex3fv(p - vz);
+
+              /// SOLUTION -- Problem 2b
+              //
+              //  Advance texture x component based on length of segment.
+              //
+              const float llen = pVect(p,pprev).mag();
+              tex_x += llen * tex_scale;
 
               pprev = p;
             }
