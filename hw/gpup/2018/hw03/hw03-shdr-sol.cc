@@ -31,6 +31,11 @@ layout ( location = 3 ) uniform bvec2 tryout;
 layout ( location = 4 ) uniform float tryoutf;
 
 
+ /// SOLUTION - Problems 2 and 3
+layout ( location = 5 ) uniform vec3 spiral_normal;
+layout ( location = 6 ) uniform float tex_ht;
+
+
 ///
 /// Shader Input and Output Variables
 ///
@@ -53,9 +58,13 @@ out Data
 #ifdef _FRAGMENT_SHADER_
 in Data
 {
-  vec3 normal_e;
-  vec4 vertex_e;
-  vec2 tex_coord;
+ /// SOLUTION - Problem 1a
+ //  Use flat interpolation so that one normal is used for the entire
+ //  primitive.
+ flat vec3 normal_e;
+
+ vec4 vertex_e;
+ vec2 tex_coord;
 };
 
 #endif
@@ -85,7 +94,8 @@ vs_main_hw03()
   // Copy color to output unmodified. Lighting calculations will
   // be performed in the fragment shader.
   //
-  gl_BackColor = gl_FrontColor = gl_Color;
+  /// SOLUTION -- Problem 1b. Don't bother sending colors down the pipe.
+  //  gl_BackColor = gl_FrontColor = gl_Color;
 
   // Copy texture coordinate to output (no need to modify it).
   tex_coord = gl_MultiTexCoord0.xy;
@@ -114,8 +124,6 @@ vs_main_plain()
 
   // Copy texture coordinate to output (no need to modify it).
   tex_coord = gl_MultiTexCoord0.xy;
-
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
 }
 
 #endif
@@ -127,23 +135,42 @@ fs_main_hw03()
 {
   /// Homework 3:  Can put solution here, and other places.
 
+  /// SOLUTION -- Problem 2
+  //
+  //  Texture x coordinate:
+  //    Values are >= 0.
+  //    A value of 0.5 is half way across the first "line" of the image,
+  //    a value of 1.2 is 20% across the second "line" of the image, etc.
+  //    Rely on texture unit to wrap in the x dimension.
+  //  For texture y coordinate:
+  float line_num = floor(tex_coord.x);
+  vec2 tc = vec2( tex_coord.x, ( tex_coord.y + line_num ) * tex_ht );
+
   // Get filtered texel.
   //
-  vec4 texel = texture(tex_unit_0,tex_coord);
+  /// SOLUTION -- Problem 2
+  //
+  //  Use texture coordinate computed above in which y is advanced by
+  //  the number of lines.
+  //
+  vec4 texel = texture(tex_unit_0,tc);
 
   vec3 nne = normalize(normal_e);
 
-  // Homework 3: This is a placeholder value. It needs to be changed
+  // Homework 3: This was a placeholder value. It has been changed
   // to something based on fragment's position within primitive.
   //
-  float edge_dist = 0.1;
+  /// SOLUTION - Compute edge distance from texture y coordinate.
+  float edge_dist = tex_coord.y;
   //
   // Range [0,1].  0.5, center of segment; 0, back edge; 1, front edge.
 
   // Homework 3: This is a placeholder value. It needs to be changed
   // to the correct spiral normal.
   //
-  vec3 spiral_normal = vec3(1,0,0);
+  /// SOLUTION - Problem 3
+  //  Use spiral normal value sent as a uniform.
+  //  vec3 spiral_normal = vec3(1,0,0);
 
   // Homework 3: Blend incoming normal with triangular spiral's normal.
   vec3 bnorm =
@@ -155,10 +182,20 @@ fs_main_hw03()
     ? normalize(mix(-spiral_normal,nne,0.8+2*edge_dist))
     : nne;
 
+  /// SOLUTION -- Problem 1b
+  //  Use material property uniforms instead of color value.
+  //
+  vec4 color = gl_FrontFacing
+    ? gl_FrontMaterial.diffuse : gl_BackMaterial.diffuse;
+
   // Compute lighted color of fragment.
   //
+  /// SOLUTION - Problem 1 and 3
+  //
+  //  Use color and bnorm computed above.
+  //
   vec4 lighted_color =
-    generic_lighting( vertex_e, gl_Color, nne, gl_FrontFacing );
+    generic_lighting( vertex_e, color, bnorm, gl_FrontFacing );
 
   // Combine filtered texel color with lighted color of fragment.
   //
