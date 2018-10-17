@@ -141,7 +141,8 @@ fs_main_hw03()
   //  The value of tex_coord.x indicates distance along the triangular
   //  spiral. The value at the beginning of the spiral is zero and it
   //  increases based on the length of the spiral segments. This value
-  //  is passed unmodified to the texture library call. The texture
+  //  is passed unmodified to the texture library call below (see the
+  //  line starting "vec4 texel". On the host (CPU) code the texture
   //  object for the image has been set to wrap along the x (called s
   //  in OpenGL) dimension, and so a tex_coord.x value of 1.1 is
   //  equivalent to a value of 0.1.
@@ -150,19 +151,19 @@ fs_main_hw03()
   //  the fragment is on the back edge of the segment, 0.5 indicates
   //  the middle, and so on. If tex_coord.y were used in the call to
   //  texture, below, then a segment, rather than showing about two
-  //  lines of text, would be the height of an entire page. The actual
-  //  value used in the call to texture, tc.y, is computed below. The
-  //  computation uses line_num, which is the integer portion of
-  //  tex_coord.x. The idea is that if tex_coord.x is, say, 0.1, then
-  //  we should be near the top of the image, lets call that the first
-  //  line. If tex_coord.x is 1.1 then we have gone off the right edge
-  //  (since tex_coord.x > 1 ) and so we advance down in the y
-  //  direction to the second line. Variable line_num is the number of
-  //  lines down to go. Basically, we are adding the integer part of
-  //  tex_coord.x to tex_coord.y, then scaling it by tex_ht. (Recall
-  //  that tex_ht is the fraction of a page covered by one "line". If
-  //  tex_ht = 0.1, that means that the text applied to a segment is
-  //  1/10 the height of the texture image.
+  //  lines of text, would show all lines (the entire vertical length)
+  //  of a page. The actual value used in the call to texture, tc.y,
+  //  is computed below. The computation uses line_num, which is the
+  //  integer portion of tex_coord.x. The idea is that if tex_coord.x
+  //  is, say, 0.1, then we should be near the top of the image, lets
+  //  call that the first line. If tex_coord.x is 1.1 then we have
+  //  gone off the right edge (since tex_coord.x > 1 ) and so we
+  //  advance down in the y direction to the second line. Variable
+  //  line_num is the number of lines down. Basically, we are adding
+  //  the integer part of tex_coord.x to tex_coord.y, then scaling it
+  //  by tex_ht. (Recall that tex_ht is the fraction of a page covered
+  //  by one "line". If tex_ht = 0.1, that means that the text applied
+  //  to a segment is 1/10 the height of the texture image.)
 
   float line_num = floor(tex_coord.x);
   vec2 tc = vec2( tex_coord.x, ( line_num + tex_coord.y ) * tex_ht );
