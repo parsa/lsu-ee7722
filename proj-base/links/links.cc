@@ -284,7 +284,7 @@ typedef pVectorI<Ball> Balls;
 
 
 enum Render_Option { RO_Normally, RO_Mirrored, RO_Simple, RO_Shadow_Volumes };
-enum Shader_Option { SO_Phong, SO_Set_1, SO_ENUM_SIZE };
+enum Shader_Option { SO_Plain, SO_Instances, SO_True, SO_ENUM_SIZE };
 
 class World {
 public:
@@ -396,6 +396,7 @@ public:
   Ball *head_ball, *tail_ball;
   Links links;
   Sphere sphere;
+  int opt_sphere_slices;
   Cylinder cyl;
 
   Links link_new(Ball *ball1, Ball *ball2, float stiffness = 0.2);
@@ -483,7 +484,9 @@ World::init_graphics()
   opt_single_time_step = false;
   opt_single_frame = false;
 
-  sphere.init(35);
+  opt_sphere_slices = 35;
+  sphere.init(opt_sphere_slices);
+  variable_control.insert(opt_sphere_slices,"Sphere Slices");
 
   platform_update();
   modelview_update();
@@ -582,6 +585,8 @@ World::render_objects(Render_Option option)
   const bool hide_platform = opt_hide_stuff & OH_Platform;
   const bool hide_sphere = opt_hide_stuff & OH_Sphere;
   const bool mirrored = option == RO_Mirrored;
+
+  sphere.init(opt_sphere_slices);
 
   if ( option == RO_Normally || option == RO_Mirrored )
     {
@@ -856,14 +861,14 @@ World::render()
      balls.size(), links.size(), gpu_physics_method_str[opt_physics_method]);
 
   ogl_helper.fbprintf
-    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  Shader: %s  ('v')  "
+    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  Sphere: %s  ('z')  "
      "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')  Normals: %s ('n')\n",
      opt_hide_stuff & OH_Sphere ? 'S' : '_',
      opt_hide_stuff & OH_Links ? 'L' : '_',
      opt_hide_stuff & OH_Platform ? 'P' : '_',
      opt_shadows ? 'S' : '_',
      opt_mirror ? 'M' : '_',
-     sh_names[opt_shader],
+     opt_sphere_true ? "TRUE" : "TRI" ,
      opt_tryout1 ? BLINK("ON ","   ") : "OFF",
      opt_tryout2 ? BLINK("ON ","   ") : "OFF",
      opt_normal_sphere ? "SPHERE" : "TRI");
@@ -1219,7 +1224,7 @@ World::init(int argc, char **argv)
   opt_mirror = true;
   opt_shadows = true;
   opt_shadow_volumes = false;
-  opt_shader = SO_Set_1;
+  opt_shader = SO_Plain;
 
   /// Init CUDA
 

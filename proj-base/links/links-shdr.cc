@@ -52,14 +52,6 @@ vs_main()
 }
 
 void
-vs_main_instances_sv()
-{
-  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 vertex_o = rot * gl_Vertex;
-  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
-}
-
-void
 vs_main_instances_sphere()
 {
   vec4 pos_rad = sphere_pos_rad[gl_InstanceID];
@@ -74,6 +66,14 @@ vs_main_instances_sphere()
   normal_e = normalize(gl_NormalMatrix * normal_o );
   gl_TexCoord[0] = gl_MultiTexCoord0;
   color = sphere_color[gl_InstanceID];
+}
+
+void
+vs_main_instances_sv()
+{
+  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
+  vec4 vertex_o = rot * gl_Vertex;
+  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
 }
 
 #endif

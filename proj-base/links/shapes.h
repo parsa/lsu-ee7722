@@ -8,7 +8,11 @@
 
 class Sphere {
 public:
-  Sphere(){ opt_texture = true; };
+  Sphere(){
+    opt_texture = true;
+    slices = 0;
+    sphere_rot_bo = sphere_pos_rad_bo = sphere_color_bo = 0;
+  };
   void init(int slices);
   void shadow_volume_init(int slices);
   void bunch_invalidate()
@@ -79,9 +83,9 @@ Sphere::init(int slicesp)
   // Compute vertex and texture coordinates of primitives tessellating
   // a unit-radius sphere. Place coordinates in buffer object using
   // pBuffer_Object objects. Also initialize other variables.
-  
+
+  if ( slicesp == slices ) return;
   bunch_rendering = false;
-  sphere_rot_bo = sphere_pos_rad_bo = sphere_color_bo = 0;
   slices = slicesp;             // Amount of detail.
   axis = pVect(0,1,0);
   angle = 0;
@@ -129,9 +133,9 @@ Sphere::init(int slicesp)
       tex_coord += 1-(tc_s0 + tc_s1) * 0.5;  tex_coord += up ? 0 : 1;
       up = !up;
     }
-  points_bo.take(points,GL_STATIC_DRAW);
+  points_bo.re_take(points,GL_STATIC_DRAW);
   points_bo.to_gpu();
-  tex_coord_bo.take(tex_coord,GL_STATIC_DRAW);
+  tex_coord_bo.re_take(tex_coord,GL_STATIC_DRAW);
   tex_coord_bo.to_gpu();
   shadow_volume_init(slicesp);
 }
@@ -339,7 +343,7 @@ Sphere::shadow_volume_init(int pieces)
       coords += c1;
       coords += c2;
     }
-  shadow_volume_points_bo.take(coords,GL_STATIC_DRAW);
+  shadow_volume_points_bo.re_take(coords,GL_STATIC_DRAW);
   shadow_volume_points_bo.to_gpu();
 }
 
