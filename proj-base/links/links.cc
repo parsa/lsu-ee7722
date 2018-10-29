@@ -907,8 +907,11 @@ World::render()
 
           // Set stencil operation to write a 2 at all locations written.
           //
-          glStencilFunc(GL_NEVER,2,2);
-          glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
+          glStencilFunc(GL_NEVER, 2,   2);
+          //            FUNC,     REF, MASK
+
+          glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP);
+          //           StenFAIL,   DepFAIL, DepPASS
 
           // Render mirrored tiles (but only to write stencil buffer).
           //
@@ -926,6 +929,9 @@ World::render()
           //
           glStencilFunc(GL_EQUAL,2,2);
           glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+          //
+          // Stencil test passes if stencil value = 2.
+          // Don't change stencil buffer.
 
           ///  Step 2a: Prepare a matrix that transforms to mirrored location.
           //   Use a transform that reflects objects to other side of platform.
