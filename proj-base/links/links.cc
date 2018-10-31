@@ -1002,7 +1002,6 @@ World::render()
       glDisable(GL_LIGHT0);
 
       // Send balls, tiles, and platform to opengl.
-      // Do occlusion test too.
       //
       render_objects(RO_Normally);
 
@@ -1034,17 +1033,22 @@ World::render()
       // volume.
       //
       glEnable(GL_STENCIL_TEST);
-      // sfail, dfail, dpass
-      glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
-      glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
+      //                             sfail,   dfail,   dpass
+      glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP );
+      glStencilOpSeparate( GL_BACK,  GL_KEEP, GL_KEEP, GL_DECR_WRAP );
+
       glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
- 
+      // ref is -1 (all 1's) because we want to operate on all bits in
+      // stencil value.
+
       // Write stencil with shadow locations based on shadow volumes
       // cast by light0 (light_location).  Shadowed locations will
       // have a positive stencil value.
       //
       render_objects(RO_Shadow_Volumes);
 
+      // Restore settings for writing the color and depth buffers.
+      //
       glEnable(GL_LIGHTING);
       glColorMask(true,true,true,true);
       glDepthMask(true);
@@ -1052,14 +1056,16 @@ World::render()
       // Use stencil test to prevent writes to shadowed areas.
       //
       glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-      glStencilFunc(GL_EQUAL,0,-1); // ref, mask
+      glStencilFunc( GL_EQUAL, 0, -1); // ref, mask
+      //
+      // Stencil test passes if stencil value == 0.
 
       // Allow pixels to be re-written.
       //
-      glDepthFunc(GL_LEQUAL);
+      glDepthFunc(GL_LEQUAL);  // Set to <= so pixel can be written 2nd time.
       glEnable(GL_BLEND);
-      glBlendEquation(GL_FUNC_ADD);
-      glBlendFunc(GL_ONE,GL_ONE);
+      glBlendFunc(GL_ONE,GL_ONE);   // Specify that weights for blending are 1.
+      glBlendEquation(GL_FUNC_ADD); // Add color of fragment to color in pixel.
 
       // Render.
       //
