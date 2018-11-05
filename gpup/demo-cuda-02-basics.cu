@@ -1,12 +1,12 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
 
 /// References
 //
-//  :ccpg8: CUDA C Programming Guide Version 8
-//          https://docs.nvidia.com/cuda/cuda-c-programming-guide
+//  :ccpg19: CUDA C Programming Guide Version 10
+//           https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
 
 #if 0
@@ -47,11 +47,15 @@
 //      If cost is no object, good double-precision and half-precision perf.
 //      Some support for machine learning: 16-bit floats.
 //
-//   -- CC 7.x
+//   -- CC 7.0
 //      Volta
-//      Being introduced.
+//      Not used much for graphics.
 //      Machine learning support.
 //      Maybe double precision priced once again for the masses.
+//
+//   -- CC 7.5
+//      Turing
+//      Machine learning support.
 
 
  /// CUDA Thread Organization
