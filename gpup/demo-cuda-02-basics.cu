@@ -77,18 +77,19 @@
 //     A grouping of threads.
 //
 //     The number of threads in a block is called the block size ..
-//     .. in variable blockDim.
+//     .. its value is in variable blockDim.
 //     "My kernel has a block size of 1024 threads."
 
 //
 //   :Def: Grid
 //     A collection of blocks.
+//     The grid size is specified in the kernel launch.
 //     "My kernel consists of 16 blocks of 1024 threads each."
 //
 //   :Def: Warp
 //     A group of threads that (usually) execute together.
 //     For all NV GPUs so far warp size is 32 threads
-//     One day the size of warp may change but it's been 32 through CC 7.0.
+//     One day the size of warp may change but it's been 32 through CC 7.5.
 //     "I chose my block size to be a multiple of the warp size."
 //
 
@@ -97,8 +98,9 @@
 //
 //   :Def: Streaming Multiprocessor (SM, SMX, MP)
 //     The hardware to execute a block of threads.
+//     In class called a multiprocessor (word streaming omitted) for short.
 //     Roughly akin to a core in a CPU.
-//     High-performance GPUs might have about 20 SMs.
+//     High-performance GPUs might have about 50 SMs.
 //     Each block is assigned to a particular SM.
 //     All threads in a block execute on the same multiprocessor.
 //     Threads within a block share shared memory.

@@ -219,6 +219,7 @@ main(int argc, char **argv)
 
   /// KERNEL LAUNCH
   cuda_thread_start<<< blocks_per_grid, threads_per_block >>>();
+  //               --- <-- CUDA C kernel launch syntax -> ---
 
   // Copy output array from GPU to CPU.
   //
