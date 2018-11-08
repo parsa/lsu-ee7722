@@ -28,32 +28,19 @@ in vec2 gl_MultiTexCoord0;
 //
 out Data_to_GS
 {
+  int instance_id;
   vec3 normal_e;
   vec4 vertex_e;
   vec2 gl_TexCoord[1];
-  vec4 color;
   vec4 gl_Position;
 
   // Any changes here must also be made to the fragment shader input.
 };
 
-
-void
-vs_main()
-{
-  // Here, the vertex shader does nothing except pass variables
-  // to the geometry shader.
-
-  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-  vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  normal_e = normalize(gl_NormalMatrix * gl_Normal);
-  gl_TexCoord[0] = gl_MultiTexCoord0;
-  color = gl_Color;
-}
-
 void
 vs_main_instances_sphere()
 {
+  instance_id = gl_InstanceID;
   vec4 pos_rad = sphere_pos_rad[gl_InstanceID];
   float rad = pos_rad.w;
   mat4 rot = transpose(sphere_rot[gl_InstanceID]);
@@ -65,7 +52,6 @@ vs_main_instances_sphere()
   vertex_e = gl_ModelViewMatrix * vertex_o;
   normal_e = normalize(gl_NormalMatrix * normal_o );
   gl_TexCoord[0] = gl_MultiTexCoord0;
-  color = sphere_color[gl_InstanceID];
 }
 
 void
@@ -83,19 +69,19 @@ vs_main_instances_sv()
 
 in Data_to_GS
 {
+  int instance_id;
   vec3 normal_e;
   vec4 vertex_e;
   vec2 gl_TexCoord[1];
-  vec4 color;
   vec4 gl_Position;
 } In[];
 
 out Data_to_FS
 {
+  int instance_id;
   vec3 normal_e;
   vec4 vertex_e;
   vec2 gl_TexCoord[1];
-  flat vec4 color;
 };
 
 // Type of primitive at geometry shader input.
@@ -111,11 +97,11 @@ void
 gs_main_simple()
 {
   const bool opt_normal_sphere = tryout.w;
+  instance_id = In[0].instance_id;
   for ( int i=0; i<3; i++ )
     {
       normal_e = In[opt_normal_sphere?i:0].normal_e;
       vertex_e = In[i].vertex_e;
-      color = In[i].color;
       gl_Position = In[i].gl_Position;
       gl_TexCoord[0] = In[i].gl_TexCoord[0];
       EmitVertex();
@@ -144,18 +130,17 @@ uniform sampler2D tex_unit_0;
 
 in Data_to_FS
 {
+  flat int instance_id;
   vec3 normal_e;
   vec4 vertex_e;
   vec2 gl_TexCoord[1];
-  flat vec4 color;
-
 };
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
 
 void
-fs_main()
+fs_main_instances()
 {
   // Perform lighting, fetch and blend texture, then emit fragment.
   //
@@ -164,6 +149,7 @@ fs_main()
   //
   vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
 
+  vec4 color = sphere_color[instance_id];
   vec4 color2 = gl_FrontFacing ? color : vec4(0.5,0,0,1);
 
   // Multiply filtered texel color with lighted color of fragment.

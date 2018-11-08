@@ -1,10 +1,15 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
+ ///  Homework 4
+//
+ ///  Put solution in this file.
+ //
+ //   Assignment: https://www.ece.lsu.edu/koppel/gpup/2018/hw04.pdf
 
 
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 
 layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
@@ -14,11 +19,15 @@ layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
 // Use this variable to debug your code. Press 'y' to toggle tryout.x
 // and 'Y' to toggle debug_bool.y (between true and false).
 //
-layout ( location = 3 ) uniform bvec3 tryout;
+layout ( location = 3 ) uniform bvec4 tryout;
 layout ( location = 2 ) uniform int lighting_options;
 layout ( location = 4 ) uniform float tryoutf;
 layout ( location = 5 ) uniform bool mirrored;
 layout ( location = 6 ) uniform mat4 trans_proj;
+layout ( location = 7 ) uniform int opt_n_holes_eqt;
+layout ( location = 8 ) uniform int opt_holes;
+
+const int OHO_None = 0, OHO_Holes = 1, OHO_Lenses = 2;
 
 
 #ifdef _VERTEX_SHADER_
@@ -135,24 +144,30 @@ fs_main()
   float rsq = pos_rad.w * pos_rad.w;
 
   // Eye location in object-space coordinates.
-  vec3 e_o = vec3( gl_ModelViewMatrixInverse * vec4(0,0,0,1) );
+  vec3 e_o = gl_ModelViewMatrixInverse[3].xyz;
 
   // Prepare to compute intersection of ray from eye to through fragment with
   // sphere. That intersection is the point on the sphere corresponding
   // to this fragment.
   //
-  vec3 ef = vertex_o - e_o;
-  float ef_d_ef = dot(ef,ef);
+  vec3 ef = vertex_o - e_o;   // Eye to fragment.
   vec3 ce = e_o-ctr_o;
-  float ce_d_ce = dot(ce,ce);
-  float ef_d_ce = dot(ef,ce);
-  float qfa = ef_d_ef;
-  float qfb = 2 * ef_d_ce;
-  float qfc = ce_d_ce - rsq;
+  float qfa = dot(ef,ef);
+  float qfb = 2 * dot(ef,ce);
+  float qfc = dot(ce,ce) - rsq;
   float discr = qfb*qfb - 4 * qfa * qfc;
 
   // If outside the limb, return.
   if ( discr < 0 ) discard;
+
+  const float pi = 3.14159265359;
+  const float tpi = 2 * pi;
+
+  const bool holes = opt_holes == OHO_Holes;    // If true sphere has holes
+  const bool lenses = opt_holes == OHO_Lenses;
+  const bool solid = !holes && !lenses;         // If true show complete sphere.
+
+  bool front = true;
 
   // Finish computing coordinate of point for this fragment.
   //
@@ -176,19 +191,20 @@ fs_main()
 
   // Use sphere-local coordinates to compute texture coordinates.
   //
-  vec3 sur_l = mat3(sphere_rot[vertex_id]) * normal_oo;
-  float pi = 3.14159265359;
-  float tpi = 2 * pi;
+  // Convert object space normal to sphere-local coordinate ..
+  vec3 sur_l = normalize(mat3(sphere_rot[vertex_id]) * normal_oo);
+  // .. from that get angles on sphere ..
   float theta = atan(sur_l.x,sur_l.z);
   float eta = acos(sur_l.y);
+  // .. and use them to compujte the texture coordinate.
   vec2 tcoord = vec2( ( 1.5 * pi + theta ) / tpi, eta / pi );
 
   // Get filtered texel.
   //
-  vec4 texel = texture(tex_unit_0,tcoord);
+  vec4 texel = front ? texture(tex_unit_0,tcoord) : vec4(1);
 
   vec4 color = sphere_color[vertex_id];
-  vec4 color2 = gl_FrontFacing != mirrored ? color : vec4(0.5,0,0,1);
+  vec4 color2 = front ? color : vec4(0.5,0,0,1);
 
   // Multiply filtered texel color with lighted color of fragment.
   //

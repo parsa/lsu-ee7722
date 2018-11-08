@@ -1,7 +1,8 @@
-/// LSU EE EE 7722/ EE 4702-X, GPU Prog/MicroArch
+/// LSU EE EE 4702 Fall 2018
 //
- /// Links Project Base Code
+ /// Homework 4 -- Based on proj_base/links code.
  //
+ /// DO NOT PUT SOLUTION IN THIS FILE.
 
 /// Purpose
 //
@@ -311,7 +312,7 @@ public:
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
   bool opt_head_lock, opt_tail_lock;
-  bool opt_tryout1, opt_tryout2;  // For ad-hoc experiments.
+  bool opt_tryout1, opt_tryout2, opt_tryout3;  // For ad-hoc experiments.
   float opt_tryoutf;
   bool opt_sphere_true;
 
@@ -439,7 +440,16 @@ public:
       glGetBooleanv(GL_LIGHT1,&l1);
       return int(l0) | (int(l1)<<1);
     };
+
+
+  // Homework 4 Variables
+  int opt_n_holes_eqt;  // Number of holes at equator.
+  int opt_holes;
+
 };
+
+enum { OHO_None, OHO_Holes, OHO_Lenses, OHO_SIZE };
+const char* const oho_str[] = {"NONE","HOLES","LENSES"};
 
 enum { OH_Links = 1, OH_Platform = 2, OH_Sphere = 4 };
 
@@ -460,12 +470,12 @@ World::init_graphics()
 
   opt_head_lock = false;
   opt_tail_lock = false;
-  opt_tryout1 = opt_tryout2 = false;
+  opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
   opt_sphere_true = true;
   opt_tryoutf = 0;
   variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
 
-  eye_location = pCoor(24.2,11.6,-38.7);
+  eye_location = pCoor(22.4,10.0,-31.1);
   eye_direction = pVect(-0.42,-0.09,0.9);
 
   platform_xmin = -40; platform_xmax = 40;
@@ -496,9 +506,16 @@ World::init_graphics()
 
   opt_sides = 20;
   opt_segments = 15;
-  variable_control.insert(opt_sides,"Link Sides");
-  variable_control.insert(opt_segments,"Link Segments");
+  //  variable_control.insert(opt_sides,"Link Sides");
+  //  variable_control.insert(opt_segments,"Link Segments");
   opt_hide_stuff = 0;
+
+  // Homework 4
+
+  opt_holes = OHO_Holes;
+  opt_n_holes_eqt = 10;
+  variable_control.insert(opt_n_holes_eqt,"N Holes Equator (opt_n_holes_eqt");
+
 }
 
 
@@ -622,7 +639,8 @@ World::render_objects(Render_Option option)
             sphere.render_shadow_volume(ball->radius,ball->position);
 
           pShader_Use use( sp_instances_sv );
-          glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+          glUniform4i
+            (3, opt_tryout1, opt_tryout2, opt_tryout3, opt_normal_sphere);
           glUniform1f(4, opt_tryoutf);
           glUniform1i(5, mirrored );
           glUniformMatrix4fv(6, 1, true, transform_projection);
@@ -663,10 +681,16 @@ World::render_objects(Render_Option option)
           pShader_Use use
             ( opt_sphere_true ? sp_sphere_true : sp_instances_sphere );
           glUniform1i(2, light_state);
-          glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+          glUniform4i
+            (3, opt_tryout1, opt_tryout2, opt_tryout3,  opt_normal_sphere);
           glUniform1f(4, opt_tryoutf);
           glUniform1i(5, mirrored );
           glUniformMatrix4fv(6, 1, true, transform_projection);
+          if ( opt_sphere_true )
+            {
+              glUniform1i(7, opt_n_holes_eqt);
+              glUniform1i(8, opt_holes);
+            }
 
           sphere.render_bunch_render(opt_sphere_true);
         }
@@ -706,7 +730,7 @@ World::render_objects(Render_Option option)
 
   pShader_Use use( sp_phong );
   glUniform1i(2, light_state);
-  glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+  glUniform4i(3, opt_tryout1, opt_tryout2, opt_tryout3, opt_normal_sphere);
 
   //
   // Render Platform
@@ -828,31 +852,25 @@ World::render()
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
-    ("Compiled: %s\n",
+    ("Compiled: %s  Time Step: %8d  World Time: %11.6f  %s\n",
 #ifdef __OPTIMIZE__
      "WITH OPTIMIZATION"
 #else
-     BLINK("WITHOUT OPTIMIZATION","")
+     BLINK("!WITHOUT OPTIMIZATION "," WITHOUT OPTIMIZATION!")
 #endif
-     );
-
-  ogl_helper.fbprintf
-    ("Time Step: %8d  World Time: %11.6f  %s\n",
-     time_step_count, world_time,
+     ,time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
      "Press 'p' to pause."
      );
 
-  ogl_helper.fbprintf
-    ("Eye location: [%5.1f, %5.1f, %5.1f]  "
-     "Eye direction: [%+.2f, %+.2f, %+.2f]\n",
-     eye_location.x, eye_location.y, eye_location.z,
-     eye_direction.x, eye_direction.y, eye_direction.z);
-
   Ball& ball = *balls[0];
 
   ogl_helper.fbprintf
-    ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+    ("Eye location: [%5.1f, %5.1f, %5.1f]  "
+     "Eye direction: [%+.2f, %+.2f, %+.2f]  "
+     "Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+     eye_location.x, eye_location.y, eye_location.z,
+     eye_direction.x, eye_direction.y, eye_direction.z,
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z );
 
@@ -861,17 +879,21 @@ World::render()
      balls.size(), links.size(), gpu_physics_method_str[opt_physics_method]);
 
   ogl_helper.fbprintf
-    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  Sphere: %s  ('z')  "
-     "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')  Normals: %s ('n')\n",
+    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  Normals: %s ('n')\n",
      opt_hide_stuff & OH_Sphere ? 'S' : '_',
      opt_hide_stuff & OH_Links ? 'L' : '_',
      opt_hide_stuff & OH_Platform ? 'P' : '_',
      opt_shadows ? 'S' : '_',
      opt_mirror ? 'M' : '_',
+     opt_normal_sphere ? "SPHERE" : "TRI");
+
+  ogl_helper.fbprintf
+    ("Sphere: %s  ('z')  Holes: %s ('x')  Tryout 1,2,3: %s, %s, %s  ('yYZ')\n",
      opt_sphere_true ? "TRUE" : "TRI" ,
+     opt_sphere_true ? oho_str[opt_holes] : "N/A",
      opt_tryout1 ? BLINK("ON ","   ") : "OFF",
      opt_tryout2 ? BLINK("ON ","   ") : "OFF",
-     opt_normal_sphere ? "SPHERE" : "TRI");
+     opt_tryout3 ? BLINK("ON ","   ") : "OFF");
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -1147,9 +1169,17 @@ World::cb_keyboard()
     if ( opt_shader >= sizeof(sh_names)/sizeof(sh_names[0]) ) opt_shader = 0;
     break;
   case 'w': case 'W': balls_twirl(); break;
+  case 'x': case 'X':
+    if ( opt_sphere_true )
+      {
+        opt_holes++;
+        if ( opt_holes >= OHO_SIZE ) opt_holes = 0;
+      }
+    break;
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
   case 'z': opt_sphere_true = !opt_sphere_true; break;
+  case 'Z': opt_tryout3 = !opt_tryout3; break;
   case ' ':
     if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true;
@@ -1212,19 +1242,19 @@ World::init(int argc, char **argv)
   chain_length = 14;
 
   opt_time_step_duration = 0.0003;
-  variable_control.insert(opt_time_step_duration,"Time Step Duration");
+  //  variable_control.insert(opt_time_step_duration,"Time Step Duration");
 
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 500;
-  variable_control.insert(opt_spring_constant,"Spring Constant");
+  //  variable_control.insert(opt_spring_constant,"Spring Constant");
 
   opt_gravity_accel = 9.8;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
-  variable_control.insert(opt_gravity_accel,"Gravity");
+  //  variable_control.insert(opt_gravity_accel,"Gravity");
 
   opt_air_resistance = 0.04;
-  variable_control.insert(opt_air_resistance,"Air Resistance");
+  //  variable_control.insert(opt_air_resistance,"Air Resistance");
 
   world_time = 0;
   time_step_count = 0;
@@ -1291,8 +1321,8 @@ World::init(int argc, char **argv)
 
   opt_block_size = 32;
 
-  variable_control.insert_power_of_2
-    (opt_block_size, "Block Size", 32, block_size_max);
+  //  variable_control.insert_power_of_2
+    //  (opt_block_size, "Block Size", 32, block_size_max);
 
   c.alloc_n_balls = 0;
   c.alloc_n_links = 0;
@@ -1311,14 +1341,14 @@ World::init(int argc, char **argv)
      );
 
   sp_instances_sphere = new pShader
-    ("hw04-shdr.cc",// File holding shader program.
+    ("hw04-shdr-sphere.cc",// File holding shader program.
      "vs_main_instances_sphere(); ", // Used to render many spheres at once.
      "gs_main_simple();", // Name of geometry shader main routine.
-     "fs_main();"         // Name of fragment shader main routine.
+     "fs_main_instances();"         // Name of fragment shader main routine.
      );
 
   sp_instances_sv = new pShader
-    ("hw04-shdr.cc",// File holding shader program.
+    ("hw04-shdr-sphere.cc",// File holding shader program.
      "vs_main_instances_sv();" // Instances of vtx coord only. Use gl_Color.
      ,"gs_main_sv();",
      "fs_main_sv();"
@@ -1345,7 +1375,7 @@ World::init(int argc, char **argv)
      "fs_main_sv();"         // Name of fragment shader main routine.
      );
 
-  ball_setup_3();
+  ball_setup_1();
   return;
   // For benchmarking.
   opt_pause = true;
@@ -2343,9 +2373,11 @@ main(int argv, char **argc)
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper,argv,argc);
 
-  glDisable(GL_DEBUG_OUTPUT);
-  glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
-                        GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
+# ifdef __OPTIMIZE__
+  popengl_helper.ogl_debug_set(false);
+# else
+  popengl_helper.ogl_debug_set(true);
+# endif
 
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.frame_callback_w,&world);

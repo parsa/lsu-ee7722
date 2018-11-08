@@ -1,10 +1,10 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
 
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 layout ( location = 1 ) uniform vec4 color_front;
 layout ( location = 2 ) uniform vec4 color_back;
@@ -15,7 +15,7 @@ layout ( location = 6 ) uniform ivec2 lighting_options_segs;
 // Use this variable to debug your code. Press 'y' to toggle tryout.x
 // and 'Y' to toggle debug_bool.y (between true and false).
 //
-layout ( location = 3 ) uniform bvec3 tryout;
+layout ( location = 3 ) uniform bvec4 tryout;
 
 
 layout ( location = 4 ) uniform vec2 sides_rad;
