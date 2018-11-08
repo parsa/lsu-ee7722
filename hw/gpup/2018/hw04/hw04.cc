@@ -1360,7 +1360,7 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
-  const bool solution = true;
+  const bool solution = false;
   const char* const true_shdr_src =
     solution ? "hw04-shdr-hw04-sol.cc" : "hw04-shdr-hw04.cc";
 
