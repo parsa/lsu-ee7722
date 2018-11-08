@@ -2,9 +2,12 @@
 //
  ///  Homework 4
 //
- ///  Put solution in this file.
+ ///  Put solution in this file, most or all code in routine |fs_main|.
  //
  //   Assignment: https://www.ece.lsu.edu/koppel/gpup/2018/hw04.pdf
+
+ //   Note: Code in this file is based on the code from
+ //         links-shdr-sphere-true.cc.
 
 
 // Specify version of OpenGL Shading Language.
@@ -134,6 +137,8 @@ vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 void
 fs_main()
 {
+  /// Put Homework 4 solution in this file.
+
   vec4 pos_rad = sphere_pos_rad[vertex_id];
 
   // Center of sphere in original object-space coordinates (oo) and possibly
@@ -174,13 +179,11 @@ fs_main()
   float t = ( -qfb - sqrt( discr ) ) / ( 2 * qfa );
   vec4 sur_o = vec4(e_o + t * ef, 1);
 
-  {
-    // Compute clip-space depth. Take care so that compiler avoids full
-    // matrix / vector multiplication.
-    vec4 sur_e = gl_ModelViewMatrix * sur_o;
-    vec4 sur_c = trans_proj * vec4(0,0,2*sur_e.z,1);
-    gl_FragDepth = sur_c.z / sur_c.w;
-  }
+  // Compute clip-space depth. Take care so that compiler avoids full
+  // matrix / vector multiplication.
+  vec4 sur_e = gl_ModelViewMatrix * sur_o;
+  vec4 sur_c = trans_proj * vec4(0,0,2*sur_e.z,1);
+  gl_FragDepth = sur_c.z / sur_c.w;
 
   // Compute eye-space coordinate and vector of unreflected point.
   //
@@ -210,6 +213,7 @@ fs_main()
   //
   gl_FragColor = texel * generic_lighting(sur_ee, color2, normal_ee);
 }
+
 
 ///
 /// Routine used by Either Vertex or Fragment Shader

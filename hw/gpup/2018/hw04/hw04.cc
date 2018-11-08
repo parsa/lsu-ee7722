@@ -3,6 +3,8 @@
  /// Homework 4 -- Based on proj_base/links code.
  //
  /// DO NOT PUT SOLUTION IN THIS FILE.
+ //
+ /// Put solution in hw04-shdr-hw04.cc.
 
 /// Purpose
 //
@@ -314,7 +316,7 @@ public:
   bool opt_head_lock, opt_tail_lock;
   bool opt_tryout1, opt_tryout2, opt_tryout3;  // For ad-hoc experiments.
   float opt_tryoutf;
-  bool opt_sphere_true;
+  int opt_sphere_true;
 
   // Tiled platform for ball.
   //
@@ -359,6 +361,7 @@ public:
   pShader *sp_instances_sphere;
   pShader *sp_instances_sv;
   pShader *sp_sphere_true;
+  pShader *sp_sphere_hw04;
 
   GLuint balls_pos_rad_bo;
   GLuint balls_color_bo;
@@ -471,7 +474,7 @@ World::init_graphics()
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
-  opt_sphere_true = true;
+  opt_sphere_true = 1;
   opt_tryoutf = 0;
   variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
 
@@ -679,7 +682,8 @@ World::render_objects(Render_Option option)
             }
 
           pShader_Use use
-            ( opt_sphere_true ? sp_sphere_true : sp_instances_sphere );
+            ( opt_sphere_true == 0 ? sp_instances_sphere :
+              opt_sphere_true == 1 ? sp_sphere_hw04 : sp_sphere_true );
           glUniform1i(2, light_state);
           glUniform4i
             (3, opt_tryout1, opt_tryout2, opt_tryout3,  opt_normal_sphere);
@@ -889,8 +893,9 @@ World::render()
 
   ogl_helper.fbprintf
     ("Sphere: %s  ('z')  Holes: %s ('x')  Tryout 1,2,3: %s, %s, %s  ('yYZ')\n",
-     opt_sphere_true ? "TRUE" : "TRI" ,
-     opt_sphere_true ? oho_str[opt_holes] : "N/A",
+     opt_sphere_true == 0 ? "TESS" :
+     opt_sphere_true == 1 ? "HW04" : "TRUE",
+     opt_sphere_true == 1 ? oho_str[opt_holes] : "N/A",
      opt_tryout1 ? BLINK("ON ","   ") : "OFF",
      opt_tryout2 ? BLINK("ON ","   ") : "OFF",
      opt_tryout3 ? BLINK("ON ","   ") : "OFF");
@@ -1178,7 +1183,8 @@ World::cb_keyboard()
     break;
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
-  case 'z': opt_sphere_true = !opt_sphere_true; break;
+  case 'z': opt_sphere_true++; if ( opt_sphere_true == 3 ) opt_sphere_true = 0;
+    break;
   case 'Z': opt_tryout3 = !opt_tryout3; break;
   case ' ':
     if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
@@ -1354,8 +1360,14 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
+  const bool solution = true;
+  const char* const true_shdr_src =
+    solution ? "hw04-shdr-hw04-sol.cc" : "hw04-shdr-hw04.cc";
+
+  sp_sphere_hw04 = new pShader
+    (true_shdr_src, "vs_main();", "gs_main();", "fs_main();" );
   sp_sphere_true = new pShader
-    ("hw04-shdr-sphere-true.cc", "vs_main();", "gs_main();", "fs_main();" );
+    ("hw04-shdr-true.cc", "vs_main();", "gs_main();", "fs_main();" );
 
   PSplit exe_pieces(argv[0],'/');
   pString this_exe_name(exe_pieces.pop());
