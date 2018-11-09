@@ -33,28 +33,27 @@
 //
 //   -- CC 3.0, 3.1, 3.5, 3.7
 //      Kepler
-//      Product cycle ending.
-//      Currently the highest performance for double-precision computation ..
-//      .. without an unlimited budget. (13 February 2017, 11:20:32 CST)
+//      Outdated.
 //
 //   -- CC 5.2
 //      Maxwell
-//      Product cycle ending.
+//      Outdated.
 //
 //   -- CC 6.0, 6.1, 6.2
 //      Pascal
-//      Current product cycle.
+//      Product cycle ending.
 //      If cost is no object, good double-precision and half-precision perf.
 //      Some support for machine learning: 16-bit floats.
 //
 //   -- CC 7.0
 //      Volta
 //      Not used much for graphics.
+//      If cost is no object, good double-precision and half-precision perf.
 //      Machine learning support.
-//      Maybe double precision priced once again for the masses.
 //
 //   -- CC 7.5
 //      Turing
+//      Ray tracing support.
 //      Machine learning support.
 
 
@@ -98,13 +97,16 @@
 //
 //   :Def: Streaming Multiprocessor (SM, SMX, MP)
 //     The hardware to execute a block of threads.
-//     In class called a multiprocessor (word streaming omitted) for short.
+//     In class called a multiprocessor (the word streaming omitted) for short.
 //     Roughly akin to a core in a CPU.
 //     High-performance GPUs might have about 50 SMs.
+//
 //     Each block is assigned to a particular SM.
 //     All threads in a block execute on the same multiprocessor.
 //     Threads within a block share shared memory.
-//         
+//
+//      "Uh-oh, my new GPU has 50 SMs. I hope my code can launch enough
+//       blocks to keep them all busy."
 //         
 //
 //   :Def: Functional Unit
@@ -475,9 +477,10 @@ main(int argc, char **argv)
             CE(cudaEventRecord(gpu_start_ce,0));
 
             typedef void (*KPtr)();
-            // Launch Kernel
+
+            /// Launch Kernel
             //
-            KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>();
+            KPtr(info.ki[kernel].func_ptr) <<< num_blocks, thd_per_block >>>();
 
             // Stop measuring execution time now, which is before is data
             // returned from GPU.
