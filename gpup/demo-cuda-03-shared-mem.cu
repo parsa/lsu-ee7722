@@ -1,11 +1,11 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
  /// Shared memory CUDA Example, without LSU ECE helper classes.
 
 /// References
 //
-//  :ccpg8: CUDA C Programming Guide Version 8
+//  :ccpg8: CUDA C Programming Guide Version 10
 //          https://docs.nvidia.com/cuda/cuda-c-programming-guide
 //
 
@@ -29,6 +29,7 @@
  //   - Locations can be read and written.
  //
  //   - Size of space is 48 kiB in CC 2.X to CC 6.x.
+ //     Size of space is 96 kiB on CC 7.0 and 64 kiB on CC 7.5.
  //
  //   - Shared address space uses shared memory.
  //
@@ -41,8 +42,8 @@
  //   - Amount of shared memory per SM (NOT per block) varies:
  //      48 kiB  CC 2.0 - CC 3.5
  //     112 kiB  CC 3.7
- //      64 kiB  CC 5.0, 5.3, 6.0, 6.2
- //      96 kiB  CC 5.2, 6.1
+ //      64 kiB  CC 5.0, 5.3, 6.0, 6.2, 7.5
+ //      96 kiB  CC 5.2, 6.1, 7.0
  //
  //   - Low latency (fast). As low as 12 cycles.
  //
