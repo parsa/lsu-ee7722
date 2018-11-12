@@ -5,7 +5,7 @@
 
 /// References
 //
-//  :ccpg19: CUDA C Programming Guide Version 10
+//  :ccpg10: CUDA C Programming Guide Version 10
 //           https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
 
@@ -168,6 +168,13 @@
 //     Size varies, about 1 MiB.
 //     Requires about 200 cycles to obtain data.
 //     Much higher BW limit.
+//
+//   - Read-Only Cache
+//     Size varies, 16 - 32 kiB.
+//     Available in some CC's, and only for certain code.
+//
+//   - Level 1 Cache
+//     Available in CC 2.x and CC 7.x (welcome back!).
 //
 //   Note: L2 only has a small latency benefit.
 //         Larger benefit is higher bandwidth.
