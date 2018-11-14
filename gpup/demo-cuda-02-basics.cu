@@ -30,6 +30,7 @@
 //
 //   -- CC 2.0, 2.1
 //      Fermi
+//      Now considered obsolete.
 //
 //   -- CC 3.0, 3.1, 3.5, 3.7
 //      Kepler

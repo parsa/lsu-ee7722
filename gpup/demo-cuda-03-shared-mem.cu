@@ -5,8 +5,8 @@
 
 /// References
 //
-//  :ccpg8: CUDA C Programming Guide Version 10
-//          https://docs.nvidia.com/cuda/cuda-c-programming-guide
+//  :ccpg10: CUDA C Programming Guide Version 10
+//           https://docs.nvidia.com/cuda/cuda-c-programming-guide
 //
 
 #if 0
@@ -15,8 +15,8 @@
  /// Shared Address Space and Shared Memory
  //
  //  References
- //    General description: CUDA C Programming Guide Section 3.23 (v8)
- //    Amount of SM: CUDA C Programming Guide Section Table 12 (Appendix G)
+ //    General description: CUDA C Programming Guide Section 3.2.3 (v10)
+ //    Amount of SM: CUDA C Programming Guide Section Table 13 (Appendix H)
  //
  //
  //  :Def: Shared Address Space
@@ -75,6 +75,42 @@ __shared__ float4 forces[12];
  //
  //  Caching of global memory. 
  //    (Copying to a place where it can be accessed quickly.)
+
+
+ /// Barrier Synchronization (__syncthreads)
+ //
+ //  When a group is working together on a multi-step project ..
+ //  .. sometimes everyone must finish step x ..
+ //  .. before anyone can start on step x + 1.
+ //
+ //  The same thing holds for threads.
+ //
+ // :Def: Barrier
+ //       A place in the execution of a code by a group of threads ..
+ //       .. which all must reach before any can enter.
+ //
+ //       A barrier is like a room with two doors, the entrance and exit.
+ //         Initially the entrance is open and the exit is closed.
+ //         Threads enter the room but can't leave. (It's comfortable.)
+ //         When the last thread enters ..
+ //         .. the entrance closes ..
+ //         .. and the exit opens.
+ //
+ //
+ //  CUDA provides facilities that allow for threads within a block to
+ //  synchronize at places in the code. The simplest is __syncthreads:
+ //
+ /// __syncthreads
+ //  Implements a block-wide barrier.
+
+ x = a + b;       // Stuff before.
+ __syncthreads();
+ y = c + d;       // Stuff after.
+ //
+ //  - Must be called by all (active) threads in a block. (Or by none at all.)
+ //  - No thread executes "Stuff after" until all threads call __syncthreads.
+ //
+
 
 
   /// Atomic Operations
