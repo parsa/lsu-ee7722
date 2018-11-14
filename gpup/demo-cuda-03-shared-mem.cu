@@ -87,7 +87,7 @@ __shared__ float4 forces[12];
  //
  // :Def: Barrier
  //       A place in the execution of a code by a group of threads ..
- //       .. which all must reach before any can enter.
+ //       .. which all must reach before any can exit.
  //
  //       A barrier is like a room with two doors, the entrance and exit.
  //         Initially the entrance is open and the exit is closed.
@@ -221,7 +221,7 @@ cuda_thread_super_simple(int *output_data, int *input_data)
 
   __syncthreads();
 
-  output_data[tid] = my_element + our_data[threadIdx ^ 1];
+  output_data[tid] = my_element + our_data[threadIdx.x ^ 1];
 
 
   /// Bad use of shared memory.
