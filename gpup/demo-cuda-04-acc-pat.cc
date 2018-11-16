@@ -175,24 +175,21 @@ public:
   bool coords_stale;
   bool buffer_objects_stale;
 
-  PStack<int> helix_indices;
+  vector<int> helix_indices;
   GLuint helix_indices_bo;
 
   // Coordinates of helix. (Helix runs through center of wire.)
   //
-  PStack<pCoor> helix_coords;
+  vector<pCoor> helix_coords;
   GLuint helix_coords_bo;
   int helix_coords_size;
 
-  pCoor *helix_lz, *helix_ly;
+  vector<pCoor> helix_lz, helix_ly;
   GLuint helix_lz_bo;
   GLuint helix_ly_bo;
 
-  PStack<int> wire_surface_indices;
+  vector<int> wire_surface_indices;
   GLuint wire_surface_indices_bo;
-  int wire_surface_indices_size;
-
-  int helix_indices_size;
 
   pShader *sp_fixed;          // Fixed functionality.
   pShader *sp_geo_shade;
@@ -212,7 +209,7 @@ public:
   bool opt_single_frame;      // Simulate for one frame.
   bool opt_single_time_step;  // Simulate for one time step.
 
-  PStack<Wire_Segment> wire_segments;
+  vector<Wire_Segment> wire_segments;
 
   pVect gravity_accel;
   pQuat helix_rn_trans;
@@ -320,8 +317,6 @@ World::init()
   opt_physics_method = GP_cuda_1;
 
 
-  helix_lz = helix_ly = NULL;
-
   variable_control.insert(opt_spring_constant,"Spring Constant");
 
   delta_t = 1.0 / ( 30 * 200 );
@@ -371,7 +366,7 @@ World::frame_callback()
 void
 World::physics_advance()
 {
-  if ( wire_segments.occ() == 0 ) return;
+  if ( wire_segments.size() == 0 ) return;
 
   // Run the physical simulation if not paused.
   //
@@ -383,7 +378,7 @@ World::physics_advance()
   if ( cuda_constants_stale )
     {
       cuda_constants_stale = false;
-      const int phys_helix_segments = wire_segments.occ();
+      const int phys_helix_segments = wire_segments.size();
 
       // Allocate storage and write GPU variables with addresses of storage.
       //
@@ -458,7 +453,7 @@ World::physics_advance()
 
   if ( !opt_pause || opt_single_frame || opt_single_time_step )
     {
-      const int phys_helix_segments = wire_segments.occ();
+      const int phys_helix_segments = wire_segments.size();
 
       // Use a small block size under the assumption that
       // phys_helix_segments is small.
@@ -588,18 +583,18 @@ World::physics_advance()
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
-         helix_coords_size*4*sizeof(helix_coords[0]),
-         helix_coords.get_storage(), GL_STATIC_DRAW);
+         helix_coords.size()*4*sizeof(helix_coords[0]),
+         helix_coords.data(), GL_STATIC_DRAW);
       glBindBuffer(GL_ARRAY_BUFFER, helix_lz_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
          helix_coords_size*sizeof(helix_lz[0]),
-         helix_lz, GL_STATIC_DRAW);
+         helix_lz.data(), GL_STATIC_DRAW);
       glBindBuffer(GL_ARRAY_BUFFER, helix_ly_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
          helix_coords_size*sizeof(helix_ly[0]),
-         helix_ly, GL_STATIC_DRAW);
+         helix_ly.data(), GL_STATIC_DRAW);
     }
 
   last_frame_wall_time = time_now;
@@ -781,10 +776,10 @@ World::render()
       buffer_objects_stale = true;
 
       // Reset existing storage.
-      helix_coords.reset();
-      helix_indices.reset();
-      wire_surface_indices.reset();
-      wire_segments.reset();
+      helix_coords.clear();
+      helix_indices.clear();
+      wire_surface_indices.clear();
+      wire_segments.clear();
 
       const int segments_per_helix =
         revolutions_per_helix * seg_per_helix_revolution;
@@ -834,11 +829,12 @@ World::render()
                     i * delta_y,
                     helix_radius * sin(eta));
 
-          helix_coords += p0;
+          helix_coords.push_back(p0);
 
           // Initialize a helix (wire) segment, used for physical simulation.
           //
-          Wire_Segment* const ws = wire_segments.pushi();
+          wire_segments.emplace_back(); // Eagerly awaiting C++17 on RHEL.
+          Wire_Segment* const ws = &wire_segments.back();
           ws->position = p0;
           ws->velocity = vZero;
           ws->omega = vZero;     // Rotation rate.
@@ -850,18 +846,17 @@ World::render()
           for ( int j = 0; j < seg_per_wire_revolution; j++ )
             {
               const int idx = wire_surface_idx++;
-              helix_indices += i;  helix_indices += j;
+              helix_indices.push_back(i);
+              helix_indices.push_back(j);
               if ( last_i_iteration ) continue;
               // Insert indices for triangle with one vertex on eta.
-              wire_surface_indices += idx; // This vertex.
-              wire_surface_indices += idx + seg_per_wire_revolution;
+              wire_surface_indices.push_back(idx); // This vertex.
+              wire_surface_indices.push_back(idx + seg_per_wire_revolution);
             }
         }
 
-      wire_surface_indices_size = wire_surface_indices.occ();
-      helix_coords_size = helix_coords.occ();
-      helix_indices_size = helix_indices.occ();
-      helix_end_ws = &wire_segments.peek();
+      helix_coords_size = helix_coords.size();
+      helix_end_ws = &wire_segments.back();
     }
 
   // If necessary, update data in buffer objects.
@@ -877,27 +872,26 @@ World::render()
       glGenBuffers(1,&helix_ly_bo);
       glGenBuffers(1,&wire_surface_indices_bo);
 
-      if ( helix_lz ) { free(helix_lz); free(helix_ly); }
-      helix_lz = (pCoor*) malloc( helix_coords_size * sizeof(helix_lz[0]) );
-      helix_ly = (pCoor*) malloc( helix_coords_size * sizeof(helix_ly[0]) );
+      helix_ly.resize(helix_coords_size);
+      helix_lz.resize(helix_coords_size);
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
-         helix_coords_size*4*sizeof(helix_coords[0]),
-         helix_coords.get_storage(), GL_STATIC_DRAW);
+         helix_coords.size()*4*sizeof(helix_coords[0]),
+         helix_coords.data(), GL_STATIC_DRAW);
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_indices_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
-         2 * helix_indices_size * sizeof(helix_indices[0]),
-         helix_indices.get_storage(), GL_STATIC_DRAW);
+         2 * helix_indices.size() * sizeof(helix_indices[0]),
+         helix_indices.data(), GL_STATIC_DRAW);
 
       glBindBuffer(GL_ARRAY_BUFFER, wire_surface_indices_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
-         wire_surface_indices_size*sizeof(wire_surface_indices[0]),
-         wire_surface_indices.get_storage(),GL_STATIC_DRAW);
+         wire_surface_indices.size()*sizeof(wire_surface_indices[0]),
+         wire_surface_indices.data(),GL_STATIC_DRAW);
 
       // Tell GL that subsequent array pointers refer to host storage.
       //
@@ -945,7 +939,7 @@ World::render()
 
   glDrawElements
     (GL_TRIANGLE_STRIP,
-     wire_surface_indices_size - 4 * seg_per_wire_revolution,
+     wire_surface_indices.size() - 4 * seg_per_wire_revolution,
      GL_UNSIGNED_INT,
      (const GLvoid*) ( 2 * seg_per_wire_revolution * sizeof(GL_UNSIGNED_INT)));
 
@@ -976,7 +970,7 @@ World::time_step_cpu()
   pVect gravity_force = helix_seg_mass_inv * gravity_accel;
   helix_spring_energy = 0;
 
-  const int phys_helix_segments = wire_segments.occ();
+  const int phys_helix_segments = wire_segments.size();
 
   /// Initialize wire segment variables for time step.
   //
