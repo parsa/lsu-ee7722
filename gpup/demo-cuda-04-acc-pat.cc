@@ -38,6 +38,8 @@
  //  'i'    Cycle three methods of interpenetration handling:
  //           GPU Physics Mode: None, GPU-Prob-1, GPU-Prob-2.
  //           CPU Physics Mode: None, CPU, CPU (last two equivalent).
+ //  's'    Toggle alternative use of shared memory.
+
  //  'b'    Grab free end (last segment) of spring. Once grabbed, can
  //         be controlled with arrow keys (see above).
  //  'B'    Release spring.
@@ -46,7 +48,6 @@
  //  'y'    Toggle state of Boolean opt_tryout1, use it as you like.
  //  'Y'    Toggle state of Boolean opt_tryout2, use it as you like.
 
- //  'S'    Switch between different shaders in reverse direction.
  //  'F11'  Change size of text.
  //  'F12'  Write screenshot to file.
 
@@ -668,9 +669,9 @@ World::render()
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
-    ("Physics: %s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Tryouts: %d %d ('y' 'Y')\n",
+    ("Physics: %7s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Tryouts: %d %d ('y' 'Y')\n",
      opt_physics_method == GP_cpu
-     ? BLINK(gpu_physics_method_str[opt_physics_method],"      ")
+     ? BLINK(gpu_physics_method_str[opt_physics_method],"")
      : gpu_physics_method_str[opt_physics_method],
      opt_pause ? BLINK("ON","  ") : "OFF",
      opt_gravity ? "ON" : "OFF",
@@ -960,12 +961,9 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
 
+  ogl_helper.user_text_reprint();
   glutSwapBuffers();
 }
 
