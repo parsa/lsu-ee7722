@@ -1,10 +1,10 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
 #if 0
 /// Reference
 //
-//  :ccpg8: CUDA C Programming Guide Version 8
+//  :ccpg: CUDA C Programming Guide Version 10
 //          https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
  /// CUDA Demo 04
@@ -381,10 +381,11 @@ time_step()
   // Initialize c_rot to a rotation matrix based on quaternion c_orientation.
   pMatrix_set_rotation(c_rot,c_orientation);
 
-  float3 c_u = c_rot * mv(0,0,1);  // mv: Make Vector.
-  float3 c_v = c_rot * mv(0,1,0);
-  float3 c_ctr_to_right_dir = c_rot * mv(1,0,0);
-  pVect c_ctr_to_right = hi.helix_seg_hlength * c_ctr_to_right_dir;
+  float3 c_lx = c_rot * mv(1,0,0);  // mv: Make Vector.
+  float3 c_ly = c_rot * mv(0,1,0);
+  float3 c_lz = c_rot * mv(0,0,1);
+
+  pVect c_ctr_to_right = hi.helix_seg_hlength * c_lx;
   float3 c_pos_right = c_position + c_ctr_to_right;
   float3 c_pos_left = c_position - c_ctr_to_right;
 
@@ -402,23 +403,23 @@ time_step()
       float3 r_position = m3(helix_position[tid+1]);
       pMatrix3x3 r_rot;
       pMatrix_set_rotation(r_rot,r_orientation);
-      float3 r_u = r_rot * mv(0,0,1);
-      float3 r_v = r_rot * mv(0,1,0);
-      float3 r_ctr_to_right_dir = r_rot * mv(1,0,0);
-      pVect r_ctr_to_right = hi.helix_seg_hlength * r_ctr_to_right_dir;
+      float3 r_lz = r_rot * mv(0,0,1);
+      float3 r_ly = r_rot * mv(0,1,0);
+      float3 r_lx = r_rot * mv(1,0,0);
+      pVect r_ctr_to_right = hi.helix_seg_hlength * r_lx;
       float3 r_pos_left = r_position - r_ctr_to_right;
 
       pQuat cn_rot_q = c_orientation * hi.helix_rn_trans;
       pMatrix3x3 cn_rot;
       pMatrix_set_rotation(cn_rot,cn_rot_q);
-      pVect n_ru = cn_rot * mv(0,0,1);
-      pVect n_rv = cn_rot * mv(0,1,0);
+      pVect nr_lz = cn_rot * mv(0,0,1);
+      pVect nr_ly = cn_rot * mv(0,1,0);
 
       for ( int j=0; j<pieces; j++ )
         {
           const float theta = delta_theta * j;
-          pCoor c_pt = c_pos_right + cosf(theta) * n_ru + sinf(theta) * n_rv;
-          pCoor r_pt = r_pos_left + cosf(theta) * r_u + sinf(theta) * r_v;
+          pCoor c_pt = c_pos_right + cosf(theta) * nr_lz + sinf(theta) * nr_ly;
+          pCoor r_pt = r_pos_left + cosf(theta) * r_lz + sinf(theta) * r_ly;
           pNorm dist = mn(c_pt,r_pt);
           const float force_mag = dist.magnitude * hi.opt_spring_constant;
           helix_apply_force_at(c_position,force,torque,c_pt,dist.v,force_mag);
@@ -433,23 +434,22 @@ time_step()
       float3 l_position = m3(helix_position[tid-1]);
       pMatrix3x3 l_rot;
       pMatrix_set_rotation(l_rot,l_orientation);
-      float3 l_u = l_rot * mv(0,0,1);
-      float3 l_v = l_rot * mv(0,1,0);
-      float3 l_ctr_to_right_dir = l_rot * mv(1,0,0);
-      pVect l_ctr_to_right = hi.helix_seg_hlength * l_ctr_to_right_dir;
+      float3 l_lz = l_rot * mv(0,0,1);
+      float3 l_lx = l_rot * mv(1,0,0);
+      pVect l_ctr_to_right = hi.helix_seg_hlength * l_lx;
       float3 l_pos_right = l_position + l_ctr_to_right;
 
       pQuat ln_rot_q = l_orientation * hi.helix_rn_trans;
       pMatrix3x3 ln_rot;
       pMatrix_set_rotation(ln_rot,ln_rot_q);
-      pVect n_cu = ln_rot * mv(0,0,1);
-      pVect n_cv = ln_rot * mv(0,1,0);
+      pVect nc_lx = ln_rot * mv(0,0,1);
+      pVect nc_ly = ln_rot * mv(0,1,0);
 
       for ( int j=0; j<pieces; j++ )
         {
           const float theta = delta_theta * j;
-          pCoor c_pt = c_pos_left + cosf(theta) * c_u + sinf(theta) * c_v;
-          pCoor l_pt = l_pos_right + cosf(theta) * n_cu + sinf(theta) * n_cv;
+          pCoor c_pt = c_pos_left + cosf(theta) * c_lz + sinf(theta) * c_ly;
+          pCoor l_pt = l_pos_right + cosf(theta) * nc_lx + sinf(theta) * nc_ly;
           pNorm dist = mn(c_pt,l_pt);
           const float force_mag = dist.magnitude * hi.opt_spring_constant;
           helix_apply_force_at(c_position,force,torque,c_pt,dist.v,force_mag);
@@ -461,8 +461,8 @@ time_step()
   float3 omega = helix_omega[tid];
   omega *= 0.99999f;
   velocity += hi.delta_t_mass_inv * force;
-  const float torque_axial_mag = dot( torque, c_ctr_to_right_dir );
-  pVect torque_axial = torque_axial_mag * c_ctr_to_right_dir;
+  const float torque_axial_mag = dot( torque, c_lx );
+  pVect torque_axial = torque_axial_mag * c_lx;
   pVect do_axial = hi.delta_t_ma_axis * torque_axial;
   pVect torque_other = torque - torque_axial;
   pVect do_other = hi.delta_t_ma_perp_axis * torque_other;

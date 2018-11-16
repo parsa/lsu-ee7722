@@ -109,8 +109,8 @@
 #define UNIF_IDX_WIRE_RADIUS 2
 #define ATTR_IDX_HELIX_INDICES 1
 #define SB_COORD 1
-#define SB_U 2
-#define SB_V 3
+#define SB_LZ 2
+#define SB_LY 3
 
 
 enum GPU_Physics_Method { GP_cpu, GP_cuda_1, GP_cuda_2, GP_ENUM_SIZE };
@@ -123,9 +123,11 @@ struct Wire_Segment {
   pVect velocity;
   pVect omega;
 
-  pVect ctr_to_right_dir;
-  pVect u, v;
-  pVect nu, nv, nw;
+  // Local-space axes.
+  pVect lx, ly, lz;
+
+  // Global-space coordinates of neighbor.
+  pVect nx, ny, nz;
   pCoor pos_left, pos_right;
 
   pVect force;
@@ -182,9 +184,9 @@ public:
   GLuint helix_coords_bo;
   int helix_coords_size;
 
-  pCoor *helix_u, *helix_v;
-  GLuint helix_u_bo;
-  GLuint helix_v_bo;
+  pCoor *helix_lz, *helix_ly;
+  GLuint helix_lz_bo;
+  GLuint helix_ly_bo;
 
   PStack<int> wire_surface_indices;
   GLuint wire_surface_indices_bo;
@@ -318,7 +320,7 @@ World::init()
   opt_physics_method = GP_cuda_1;
 
 
-  helix_u = helix_v = NULL;
+  helix_lz = helix_ly = NULL;
 
   variable_control.insert(opt_spring_constant,"Spring Constant");
 
@@ -577,8 +579,8 @@ World::physics_advance()
           // Compute vectors used for drawing wire.
           //
           pMatrix_Rotation c_rot(ws->orientation);
-          helix_u[i] = c_rot.cv(2);
-          helix_v[i] = c_rot.cv(1);
+          helix_lz[i] = c_rot.cv(2);
+          helix_ly[i] = c_rot.cv(1);
         }
 
       // Send data back to GPU.
@@ -588,16 +590,16 @@ World::physics_advance()
         (GL_ARRAY_BUFFER,
          helix_coords_size*4*sizeof(helix_coords[0]),
          helix_coords.get_storage(), GL_STATIC_DRAW);
-      glBindBuffer(GL_ARRAY_BUFFER, helix_u_bo);
+      glBindBuffer(GL_ARRAY_BUFFER, helix_lz_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
-         helix_coords_size*sizeof(helix_u[0]),
-         helix_u, GL_STATIC_DRAW);
-      glBindBuffer(GL_ARRAY_BUFFER, helix_v_bo);
+         helix_coords_size*sizeof(helix_lz[0]),
+         helix_lz, GL_STATIC_DRAW);
+      glBindBuffer(GL_ARRAY_BUFFER, helix_ly_bo);
       glBufferData
         (GL_ARRAY_BUFFER,
-         helix_coords_size*sizeof(helix_v[0]),
-         helix_v, GL_STATIC_DRAW);
+         helix_coords_size*sizeof(helix_ly[0]),
+         helix_ly, GL_STATIC_DRAW);
     }
 
   last_frame_wall_time = time_now;
@@ -871,13 +873,13 @@ World::render()
       //
       glGenBuffers(1,&helix_indices_bo);
       glGenBuffers(1,&helix_coords_bo);
-      glGenBuffers(1,&helix_u_bo);
-      glGenBuffers(1,&helix_v_bo);
+      glGenBuffers(1,&helix_lz_bo);
+      glGenBuffers(1,&helix_ly_bo);
       glGenBuffers(1,&wire_surface_indices_bo);
 
-      if ( helix_u ) { free(helix_u); free(helix_v); }
-      helix_u = (pCoor*) malloc( helix_coords_size * sizeof(helix_u[0]) );
-      helix_v = (pCoor*) malloc( helix_coords_size * sizeof(helix_v[0]) );
+      if ( helix_lz ) { free(helix_lz); free(helix_ly); }
+      helix_lz = (pCoor*) malloc( helix_coords_size * sizeof(helix_lz[0]) );
+      helix_ly = (pCoor*) malloc( helix_coords_size * sizeof(helix_ly[0]) );
 
       glBindBuffer(GL_ARRAY_BUFFER, helix_coords_bo);
       glBufferData
@@ -911,8 +913,8 @@ World::render()
   ///
 
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_COORD,helix_coords_bo);
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_U,helix_u_bo);
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_V,helix_v_bo);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_LZ,helix_lz_bo);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER,SB_LY,helix_ly_bo);
 
   glUniform1f(UNIF_IDX_WIRE_RADIUS,wire_radius);  GE();
 
@@ -984,16 +986,17 @@ World::time_step_cpu()
       Wire_Segment* const cseg = &wire_segments[i];
       pMatrix_Rotation c_rot(cseg->orientation);
 
-      // Compute world-space vectors of segments local coordinate space.
-      cseg->u = c_rot.cv(2);
-      cseg->v = c_rot.cv(1);
-      cseg->ctr_to_right_dir = c_rot.cv(0);
+      // Put local-space axes of cseg into convenient variables.
+      cseg->lx = c_rot.cv(0);  // Extract column 0 of matrix c_rot.
+      cseg->ly = c_rot.cv(1);
+      cseg->lz = c_rot.cv(2);
+      // Compute and store local-space axes of cseg's right neighbor.
       pQuat cn_rot_q = cseg->orientation * helix_rn_trans;
       pMatrix_Rotation cn_rot(cn_rot_q);
-      cseg->nu = cn_rot.cv(2);
-      cseg->nv = cn_rot.cv(1);
+      cseg->ny = cn_rot.cv(1);
+      cseg->nz = cn_rot.cv(2);
 
-      pVect ctr_to_right = helix_seg_hlength * cseg->ctr_to_right_dir;
+      pVect ctr_to_right = helix_seg_hlength * cseg->lx;
 
       // Compute location of ends of cylinder.
       cseg->pos_left = cseg->position - ctr_to_right;
@@ -1019,9 +1022,9 @@ World::time_step_cpu()
         {
           const float theta = delta_theta * j;
           pCoor c_pt =
-            cseg->pos_right + cseg->nu * cosf(theta) + cseg->nv * sinf(theta);
+            cseg->pos_right + cseg->nz * cosf(theta) + cseg->ny * sinf(theta);
           pCoor r_pt =
-            rseg->pos_left + rseg->u * cosf(theta) + rseg->v * sinf(theta);
+            rseg->pos_left + rseg->lz * cosf(theta) + rseg->ly * sinf(theta);
           pNorm dist(c_pt,r_pt);
           const float force_mag = dist.magnitude * opt_spring_constant;
           pCoor mid_pt = 0.5 * ( c_pt + r_pt );
@@ -1084,9 +1087,8 @@ World::time_step_cpu()
       if ( opt_end_fixed && i + 1 == phys_helix_segments )
         cseg->velocity = vZero;
       cseg->position += delta_t * cseg->velocity;
-      const float torque_axial_mag =
-        dot( cseg->torque, cseg->ctr_to_right_dir );
-      pVect torque_axial = torque_axial_mag * cseg->ctr_to_right_dir;
+      const float torque_axial_mag = dot( cseg->torque, cseg->lx );
+      pVect torque_axial = torque_axial_mag * cseg->lx;
       pVect do_axial = delta_t_ma_axis * torque_axial;
       pVect torque_other = cseg->torque - torque_axial;
       pVect do_other = delta_t_ma_perp_axis * torque_other;

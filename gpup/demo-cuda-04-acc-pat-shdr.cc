@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
 // Specify version of OpenGL Shading Language.
@@ -14,8 +14,8 @@ layout ( location = 4 ) uniform vec4 front_color;
 layout ( location = 5 ) uniform vec4 back_color;
 
 layout ( binding = 1 ) buffer Helix_Coord  { vec4  helix_coord[];  };
-layout ( binding = 2 ) buffer Helix_u  { vec4  helix_u[];  };
-layout ( binding = 3 ) buffer Helix_v  { vec4  helix_v[];  };
+layout ( binding = 2 ) buffer Helix_lz  { vec4  helix_lz[];  };
+layout ( binding = 3 ) buffer Helix_ly  { vec4  helix_ly[];  };
 uniform sampler2D tex_unit_0;
 
 
@@ -111,10 +111,10 @@ vs_main_helix()
 
   float pi = 3.14159265;
   float theta = hidx.y * 2 * pi / 20;
-  vec3 u = helix_u[hidx.x].xyz;
-  vec3 v = helix_v[hidx.x].xyz;
+  vec3 lz = helix_lz[hidx.x].xyz;
+  vec3 ly = helix_ly[hidx.x].xyz;
 
-  vec3 normal = normalize( cos(theta) * u + sin(theta) * v );
+  vec3 normal = normalize( cos(theta) * lz + sin(theta) * ly );
 
   // Compute wire surface location by adding normal to helix coordinate.
   //
