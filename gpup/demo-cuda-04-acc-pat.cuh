@@ -4,6 +4,9 @@
 
 __host__ cudaError_t cuda_setup(GPU_Info *gpu_info);
 
+__host__ void cuda_array_addrs_set
+(float4 *h_pos, float3 *h_vel, float4 *h_ori, float3 *h_om);
+
 __host__ void time_step_launch(int grid_size, int block_size);
 
  __host__ void time_step_intersect_launch

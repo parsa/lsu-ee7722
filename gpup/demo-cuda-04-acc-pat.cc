@@ -250,10 +250,15 @@ public:
   int inter_block_size, inter_nblocks;
   int inter_dynamic_sm_size_bytes;
 
-  pCUDA_Memory<pCoor> helix_position;
-  pCUDA_Memory<pVect> helix_velocity;
-  pCUDA_Memory<pQuat> helix_orientation;
-  pCUDA_Memory<pVect> helix_omega;
+  vector<pCoor> helix_position;
+  vector<pVect> helix_velocity;
+  vector<pQuat> helix_orientation;
+  vector<pVect> helix_omega;
+
+  pCoor *d_helix_position;
+  pVect *d_helix_velocity;
+  pQuat *d_helix_orientation;
+  pVect *d_helix_omega;
 
   void cuda_init();
 };
@@ -378,18 +383,40 @@ World::physics_advance()
   if ( cuda_constants_stale )
     {
       cuda_constants_stale = false;
-      const int phys_helix_segments = wire_segments.size();
+      const size_t phys_helix_segments = wire_segments.size();
 
       // Allocate storage and write GPU variables with addresses of storage.
       //
-      helix_position.realloc(phys_helix_segments);
-      helix_position.ptrs_to_cuda("helix_position");
-      helix_velocity.realloc(phys_helix_segments);
-      helix_velocity.ptrs_to_cuda("helix_velocity");
-      helix_omega.realloc(phys_helix_segments);
-      helix_omega.ptrs_to_cuda("helix_omega");
-      helix_orientation.realloc(phys_helix_segments);
-      helix_orientation.ptrs_to_cuda("helix_orientation");
+      if ( helix_position.size() != phys_helix_segments )
+        {
+          helix_position.resize(phys_helix_segments);
+          helix_velocity.resize(phys_helix_segments);
+          helix_orientation.resize(phys_helix_segments);
+          helix_omega.resize(phys_helix_segments);
+          if ( d_helix_position )
+            {
+              CE( cudaFree( d_helix_position ) );
+              CE( cudaFree( d_helix_velocity ) );
+              CE( cudaFree( d_helix_orientation ) );
+              CE( cudaFree( d_helix_omega ) );
+            }
+          CE( cudaMalloc
+              ( &d_helix_position,
+                phys_helix_segments * sizeof(d_helix_position[0]) ) );
+          CE( cudaMalloc
+              ( &d_helix_velocity,
+                phys_helix_segments * sizeof(d_helix_velocity[0]) ) );
+          CE( cudaMalloc
+              ( &d_helix_orientation,
+                phys_helix_segments * sizeof(d_helix_orientation[0]) ) );
+          CE( cudaMalloc
+              ( &d_helix_omega,
+                phys_helix_segments * sizeof(d_helix_omega[0]) ) );
+
+          cuda_array_addrs_set
+            ((float4*)d_helix_position, (float3*)d_helix_velocity,
+             (float4*)d_helix_orientation, (float3*)d_helix_omega);
+        }
 
       // Copy data from our CPU-friendly wire_segments array of
       // structures to GPU-friendly individual arrays. Note that this
@@ -400,7 +427,7 @@ World::physics_advance()
       // changes a variable.
       //
 #pragma omp parallel for
-      for ( int i=0; i<phys_helix_segments; i++ )
+      for ( size_t i=0; i<phys_helix_segments; i++ )
         {
           Wire_Segment* const ws = &wire_segments[i];
           helix_position[i] = ws->position;
@@ -411,10 +438,13 @@ World::physics_advance()
 
       // Copy data from CPU to GPU.
       //
-      helix_position.to_cuda();
-      helix_velocity.to_cuda();
-      helix_orientation.to_cuda();
-      helix_omega.to_cuda();
+#define TOCUDA(var) \
+      CE( cudaMemcpy( d_##var, var.data(), var.size() * sizeof(var[0]), \
+                      cudaMemcpyHostToDevice ) );
+      TOCUDA(helix_position);
+      TOCUDA(helix_velocity);
+      TOCUDA(helix_orientation);
+      TOCUDA(helix_omega);
 
       // Write scalar variables to a structure, and then
       // send structure to GPU.
@@ -541,10 +571,14 @@ World::physics_advance()
           // CUDA global memory can be mapped to an OpenGL buffer
           // object.)
           //
-          helix_position.from_cuda();
-          helix_velocity.from_cuda();
-          helix_orientation.from_cuda();
-          helix_omega.from_cuda();
+#define FROMCUDA(var) \
+          CE( cudaMemcpy( var.data(), d_##var, var.size() * sizeof(var[0]), \
+                          cudaMemcpyDeviceToHost ) );
+          FROMCUDA(helix_position);
+          FROMCUDA(helix_velocity);
+          FROMCUDA(helix_orientation);
+          FROMCUDA(helix_omega);
+
 #pragma omp parallel for
           for ( int i=0; i<phys_helix_segments; i++ )
             {
@@ -1173,6 +1207,10 @@ World::cuda_init()
              gpu_info.ki[i].cfa.maxThreadsPerBlock);
     }
 
+  d_helix_position = NULL;
+  d_helix_velocity = NULL;
+  d_helix_orientation = NULL;
+  d_helix_omega = NULL;
 }
 
 

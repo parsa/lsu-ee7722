@@ -35,6 +35,21 @@ __constant__ float3 *helix_omega;        // Note: float4 would be faster.
 __device__ Timing_Data timing_data;   // Measure execution time of intersect.
 __constant__ Helix_Info hi;  // Scalar Constants
 
+__host__ void
+cuda_array_addrs_set
+(float4 *h_pos, float3 *h_vel, float4 *h_ori, float3 *h_om)
+{
+# define set_item(dev,host) \
+  CE( cudaMemcpyToSymbol \
+      ( dev, &host, sizeof(host), 0, cudaMemcpyHostToDevice ) );
+  set_item(helix_position,h_pos);
+  set_item(helix_velocity,h_vel);
+  set_item(helix_orientation,h_ori);
+  set_item(helix_omega,h_om);
+#undef set_item
+
+}
+
 __global__ void
 time_step_intersect_1()
 {
