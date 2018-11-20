@@ -66,7 +66,7 @@
  /// Scene and Simulated System Options
  //  (Also see variables below.)
  //
- //  'w'    Twirl balls around axis formed by head and tail. (Prob 2 soln).
+ //  'w'    Twirl balls around axis formed by head and tail.
  //  '1'    Set up scene 1.
  //  '2'    Set up scene 2.
  //  '3'    Set up scene 3.
@@ -1360,7 +1360,8 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
-  const bool solution = false;
+  string this_executable(argv[0]);
+  const bool solution = this_executable.find("-sol") != string::npos;
   const char* const true_shdr_src =
     solution ? "hw04-shdr-hw04-sol.cc" : "hw04-shdr-hw04.cc";
 

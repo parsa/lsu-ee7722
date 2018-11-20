@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
- ///  Homework 4
+ ///  Homework 4 -- SOLUTION
 //
  ///  Put solution in this file, most or all code in routine |fs_main|.
  //
@@ -141,14 +141,14 @@ fs_main()
 
   vec4 pos_rad = sphere_pos_rad[vertex_id];
 
-  // Center of sphere in original object-space coordinates (oo) and possibly
+  // Center of sphere in original object-space coördinates (oo) and possibly
   // reflected (o).
   vec3 ctr_oo = pos_rad.xyz;
   vec3 ctr_o = mirrored ? ctr_oo * vec3(1,-1,1) : ctr_oo;
 
   float rsq = pos_rad.w * pos_rad.w;
 
-  // Eye location in object-space coordinates.
+  // Eye location in object-space coördinates.
   vec3 e_o = gl_ModelViewMatrixInverse[3].xyz;
 
   // Prepare to compute intersection of ray from eye to through fragment with
@@ -172,12 +172,127 @@ fs_main()
   const bool lenses = opt_holes == OHO_Lenses;
   const bool solid = !holes && !lenses;         // If true show complete sphere.
 
-  bool front = true;
 
-  // Finish computing coordinate of point for this fragment.
+  /// SOLUTION  -- Organizing Front Surface / Back Surface Computation
   //
-  float t = ( -qfb - sqrt( discr ) ) / ( 2 * qfa );
-  vec4 sur_o = vec4(e_o + t * ef, 1);
+  //  Since this fragment can be on the front or the back of the sphere ..
+  //  .. put code for finding the sphere coördinates in a loop.
+  //
+  //  First compute the coördinates of the front surface of the sphere ..
+  //  .. if that point is visible (e.g., not in a hole), show it, ..
+  //  .. otherwise find the coördinates of the back surface ..
+  //  .. if that point is visible (e.g., not in a hole), show it, ..
+  //  .. otherwise discard the fragment (don't use any coördinates).
+  //
+  //  To avoid code duplication ..
+  //  .. put the sphere-coördinates computation in a loop.
+  //
+
+  vec4 sur_o, sur_oo;  // Global surface coördinates (front or back) of sphere.
+  vec3 normal_oo, sur_l;
+  bool front;          // If true, coördinates are of front of sphere.
+  float theta, eta;    // Local angular coördinates of sphere.
+  bool found_hole = false;
+
+  /// SOLUTION
+  //
+  //  Use loop to iterate over two possibilities ..
+  //  .. front of sphere (dir=-1) and back of sphere (dir=1).
+  //
+  for ( float dir = -1;  dir <= 1;  dir+=2 )
+    {
+      front = dir == -1;
+
+      // Finish computing coordinate of point for this fragment.
+      //
+      float t = ( -qfb + dir * sqrt( discr ) ) / ( 2 * qfa );
+
+      // Compute true sphere surface coordinate.
+      //
+      sur_o = vec4(e_o + t * ef, 1);
+
+      // Compute possibly reflected sphere surface coordinate.
+      //
+      sur_oo = mirrored ? sur_o * vec4(1,-1,1,1) : sur_o;
+      normal_oo = normalize(sur_oo.xyz - ctr_oo);
+
+      /// SOLUTION
+      //
+      //  Reverse normal if this is the back surface of the sphere.
+      //
+      if ( !front ) normal_oo = -normal_oo;
+
+      // Use sphere-local coordinates to compute texture coordinates.
+      //
+      sur_l = normalize(mat3(sphere_rot[vertex_id]) * normal_oo);
+      theta = atan(sur_l.x,sur_l.z);
+      eta = acos(sur_l.y);
+
+      /// SOLUTION
+      //
+      //  If this is just a normal sphere, we are finished.
+      //
+      if ( solid ) break;
+
+      const float hole_frac = 0.8;
+      const float radians_per_hole_eq = two_pi / opt_n_holes_eqt;
+      const float hole_radius = 0.5 * hole_frac * radians_per_hole_eq;
+
+      //
+      /// SOLUTION -- Find coördinates of nearest hole.
+      //
+      //
+      // Round surface eta coördinate to that of nearest hole.
+      //
+      float eta_hole = round( eta / radians_per_hole_eq ) * radians_per_hole_eq;
+      //
+      // Find distance around sphere at this latitude (value of eta).
+      //
+      float r = sin(eta_hole);
+      //
+      // Find number of holes that will fit around sphere at this latitude.
+      //
+      const float n_holes = floor( two_pi * r / radians_per_hole_eq );
+      //
+      // Don't try to find a hole if there are none this close to the pole.
+      //
+      if ( n_holes < -1 )
+        {
+          if ( holes ) break;
+          if ( dir == 1 ) discard;
+        }
+      //
+      // Round surface theta coördinate to that of nearest hole.
+      //
+      const float radians_per_hole = two_pi / n_holes;
+      float theta_hole = round( theta / radians_per_hole ) * radians_per_hole;
+      //
+      // Compute local coördinates of center of hole.
+      //
+      vec3 hole_dir_l =
+        vec3( r * sin(theta_hole), cos(eta_hole), r * cos(theta_hole) );
+
+      /// SOLUTION -- Determine distance to hole and take appropriate action.
+      //
+      // Find distance from center of hole to sphere surface point ..
+      //
+      float dist = distance(hole_dir_l,sur_l);
+      //
+      // .. and check whether surface point is in hole.
+      //
+      found_hole = dist < hole_radius;
+      //
+      // If this part of the sphere is visible, break.
+      //
+      if ( lenses && found_hole || holes && !found_hole ) break;
+      //
+      // If we are already at the back of the sphere, don't show anything.
+      //
+      if ( !front ) discard;
+    }
+
+  vec3 normal_ee = normalize(gl_NormalMatrix * normal_oo);
+  vec4 sur_ee = gl_ModelViewMatrix * sur_oo;
 
   // Compute clip-space depth. Take care so that compiler avoids full
   // matrix / vector multiplication.
@@ -185,21 +300,6 @@ fs_main()
   vec4 sur_c = trans_proj * vec4(0,0,2*sur_e.z,1);
   gl_FragDepth = sur_c.z / sur_c.w;
 
-  // Compute eye-space coordinates and vector of unreflected point.
-  //
-  vec4 sur_oo = mirrored ? sur_o * vec4(1,-1,1,1) : sur_o;
-  vec3 normal_oo = normalize(sur_oo.xyz - ctr_oo);
-  vec3 normal_ee = normalize(gl_NormalMatrix * normal_oo);
-  vec4 sur_ee = gl_ModelViewMatrix * sur_oo;
-
-  // Use sphere-local coordinates to compute texture coordinates.
-  //
-  // Convert object space normal to sphere-local coordinate ..
-  vec3 sur_l = normalize(mat3(sphere_rot[vertex_id]) * normal_oo);
-  // .. from that get angles on sphere ..
-  float theta = atan(sur_l.x,sur_l.z);
-  float eta = acos(sur_l.y);
-  // .. and use them to compujte the texture coordinates.
   vec2 tcoord = vec2( ( 1.5 * pi + theta ) / two_pi, eta / pi );
 
   // Get filtered texel.
