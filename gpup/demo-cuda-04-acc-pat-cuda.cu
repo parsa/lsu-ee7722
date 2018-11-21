@@ -54,7 +54,10 @@ __global__ void
 time_step_intersect_0()
 {
   // Find intersections of one helix segment with some other segments
-  // in the simplest way possible. This will run ridiculously slowly.
+  // in the simplest way possible.
+  //
+  /// WARNING: This will run ridiculously slowly.
+  //  It can hang, or appear to hang your system.
 
   __shared__ clock_t time_start;
   if ( !threadIdx.x ) time_start = clock64();
@@ -69,14 +72,14 @@ time_step_intersect_0()
       float3 force = mv(0,0,0);
       float3 a_position = m3( helix_position[a_idx] );
 
-      for ( int j = a_idx + min_idx_dist; j < hi.phys_helix_segments; j++ )
+      for ( int b_idx = 0; b_idx < hi.phys_helix_segments; b_idx++ )
         {
-          float3 b_position = m3( helix_position[j] );
+          float3 b_position = m3( helix_position[b_idx] );
 
           pVect ab = mv(a_position,b_position);
 
           // Skip if segment is too close.
-          if ( abs(a_idx-j) < min_idx_dist ) continue;
+          if ( abs(a_idx-b_idx) < min_idx_dist ) continue;
 
           // Skip if no chance of intersection.
           if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
@@ -180,24 +183,26 @@ time_step_intersect_1()
 
   float3* const pos_cache = &shared[blockDim.x];
 
-  for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
+  for ( int b_idx = b_idx_start;
+        b_idx < hi.phys_helix_segments;
+        b_idx += thd_per_a )
     {
       if ( hi.opt_use_shared )
         {
           __syncthreads();
           if ( threadIdx.x < thd_per_a )
             pos_cache[threadIdx.x] =
-              m3(helix_position[ j - b_idx_start + threadIdx.x ] );
+              m3(helix_position[ b_idx - b_idx_start + threadIdx.x ] );
           __syncthreads();
         }
 
-      float3 b_position = 
-        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
+      float3 b_position =
+        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[b_idx]);
 
       pVect ab = mv(a_position,b_position);
 
       // Skip if segment is too close.
-      if ( abs(a_idx-j) < min_idx_dist ) continue;
+      if ( abs(a_idx-b_idx) < min_idx_dist ) continue;
 
       // Skip if no chance of intersection.
       if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
@@ -317,22 +322,24 @@ time_step_intersect_2()
 
   float3* const pos_cache = &shared[blockDim.x];
 
-  for ( int j=b_idx_start; j<hi.phys_helix_segments; j += thd_per_a )
+  for ( int b_idx = b_idx_start;
+        b_idx < hi.phys_helix_segments;
+        b_idx += thd_per_a )
     {
       if ( hi.opt_use_shared )
         {
           __syncthreads();
           if ( threadIdx.x < thd_per_a )
-            pos_cache[threadIdx.x] = m3(helix_position[j]);
+            pos_cache[threadIdx.x] = m3(helix_position[b_idx]);
           __syncthreads();
         }
-      float3 b_position = 
-        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[j]);
+      float3 b_position =
+        hi.opt_use_shared ? pos_cache[b_idx_start] : m3(helix_position[b_idx]);
 
       pVect ab = mv(a_position,b_position);
 
       // Skip if segment is too close.
-      if ( abs(a_idx-j) < min_idx_dist ) continue;
+      if ( abs(a_idx-b_idx) < min_idx_dist ) continue;
 
       // Skip if no chance of intersection.
       if ( mag_sq(ab) >= four_wire_radius_sq ) continue;

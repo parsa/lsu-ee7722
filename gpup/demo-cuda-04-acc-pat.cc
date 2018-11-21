@@ -253,6 +253,8 @@ public:
   // CUDA Physics
 
   int opt_physics_method;
+  bool opt_ez_method_safety;  // If true use super-slow ez kernel.
+  int ez_prev_physics;        // Physics method in use when switched to ez.
   bool cuda_initialized;
   bool cuda_constants_stale;
   cudaEvent_t frame_start_ce, frame_stop_ce;
@@ -683,9 +685,9 @@ World::render()
       const double bl_p_sm = min( bl_p_sm_max + 0.0, bl_p_sm_avail );
 
       ogl_helper.fbprintf
-        ("Interp routine: Bl Sz %3d  N Blocks %4d  Bl/SM %2d %4.1f   "
-         "Wp/SM %4.1f   Bl Time %ld cyc\n",
-         inter_block_size, inter_nblocks,
+        ("N Seg: %3zd  Interp routine: Bl Sz %3d  N Blocks %4d  "
+         "Bl/SM %2d %4.1f   Wp/SM %4.1f   Bl Time %ld cyc\n",
+         wire_segments.size(), inter_block_size, inter_nblocks,
          bl_p_sm_max, bl_p_sm, bl_p_sm * wp_p_bl,
          time_inter_cyc);
     }
@@ -717,7 +719,7 @@ World::render()
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
   ogl_helper.fbprintf
-    ("Physics: %7s ('a')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Tryouts: %d %d ('y' 'Y')\n",
+    ("Physics: %7s ('aA')  Pause: %s ('p')  Gravity: %s ('g')  Grabbed: %s ('%s')  Shared Mem: %d ('s')  Tryouts: %d %d ('y' 'Y')\n",
      opt_physics_method == GP_cpu
      ? BLINK(gpu_physics_method_str[opt_physics_method],"")
      : gpu_physics_method_str[opt_physics_method],
@@ -1098,11 +1100,11 @@ World::time_step_cpu()
     // Use a brute force, O(n^2), search of all possible pairs of
     // segments.
     //
-    for ( int i=1; i<phys_helix_segments; i++ )
-      for ( int j=i+min_idx_dist; j<phys_helix_segments; j++ )
+    for ( int a_idx=1; a_idx<phys_helix_segments; a_idx++ )
+      for ( int b_idx=a_idx+min_idx_dist; b_idx<phys_helix_segments; b_idx++ )
         {
-          Wire_Segment* const aseg = &wire_segments[i];
-          Wire_Segment* const bseg = &wire_segments[j];
+          Wire_Segment* const aseg = &wire_segments[a_idx];
+          Wire_Segment* const bseg = &wire_segments[b_idx];
           pNorm dist(aseg->position,bseg->position);
 
           // Use a bounding sphere to quickly rule out contact.
@@ -1256,9 +1258,22 @@ World::cb_keyboard()
   case FB_KEY_HOME: user_rot_axis.x = 1; break;
   case FB_KEY_END: user_rot_axis.x = -1; break;
 
+  case 'A':
+    opt_ez_method_safety = !opt_ez_method_safety;
+    if ( opt_ez_method_safety )
+      {
+        ez_prev_physics = opt_physics_method;
+        opt_physics_method = GPU_cuda_ez;
+      }
+    else
+      {
+        opt_physics_method = ez_prev_physics;
+      }
+    break;
+
   case 'a':
     opt_physics_method++;
-    if ( opt_physics_method >= GP_ENUM_SIZE ) opt_physics_method = GP_cpu;
+    if ( opt_physics_method >= GPU_cuda_ez ) opt_physics_method = GP_cpu;
     if ( opt_physics_method > GP_cpu ) cuda_constants_stale = true;
     break;
 
