@@ -14,6 +14,20 @@
 
  ///  Note: Requires OpenGL 4.5 and CUDA
 
+
+#if 0
+/// Code Outline
+
+ /// Physics Model
+//
+ /// Wire Segment
+//
+//   Shape: cylinder.
+
+
+
+#endif
+
 ///  Keyboard Commands
  //
  /// Object (Eye, Light, Ball) Location or Push
@@ -113,8 +127,11 @@
 #define SB_LY 3
 
 
-enum GPU_Physics_Method { GP_cpu, GP_cuda_1, GP_cuda_2, GP_ENUM_SIZE };
-const char* const gpu_physics_method_str[] = { "CPU", "CUDA-M1", "CUDA-M2" };
+enum GPU_Physics_Method
+  { GP_cpu, GP_cuda_1, GP_cuda_2, GPU_cuda_ez,
+    GP_ENUM_SIZE };
+const char* const gpu_physics_method_str[] =
+  { "CPU", "CUDA-M1", "CUDA-M2", "CUDA-EZ" };
 
 struct Wire_Segment {
   pCoor position;
@@ -847,7 +864,7 @@ World::render()
         opt_helix_density * M_PI * wire_rad_sq * 2 * helix_seg_hlength;
       helix_seg_mass_inv = 1 / helix_seg_mass;
 
-      // Compute moments of inertia.
+      // Compute moments of inertia, assuming perfect cylinder.
       helix_seg_ma_axis = helix_seg_mass * wire_rad_sq / 2;
       helix_seg_ma_perp_axis = helix_seg_mass *
         ( 4 * helix_seg_hlength * helix_seg_hlength + 3 * wire_rad_sq ) / 12;
@@ -1106,6 +1123,7 @@ World::time_step_cpu()
 
   /// Using force and torque, update velocity, omega, position, and orientation.
   //
+#pragma omp parallel for
   for ( int i=1; i<phys_helix_segments; i++ )
     {
       Wire_Segment* const cseg = &wire_segments[i];

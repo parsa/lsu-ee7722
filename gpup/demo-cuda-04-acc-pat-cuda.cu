@@ -51,6 +51,61 @@ cuda_array_addrs_set
 }
 
 __global__ void
+time_step_intersect_0()
+{
+  // Find intersections of one helix segment with some other segments
+  // in the simplest way possible. This will run ridiculously slowly.
+
+  __shared__ clock_t time_start;
+  if ( !threadIdx.x ) time_start = clock64();
+
+  const int min_idx_dist = 0.999f + hi.wire_radius / hi.helix_seg_hlength;
+  const float four_wire_radius_sq = 4 * hi.wire_radius * hi.wire_radius;
+
+  if ( threadIdx.x || blockIdx.x ) return;
+
+  for ( int a_idx = 1; a_idx < hi.phys_helix_segments; a_idx++ )
+    {
+      float3 force = mv(0,0,0);
+      float3 a_position = m3( helix_position[a_idx] );
+
+      for ( int j = a_idx + min_idx_dist; j < hi.phys_helix_segments; j++ )
+        {
+          float3 b_position = m3( helix_position[j] );
+
+          pVect ab = mv(a_position,b_position);
+
+          // Skip if segment is too close.
+          if ( abs(a_idx-j) < min_idx_dist ) continue;
+
+          // Skip if no chance of intersection.
+          if ( mag_sq(ab) >= four_wire_radius_sq ) continue;
+
+          // Compute intersection force based on bounding sphere, an
+          // admittedly crude approximation.
+          //
+          pNorm dist = mn(ab);
+          const float pen = 2 * hi.wire_radius - dist.magnitude;
+          float3 f = pen * hi.opt_spring_constant * dist;
+
+          force += f;
+        }
+
+      float3 velocity = helix_velocity[a_idx];
+      velocity -= hi.delta_t_mass_inv * force;
+      if ( hi.opt_end_fixed && a_idx + 1 == hi.phys_helix_segments )
+        velocity = mv(0,0,0);
+      helix_velocity[a_idx] = velocity;
+    }
+
+  if ( !threadIdx.x && !blockIdx.x )
+    {
+      timing_data.inter_time += clock64() - time_start;
+      timing_data.inter_count++;
+    }
+}
+
+__global__ void
 time_step_intersect_1()
 {
   // Find intersections of one helix segment with some other
@@ -332,6 +387,7 @@ time_step_intersect_2()
 
 
 __global__ void time_step();
+__global__ void time_step_intersect_0();
 __global__ void time_step_intersect_1();
 __global__ void time_step_intersect_2();
 __global__ void time_step_update_pos();
@@ -357,6 +413,7 @@ cuda_setup(GPU_Info *gpu_info)
   /// time_step_intersect_2 to be 2nd and 3rd (at index 1 and 2) of
   /// gpu_info::ki.
   gpu_info->GET_INFO(time_step);
+  gpu_info->GET_INFO(time_step_intersect_0);
   gpu_info->GET_INFO(time_step_intersect_1);
   gpu_info->GET_INFO(time_step_intersect_2);
   gpu_info->GET_INFO(time_step_update_pos);
@@ -514,8 +571,15 @@ time_step_intersect_launch
 (int grid_size, int block_size, int version, int dynamic_sm_amt)
 {
   switch ( version ) {
-    case 1: time_step_intersect_1<<<grid_size,block_size,dynamic_sm_amt>>>();
-    case 2: time_step_intersect_2<<<grid_size,block_size,dynamic_sm_amt>>>();
+    case 1:
+      time_step_intersect_1<<<grid_size,block_size,dynamic_sm_amt>>>();
+      break;
+    case 2:
+      time_step_intersect_2<<<grid_size,block_size,dynamic_sm_amt>>>();
+      break;
+    case 3:
+      time_step_intersect_0<<<grid_size,block_size>>>();
+      break;
   }
 }
 
