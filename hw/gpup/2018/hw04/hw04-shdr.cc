@@ -41,39 +41,11 @@ out Data_to_GS
 void
 vs_main()
 {
-  // Here, the vertex shader does nothing except pass variables
-  // to the geometry shader.
-
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
   normal_e = normalize(gl_NormalMatrix * gl_Normal);
   gl_TexCoord[0] = gl_MultiTexCoord0;
   color = gl_Color;
-}
-
-void
-vs_main_instances_sphere()
-{
-  vec4 pos_rad = sphere_pos_rad[gl_InstanceID];
-  float rad = pos_rad.w;
-  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 normr = rot * gl_Vertex;
-  vec3 normal_o = normr.xyz;
-  vec4 vertex_o = vec4( pos_rad.xyz + rad * normal_o, 1 );
-
-  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
-  vertex_e = gl_ModelViewMatrix * vertex_o;
-  normal_e = normalize(gl_NormalMatrix * normal_o );
-  gl_TexCoord[0] = gl_MultiTexCoord0;
-  color = sphere_color[gl_InstanceID];
-}
-
-void
-vs_main_instances_sv()
-{
-  mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 vertex_o = rot * gl_Vertex;
-  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
 }
 
 #endif
@@ -123,18 +95,6 @@ gs_main_simple()
   EndPrimitive();
 }
 
-void
-gs_main_sv()
-{
-  for ( int i=0; i<3; i++ )
-    {
-      gl_Position = In[i].gl_Position;
-      EmitVertex();
-    }
-  EndPrimitive();
-}
-
-
 #endif
 
 
@@ -172,14 +132,6 @@ fs_main()
 
   // Copy fragment depth unmodified.
   //
-  gl_FragDepth = gl_FragCoord.z;
-}
-
-void
-fs_main_sv()
-{
-  vec4 color2 = gl_FrontFacing ? vec4(0.8,0,0,1) : vec4(0,0,0,0);
-  gl_FragColor = color2;
   gl_FragDepth = gl_FragCoord.z;
 }
 
