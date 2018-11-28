@@ -192,7 +192,6 @@ fs_main()
   vec3 normal_oo, sur_l;
   bool front;          // If true, coördinates are of front of sphere.
   float theta, eta;    // Local angular coördinates of sphere.
-  bool found_hole = false;
 
   /// SOLUTION
   //
@@ -256,7 +255,7 @@ fs_main()
       //
       // Don't try to find a hole if there are none this close to the pole.
       //
-      if ( n_holes < -1 )
+      if ( n_holes < 1 )
         {
           if ( holes ) break;
           if ( dir == 1 ) discard;
@@ -280,7 +279,7 @@ fs_main()
       //
       // .. and check whether surface point is in hole.
       //
-      found_hole = dist < hole_radius;
+      bool found_hole = dist < hole_radius;
       //
       // If this part of the sphere is visible, break.
       //
