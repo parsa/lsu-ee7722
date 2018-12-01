@@ -73,11 +73,10 @@ in Data
 ///
 
 #ifdef _VERTEX_SHADER_
-void
-vs_main_hw03()
-{
-  /// Homework 3:  Can put solution here, and other places.
 
+void
+vs_main()
+{
   // Perform basic vertex shading operations.
 
   // Transform vertex to clip space.
@@ -89,48 +88,64 @@ vs_main_hw03()
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
   normal_e = normalize(gl_NormalMatrix * gl_Normal);
 
-  // Copy color to output unmodified. Lighting calculations will
-  // be performed in the fragment shader.
-  //
-  /// SOLUTION -- Problem 1b. Don't bother sending colors down the pipe.
-  //  gl_BackColor = gl_FrontColor = gl_Color;
-
   // Copy texture coordinate to output (no need to modify it).
   tex_coord = gl_MultiTexCoord0.xy;
 }
 
-void
-vs_main_plain()
-{
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
+void vs_main_plain(){ vs_main(); }
+void vs_main_hw03(){ vs_main(); }
 
-  // Perform basic vertex shading operations.
-
-  // Transform vertex to clip space.
-  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-
-  // Compute eye-space vertex coordinate and normal.
-  // These are outputs of the vertex shader and inputs to the frag shader.
-  //
-  vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  normal_e = normalize(gl_NormalMatrix * gl_Normal);
-
-  // Copy color to output unmodified. Lighting calculations will
-  // be performed in the fragment shader.
-  //
-  gl_BackColor = gl_FrontColor = gl_Color;
-
-  // Copy texture coordinate to output (no need to modify it).
-  tex_coord = gl_MultiTexCoord0.xy;
-}
 
 #endif
 
 
 #ifdef _FRAGMENT_SHADER_
+
 void
 fs_main_hw03()
 {
+  /// Pre-Final Problem 1 SOLUTION
+
+  int ncol = 6;     // Number of pieces a line is split into.
+  int nlines = 60;  // Number of lines per page.
+
+  float s_tex_coord_x = tex_coord.x * tex_ht * nlines;
+  float s_line_num = floor(s_tex_coord_x);
+  float s_line_offs_01 = fract(s_tex_coord_x);
+  float s_line_offs_cols = s_line_offs_01 * ncol;
+  float s_col_num = floor(s_line_offs_cols);
+  float s_col_offs = fract(s_line_offs_cols);
+  float tex_x = ( s_col_num + tex_coord.y ) / ncol;
+  float tex_y = ( s_line_num + s_col_offs ) / nlines;
+
+  vec2 tc = vec2(tex_x,tex_y);
+
+  vec4 color =
+    tex_x < 0.01 ? vec4(0.1,0.1,0.1,1) :
+    s_col_offs < 0.03 || s_col_offs > 0.97 ? vec4(1,0,0,1) :
+    gl_FrontFacing
+    ? gl_FrontMaterial.diffuse : gl_BackMaterial.diffuse;
+
+
+  // No need to modify code below.
+  vec4 texel = texture(tex_unit_0,tc);
+  vec3 nne = normalize(normal_e);
+  float edge_dist = tex_coord.y;
+  vec3 bnorm = tryout.x ? nne : edge_dist > 0.9
+    ? normalize(mix(nne,spiral_normal,2*(edge_dist-0.9))) : edge_dist < 0.1
+    ? normalize(mix(-spiral_normal,nne,0.8+2*edge_dist)) : nne;
+  vec4 lighted_color =
+    generic_lighting( vertex_e, color, bnorm, gl_FrontFacing );
+  gl_FragColor = texel * lighted_color;
+  gl_FragDepth = gl_FragCoord.z;
+}
+
+void
+fs_main_plain()
+{
+  // This file contains code from the Homework 3 Problem 2 solution that
+  // was originally in a shader named fs_main_hw03.
+
   /// Homework 3:  Can put solution here, and other places.
 
   /// SOLUTION -- Problem 2b
@@ -228,30 +243,6 @@ fs_main_hw03()
   gl_FragDepth = gl_FragCoord.z;
 }
 
-void
-fs_main_plain()
-{
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-
-  // Get filtered texel.
-  //
-  vec4 texel = texture(tex_unit_0,tex_coord);
-
-  // Compute lighted color of fragment.
-  //
-  vec4 lighted_color =
-    generic_lighting( vertex_e, gl_Color, normalize(normal_e), gl_FrontFacing );
-
-  // Combine filtered texel color with lighted color of fragment.
-  //
-  gl_FragColor = texel * lighted_color;
-
-  // Copy fragment depth unmodified.
-  //
-  gl_FragDepth = gl_FragCoord.z;
-
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-}
 #endif
 
 
