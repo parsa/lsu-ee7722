@@ -1,16 +1,25 @@
 /// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
- /// Homework 3 -- SOLUTION
+ /// Homework 3 -- SOLUTION and Pre-Final Problem 1 Code
  //
  //  Search for SOLUTION in this file to find solution code.
+ //  The pre-final Problem 1 solution is in file pre-fin-shdr.cc.
 
- /// Instructions
+ /// Instructions -- Homework 3
  //
  //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2018/hw03.pdf
  //
  //  Modify the code in routine hw03_render.
  //
  //  This file and hw03-shdr.cc will be collected.
+
+ /// Instructions -- Pre-Final Problem 1
+ //
+ //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2018/mt.pdf
+ //
+ //  Modify code in pre-fin-shdr.cc.
+ //  The pre-final solution was not to be automatically collected.
+
 
 
 /// Purpose
@@ -151,7 +160,7 @@ World::init()
   last_frame_wall_time = time_wall_fp();
   frame_timer.work_unit_set("Steps / s");
 
-  init_graphics(true);
+  init_graphics();
 
   curr_setup = 1; ball_setup_1();
 }
@@ -219,10 +228,10 @@ World::hw03_render(bool shadows)
       for ( auto& p: pa ) va.emplace_back( ctr, p );
 
       pNorm nz = cross(p0,p1,p2);
-      const float vz_len = 0.1;
+      const float vz_len = is_pre_fin ? 0.3 : 0.1;
       pVect vz = vz_len * nz;
 
-      const float delta_a = 0.8 / opt_n_segs;
+      const float delta_a = ( is_pre_fin ? 0.6 : 0.8 ) / opt_n_segs;
 
       // Coordinate of previous position in triangular spiral.
       //
@@ -676,7 +685,7 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
-  World world(popengl_helper);
+  World world(popengl_helper,argv,argc);
 # ifdef __OPTIMIZE__
   glDisable(GL_DEBUG_OUTPUT);
 # else

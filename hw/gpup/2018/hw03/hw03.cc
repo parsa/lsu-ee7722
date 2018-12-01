@@ -591,7 +591,7 @@ int
 main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
-  World world(popengl_helper);
+  World world(popengl_helper,argv,argc);
 # ifdef __OPTIMIZE__
   glDisable(GL_DEBUG_OUTPUT);
 # else

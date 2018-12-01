@@ -1,6 +1,6 @@
 ### LSU EE 4702-1 (Fall 2018), GPU Programming
 ##
-##  Makefile for Homework 3
+##  Makefile for Homework 3 and Pre-Final Problem 1
 ##
 
 
@@ -30,7 +30,7 @@ LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell Magick++-config --ldflags) 
 LIBDIR  =
 
-default: hw03 hw03-sol
+default: hw03 hw03-sol pre-fin
 
 
 .cc.o:
@@ -52,8 +52,13 @@ hw03-sol: hw03-sol.cc $(INCLUDES) hw03-graphics.cc
 	$(CXX) $(CXXFLAGS) $<  $(LINKFLAGS) $(OPT_FLAGS) \
 	-o $@ $(LIBDIR)  $(LIBRARIES) 
 	$(CXX) $(CXXFLAGS) $< $(LINKFLAGS) \
-	-o $@-debug $(LIBDIR) $(LIBRARIES) 
+	-o $@-debug $(LIBDIR) $(LIBRARIES)
+
+pre-fin: hw03-sol
+	ln --force -s $< $@
+	ln --force -s  $<-debug $@-debug
 
 clean:
-	/bin/rm -f hw03 hw03-debug hw03-sol hw03-sol-debug *.o *~
+	/bin/rm -f hw03 hw03-debug hw03-sol hw03-sol-debug *.o *~ \
+	pre-fin pre-fin-debug
 

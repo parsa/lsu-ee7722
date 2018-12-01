@@ -45,9 +45,10 @@ public:
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
+  World(pOpenGL_Helper &fb, int argcp, char **argvp)
+    :argc(argcp),argv(argvp),ogl_helper(fb){init();}
   void init();
-  void init_graphics(bool is_solution = false);
+  void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
   void frame_callback();
   void render();
@@ -55,6 +56,8 @@ public:
   void cb_keyboard();
   void modelview_update();
 
+  const int argc;
+  char** const argv;
   pOpenGL_Helper& ogl_helper;
   pVariable_Control variable_control;
   pFrame_Timer frame_timer;
@@ -105,6 +108,8 @@ public:
 
   int opt_shader;
   const char* shader_opt_str[SHADER_SIZE+1] = {"FIXED", "PLAIN", "HW03", "??"};
+  const char* pf_shader_opt_str
+  [SHADER_SIZE+1] = {"FIXED", "HW03", "PreFin", "??"};
 
   void ball_setup_1();
   void ball_setup_2();
@@ -129,12 +134,22 @@ public:
   pShader *sp_fixed;          // Fixed functionality.
   pShader *sp_plain;
   pShader *sp_hw03;
+
+  // Shader for Pre Final Problem 1
+  bool is_pre_fin; // If true, use pre-final code.
+  bool is_solution;
+  pShader *sp_pre_fin;
 };
 
 
 void
-World::init_graphics(bool is_solution)
+World::init_graphics()
 {
+  string this_executable(argv[0]);
+  is_solution = this_executable.find("-sol") != string::npos;
+  is_pre_fin = this_executable.find("pre-fin") != string::npos;
+  assert( !is_solution || !is_pre_fin );
+
   ///
   /// Graphical Model Initialization
   ///
@@ -168,6 +183,7 @@ World::init_graphics(bool is_solution)
   opt_shadows = true;
 
   const char* const shdr_path =
+    is_pre_fin ? "pre-fin-shdr.cc" :
     is_solution ? "hw03-shdr-sol.cc" : "hw03-shdr.cc";
 
   // Declared like a programmable shader, but used for fixed-functionality.
@@ -442,7 +458,7 @@ World::render()
   ogl_helper.fbprintf
     ("Shader: %s ('f')  Shadow Effect: %s ('w')  "
      "Time Step: %8d  World Time: %11.6f  %s\n",
-     shader_opt_str[opt_shader],
+     (is_pre_fin ? pf_shader_opt_str : shader_opt_str )[opt_shader],
      opt_shadows ? "ON" : "OFF",
      time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
