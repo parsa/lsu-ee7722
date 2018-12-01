@@ -142,7 +142,7 @@ fs_main_hw03()
   //  spiral. The value at the beginning of the spiral is zero and it
   //  increases based on the length of the spiral segments. This value
   //  is passed unmodified to the texture library call below (see the
-  //  line starting "vec4 texel". On the host (CPU) code the texture
+  //  line starting "vec4 texel"). On the host (CPU) code the texture
   //  object for the image has been set to wrap along the x (called s
   //  in OpenGL) dimension, and so a tex_coord.x value of 1.1 is
   //  equivalent to a value of 0.1.
