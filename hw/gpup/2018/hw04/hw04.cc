@@ -1,10 +1,11 @@
 /// LSU EE EE 4702 Fall 2018
 //
- /// Homework 4 -- Based on proj_base/links code.
+ /// Homework 4 and Pre-Final Problem 2 -- Based on proj_base/links code.
  //
  /// DO NOT PUT SOLUTION IN THIS FILE.
  //
- /// Put solution in hw04-shdr-hw04.cc.
+ /// Homework 4: Put solution in hw04-shdr-hw04.cc.
+ /// Pre-Final: Solution in pre-fin-shdr.cc.
 
 /// Purpose
 //
@@ -287,7 +288,8 @@ typedef pVectorI<Ball> Balls;
 
 
 enum Render_Option { RO_Normally, RO_Mirrored, RO_Simple, RO_Shadow_Volumes };
-enum Shader_Option { SO_Plain, SO_Instances, SO_True, SO_ENUM_SIZE };
+enum Shader_Option
+  { SO_Instances, SO_True, SO_HW04, SO_PreFin, SO_ENUM_SIZE };
 
 class World {
 public:
@@ -448,7 +450,11 @@ public:
   // Homework 4 Variables
   int opt_n_holes_eqt;  // Number of holes at equator.
   int opt_holes;
+  bool is_solution;
 
+  // Pre-Final Problem 3 Variables
+  bool is_pre_fin;
+  pShader *sp_sphere_pre_fin;
 };
 
 enum { OHO_None, OHO_Holes, OHO_Lenses, OHO_SIZE };
@@ -474,7 +480,7 @@ World::init_graphics()
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
-  opt_sphere_true = 1;
+  opt_sphere_true = is_pre_fin ? SO_HW04 : SO_True;
   opt_tryoutf = 0;
   variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
 
@@ -681,16 +687,18 @@ World::render_objects(Render_Option option)
                  pMatrix_Rotation(ball->orientation));
             }
 
-          pShader_Use use
-            ( opt_sphere_true == 0 ? sp_instances_sphere :
-              opt_sphere_true == 1 ? sp_sphere_hw04 : sp_sphere_true );
+          pShader* const shaders[] =
+            { sp_instances_sphere, sp_sphere_true, sp_sphere_hw04,
+              sp_sphere_pre_fin };
+          pShader_Use use = shaders[opt_sphere_true];
+
           glUniform1i(2, light_state);
           glUniform4i
             (3, opt_tryout1, opt_tryout2, opt_tryout3,  opt_normal_sphere);
           glUniform1f(4, opt_tryoutf);
           glUniform1i(5, mirrored );
           glUniformMatrix4fv(6, 1, true, transform_projection);
-          if ( opt_sphere_true )
+          if ( opt_sphere_true >= SO_HW04 )
             {
               glUniform1i(7, opt_n_holes_eqt);
               glUniform1i(8, opt_holes);
@@ -891,11 +899,12 @@ World::render()
      opt_mirror ? 'M' : '_',
      opt_normal_sphere ? "SPHERE" : "TRI");
 
+  const char* const sh_str[] = { "TESS", "TRUE", "HW04", "PRE-FIN", "??" };
+
   ogl_helper.fbprintf
     ("Sphere: %s  ('z')  Holes: %s ('x')  Tryout 1,2,3: %s, %s, %s  ('yYZ')\n",
-     opt_sphere_true == 0 ? "TESS" :
-     opt_sphere_true == 1 ? "HW04" : "TRUE",
-     opt_sphere_true == 1 ? oho_str[opt_holes] : "N/A",
+     sh_str[opt_sphere_true],
+     opt_sphere_true == SO_HW04 ? oho_str[opt_holes] : "N/A",
      opt_tryout1 ? BLINK("ON ","   ") : "OFF",
      opt_tryout2 ? BLINK("ON ","   ") : "OFF",
      opt_tryout3 ? BLINK("ON ","   ") : "OFF");
@@ -1175,7 +1184,7 @@ World::cb_keyboard()
     break;
   case 'w': case 'W': balls_twirl(); break;
   case 'x': case 'X':
-    if ( opt_sphere_true )
+    if ( opt_sphere_true >= SO_HW04 )
       {
         opt_holes++;
         if ( opt_holes >= OHO_SIZE ) opt_holes = 0;
@@ -1183,7 +1192,10 @@ World::cb_keyboard()
     break;
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
-  case 'z': opt_sphere_true++; if ( opt_sphere_true == 3 ) opt_sphere_true = 0;
+  case 'z': opt_sphere_true++;
+    if ( opt_sphere_true == SO_ENUM_SIZE ) opt_sphere_true = 0;
+    if ( is_pre_fin && opt_sphere_true == 0 ) opt_sphere_true = SO_HW04;
+    if ( !is_pre_fin && opt_sphere_true == SO_PreFin ) opt_sphere_true = 0;
     break;
   case 'Z': opt_tryout3 = !opt_tryout3; break;
   case ' ':
@@ -1272,7 +1284,7 @@ World::init(int argc, char **argv)
   opt_mirror = true;
   opt_shadows = true;
   opt_shadow_volumes = false;
-  opt_shader = SO_Plain;
+  opt_shader = SO_Instances;
 
   /// Init CUDA
 
@@ -1361,14 +1373,18 @@ World::init(int argc, char **argv)
      );
 
   string this_executable(argv[0]);
-  const bool solution = this_executable.find("-sol") != string::npos;
+  is_pre_fin = this_executable.find("pre-fin") != string::npos;
+  is_solution = this_executable.find("-sol") != string::npos;
   const char* const true_shdr_src =
-    solution ? "hw04-shdr-hw04-sol.cc" : "hw04-shdr-hw04.cc";
+    is_solution || is_pre_fin
+    ? "hw04-shdr-hw04-sol.cc" : "hw04-shdr-hw04.cc";
 
   sp_sphere_hw04 = new pShader
     (true_shdr_src, "vs_main();", "gs_main();", "fs_main();" );
   sp_sphere_true = new pShader
     ("hw04-shdr-true.cc", "vs_main();", "gs_main();", "fs_main();" );
+  sp_sphere_pre_fin = new pShader
+    ("pre-fin-shdr.cc", "vs_main();", "gs_main();", "fs_main();" );
 
   PSplit exe_pieces(argv[0],'/');
   pString this_exe_name(exe_pieces.pop());
