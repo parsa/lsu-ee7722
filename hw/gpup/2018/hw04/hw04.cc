@@ -521,7 +521,7 @@ World::init_graphics()
 
   // Homework 4
 
-  opt_holes = OHO_Holes;
+  opt_holes = is_pre_fin ? OHO_Lenses : OHO_Holes;
   opt_n_holes_eqt = 10;
   variable_control.insert(opt_n_holes_eqt,"N Holes Equator (opt_n_holes_eqt");
 
