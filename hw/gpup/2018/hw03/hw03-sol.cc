@@ -235,7 +235,7 @@ World::hw03_render(bool shadows)
 
       // Coordinate of previous position in triangular spiral.
       //
-      pCoor pprev(0,0,0);
+      pCoor pprev = ctr;
 
       /// SOLUTION -- Problem 2
       //
