@@ -185,7 +185,6 @@ World::hw03_render(bool shadows)
 
   switch ( opt_shader ){
   case SO_Fixed: sp_fixed->use(); break;
-  case SO_Plain: sp_plain->use(); break;
   case SO_HW03: sp_hw03->use(); break;
   case SO_Lines: sp_lines->use(); break;
   default: assert( false );
@@ -219,6 +218,14 @@ World::hw03_render(bool shadows)
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
   glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 
+#define TO_BUFFER_OBJECT(ar,i)                                                \
+      glBindBuffer(GL_ARRAY_BUFFER,bo[i]);                                    \
+      glBufferData                                                            \
+        (GL_ARRAY_BUFFER, ar.size()*sizeof(ar[0]),                            \
+         ar.data(), GL_STREAM_DRAW);                                          \
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER,i,bo[i]);
+
+
   vector<pVect4> vz_a, distv_a, va_a;
   vector<pCoor> ctr_a;
 
@@ -226,12 +233,8 @@ World::hw03_render(bool shadows)
     {
       // Put ball structures and coordinates into convenient variables.
       //
-      Ball* const b0 = &balls[i-2];
-      Ball* const b1 = &balls[i-1];
-      Ball* const b2 = &balls[i-0];
-      pCoor p0 = b0->position;
-      pCoor p1 = b1->position;
-      pCoor p2 = b2->position;
+      pCoor p0 = balls[i-2].position, p1 = balls[i-1].position,
+        p2 = balls[i].position;
 
       // Compute location of triangle center.
       //
@@ -258,54 +261,34 @@ World::hw03_render(bool shadows)
       vz_a.push_back(vz);
       distv_a.push_back(distv);
 
-      const float delta_a = 0.6 / opt_n_segs;
-
-      // Coordinate of previous position in triangular spiral.
-      //
-      pCoor pprev = ctr;
-
-      /// SOLUTION -- Problem 2
-      //
-      //  Choose scaling factors for texture image.
-      //
       const float tex_scale = 0.2;
       const float tex_ht = 2 * vz_len * tex_scale;
-      //
-      //  Start the position within the texture image at the
-      //  upper-left corner. For Problem 2a the y component is
-      //  computed further below. For Problem 2b the y component is
-      //  computed in the fragment shader.
-      //
 
       if ( opt_shader == SO_HW03 )
         {
-          // Send the spiral normal needed for Problem 3.
-          //
-          glUniform3fv(5, 1, nz);
+          glUniform3fv(5, 1, nz);  // Spiral normal.
+          glUniform1f(6, tex_ht);  // Texture Height
 
-          // Send the texture height used in Problem 2.
-          //
-          glUniform1f(6, tex_ht);
+        }
 
-          // Render entire spiral using one triangle strip.
-          //
-          glBegin(GL_TRIANGLE_STRIP);
+      pCoor pprev = ctr;
+      const float delta_a = 0.6 / opt_n_segs;
+
+      if ( opt_shader == SO_HW03 )
+        {
+          glBegin(GL_TRIANGLE_STRIP); // Render spiral using 1 triangle strip.
 
           for ( int j=0; j<opt_n_segs; j++ )
             {
-              const float a = j * delta_a; // Distance from triangle center.
-              pVect v = va[j%3];           // Vector from center to fold.
-              pCoor p = ctr + a * v;       // Coordinate of fold.
-              pNorm n = cross(p-pprev,vz);
+              pVect v = va[j%3];                // Vector from center to fold.
+              pCoor p = ctr + j * delta_a * v;  // Coordinate of fold.
+              pNorm n = cross( p - pprev, vz ); // Normal of segment.
               float tex_x = total_len_compute(j,delta_a,distv) * tex_scale;
 
               glNormal3fv(n);
 
-              glTexCoord2f(tex_x,0);
-              glVertex3fv(p + vz);
-
-              glTexCoord2f(tex_x,1);
-              glVertex3fv(p - vz);
+              glTexCoord2f(tex_x,0);  glVertex3fv(p + vz);
+              glTexCoord2f(tex_x,1);  glVertex3fv(p - vz);
 
               pprev = p;
             }
@@ -316,25 +299,42 @@ World::hw03_render(bool shadows)
 
   if ( opt_shader == SO_Lines )
     {
+      for ( int i=2; i<chain_length; i++ )
+        {
+          // Put ball structures and coordinates into convenient variables.
+          pCoor p0 = balls[i-2].position, p1 = balls[i-1].position, p2 = balls[i].position;
+          pCoor ctr = (p0+p1+p2)/3;   ctr_a.push_back(ctr);
+
+          // Compute vectors from triangle center to each ball location ..
+          // .. and put in array va.
+          //
+          pCoor pa[3] = {p0,p1,p2};
+          vector<pVect> va;
+          for ( auto& p: pa ) va.emplace_back( ctr, p );
+          va_a.push_back(va[0]);
+          va_a.push_back(va[1]);
+          va_a.push_back(va[2]);
+          pNorm v01(va[0],va[1]);
+          pNorm v12(va[1],va[2]);
+          pNorm v20(va[2],va[0]);
+          pVect distv(v01.magnitude,v12.magnitude,v20.magnitude);
+
+          pNorm nz = cross(p0,p1,p2);
+          const float vz_len = 0.3;
+          pVect vz = vz_len * nz;
+          vz_a.push_back(vz);
+          distv_a.push_back(distv);
+        }
+
       glUniform1i(5, opt_n_segs);
       glUniform1f(6, 0.1);
 
-#define TO_BUFFER_OBJECT(ar,i)                                                \
-      glBindBuffer(GL_ARRAY_BUFFER,bo[i]);                                    \
-      glBufferData                                                            \
-        (GL_ARRAY_BUFFER, ar.size()*sizeof(ar[0]),                            \
-         ar.data(), GL_STREAM_DRAW);                                          \
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER,i,bo[i]);
-
-      TO_BUFFER_OBJECT(ctr_a,1);
-      TO_BUFFER_OBJECT(va_a,2);
-      TO_BUFFER_OBJECT(distv_a,3);
-      TO_BUFFER_OBJECT(vz_a,4);
-
+      TO_BUFFER_OBJECT(ctr_a,1);      TO_BUFFER_OBJECT(va_a,2);
+      TO_BUFFER_OBJECT(distv_a,3);    TO_BUFFER_OBJECT(vz_a,4);
       glBindBuffer(GL_ARRAY_BUFFER,0);
 
-      glDrawArraysInstanced
-        (GL_LINE_STRIP, 0, opt_n_segs, vz_a.size() );
+      glDrawArraysInstanced(GL_LINE_STRIP, 0, opt_n_segs, vz_a.size() );
+
     }
 
   sp_fixed->use();

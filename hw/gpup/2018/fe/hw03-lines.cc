@@ -1,9 +1,13 @@
 /// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
+ /// 2018 Final Exam Problem 2
+ //
+ //  May be recycled as a homework problem in 2019.
+
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 vec4 generic_lighting
 (vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing);
@@ -43,30 +47,22 @@ total_len_compute(int j, float delta_a, vec4 distv)
 //
 #ifdef _VERTEX_SHADER_
 
-out Data
-{
- int ins_id;
- int vtx_id;
+out Data {  // Out of Vertex Shader to Geometry Shader
+ int ins_id, vtx_id;
 
- vec3 p;
- float tex_x;
 };
 
 #endif
 
 #ifdef _GEOMETRY_SHADER_
 
-in Data
-{
- int ins_id;
- int vtx_id;
+in Data {  // In to Geometry Shader from Vertex Shader
+ int ins_id, vtx_id;
 
- vec3 p;
- float tex_x;
+
 } In[2];
 
-out Data
-{
+out Data { // Out of Geometry Shader to Fragment Shader
   vec3 normal_e;
   vec4 vertex_e;
   vec2 tex_coord;
@@ -78,11 +74,9 @@ out Data
 in Data
 {
  flat vec3 normal_e;
-
  vec4 vertex_e;
  vec2 tex_coord;
 };
-
 #endif
 
 
@@ -94,58 +88,56 @@ in Data
 void
 vs_main_lines()
 {
-  ins_id = gl_InstanceID;  // Corresponds to i on host code.
-  vtx_id = gl_VertexID;    // Corresponds to j on host code.
+  int ins_id = gl_InstanceID;  // Corresponds to i on host code.
+  int vtx_id = gl_VertexID;    // Corresponds to j on host code.
 
-  /// SOLUTION
 
   int j = gl_VertexID;
-  const float delta_a = 0.6 / opt_n_segs;
-  float a = j * delta_a;
-  vec3 v = va_a[ins_id][j%3].xyz;
-  p = ctr_a[ins_id].xyz + a * v;
-
+  float delta_a = 0.6 / opt_n_segs;
   vec4 distv = distv_a[ins_id];
-  const float tex_scale = 0.2;
+  vec3 vz = vz_a[ins_id].xyz;
+  float tex_scale = 0.2;
 
-  tex_x = total_len_compute(j,delta_a,distv) * tex_scale;
+  vec3 v = va_a[ins_id][j%3].xyz;
+  vec3 p = ctr_a[ins_id].xyz + j * delta_a * v;
+  vec3 pprev = vec3(0,0,0); // PLACEHOLDER. Won't work.
+  vec3 n = cross( p - pprev, vz );
+  float tex_x = total_len_compute(j,delta_a,distv) * tex_scale;
 
 }
+
 
 #endif
 
 
 #ifdef _GEOMETRY_SHADER_
 
-// Type of primitive at geometry shader input.
-//
 layout ( lines ) in;
-
-// Type of primitives emitted geometry shader output.
-//
 layout ( triangle_strip, max_vertices = 4 ) out;
+
+const mat4 mv = gl_ModelViewMatrix, mvp = gl_ModelViewProjectionMatrix;
+const mat3 nm = gl_NormalMatrix;
 
 void
 gs_main_lines()
 {
-  int ins_id = In[0].ins_id;
-  vec3 vz = vz_a[ins_id].xyz;
-  vec3 normal_o = cross(In[1].p-In[0].p,vz);
-  normal_e = gl_NormalMatrix * normal_o;
+  int ins_id = In[0].ins_id;  // Corresponds to i on host code.
+  int vtx_id = In[0].vtx_id;  // Corresponds to j on host code.
 
-  for ( int i=0; i<2; i++ )
-    {
-      for ( int j=0; j<2; j++ )
-        {
-          tex_coord = vec2(In[i].tex_x,j);
-          vec4 vertex_o = vec4( In[i].p + ( j == 0 ? vz : -vz ), 1 );
-          gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
-          vertex_e = gl_ModelViewMatrix * vertex_o;
-          EmitVertex();
-        }
-      }
-  EndPrimitive();
+  int j = 0;  // PLACEHOLDER, Won't work.
+  float delta_a = 0.6 / opt_n_segs;
+  vec4 distv = distv_a[ins_id];
+  vec3 vz = vz_a[ins_id].xyz;
+  float tex_scale = 0.2;
+
+  vec3 v = va_a[ins_id][j%3].xyz;
+  vec3 p = ctr_a[ins_id].xyz + j * delta_a * v;
+  vec3 pprev = vec3(0,0,0); // PLACEHOLDER. Won't work.
+  vec3 n = cross( p - pprev, vz );
+  float tex_x = total_len_compute(j,delta_a,distv) * tex_scale;
+
 }
+
 
 #endif
 
@@ -153,10 +145,6 @@ gs_main_lines()
 void
 fs_main_lines()
 {
-  /// Homework 3:  Can put solution here, and other places.
-
-  /// SOLUTION -- Problem 2b
-  //
   //  The value of tex_coord.x indicates distance along the triangular
   //  spiral. The value at the beginning of the spiral is zero and it
   //  increases based on the length of the spiral segments. This value
@@ -189,8 +177,6 @@ fs_main_lines()
 
   // Get filtered texel.
   //
-  /// SOLUTION -- Problem 2
-  //
   //  Use texture coordinate computed above in which y is advanced by
   //  the number of lines.
   //
@@ -198,35 +184,23 @@ fs_main_lines()
 
   vec3 nne = normalize(normal_e);
 
-  // Homework 3: This was a placeholder value. It has been changed
-  // to something based on fragment's position within primitive.
-  //
-  /// SOLUTION - Compute edge distance from texture y coordinate.
-  //
   //  Use tex_coord.y unmodified.
   //
   float edge_dist = tex_coord.y;
   //
   // Range [0,1].  0.5, center of segment; 0, back edge; 1, front edge.
 
-  // Homework 3: This was a placeholder value. It has been commented
-  // out since spiral_normal has been declared as a uniform.
-  //
-  /// SOLUTION - Problem 3
   //  Use spiral normal value sent as a uniform.
   //  vec3 spiral_normal = vec3(1,0,0);
 
   vec3 bnorm = nne;
 
-  /// SOLUTION -- Problem 1b
   //  Use material property uniforms instead of color value.
   //
   vec4 color = gl_FrontFacing
     ? gl_FrontMaterial.diffuse : gl_BackMaterial.diffuse;
 
   // Compute lighted color of fragment.
-  //
-  /// SOLUTION - Problem 1 and 3
   //
   //  Use color and bnorm computed above.
   //
@@ -242,30 +216,6 @@ fs_main_lines()
   gl_FragDepth = gl_FragCoord.z;
 }
 
-void
-fs_main_plain()
-{
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-
-  // Get filtered texel.
-  //
-  vec4 texel = texture(tex_unit_0,tex_coord);
-
-  // Compute lighted color of fragment.
-  //
-  vec4 lighted_color =
-    generic_lighting( vertex_e, gl_Color, normalize(normal_e), gl_FrontFacing );
-
-  // Combine filtered texel color with lighted color of fragment.
-  //
-  gl_FragColor = texel * lighted_color;
-
-  // Copy fragment depth unmodified.
-  //
-  gl_FragDepth = gl_FragCoord.z;
-
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-}
 #endif
 
 

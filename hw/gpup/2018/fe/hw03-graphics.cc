@@ -133,7 +133,6 @@ public:
   Sphere sphere;
 
   pShader *sp_fixed;          // Fixed functionality.
-  pShader *sp_plain;
   pShader *sp_hw03;
 
   // Shader for Pre Final Problem 1
@@ -192,11 +191,6 @@ World::init_graphics()
   //
   sp_fixed = new pShader();
 
-  sp_plain = new pShader
-    (shdr_path,               // File holding shader program.
-     "vs_main_plain(); ",     // Name of vertex shader main routine.
-     "fs_main_plain();"       // Name of fragment shader main routine.
-     );
   sp_hw03 = new pShader
     (shdr_path,              // File holding shader program.
      "vs_main_hw03(); ",     // Name of vertex shader main routine.

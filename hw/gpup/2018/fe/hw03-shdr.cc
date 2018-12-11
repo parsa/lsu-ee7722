@@ -1,22 +1,9 @@
 /// LSU EE 4702-1 (Fall 2018), GPU Programming
 //
 
- /// Homework 3 -- SOLUTION
- //
- //  Search for SOLUTION in this file to find solution code.
-
- /// Instructions
- //
- //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2018/hw03.pdf
- //
- //  Modify code and declarations throughout this file.
- //
- //  This file and hw03.cc will be collected.
-
-
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 vec4 generic_lighting
 (vec4 vertex_e, vec4 color, vec3 normal_e, bool front_facing);
@@ -32,7 +19,6 @@ layout ( location = 3 ) uniform bvec2 tryout;
 layout ( location = 4 ) uniform float tryoutf;
 
 
- /// SOLUTION - Problems 2 and 3
 layout ( location = 5 ) uniform vec3 spiral_normal;
 layout ( location = 6 ) uniform float tex_ht;
 
@@ -76,54 +62,11 @@ in Data
 ///
 
 #ifdef _VERTEX_SHADER_
-void
-vs_main_hw03()
+void vs_main_hw03()
 {
-  /// Homework 3:  Can put solution here, and other places.
-
-  // Perform basic vertex shading operations.
-
-  // Transform vertex to clip space.
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-
-  // Compute eye-space vertex coordinate and normal.
-  // These are outputs of the vertex shader and inputs to the frag shader.
-  //
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
   normal_e = normalize(gl_NormalMatrix * gl_Normal);
-
-  // Copy color to output unmodified. Lighting calculations will
-  // be performed in the fragment shader.
-  //
-  /// SOLUTION -- Problem 1b. Don't bother sending colors down the pipe.
-  //  gl_BackColor = gl_FrontColor = gl_Color;
-
-  // Copy texture coordinate to output (no need to modify it).
-  tex_coord = gl_MultiTexCoord0.xy;
-}
-
-void
-vs_main_plain()
-{
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-
-  // Perform basic vertex shading operations.
-
-  // Transform vertex to clip space.
-  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-
-  // Compute eye-space vertex coordinate and normal.
-  // These are outputs of the vertex shader and inputs to the frag shader.
-  //
-  vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  normal_e = normalize(gl_NormalMatrix * gl_Normal);
-
-  // Copy color to output unmodified. Lighting calculations will
-  // be performed in the fragment shader.
-  //
-  gl_BackColor = gl_FrontColor = gl_Color;
-
-  // Copy texture coordinate to output (no need to modify it).
   tex_coord = gl_MultiTexCoord0.xy;
 }
 
@@ -231,30 +174,6 @@ fs_main_hw03()
   gl_FragDepth = gl_FragCoord.z;
 }
 
-void
-fs_main_plain()
-{
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-
-  // Get filtered texel.
-  //
-  vec4 texel = texture(tex_unit_0,tex_coord);
-
-  // Compute lighted color of fragment.
-  //
-  vec4 lighted_color =
-    generic_lighting( vertex_e, gl_Color, normalize(normal_e), gl_FrontFacing );
-
-  // Combine filtered texel color with lighted color of fragment.
-  //
-  gl_FragColor = texel * lighted_color;
-
-  // Copy fragment depth unmodified.
-  //
-  gl_FragDepth = gl_FragCoord.z;
-
-  /// HOMEWORK 3: DO NOT PLACE SOLUTION HERE
-}
 #endif
 
 
