@@ -19,7 +19,7 @@ CXX = g++
 
 .SUFFIXES: .cu .cuh
 
-PACKAGE_CXXFLAGS = $(shell Magick++-config --cppflags --cxxflags)
+PACKAGE_CXXFLAGS = $(shell GraphicsMagick++-config --cppflags --cxxflags)
 
 CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) --std=c++11 \
 	 -g -Wall -Wno-strict-aliasing -Wno-parentheses
@@ -27,7 +27,7 @@ CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) --std=c++11 \
 LINKFLAGS = $(OPTFLAGS)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags) 
+  $(shell GraphicsMagick++-config --ldflags --libs) 
 LIBDIR  =
 
 default: hw02 hw02-sol

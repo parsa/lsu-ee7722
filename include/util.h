@@ -579,6 +579,7 @@ class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
   {
+    Magick::InitializeMagick(*argv);
     animation_frame_count = 0;
     animation_qscale = 5;  // Quality, 1-31; 1 is best.
     animation_video_count = 0; // Number of videos generated.

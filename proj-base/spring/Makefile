@@ -53,7 +53,8 @@ PTXASFLAGS = -Xptxas --warn-on-local-memory-usage \
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
+CXX_ONLY_FLAGS = -std=c++11 \
+	$(shell GraphicsMagick++-config --cppflags --cxxflags)
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
@@ -61,7 +62,7 @@ CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags --libs) -lnvidia-ml -lcuda
+  $(shell GraphicsMagick++-config --ldflags --libs) -lnvidia-ml -lcuda
 
 SRC_FILES = spring.cc spring-cuda.cu
 all := spring

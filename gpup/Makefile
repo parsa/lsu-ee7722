@@ -49,7 +49,8 @@ CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
+CXX_ONLY_FLAGS = -std=c++11 \
+ $(shell GraphicsMagick++-config --cppflags --cxxflags)
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
@@ -57,7 +58,7 @@ CXXFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS) $(CXX_ONLY_FLAGS)
 CUFLAGS = $(IDENTICAL_FLAGS) $(COMMON_FLAGS_PREFIXED) $(CUCC_ONLY_FLAGS)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags) -lnvidia-ml -lcuda
+  $(shell GraphicsMagick++-config --libs) -lnvidia-ml -lcuda
 
 ALL_MAIN = demo-1-simple.cc \
     demo-1c-coord.cc demo-2-springs.cc demo-3-balls.cc \
