@@ -55,6 +55,8 @@ public:
     validated = false;
     source_path = source_pathp;
 
+    const bool show_log_always = false;
+
     const bool compute_shader = !main_body_vs && !main_body_gs && !main_body_fs;
 
     /// - Create Program Object
@@ -97,7 +99,9 @@ public:
     //
     GLint link_status;
     glGetProgramiv(pobject,GL_LINK_STATUS,&link_status);
-    if ( !link_status )
+    GLint info_log_length;
+    glGetProgramiv(pobject,GL_INFO_LOG_LENGTH,&info_log_length);
+    if ( !link_status || show_log_always && info_log_length )
       {
         printf(" Link status for %s %c%c%c%c: %d\n",
                source_path.s,
@@ -106,12 +110,10 @@ public:
                main_body_gs   ? 'G' : '_',
                main_body_fs   ? 'F' : '_',
                link_status);
-        GLint info_log_length;
-        glGetProgramiv(pobject,GL_INFO_LOG_LENGTH,&info_log_length);
         char* const prog_info_log = (char*) alloca(info_log_length+1);
         glGetProgramInfoLog(pobject,info_log_length+1,NULL,prog_info_log);
         printf(" Program Info log:\n%s\n",prog_info_log);
-        return 0;
+        if ( !link_status ) return 0;
       }
 
     ready = true;
@@ -123,6 +125,7 @@ private:
   GLuint shader_load
   (GLenum shader_type, const char *source_path, const char *main_body)
   {
+    const bool show_log_always = false;
 
     /// - Create Shader Object
     //
@@ -197,14 +200,14 @@ private:
     int rv;
     glGetShaderiv(sobject,GL_COMPILE_STATUS,&rv);
     int info_log_length;
-    if ( !rv )
+    glGetShaderiv(sobject,GL_INFO_LOG_LENGTH,&info_log_length);
+    if ( !rv || show_log_always && info_log_length )
       {
         printf(" Compile status for %s: %d\n",main_body,rv);
-        glGetShaderiv(sobject,GL_INFO_LOG_LENGTH,&info_log_length);
         char* const info_log = (char*) alloca(info_log_length+1);
         glGetShaderInfoLog(sobject,info_log_length+1,NULL,info_log);
         printf(" Info log:\n%s\n",info_log);
-        return -1;
+        if ( !rv ) return -1;
       }
 
     glAttachShader(pobject,sobject);
