@@ -75,7 +75,7 @@ main(int argc, char** argv)
   // argument, a_dev, etc. The addresses are in GPU global space and
   // so they are not necessarily valid on the CPU.
   //
-  void *a_dev, *b_dev, *x_dev;
+  float *a_dev, *b_dev, *x_dev;
   cudaMalloc( &a_dev, array_size_chars );
   cudaMalloc( &b_dev, array_size_chars );
   cudaMalloc( &x_dev, array_size_chars );
@@ -91,8 +91,7 @@ main(int argc, char** argv)
 
   // Launch Kernel
   //
-  thread_main<<<dg,db>>>(SIZE, x.data(), a.data(), b.data());
-
+  thread_main<<<dg,db>>>(SIZE, x_dev, a_dev, b_dev);
   // Copy data from GPU to CPU.
   //
   cudaMemcpy( x.data(), x_dev, array_size_chars, cudaMemcpyDeviceToHost );
