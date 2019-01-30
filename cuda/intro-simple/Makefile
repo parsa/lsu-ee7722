@@ -3,13 +3,13 @@
 default: all
 all: thds omp cuda
 
-thds: thds.cc
-	g++ $< -o $@ -O3 -Wall -std=c++11 -lpthread
+thds: thds.cc Makefile
+	g++ $< -o $@ -O3 -march=native -Wall -std=c++11 -lpthread
 
-omp: omp.cc
-	g++ $< -o $@ -O3 -fopenmp -Wall
+omp: omp.cc Makefile
+	g++ $< -o $@ -O3 -march=native -fopenmp -Wall
 
-cuda: cuda.cu
+cuda: cuda.cu Makefile
 	nvcc -o $@ $< -O3 -Xcompiler -Wall
 
 clean:
