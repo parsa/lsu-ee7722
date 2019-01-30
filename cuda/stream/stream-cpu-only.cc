@@ -15,6 +15,18 @@ time_fp()
   return ((double)tp.tv_sec)+((double)tp.tv_nsec) * 0.000000001;
 }
 
+extern "C" void
+dots_plain
+(int size, double* ax, double* ay,
+ double v0, double v1, double v2, double* b, int nthreads)
+{
+
+#pragma omp parallel for num_threads(nthreads)
+  for ( int i=0; i<size; i++ )
+    {
+      b[i] = v0 + v1 * ax[i] + v2 * ay[i];
+    }
+}
 
 extern "C" void
 dots
@@ -32,18 +44,6 @@ dots
     }
 }
 
-extern "C" void
-dots_plain
-(int size, double* ax, double* ay,
- double v0, double v1, double v2, double* b, int nthreads)
-{
-
-#pragma omp parallel for num_threads(nthreads)
-  for ( int i=0; i<size; i++ )
-    {
-      b[i] = v0 + v1 * ax[i] + v2 * ay[i];
-    }
-}
 
 int
 main(int argc, char **argv)
@@ -74,7 +74,7 @@ main(int argc, char **argv)
       for ( int nt: { 1, 1, 1, 2, 3, 4, 8, 10, 16, 32, 64 } )
         {
           vector <double> times;
-          for ( int r = 0; r < 3; r++ )
+          for ( int r = 0; r < 10; r++ )
             {
               const double time_start = time_fp();
 
