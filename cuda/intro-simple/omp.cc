@@ -25,7 +25,7 @@ using namespace std;
 int
 main(int argc, char **argv)
 {
-  const int SIZE = 100000000;
+  const size_t SIZE = 100000000;
 
   // Get number of threads to spawn from the command-line argument.
   //
@@ -42,7 +42,7 @@ main(int argc, char **argv)
   // Initialize values.
   //
 #pragma omp parallel for num_threads(nthds)
-  for ( int i=0; i<SIZE; i++ )
+  for ( size_t i=0; i<SIZE; i++ )
     {
       a[i] = i + argc;
       b[i] = float(argc) / (i+1);
@@ -51,7 +51,7 @@ main(int argc, char **argv)
   // Perform computation.
   //
 #pragma omp parallel for num_threads(nthds)
-  for ( int i=0; i<SIZE; i++ )
+  for ( size_t i=0; i<SIZE; i++ )
     x[i] = a[i] + b[i];
 
   // Note: Print out the value to prevent optimizer from eliminating
