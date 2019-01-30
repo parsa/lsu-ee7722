@@ -400,8 +400,10 @@ public:
 // Intended for situations where a power-of-2 stride element is needed.
 class pVect4 {
 public:
-  pVect4(const pVect v){ *this = v; }
-  void operator = (const pVect v) { x=v.x; y=v.y; z=v.z; }
+  pVect4(const pVect& v){ *this = v; }
+  pVect4(const pVect4& v){ *this = v; }
+  void operator = (const pVect& v) { x=v.x; y=v.y; z=v.z; }
+  void operator = (const pVect4& v) { x=v.x; y=v.y; z=v.z; w=v.w; }
   float x, y, z, w;
   operator const pVect () const { return pVect(x,y,z); }
 };
