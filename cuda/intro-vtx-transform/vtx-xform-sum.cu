@@ -1,6 +1,15 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
 
+ /// Comparison of Block Reduction Methods
+ //
+ //
+ /// What's Not Covered
+ //
+ //  Use of lane shuffle instructions for reduction.
+ //  Interblock Reduction
+
+
 #include <pthread.h>
 #include <string.h>
 #include <stdio.h>
@@ -40,6 +49,8 @@ __constant__ App d_app;
 
 #define BLOCK_SIZE_MAX 1024
 
+const int unroll_degree = 8;
+
 
 __device__ Elt_Type
 reduce_thread()
@@ -50,7 +61,7 @@ reduce_thread()
   const int num_threads = blockDim.x * gridDim.x;
 
   // Unroll degree.
-  const int deg = 8;
+  const int deg = unroll_degree;
 
   // Compute element number to start at.
   //
@@ -80,7 +91,7 @@ reduce_iter_atomic_grid()
   const int num_threads = blockDim.x * gridDim.x;
 
   // Unroll degree.
-  const int deg = 8;
+  const int deg = unroll_degree;
 
   // Compute element number to start at.
   //
@@ -122,7 +133,7 @@ reduce_per_blk_1thd()
   // Linear reduction by one thread per block.
   //
   // Each thread computes its own sum and writes it to shared memory.
-  // One thread per block computes a block-wide sum and write it to global mem.
+  // One thread per block computes a block-wide sum and writes it to global mem.
   //
   // G CPU threads each compute sum of B elements.
   // CPU computes sum of G elements.
@@ -259,6 +270,7 @@ reduce_thd_tree_wp_tree_blk()
 {
   const Elt_Type thd_sum = reduce_thread();
 
+  // Volatile keyword forces compiler to re-read read items from shared.
   volatile __shared__ Elt_Type shared_sum[BLOCK_SIZE_MAX];
 
   shared_sum[threadIdx.x] = thd_sum;
@@ -382,9 +394,10 @@ print_gpu_and_kernel_info()
 
   gpu_info_print();
 
-  // Choose GPU 0 because it's usually the better choice.
+  // Determine which GPU to use. (For starters, if there's more than
+  // one, choose the one connected to the display.)
   //
-  int dev = 0;
+  int dev = gpu_choose_index();
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
@@ -428,7 +441,7 @@ main(int argc, char **argv)
 
   // Examine argument 1, block count, default is number of MPs.
   //
-  const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
+  const int arg1_int = argc < 2 ? 2 * num_mp : atoi(argv[1]);
   const int num_blocks =
      arg1_int == 0 ? num_mp :
      arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
@@ -440,7 +453,7 @@ main(int argc, char **argv)
 
   // Examine argument 3, size of array in elements. Fractional values okay.
   //
-  const double arg3 = argc < 4 ? -5 : atof(argv[3]);
+  const double arg3 = argc < 4 ? -unroll_degree : atof(argv[3]);
 
   app.array_size = arg3 <= 0 ? max(1.0,-arg3) * num_threads : arg3 * (1<<24);
 
@@ -454,7 +467,7 @@ main(int argc, char **argv)
       exit(1);
     }
 
-  const int max_unroll_deg = 32;
+  const int max_unroll_deg = unroll_degree;
   const int overrun_elts = 32 * max_unroll_deg;
   const int array_size_elts = app.array_size + overrun_elts;
   const int array_size_bytes = array_size_elts * sizeof(app.v_in[0]);

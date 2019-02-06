@@ -66,12 +66,9 @@ all= vtx-xform vtx-xform-better vtx-xform-sum vtx-xform-omp \
 SRC_FILES = $(all:=.cu)
 
 TARGETS = vtx-xform vtx-xform-size vtx-xform-sum	\
-	  vtx-xform-omp vtx-xform-better vtx-xform-phi vtx-xform-sparse
+	  vtx-xform-omp vtx-xform-better vtx-xform-sparse
 
 default: $(TARGETS)
-
-vtx-xform-phi:
-	/bin/test -d /dev/mic && $(MAKE) -f Makefile-phi || echo No Phi
 
 
 $(BUILD_CC_FILE_PATH):
