@@ -39,7 +39,7 @@ __constant__ App d_app;
 typedef void (*KPtr)(const Some_Struct *dout, const Some_Struct *din);
 
 extern "C" __global__ void
-ss_g_only
+ss_l1ro
 (Some_Struct* __restrict__ ss_out, const Some_Struct* __restrict__ ss_in)
 {
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -59,7 +59,7 @@ ss_g_only
 }
 
 extern "C" __global__ void
-ss_l1ro(Some_Struct* ss_out, const Some_Struct* ss_in)
+ss_g_only(Some_Struct* ss_out, const Some_Struct* ss_in)
 {
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
