@@ -243,6 +243,9 @@ main(int argc, char **argv)
   for ( int i=0; i<app.n_elts; i++ )
     {
       Some_Struct& elt = ss_in_v[i];
+      elt.f0 = drand48();
+      elt.f1 = drand48();
+      for ( int j=0; j<slen; j++ ) elt.str[j] = random();
       Some_Struct& elt_out = ss_check_v[i];
       bool ord = elt.f0 <= elt.f1;
       elt_out.f0 = ord ? elt.f0 : elt.f1;
