@@ -4,6 +4,7 @@
 
 #include "pstring.h"
 #include <algorithm>
+#include <vector>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
