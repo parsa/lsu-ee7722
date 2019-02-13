@@ -65,13 +65,50 @@ pError_Msg(const char *fmt, ...)
   pError_Exit();
 }
 
-template<typename T> T set_max(T& a, T b){ if ( b > a ) a = b;  return a; }
-template<typename T> T set_min(T& a, T b){ if ( b < a ) a = b;  return a; }
-
+template<typename T> bool
+set_min(T& lhs, T rhs)
+{ if ( rhs < lhs ) { lhs = rhs; return true; } return false; }
+template<typename T1, typename T2> bool
+set_max(T1& lhs, T2 rhs)
+{ if ( rhs > lhs ) { lhs = rhs; return true; } return false; }
 
 #define ASSERTS(expr) { if ( !(expr) ) abort();}
 #define GCC_GE(maj,min) __GNUC__ \
   && ( __GNUC__ > (maj) || __GNUC__ == (maj) && __GNUC_MINOR__ >= (min) )
+
+inline int ctz(u_int32_t n) __attribute__((unused));
+inline int ctz(u_int64_t n) __attribute__((unused));
+inline int pop(u_int32_t n) __attribute__((unused));
+inline int pop(u_int64_t n) __attribute__((unused));
+inline int ctz(u_int32_t n) { return __builtin_ctz(n); }
+inline int ctz(u_int64_t n) { return __builtin_ctzl(n); }
+inline int pop(u_int32_t n) { return __builtin_popcount(n); }
+inline int pop(u_int64_t n) { return __builtin_popcountl(n); }
+
+#ifdef __has_include
+#  if __has_include(<bit>)
+#    include <bit>
+#    define INCLUDED_BIT
+#    error Please finish placeholder code.
+#  endif
+#endif
+
+#ifndef INCLUDED_BIT
+
+// Find Last 1. Find minimum number of bits needed.
+inline int fl1(u_int32_t n) __attribute__((unused));
+inline int fl1(u_int32_t n) {return 8 * sizeof(n) - __builtin_clz(n);}
+inline int fl1(int32_t n) __attribute__((unused));
+inline int fl1(int32_t n) {return fl1(u_int32_t(n));}
+inline int fl1(u_int64_t n) __attribute__((unused));
+inline int fl1(u_int64_t n) {return 8 * sizeof(n) - __builtin_clzl(n);}
+
+// C++20 functions.
+template<class T> T log2p1(T x) { return fl1(x); }
+template<class T> T floor2(T x) { return x <= 0 ? 0 : T(1) << fl1(x) - 1; }
+template<class T> T ceil2(T x) { return x <= 0 ? 0 : T(1) << fl1(x-1); }
+
+#endif
 
 inline int w_popcount(unsigned int i)
 {
