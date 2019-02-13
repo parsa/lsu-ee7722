@@ -165,7 +165,9 @@ main(int argc, char **argv)
       pTable table;
       table.stream = stdout;
 
-      const double scale_max_latency_ns = 500;
+      const double scale_max_latency_multiple_ns = 100;
+      const double preferred_scale_max_latency_ns = 500;
+      double scale_max_latency_ns = 0;
       printf("Kernel %s:\n", info.ki[kernel].name);
 
       for ( size_t tot_bytes = array_bytes; tot_bytes >= min_bytes;
@@ -227,26 +229,47 @@ main(int argc, char **argv)
           for ( uint i=1; i<n_blks; i++ ) set_min(min_cyc,wp_time_h[i]);
           double self_time_ns = min_cyc * clock_period_ns;
           double latency_ns = self_time_ns / app.n_iters;
+          double latency_cyc = double(min_cyc) / app.n_iters;
+
+          if ( scale_max_latency_ns == 0 )
+            scale_max_latency_ns =
+              max( preferred_scale_max_latency_ns,
+                   scale_max_latency_multiple_ns *
+                   ceil( latency_ns / scale_max_latency_multiple_ns ) );
+
           double frac = latency_ns / scale_max_latency_ns;
 
           table.row_start();
           table.entry("nbl","%3d", n_blks);
           table.entry("iter","%7d", app.n_iters);
           table.header_span_start("Data Touched");
-          table.entry("Block", "%7sB", fmt_Po2(elt_per_blk*sizeof(app.a[0])));
-          table.entry("Total", "%8sB", fmt_Po2( touched_total_bytes, 9999 ) );
+          table.entry
+            ( "Block", "%7sB",
+              fmt_Po2(elt_per_blk*sizeof(app.a[0])), pTable::pT_Right );
+          table.entry
+            ( "Total", "%8sB",
+              fmt_Po2( touched_total_bytes), pTable::pT_Right );
           table.header_span_end();
-          table.entry("L/ns", "%6.1f", latency_ns);
+          table.header_span_start("Latency");
+          table.entry("ns", "%4.0f", latency_ns);
+          table.entry("cyc", "%4.0f", latency_cyc);
 
           const int max_st_len =
             max(5, output_width - 1 - table.row_len_get() );
           pStringF fmt("%%-%ds",max_st_len);
-          string lat_hdr = "Latency";
-          lat_hdr += string(max_st_len - lat_hdr.length(),'-');
+          pStringF max_lat_txt("%.0f ns",scale_max_latency_ns);
+          const int pad_total = max_st_len - 4 - max_lat_txt.length();
+          const int pad_left = max(0,pad_total/2);
+          const int pad_right = max(0,pad_total-pad_left);
+          // Note: "<","|" as first character indicates left just, centering.
+          string lat_hdr = "||<" + string(pad_left,'-') + max_lat_txt
+            + string(pad_right,'-') + ">|";
           table.entry
             (lat_hdr,fmt,
              string( size_t(max(0.0,frac*max_st_len)), '*' ),
              pTable::pT_Left);
+
+          table.header_span_end();
 
           int err_count = 0;
           const uint n_elt_mask = n_elts - 1;
