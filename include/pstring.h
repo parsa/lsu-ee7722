@@ -139,8 +139,10 @@ public:
     operator += (c);
   }
   inline operator char*(){ return s;}
+  inline operator std::string(){ return ss(); }
   inline std::string ss(){ return std::string(s); }
-  int len(){ return occ; }
+  int len() const { return occ; }
+  int length() const { return occ; }
   int col()
   {
     int i = occ;
