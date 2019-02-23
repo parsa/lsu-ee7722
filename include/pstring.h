@@ -145,7 +145,7 @@ public:
   int length() const { return occ; }
   int col()
   {
-    int i = occ;
+    uint i = occ;
     while( i && s[i-1] != '\n' && s[i-1] != '\r' ) i--;
     return occ - i;
   }
@@ -172,8 +172,8 @@ public:
   void operator += (const char *c)
   {
     if( !s ) { cpy(c);  return; }
-    int c_len = strlen(c);
-    int new_occ = occ + c_len;
+    uint c_len = strlen(c);
+    uint new_occ = occ + c_len;
     if( new_occ > size )
       {
         size = new_occ;
@@ -196,8 +196,8 @@ public:
     if( c >= stop ) return;
     const char *ci = c;
     while( ci < stop && *ci ) ci++;
-    const int c_len = ci - c;
-    int new_occ = occ + c_len;
+    const uint c_len = ci - c;
+    const uint new_occ = occ + c_len;
     if( new_occ > size )
       {
         if( !size ) init_space(new_occ);
@@ -212,8 +212,8 @@ public:
   char *s;
   static Linger_Char *lc;
 private:
-  int size; // Maximum string size that can fit in allocated space.
-  int occ;  // Current string size.
+  uint size; // Maximum string size that can fit in allocated space.
+  uint occ;  // Current string size.
 };
 
 class pStringF: public pString {
