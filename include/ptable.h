@@ -46,7 +46,9 @@ stdout_width_get()
 
 class pTable {
 public:
-  pTable():num_lines(0),line(""),body(""),opt_underline(false),stream(NULL){};
+  pTable(FILE *streamp = NULL)
+    :num_lines(0),line(""),body(""),opt_underline(false),stream(streamp){};
+  friend class pTable_Row;
 
   int num_lines;
   pString line, body;
@@ -237,6 +239,13 @@ public:
       return body.s;
     }
 
+};
+
+class pTable_Row {
+public:
+  pTable_Row(pTable& tablep):table(tablep){ table.row_start();};
+  ~pTable_Row(){ table.row_end(); }
+  pTable& table;
 };
 
 #endif
