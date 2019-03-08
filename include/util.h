@@ -347,7 +347,7 @@ commaize(int64_t i)
     }
   assert( is.back() == ',' );
   is.pop_back();
-  return move(is);
+  return is;
 }
 
 void

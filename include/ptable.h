@@ -3,6 +3,7 @@
 #define PTABLE_H
 
 #include "pstring.h"
+#include <assert.h>
 #include <algorithm>
 #include <vector>
 #include <sys/ioctl.h>
