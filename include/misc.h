@@ -86,14 +86,17 @@ inline int pop(u_int32_t n) { return __builtin_popcount(n); }
 inline int pop(u_int64_t n) { return __builtin_popcountl(n); }
 
 #ifdef __has_include
-#  if __has_include(<bit>)
+#  if __has_include(<bit>) && __cplusplus > 201703L
 #    include <bit>
 #    define INCLUDED_BIT
-#    error Please finish placeholder code.
 #  endif
 #endif
 
-#ifndef INCLUDED_BIT
+#ifdef INCLUDED_BIT
+
+template<class T> int fl1(T n) { return log2p1(n); }
+
+#else
 
 // Find Last 1. Find minimum number of bits needed.
 inline int fl1(u_int32_t n) __attribute__((unused));
