@@ -694,6 +694,7 @@ main(int argc, char **argv)
   NPerf_metric_collect("gld_efficiency");
   if ( opt_p )
     {
+      NPerf_metric_collect("gst_efficiency");
       NPerf_metric_collect("l2_read_throughput");
       NPerf_metric_collect("l2_write_throughput");
       NPerf_metric_collect("dram_read_throughput");
@@ -755,7 +756,10 @@ main(int argc, char **argv)
             app.h_in[ i * N + c ] * app.matrix[r][c];
       }
 
-  const int64_t num_ops = int64_t(M) * N * app.num_vecs;  // Multiply-adds.
+  const int64_t num_ops_fp = int64_t(M) * N * app.num_vecs;  // Multiply-adds.
+  const int64_t insns_addr = 4, insns_loop = 3;
+  const int64_t insns_ld_st = N + M;
+  const int64_t num_ops = num_ops_fp + insns_ld_st + insns_addr + insns_loop;
 
   // Amount of data in and out of GPU chip.
   const int64_t amt_data_bytes = in_size_bytes + out_size_bytes;
@@ -895,10 +899,15 @@ main(int argc, char **argv)
                    NPerf_metric_value_get("inst_executed") * 32.0 / num_ops );
                 if ( opt_p )
                   {
+                    table.header_span_start("R-Eff-%");
                     table.entry
-                      ("Ld eff","%5.1f%%",
+                      ("Ld","%3.0f",
                        NPerf_metric_value_get("gld_efficiency"));
-                    table.header_span_start("L2 Cache");
+                    table.entry
+                      ("St","%3.0f",
+                       NPerf_metric_value_get("gst_efficiency"));
+                    table.header_span_end();
+                    table.header_span_start("L2-Cache");
                     table.entry
                       ("Rd θ","%5.1f",
                        NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
