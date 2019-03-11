@@ -298,13 +298,16 @@ mxv_sh()
     }
 }
 
+const int mxv_sh_ochunk_CS = 8;
+
 extern "C" __global__ void
 mxv_sh_ochunk()
 {
   // Compute element number to start at.
   //
+  // Chunk Size: Number of input vector elts to read.
+  const int CS = mxv_sh_ochunk_CS;
 
-  const int CS = 8;  // Chunk Size: Number of input vector elts to read.
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -767,8 +770,8 @@ main(int argc, char **argv)
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
   const int output_width = stdout_width_get();
 #if 0
-  // Analysis of mvx_o_lbuf:
-  const double lat_mem_cyc = 400;
+  // Analysis of mxv_o_lbuf:
+  const double lat_mem_cyc = 345;
   const double lat_iter_cyc = lat_mem_cyc + M * N + M;
   const double lat_iter_s = lat_iter_cyc / ( info.cuda_prop.clockRate * 1e3 );
   const double data_iter_B = sizeof(Elt_Type) * ( M + N );
@@ -776,8 +779,12 @@ main(int argc, char **argv)
   const int sm_thpt_ls = 64;
   const double ni_fp = N * M;
   const double ni_mem = N + M;
-  const double t_issue_1 = ni_fp / info.cc_per_mp + ni_mem / sm_thpt_ls;
+  const double t_issue_1 = ni_fp / (num_mp*info.cc_per_mp)
+    + ni_mem / ( num_mp * sm_thpt_ls );
   const double q = lat_iter_cyc / t_issue_1;
+  printf("Analysis for mxv_o_lbuf: L = %.1f ns, "
+         "p = %.1f wp/sm,  q= %.1f wp/sm\n",
+         lat_iter_s * 1e9, p/32/num_mp, q/32/num_mp );
 #endif
   {
     // Prepare events used for timing.
@@ -803,18 +810,24 @@ main(int argc, char **argv)
     for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
       {
         cudaFuncAttributes& cfa = info.ki[kernel].cfa;
+        const auto func_ptr = info.ki[kernel].func_ptr;
         const int wp_limit = cfa.maxThreadsPerBlock >> 5;
 
         const int thd_limit = wp_limit << 5;
         const int thd_per_block_no_vary = min(thd_per_block_goal,thd_limit);
 
-        const int wp_start = 4;
+        const int wp_start = 1;
         const int wp_stop = vary_warps ? wp_limit : wp_start;
         const int wp_inc = 4;
 
+        const int thd_per_vec =
+          func_ptr == mxv_o_per_thd ? M :
+          func_ptr == mxv_sh_ochunk ? mxv_sh_ochunk_CS : 1;
+
         pTable table;
 
-        for ( int wp_cnt = wp_start; wp_cnt <= wp_stop; wp_cnt += wp_inc )
+        for ( int wp_cnt = wp_start; wp_cnt <= wp_stop;
+              wp_cnt += ( wp_cnt < 4 ? 1 : wp_inc ) )
           {
             const int thd_per_block =
               vary_warps ? wp_cnt << 5 : thd_per_block_no_vary;
@@ -886,6 +899,11 @@ main(int argc, char **argv)
                 // Based on the number of blocks, compute the num ber of warps.
                 //
                 const int act_wps = num_wps * bl_per_mp;
+                const int act_thds_gpu =
+                  min( num_mp * act_wps * 32, num_blocks * thd_per_block );
+
+                const double iter_per_thd =
+                  thd_per_vec * app.num_vecs / act_thds_gpu;
 
                 if ( wp_cnt == wp_start )
                   printf("Kernel %s:\n", info.ki[kernel].name);
@@ -894,6 +912,8 @@ main(int argc, char **argv)
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
+                table.entry("Lw/µs","%6.1f",
+                            this_elapsed_time_s*1e6 / iter_per_thd );
                 table.entry
                   ("I/op","%4.1f",
                    NPerf_metric_value_get("inst_executed") * 32.0 / num_ops );
