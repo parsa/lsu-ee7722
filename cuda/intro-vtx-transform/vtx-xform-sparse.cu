@@ -634,8 +634,8 @@ main(int argc, char **argv)
                   }
 
                 const bool plot_bandwidth = true;
-
-                table.entry("FP θ","%4.0f", thpt_compute_gflops);
+                if ( !plot_bandwidth )
+                  table.entry("FP θ","%4.0f", thpt_compute_gflops);
                 table.entry("GB/s","%4.0f", thpt_data_gbps);
 
                 if ( tscale == 0 ) tscale = this_elapsed_time_s * 2;
@@ -684,20 +684,18 @@ main(int argc, char **argv)
             for ( int i=0; i<app.num_vecs; i++ )
               {
                 const bool norm = app.h_op[i] > norm_threshold;
-                if ( norm ) continue;
-                Elt_Type* const check =
-                  norm ? app.h_in : app.h_out_check;
                 for ( int r=0; r<M; r++ )
                   {
                     const int idx = i * M + r;
+                    Elt_Type cval = norm ? 0 : app.h_out_check[idx];
 
-                    if ( fabs( check[idx] - app.h_out[idx] ) > 1e-5 )
+                    if ( fabs( cval - app.h_out[idx] ) > 1e-5 )
                       {
                         err_count++;
                         if ( err_count < 5 )
                           printf
                             ("Error at vec %d elt %d: %.7f != %.7f (correct)\n",
-                             i, r, app.h_out[idx], check[idx] );
+                             i, r, app.h_out[idx], cval );
                       }
                   }
               }
