@@ -160,7 +160,7 @@ public:
   ~PStack(){ if ( storage && !taken ) { destruct_all(); free(storage); } }
 
   // Return true if the stack is not empty.
-  operator bool () const { return first_free; }
+  explicit operator bool () const { return first_free; }
 
   // Return number of items in the stack.
   int occ() const { return first_free; }
@@ -303,7 +303,7 @@ public:
   PStackIterator(PStack<Data>& pstack):pstack(pstack),index(0){}
   PStackIterator(PStackIterator<Data>& j)
     :pstack(j.pstack),index(j.get_idx()){}
-  operator bool () { return index < pstack.first_free; }
+  explicit operator bool () { return index < pstack.first_free; }
   operator Data () { return pstack.storage[index]; }
   Data operator ++ () { fwd(); return pstack.storage[index]; }
   Data operator ++ (int) { fwd(); return pstack.storage[index-1]; }
@@ -342,7 +342,7 @@ public:
 
   void operator += (Data i){enqueue(i);}
 
-  operator bool (){ return occupancy; }
+  explicit operator bool (){ return occupancy; }
   operator Data (){ return dequeue(); }
   operator Data* (){ return dequeuei(); }
   int occ() const { return occupancy; }
@@ -522,7 +522,7 @@ public:
   {
     return queue.occ() ? queue.pop() : NULL;
   }
-  operator bool () { return queue.occ(); }
+  explicit operator bool () { return queue.occ(); }
   operator int () { return queue.occ(); }
 
   char* dequeue()

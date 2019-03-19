@@ -25,7 +25,7 @@ public:
     return r;
     }
   operator int () { return vector<T*>::size(); }
-  operator bool () { return !vector<T*>::empty(); }
+  explicit operator bool () { return !vector<T*>::empty(); }
   T* pop()
   {
     if ( vector<T*>::empty() ) return NULL;
@@ -75,7 +75,7 @@ public:
   pVectorI_Iter(const pVectorI_Iter<T>& iter);
 
   pVectorI_Iter(vector<T*>& nodesp):nodes(nodesp),size(nodes.size()),idx(-1){}
-  operator bool () { 
+  explicit operator bool () { 
     const bool rv = ++idx < size;
     if ( !rv ) assert( size <= int(nodes.size()) );
     c = rv ? nodes[idx] : NULL;
@@ -101,7 +101,7 @@ public:
   pVector_Iter(const pVector_Iter<T>& iter);
 
   pVector_Iter(vector<T>& nodesp):nodes(nodesp),size(nodes.size()),idx(-1){}
-  operator bool () {
+  explicit operator bool () {
     const bool rv = ++idx < size;
     c = rv ? nodes[idx] : NULL;
     return rv;
@@ -120,7 +120,7 @@ class pMap_Str_Obj_Iter {
   typedef map<string,T> pMap_SOI_Elt;
 public:
   pMap_Str_Obj_Iter(pMap_SOI_Elt& gfm):gfmi(gfm.begin()),gfmend(gfm.end()){}
-  operator bool ()
+  explicit operator bool ()
   {
     if ( gfmi == gfmend ) return false;
     current = &gfmi->second;
