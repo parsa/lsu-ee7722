@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Fall 2012), GPU Programming
+/// LSU EE X70X-X (Fall 2019), GPU Programming
 //
  /// CUDA code for computing intersections and time-stepping physics model.
 
@@ -539,8 +539,10 @@ penetration_balls_resolve
   ball2.velocity = v2;
   ball2.omega = omega2;
 
-  return true;
+  const bool skip_rolling_friction = true;
+  if ( skip_rolling_friction ) return true;
 
+#if 0
   {
     /// Rolling Friction
     //
@@ -587,6 +589,7 @@ penetration_balls_resolve
       omega2 += tan_force_dt(dist, 0.4f / mass_inv2 * lost_vel, fdt_to_do_2);
   }
   return true;
+#endif
 }
 
 //

@@ -553,7 +553,7 @@ World::cuda_schedule()
       Phys* const physa = two_first ? c->phys2 : c->phys1;
       Phys* const physb = two_first ? c->phys1 : c->phys2;
 
-      SM_Idx2 pair = { physa->sm_idx, physb->sm_idx };
+      SM_Idx2 pair(physa->sm_idx, physb->sm_idx);
       const int ba_idx =
         p.schedule_offset
         + ( block - p.block_num_base ) * p.round_cnt * block_size

@@ -3,6 +3,7 @@
  /// Main code for NVIDIA CUDA GPU Execution
  //  Also code for CPU/GPU data movement.
 
+#include <gp/cuda-gpuinfo.h>
 #include "boxes.h"
 #include "world.h"
 #include "phys.h"
@@ -24,39 +25,16 @@ World::cuda_init()
 
   // Get information about GPU and its ability to run CUDA.
   //
-  int device_count;
-  cudaGetDeviceCount(&device_count); // Get number of GPUs.
-  ASSERTS( device_count );
-  for ( int dev = 0; dev < device_count; dev ++ )
-    {
-      CE(cudaGetDeviceProperties(&cuda_prop,dev));
-      CE(cudaGLSetGLDevice(dev));
-      printf
-        ("GPU %d: %s @ %.2f GHz WITH %d MiB GLOBAL MEM\n",
-         dev, cuda_prop.name, cuda_prop.clockRate/1e6,
-         int(cuda_prop.totalGlobalMem >> 20));
+  gpu_info_print();
 
-      printf
-        ("GPU %d: CAP: %d.%d  MP: %2d  TH/WP: %3d  TH/BL: %4d\n",
-         dev, cuda_prop.major, cuda_prop.minor,
-         cuda_prop.multiProcessorCount,
-         cuda_prop.warpSize,
-         cuda_prop.maxThreadsPerBlock
-         );
+  const int chosen_dev = gpu_choose_index();
+  GPU_Info gpu_info;
+  gpu_info.get_gpu_info(chosen_dev);
 
-      printf
-        ("GPU %d: SHARED: %5d  CONST: %5d  # REGS: %5d\n",
-         dev,
-         int(cuda_prop.sharedMemPerBlock), int(cuda_prop.totalConstMem),
-         cuda_prop.regsPerBlock
-         );
+  printf("Using GPU %d\n",chosen_dev);
 
-    }
-
-  const int dev = 0;
-
-  printf("Using GPU %d\n",dev);
-  CE(cudaSetDevice(dev));
+  CE(cudaSetDevice(chosen_dev));
+  CE(cudaGetDeviceProperties(&cuda_prop,chosen_dev));
 
   // Prepare events used for timing.
   //

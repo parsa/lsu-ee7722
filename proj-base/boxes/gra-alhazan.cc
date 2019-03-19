@@ -117,12 +117,6 @@ alhazan(pCoor center, double radius, pCoor eye, pCoor vertex)
 
   const double k3pre = -4.0 * k1cu * k1cu + k2 * k2;
 
-  const cdouble ck3pre = k3pre;
-  const cdouble ck3 = k2 + sqrt( ck3pre );
-  const cdouble ck3cr = pow(ck3,1/3.);
-  const cdouble ck21 =
-    1.5874010519681996 * ck3cr + 2.5198420997897464 * k4sq / ck3cr;
-
   const bool k3_neg = k3pre < 0;
   const double k3sp = sqrt( fabs(k3pre) );
 

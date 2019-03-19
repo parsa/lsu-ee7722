@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Fall 2012), GPU Programming
+/// LSU EE X70X-X (Fall 2019), GPU Programming
 //
  /// Demo of Dynamic Simulation, Multiple Balls on Curved Platform
 
@@ -24,7 +24,11 @@ enum Code_Path
     CP_Box_Box=2, CP_Box_Ball=3,
     CP_Ball_Tile=4, CP_ENUM_SIZE=5 };
 
-typedef ushort2 SM_Idx2;
+struct __builtin_align__(4) __align__(4) SM_Idx2 {
+  SM_Idx2(int xp, int yp):x(xp),y(yp){};
+  SM_Idx2(){};
+  u_int16_t x, y;
+};
 
 struct CUDA_Ball {
   float4 position;
