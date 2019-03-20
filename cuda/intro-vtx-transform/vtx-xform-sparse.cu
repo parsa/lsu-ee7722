@@ -143,14 +143,14 @@ __device__ CData
 compress(bool have_work, short* const &worka)
 {
   const int MAX_BLOCK_SIZE = 1024;
-  worka[threadIdx.x] = have_work;
+  short* const prefix_array = worka;
   short my_val = have_work;
   for ( int dist = 1; dist < MAX_BLOCK_SIZE; dist <<= 1 )
     {
       __syncthreads();
-      worka[threadIdx.x] = my_val;
+      prefix_array[threadIdx.x] = my_val;
       __syncthreads();
-      if ( dist <= threadIdx.x ) my_val += worka[threadIdx.x-dist];
+      if ( dist <= threadIdx.x ) my_val += prefix_array[threadIdx.x-dist];
       if ( dist >= blockDim.x ) break;
     }
   __shared__ short n_w_work;
@@ -644,7 +644,7 @@ main(int argc, char **argv)
                   max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
 
-                const bool ref_time = true;
+                const bool ref_time = false;
 
                 string util_hdr =
                   ref_time ? "Reference Time" :
