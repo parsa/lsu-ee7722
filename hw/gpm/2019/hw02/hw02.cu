@@ -1,5 +1,12 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
+ /// Spring 2019
+ /// Homework 2
+ //
+ //  Assignment: https://www.ece.lsu.edu/koppel/gp/2019/hw02.pdf
+ //
+ //  Modify this file only.
+
 
 #include <pthread.h>
 #include <string.h>
@@ -16,14 +23,28 @@
 #include "util.h"
 #include <ptable.h>
 
-#define N 16
-#define M 16
+#define N 24
+#define M 24
 
 
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
 //
 typedef float Elt_Type;
+
+
+// Vector of Four Elt_Types. Used instead of a float4.
+//
+struct __builtin_align__(4*sizeof(Elt_Type)) __align__(4*sizeof(Elt_Type))
+  Elt_Type4
+{
+  // Elements can be accessed using homogeneous vector component names.
+  Elt_Type x, y, z, w;
+
+  // Elements can also be accessed as a 4-element array.
+  __host__ __device__ Elt_Type& operator [] (int i)
+  { return i==0?x:i==1?y:i==2?z:w; }
+};
 
 struct App
 {
@@ -46,14 +67,12 @@ struct App
   //
   Elt_Type *d_in, *d_out;
 
-  // GPU pointers to the input and output arrays, cast to float4s.
+  // GPU pointers to the input and output arrays, cast to Elt_Type4's.
   //
-  float4 *d_in_f4, *d_out_f4;
+  Elt_Type4 *d_in_f4, *d_out_f4;
   //
   // The compiler can emit more efficient load and store instructions
-  // to float4 elements than to four consecutive floats.
-  //
-  // Note: These "_f4" pointers only work when Elt_Type is a float.
+  // to Elt_Type4 elements than to four consecutive floats.
 };
 
 // In host address space.
@@ -68,17 +87,7 @@ typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 extern "C" __global__ void
 mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
 {
-  // No local memory.
-  //
-  // In the inner loop use global memory accesses to access the input
-  // vector elements. Hope that the compiler recognizes the repeated
-  // accesses and so keeps each input vector element in a register
-  // rather than reading global memory M times per input element.
-  //
-  // The compiler will avoid the repeated reads if it is convinced
-  // that the input and output arrays don't overlap.  For the NVIDIA
-  // compiler (CUDA 7.0) that seems to require declaring the array
-  // pointers with the __restrict__ attributes as kernel arguments.
+  // Relay on the compiler to use the read-only cache for din.
   //
   // Note that dout and d_app.d_out hold the same address, as do din
   // and d_app.d_in.
@@ -91,9 +100,6 @@ mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
   const int inc = num_threads;
 
   for ( int h=start; h<stop; h += inc )
-
-    // Operate on vector number h.
-
     for ( int r=0; r<M; r++ )
       {
         Elt_Type elt = 0;
@@ -102,15 +108,49 @@ mxv_g_only(Elt_Type* __restrict__ dout, const Elt_Type* __restrict__ din)
       }
 }
 
+extern "C" __global__ void
+mxv_vec_ld()
+{
+  // Read and write vector components as Elt_Type4.
+  // This should use more, but not all, of a 32-B request for float elements.
+
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int num_threads = blockDim.x * gridDim.x;
+  const int nq = N/4;  // One quarter of N.
+
+  for ( int h=tid; h<d_app.num_vecs; h += num_threads )
+    {
+      // Read elements as Elt_Type4.
+      Elt_Type4 vin[nq];
+      for ( int i=0; i<nq; i++ ) vin[i] = d_app.d_in_f4[ h * ( N >> 2 ) + i ];
+
+      Elt_Type vout[M];
+
+      // Note: Unrolling this loop avoids local memory access.
+#     pragma unroll
+      for ( int r=0; r<M; r++ )
+        {
+          vout[r] = 0;
+          for ( int c=0; c<N; c += 4 )
+            for ( int i=0; i<4; i++ )
+              vout[r] += d_app.matrix[r][c+i] * vin[c/4][i];
+        }
+      for ( int r=0; r<M; r+=4 )
+        d_app.d_out_f4[ ( h * M + r ) >> 2 ] =
+          Elt_Type4( { vout[r], vout[r+1], vout[r+2], vout[r+3] } );
+    }
+}
+
+
 
 extern "C" __global__ void
 mxv_o_per_thd()
 {
   // Assign one vector to M threads, each thread computes one element.
   //
-  // This arrangement avoids the need for any local memory buffering,
-  // results in efficient global memory writes. Global memory reads
-  // are still inefficient.
+  // This arrangement avoids the need for any local memory buffering
+  // and results in efficient global memory writes. Global memory
+  // reads are still inefficient.
 
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
@@ -126,7 +166,38 @@ mxv_o_per_thd()
       // Operate on vector number h, compute output vector element r.
 
       Elt_Type vout = 0;
+      for ( int c=0; c<N; c++ )
+        vout += d_app.matrix[r][c] * d_app.d_in[ h * N + c ];
 
+      d_app.d_out[ h * M + r ] = vout;
+    }
+}
+
+extern "C" __global__ void
+mxv_o_per_thd_sol()
+{
+  // Assign one vector to M threads, each thread computes one element.
+  //
+  // This arrangement avoids the need for any local memory buffering and
+  // results in efficient global memory writes. 
+
+  /// Homework 2:
+  //  Modify so that input vectors read as Elt_Type4's.
+
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int num_threads = blockDim.x * gridDim.x;
+
+  const int start = tid / M;  // First vector number computed by this thread.
+  const int r = tid % M;      // Vector element computed by this thread.
+
+  const int stop = d_app.num_vecs;
+  const int inc = num_threads / M;
+
+  for ( int h=start; h<stop; h += inc )
+    {
+      // Operate on vector number h, compute output vector element r.
+
+      Elt_Type vout = 0;
       for ( int c=0; c<N; c++ )
         vout += d_app.matrix[r][c] * d_app.d_in[ h * N + c ];
 
@@ -140,10 +211,10 @@ const int mxv_sh_ochunk_CS = 8;
 extern "C" __global__ void
 mxv_sh_ochunk()
 {
-  // Compute element number to start at.
-  //
-  // Chunk Size: Number of input vector elts to read.
   const int CS = mxv_sh_ochunk_CS;
+
+  // Have CS threads perform one multiplication.
+  // Each thread writes M/CS elements. 
 
   const int num_threads = blockDim.x * gridDim.x;
 
@@ -171,9 +242,11 @@ mxv_sh_ochunk()
         {
           Elt_Type vin[CS];
 
+          // Read in one vector component, and put it in shared memory.
           vxfer[threadIdx.x] =
             d_app.d_in[ ( hb + thd_v_offset ) * N + c + thd_c_offset ];
 
+          // Read CS components, one we loaded, the others by our neighbors.
           for ( int cc=0; cc<CS; cc++ )
             vin[cc] = vxfer[ thd_v_offset * CS + cc ];
 
@@ -181,58 +254,73 @@ mxv_sh_ochunk()
             {
               const int r = rr * CS + thd_r_offset;
               for ( int cc=0; cc<CS; cc++ )
-                if ( c+cc < N )
-                  vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
             }
         }
 #pragma unroll
       for ( int rr=0; rr<ML; rr++ )
         {
           const int r = rr * CS + thd_r_offset;
-          if ( r < M )
-            d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
+          d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
         }
 
     }
 }
 
 extern "C" __global__ void
-mxv_vec_ld()
+mxv_sh_ochunk_sol()
 {
-  // Compute an id number that will be in the range from 0 to num_threads-1.
-  //
-  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int CS = mxv_sh_ochunk_CS;
+
+  // Have CS threads perform one multiplication.
+  // Each thread writes M/CS elements. 
+
   const int num_threads = blockDim.x * gridDim.x;
 
-  // Compute element number to start at.
-  //
-  const int start = tid;
+  // First element used by this block.
+  const int bl_start = blockIdx.x * blockDim.x / CS;
   const int stop = d_app.num_vecs;
-  const int inc = num_threads;
+  const int inc = num_threads / CS;
 
-  for ( int h=start; h<stop; h += inc )
+  const int thd_c_offset = threadIdx.x % CS;
+  const int thd_r_offset = threadIdx.x % CS;
+  const int thd_v_offset = threadIdx.x / CS;
+
+  const int MAX_BLOCK_SIZE = 1024;
+  __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
+
+  const int ML = ( M + CS - 1 ) / CS;
+
+  for ( int hb = bl_start; hb<stop; hb += inc )
     {
-      Elt_Type vin[N];
-      for ( int c=0; c<N; c += 4 )
-        {
-          float4 f4 = d_app.d_in_f4[ h * ( N >> 2 ) + ( c >> 2 )];
-          vin[c] = f4.x;
-          vin[c+1] = f4.y;
-          vin[c+2] = f4.z;
-          vin[c+3] = f4.w;
-        }
+      Elt_Type vout[ML];
+      for ( int rl=0; rl<ML; rl++ ) vout[rl] = 0;
 
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ )
+#pragma unroll
+      for ( int c=0; c<N; c += CS )
         {
-          vout[r] = 0;
-          for ( int c=0; c<N; c++ )
-            vout[r] += d_app.matrix[r][c] * vin[c];
+          Elt_Type vin[CS];
+
+          // Read in one vector component, and put it in shared memory.
+          vxfer[threadIdx.x] =
+            d_app.d_in[ ( hb + thd_v_offset ) * N + c + thd_c_offset ];
+
+          // Read CS components, one we loaded, the others by our neighbors.
+          for ( int cc=0; cc<CS; cc++ )
+            vin[cc] = vxfer[ thd_v_offset * CS + cc ];
+
+          for ( int rr=0; rr<ML; rr++ )
+            {
+              const int r = rr * CS + thd_r_offset;
+              for ( int cc=0; cc<CS; cc++ )
+                vout[rr] += d_app.matrix[r][c+cc] * vin[cc];
+            }
         }
-      for ( int r=0; r<M; r+=4 )
+#pragma unroll
+      for ( int rr=0; rr<ML; rr++ )
         {
-          float4 f4 = { vout[r], vout[r+1], vout[r+2], vout[r+3] };
-          d_app.d_out_f4[ ( h * M + r ) >> 2 ] = f4;
+          const int r = rr * CS + thd_r_offset;
+          d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
         }
     }
 }
@@ -249,14 +337,19 @@ print_gpu_and_kernel_info()
   // one, choose the one connected to the display.)
   //
   int dev = gpu_choose_index();
+  dev = 0;
   CE(cudaSetDevice(dev));
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
   info.GET_INFO(mxv_g_only);
-  info.GET_INFO(mxv_o_per_thd);
   info.GET_INFO(mxv_vec_ld);
+
+  info.GET_INFO(mxv_o_per_thd);
+  info.GET_INFO(mxv_o_per_thd_sol);
+
   info.GET_INFO(mxv_sh_ochunk);
+  info.GET_INFO(mxv_sh_ochunk_sol);
 
   // Print information about kernel.
   //
@@ -359,9 +452,9 @@ main(int argc, char **argv)
   // Allocate storage for GPU copy of data.
   //
   CE( cudaMalloc( &app.d_in,  in_size_bytes + overrun_size_bytes ) );
-  app.d_in_f4 = (float4*) app.d_in;
+  app.d_in_f4 = (Elt_Type4*) app.d_in;
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
-  app.d_out_f4 = (float4*) app.d_out;
+  app.d_out_f4 = (Elt_Type4*) app.d_out;
 
   printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
          N, M, app.num_vecs, num_blocks, thd_per_block_goal);
@@ -451,10 +544,11 @@ main(int argc, char **argv)
         const int wp_inc = 4;
 
         const int thd_per_vec =
-          func_ptr == mxv_o_per_thd ? M :
-          func_ptr == mxv_sh_ochunk ? mxv_sh_ochunk_CS : 1;
+          func_ptr == mxv_o_per_thd || func_ptr == mxv_o_per_thd_sol ? M :
+          func_ptr == mxv_sh_ochunk || func_ptr == mxv_sh_ochunk_sol
+          ? mxv_sh_ochunk_CS : 1;
 
-        pTable table;
+        pTable table(stdout);
 
         for ( int wp_cnt = wp_start; wp_cnt <= wp_stop;
               wp_cnt += ( wp_cnt < 4 ? 1 : wp_inc ) )
@@ -538,7 +632,7 @@ main(int argc, char **argv)
                 if ( wp_cnt == wp_start )
                   printf("Kernel %s:\n", info.ki[kernel].name);
 
-                table.row_start();
+                pTable_Row row(table);
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
@@ -630,7 +724,6 @@ main(int argc, char **argv)
             if ( err_count )
               printf("Total errors %d\n", err_count);
           }
-        printf("%s",table.body_get());
       }
   }
 
