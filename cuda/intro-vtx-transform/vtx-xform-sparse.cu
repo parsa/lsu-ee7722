@@ -15,6 +15,7 @@
 #include <nperf.h>
 #include "util.h"
 #include <ptable.h>
+#include <misc.h>
 
 #define N 16
 #define M 16
@@ -22,7 +23,7 @@
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
 //
-typedef double Elt_Type;
+typedef float Elt_Type;
 
 typedef uint32_t Op_Type;
 
@@ -60,14 +61,15 @@ __constant__ App d_app;
 
 typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 
+const int chunk_size = 8;
+
 extern "C" __global__ void
 mxv()
 {
   // Group (chunk) size: The number of threads that cooperate to read
   // and write vectors.
   //
-  const int req_size_bytes = 32;
-  const int CS = req_size_bytes / sizeof(Elt_Type);
+  const int CS = chunk_size;
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -209,8 +211,7 @@ mxv_compress()
   // Group (chunk) size: The number of threads that cooperate to read
   // and write vectors.
   //
-  const int req_size_bytes = 32;
-  const int CS = req_size_bytes / sizeof(Elt_Type);
+  const int CS = chunk_size;
   const int num_threads = blockDim.x * gridDim.x;
 
   // First element used by this block.
@@ -349,35 +350,42 @@ main(int argc, char **argv)
   GPU_Info info = print_gpu_and_kernel_info();
 
   const int num_mp = info.cuda_prop.multiProcessorCount;
+  const int wp_lg = 5;
+  const int wp_sz = 1 << wp_lg;
 
-  // Examine argument 1, block count, default is number of MPs.
+  // Examine argument 1, number of blocks per MP.
   //
-  const int arg1_int = argc < 2 ? num_mp : atoi(argv[1]);
-  const int num_blocks =
-     arg1_int == 0 ? num_mp :
-     arg1_int < 0  ? -arg1_int * num_mp : arg1_int;
+  // 0: Largest number that will fit.
+  // n: Number of blocks per MP.
+
+  const int arg1_int = argc < 2 ? 1 : atoi(argv[1]);
+  const bool choose_blocks_per_mp = arg1_int == 0;
+  const int blocks_per_mp = abs(arg1_int);
 
   // Examine argument 2, number of threads per block.
   //
-  const bool opt_p = argc >= 3 && string(argv[2]) == "p";
-  const int thd_per_block_arg = argc < 3 ? 1024 : opt_p ? 0 : atoi(argv[2]);
-  const int thd_per_block_goal =
-   thd_per_block_arg == 0 ? 1024 : thd_per_block_arg;
-  const int num_threads = num_blocks * thd_per_block_goal;
+  // 0: If arg1 is != 0, maximize number of warps per block.
+  //    If arg1 is == 0, maximize number of warps per MP.
+  // n: Exact size.
 
-  const bool vary_warps = thd_per_block_arg == 0;
+  const bool opt_p = argc >= 3 && argv[2][0] == 'p';
+  const int arg2_int = argc < 3 ? 0 : atoi(argv[2]+opt_p);
+  const int thd_per_block_goal = arg2_int ?: 1024;
+  const bool choose_wps_per_block = arg2_int == 0;
 
   // Examine argument 3, size of array in MiB. Fractional values okay.
   //
   app.num_vecs = argc < 4 ? 1 << 20 : int( atof(argv[3]) * (1<<20) );
 
-  if ( num_threads <= 0 || app.num_vecs <= 0 )
+  if ( thd_per_block_goal <= 0 || app.num_vecs <= 0 )
     {
-      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK|p] "
+      printf("Usage: %s [ NUM_CUDA_BLOCKS_ ] [THD_PER_BLOCK|p] "
              "[DATA_SIZE_MiB]\n",
              argv[0]);
       exit(1);
     }
+
+  const bool vary_work = true;
 
   // Collect performance data using a wrapper to NVIDIA CUPTI event
   // counter API.
@@ -423,7 +431,7 @@ main(int argc, char **argv)
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
 
   printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
-         N, M, app.num_vecs, num_blocks, thd_per_block_goal);
+         N, M, app.num_vecs, blocks_per_mp * num_mp, thd_per_block_goal);
 
   // Initialize input array.
   //
@@ -476,12 +484,6 @@ main(int argc, char **argv)
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
   const int output_width = stdout_width_get();
 
-  // Compute number of blocks available per MP based only on
-  // the number of blocks.  This may be larger than the
-  // number of blocks that can run.
-  //
-  const int bl_per_mp_available = ( num_blocks + num_mp - 1 ) / num_mp;
-
   {
     // Prepare events used for timing.
     //
@@ -503,37 +505,71 @@ main(int argc, char **argv)
 
     // Launch kernel multiple times and keep track of the best time.
     printf("Launching with %d blocks of up to %d threads. \n",
-           num_blocks, thd_per_block_goal);
+           blocks_per_mp * num_mp, thd_per_block_goal);
 
     double tscale = 0;
 
     for ( int kernel = 0; kernel < info.num_kernels; kernel++ )
       {
         cudaFuncAttributes& cfa = info.ki[kernel].cfa;
-        const int wp_limit = cfa.maxThreadsPerBlock >> 5;
+        const int wp_limit = cfa.maxThreadsPerBlock >> wp_lg;
+        const int thd_limit = wp_limit << wp_lg;
+        // gl: Goal and limit.
+        const int thd_per_block_gl = min(thd_per_block_goal,thd_limit);
 
-        const int thd_limit = wp_limit << 5;
-        const int thd_per_block_no_vary = min(thd_per_block_goal,thd_limit);
+        int block_sz = 0;
+        int bl_p_mp = 0;
 
-        const int wp_start = min( 4, wp_limit );
+        if ( choose_wps_per_block && choose_blocks_per_mp )
+          {
+            int num_wp_per_mp = 0;
+            int num_wp = 0;
+            for ( int nwpi = 1; nwpi <= wp_limit; nwpi++ )
+              if ( set_max
+                   ( num_wp_per_mp,
+                     nwpi * info.get_max_active_blocks_per_mp(kernel,nwpi<<5) )
+                   )
+                num_wp = nwpi;
+            bl_p_mp = num_wp_per_mp / num_wp;
+            block_sz = num_wp * wp_sz;
+          }
+        else if ( !choose_wps_per_block && choose_blocks_per_mp )
+          {
+            block_sz = thd_per_block_gl;
+            bl_p_mp = info.get_max_active_blocks_per_mp(kernel,block_sz);
+          }
+        else if ( choose_wps_per_block && !choose_blocks_per_mp )
+          {
+            for ( int nwpi = wp_limit; nwpi >= 1; nwpi-- )
+              {
+                const int bl_sz = nwpi << wp_lg;
+                if ( !set_max
+                     ( bl_p_mp,
+                       info.get_max_active_blocks_per_mp(kernel,bl_sz) ) )
+                  continue;
+                block_sz = bl_sz;
+                set_min( bl_p_mp, blocks_per_mp );
+                if ( bl_p_mp >= blocks_per_mp ) break;
+              }
+          }
+        else if ( !choose_wps_per_block && !choose_blocks_per_mp )
+          {
+            block_sz = thd_per_block_gl;
+            bl_p_mp = blocks_per_mp;
+          }
 
-        vector<int> best_num_wp(bl_per_mp_available+1);
-        for ( int num_wp = wp_start; num_wp <= wp_limit; num_wp++ )
-          best_num_wp[info.get_max_active_blocks_per_mp(kernel,num_wp<<5)]
-            = num_wp;
-        int num_wp = 0;
-        for ( auto w: best_num_wp ) if ( w ) num_wp = w;
-        assert( num_wp );
+        const int n_blocks = bl_p_mp * num_mp;
 
-        pTable table;
-        table.stream = stdout;
+        assert( block_sz && n_blocks );
 
-        for ( double work_frac: { 1.0, .75, .5, .25, 0.0 } )
+        pTable table(stdout);
+
+        const double wp_1_2 = 1.0 - pow(0.5,1.0/wp_sz);
+        const double wp_1_8 = 1.0 - pow(0.875,1.0/wp_sz);
+
+        for ( double work_frac: { 1.0, .75, .5, .25, wp_1_2, wp_1_8, 0.0 } )
           {
             Op_Type norm_threshold = work_frac * norm_threshold_max;
-            int wp_cnt = num_wp;
-            const int thd_per_block =
-              vary_warps ? wp_cnt << 5 : thd_per_block_no_vary;
 
             app.norm_threshold = norm_threshold;
 
@@ -554,7 +590,7 @@ main(int argc, char **argv)
             // Launch Kernel
             //
             for ( NPerf_data_reset(); NPerf_need_run_get(); )
-              KPtr(info.ki[kernel].func_ptr)<<<num_blocks,thd_per_block>>>
+              KPtr(info.ki[kernel].func_ptr)<<<n_blocks,block_sz>>>
                 (app.d_out,app.d_in);
 
             // Stop measuring execution time now, which is before is data
@@ -577,7 +613,7 @@ main(int argc, char **argv)
             const double thpt_data_gbps =
               amt_data_bytes / this_elapsed_time_s * 1e-9;
 
-            if ( vary_warps )
+            if ( vary_work )
               {
                 const double comp_frac =
                   1e9 * thpt_compute_gflops
@@ -588,19 +624,19 @@ main(int argc, char **argv)
 
                 // Number of warps, rounded up.
                 //
-                const int num_wps = ( thd_per_block + 31 ) >> 5;
+                const int num_wps = ( block_sz + 31 ) >> wp_lg;
 
                 // The maximum number of active blocks per MP for this
                 // kernel when launched with a block size of thd_per_block.
                 //
                 const int max_bl_per_mp =
-                  info.get_max_active_blocks_per_mp(kernel,thd_per_block);
+                  info.get_max_active_blocks_per_mp(kernel,block_sz);
 
                 // The number of active blocks is the minimum of what
                 // can fit and how many are available.
                 //
                 const int bl_per_mp =
-                  min( bl_per_mp_available, max_bl_per_mp );
+                  min( max_bl_per_mp, ( n_blocks + num_mp - 1 )/ num_mp );
 
                 // Based on the number of blocks, compute the num ber of warps.
                 //
@@ -665,7 +701,7 @@ main(int argc, char **argv)
                 ("%-15s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
                  "%5.2f I/F  %5.1f%%\n",
                  info.ki[kernel].name,
-                 (thd_per_block + 31 ) >> 5,
+                 (block_sz + wp_sz - 1 ) >> wp_lg,
                  this_elapsed_time_s * 1e6,
                  thpt_compute_gflops, thpt_data_gbps,
                  NPerf_metric_value_get("inst_executed") * 32 / num_ops,
