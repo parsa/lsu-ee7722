@@ -142,7 +142,7 @@ compress_atomic(bool have_work, short* const &worka)
 }
 
 __device__ CData
-compress(bool have_work, short* const &worka)
+compress_prefix_shared(bool have_work, short* const &worka)
 {
   const int MAX_BLOCK_SIZE = 1024;
   short* const prefix_array = worka;
@@ -164,7 +164,7 @@ compress(bool have_work, short* const &worka)
 }
 
 __device__ CData
-compress2(bool have_work, short* const &worka)
+compress_prefix_ballot(bool have_work, short* const &worka)
 {
   const int wp_lg = 5;
   const int wp_sz = 1 << wp_lg;
@@ -288,9 +288,11 @@ mxv_compress()
     }
 }
 
-extern "C" __global__ void mxv_wq() { mxv_compress<compress_atomic>(); }
-extern "C" __global__ void mxv_prefix() { mxv_compress<compress>(); }
-extern "C" __global__ void mxv_prefix2() { mxv_compress<compress2>(); }
+extern "C" __global__ void mxv_atomic() { mxv_compress<compress_atomic>(); }
+extern "C" __global__ void mxv_pfx_shared()
+{ mxv_compress<compress_prefix_shared>(); }
+extern "C" __global__ void mxv_pfx_ballot()
+{ mxv_compress<compress_prefix_ballot>(); }
 
 GPU_Info
 print_gpu_and_kernel_info()
@@ -307,16 +309,10 @@ print_gpu_and_kernel_info()
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
-#if 0
   info.GET_INFO(mxv);
-  info.GET_INFO(new_mxv_prefix2);
-  info.GET_INFO(mxv_prefix);
-#else
-  info.GET_INFO(mxv);
-  info.GET_INFO(mxv_wq);
-  info.GET_INFO(mxv_prefix);
-  info.GET_INFO(mxv_prefix2);
-#endif
+  info.GET_INFO(mxv_atomic);
+  info.GET_INFO(mxv_pfx_shared);
+  info.GET_INFO(mxv_pfx_ballot);
 
   // Print information about kernel.
   //
@@ -444,15 +440,6 @@ main(int argc, char **argv)
   for ( int i=0; i<app.num_vecs; i++ )
     app.h_op[i] = random() % norm_threshold_max;
 
-#if 0
-  const int CS = 8;
-  for ( int i=0; i<app.num_vecs; i+=CS )
-    {
-      Op_Type th = random() % norm_threshold_max;
-      for ( int j=i; j<i+CS; j++ ) app.h_op[j] = th;
-    }
-#endif
-
   // Initialize transformation matrix.
   //
   for ( int r=0; r<M; r++ )
@@ -557,6 +544,7 @@ main(int argc, char **argv)
             block_sz = thd_per_block_gl;
             bl_p_mp = blocks_per_mp;
           }
+        else { assert( false ); }
 
         const int n_blocks = bl_p_mp * num_mp;
 
