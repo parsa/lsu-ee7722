@@ -1,5 +1,13 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
+//
+ /// Spring 2019
+ /// Homework 3
+ //
+ //  Assignment: https://www.ece.lsu.edu/koppel/gp/2019/hw03.pdf
+ //
+ //  Modify code in routine mxv_compress_prob1.
+
 
 #include <pthread.h>
 #include <string.h>
@@ -17,8 +25,9 @@
 #include <ptable.h>
 #include <misc.h>
 
-#define N 16
-#define M 16
+// Matrix dimensions.
+#define N 8
+#define M 8
 
 // Make it easy to switch between float and double for vertex and matrix
 // elements.
@@ -53,12 +62,17 @@ struct App
 
 };
 
-// In host address space.
-App app;
 
-// In device constant address space.
+// Declare application data structure.
+//
+// .. in host address space ..
+App app;
+//
+// .. and in device constant address space.
 __constant__ App d_app;
 
+
+// Pointer to kernel main (global) functions.
 typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 
 const int chunk_size = 8;
@@ -121,27 +135,23 @@ mxv()
     }
 }
 
-struct CData
-{
-  __device__ CData(int t, int a):thd(t),amt_work(a){};
-  const int thd, amt_work;
-};
+// Declare a type for the compression function. This is needed for the
+// templates.
+typedef int (*Compress_Func)(bool have_work, short* const &work_assignments);
 
-typedef CData (*Compress_Func)(bool have_work, short* const &work_assignments);
-
-__device__ CData
+__device__ int
 compress_atomic(bool have_work, short* const &worka)
 {
-  __shared__ int n_w_work; // Number of threads with work.
+  __shared__ int amt_work_block; // Number of threads with work.
   __syncthreads();
-  if ( threadIdx.x == 0 ) n_w_work = 0;
+  if ( threadIdx.x == 0 ) amt_work_block = 0;
   __syncthreads();
-  if ( have_work ) worka[atomicAdd(&n_w_work,1)] = threadIdx.x;
+  if ( have_work ) worka[atomicAdd(&amt_work_block,1)] = threadIdx.x;
   __syncthreads();
-  return CData( threadIdx.x < n_w_work ? worka[threadIdx.x] : -1, n_w_work );
+  return amt_work_block;
 }
 
-__device__ CData
+__device__ int
 compress_prefix_shared(bool have_work, short* const &worka)
 {
   const int MAX_BLOCK_SIZE = 1024;
@@ -155,31 +165,31 @@ compress_prefix_shared(bool have_work, short* const &worka)
       if ( dist <= threadIdx.x ) my_val += prefix_array[threadIdx.x-dist];
       if ( dist >= blockDim.x ) break;
     }
-  __shared__ short n_w_work;
-  if ( threadIdx.x == blockDim.x - 1 ) n_w_work = my_val;
+  __shared__ int amt_work_block;
+  if ( threadIdx.x == blockDim.x - 1 ) amt_work_block = my_val;
   __syncthreads();
   if ( have_work ) worka[my_val-1] = threadIdx.x;
   __syncthreads();
-  return CData( threadIdx.x<n_w_work ? worka[threadIdx.x] : -1, n_w_work );
+  return amt_work_block;
 }
 
-__device__ CData
+__device__ int
 compress_prefix_ballot(bool have_work, short* const &worka)
 {
   const int wp_lg = 5;
   const int wp_sz = 1 << wp_lg;
-  const int wp_mk = wp_sz - 1;
-  const int lane = threadIdx.x & wp_mk;
-  const uint32_t msk = 0xffffffff;
+  const int lane_last = wp_sz - 1;  // The highest lane number.
+  const int lane = threadIdx.x & ( wp_sz - 1 );
+  const uint32_t msk = ~0;  // A thread mask.
 
-  __shared__ int n_w_work;
-  if ( threadIdx.x == 0 ) n_w_work = 0;
+  __shared__ int amt_work_block;
+  if ( threadIdx.x == 0 ) amt_work_block = 0;
 
   // Bit vector indicating which threads in this warp have work.
   const uint32_t have_work_wp_v = __ballot_sync(msk,have_work);
 
   // Shift off bits corresponding to higher-numbered lanes.
-  const uint32_t have_work_pf_v = have_work_wp_v << ( 31 - lane );
+  const uint32_t have_work_pf_v = have_work_wp_v << ( lane_last - lane );
 
   // Use population count function to compute the number of threads
   // that have work in this warp at this and lower-numbered lanes.
@@ -192,14 +202,13 @@ compress_prefix_ballot(bool have_work, short* const &worka)
 
   int pfx_wp = 0;
   __syncthreads();
-  if ( lane == wp_mk ) pfx_wp = atomicAdd( &n_w_work, my_pf );
-  pfx_wp = __shfl_sync(msk,pfx_wp,wp_mk);
+  if ( lane == lane_last ) pfx_wp = atomicAdd( &amt_work_block, my_pf );
+  pfx_wp = __shfl_sync(msk,pfx_wp,lane_last);
 
   const int pfx_me = pfx_wp + my_pf;
   if ( have_work ) worka[pfx_me-1] = threadIdx.x;
   __syncthreads();
-  int thd_num = threadIdx.x < n_w_work ? worka[threadIdx.x] : threadIdx.x;
-  return CData( thd_num, n_w_work );
+  return amt_work_block;
 }
 
 template <Compress_Func compress> __device__ void
@@ -228,8 +237,7 @@ mxv_compress()
     {
       const bool work = d_app.d_op[hb + threadIdx.x] <= d_app.norm_threshold;
 
-      CData work_info = compress(work,worka);
-      const int work_pos = work_info.amt_work;
+      const int work_pos = compress(work,worka);
 
       // If true, no vector assigned to this thread.
       const bool skip = threadIdx.x >= work_pos;
@@ -243,6 +251,9 @@ mxv_compress()
       if ( skip && !tail_chunk ) continue;
 
       const int work_v_offset = worka[threadIdx.x];
+      //
+      // This thread, threadIdx.x, will operate on the same element
+      // as thread work_v_offset would have.
 
       Elt_Type vout[M];
       for ( auto& e: vout ) e = 0;
@@ -285,51 +296,16 @@ mxv_compress()
     }
 }
 
-__device__ CData
-compress_prefix_prob1(bool have_work, short* const &worka)
+
+__device__ void
+mxv_compress_prob1()
 {
   const int wp_lg = 5;
   const int wp_sz = 1 << wp_lg;
   const int wp_mk = wp_sz - 1;
+  const int lane_last = wp_sz - 1;
   const int lane = threadIdx.x & wp_mk;
   const uint32_t msk = 0xffffffff;
-
-  __shared__ int n_w_work;
-  if ( threadIdx.x == 0 ) n_w_work = 0;
-
-  // Bit vector indicating which threads in this warp have work.
-  const uint32_t have_work_wp_v = __ballot_sync(msk,have_work);
-
-  // Shift off bits corresponding to higher-numbered lanes.
-  const uint32_t have_work_pf_v = have_work_wp_v << ( 31 - lane );
-
-  // Use population count function to compute the number of threads
-  // that have work in this warp at this and lower-numbered lanes.
-  // Note: pf is an abbreviation for prefix sum.
-  //
-  const uint32_t my_pf = __popc(have_work_pf_v);
-  //
-  // Note: __popc compiles to a single machine instruction in Kepler to
-  // Pascal GPUs (and hopefully future models too).
-
-  int pfx_wp = 0;
-  __syncthreads();
-  if ( lane == wp_mk ) pfx_wp = atomicAdd( &n_w_work, my_pf );
-  pfx_wp = __shfl_sync(msk,pfx_wp,wp_mk);
-
-  const int pfx_me = pfx_wp + my_pf;
-  if ( have_work ) worka[pfx_me-1] = threadIdx.x;
-  __syncthreads();
-  int thd_num = threadIdx.x < n_w_work ? worka[threadIdx.x] : threadIdx.x;
-  return CData( thd_num, n_w_work );
-}
-
-
-template <Compress_Func compress = compress_prefix_prob1> __device__ void
-mxv_compress_prob1()
-{
-  // Compute element number to start at.
-  //
 
   // Group (chunk) size: The number of threads that cooperate to read
   // and write vectors.
@@ -354,21 +330,48 @@ mxv_compress_prob1()
     {
       const bool work = d_app.d_op[hb + threadIdx.x] <= d_app.norm_threshold;
 
-      CData work_info = compress(work,worka);
-      const int work_pos = work_info.amt_work;
+      /// Note: Code below is copied from compress_prefix_ballot.
 
-      // If true, no vector assigned to this thread.
-      const bool skip = threadIdx.x >= work_pos;
+      __shared__ int amt_work_block;
+      if ( threadIdx.x == 0 ) amt_work_block = 0;
 
-      // If true, this thread is in a group in which at least one thread
-      // has a vector and at least one thread does not have a vector.
+      // Bit vector indicating which threads in this warp have work.
+      const uint32_t have_work_wp_v = __ballot_sync(msk,work);
+
+      // Shift off bits corresponding to higher-numbered lanes.
+      const uint32_t have_work_pf_v = have_work_wp_v << ( lane_last - lane );
+
+      // Use population count function to compute the number of threads
+      // that have work in this warp at this and lower-numbered lanes.
+      // Note: pf is an abbreviation for prefix sum.
       //
-      const bool tail_chunk =
-        thd_g_offset < work_pos && thd_g_offset + CS >= work_pos;
+      const uint32_t my_pf = __popc(have_work_pf_v);
+      //
+      // Note: __popc compiles to a single machine instruction in Kepler to
+      // Pascal GPUs (and hopefully future models too).
 
-      if ( skip && !tail_chunk ) continue;
+      int pfx_wp = 0;
+      __syncthreads();
+      if ( lane == lane_last ) pfx_wp = atomicAdd( &amt_work_block, my_pf );
+      pfx_wp = __shfl_sync(msk,pfx_wp,wp_mk);
+
+      const int pfx_me = pfx_wp + my_pf;
+      if ( work ) worka[pfx_me-1] = threadIdx.x;
+      __syncthreads();
 
       const int work_v_offset = worka[threadIdx.x];
+
+      // If true, no vector assigned to this thread.
+      const bool skip = threadIdx.x >= amt_work_block;
+
+      // If true, this thread is in a group (chunk) in which at least
+      // one thread has a vector and at least one thread does not have
+      // a vector.
+      //
+      const bool tail_chunk =
+        thd_g_offset < amt_work_block && thd_g_offset + CS >= amt_work_block;
+
+      if ( skip && !tail_chunk ) continue;
 
       Elt_Type vout[M];
       for ( auto& e: vout ) e = 0;
@@ -417,8 +420,7 @@ extern "C" __global__ void mxv_pfx_shared()
 extern "C" __global__ void mxv_pfx_ballot()
 { mxv_compress<compress_prefix_ballot>(); }
 
-extern "C" __global__ void mxv_pfx_prob1()
-{ mxv_compress_prob1<compress_prefix_prob1>(); }
+extern "C" __global__ void mxv_pfx_prob1(){ mxv_compress_prob1(); }
 
 GPU_Info
 print_gpu_and_kernel_info()
@@ -485,7 +487,7 @@ main(int argc, char **argv)
   const bool choose_blocks_per_mp = arg1_int == 0;
   const int blocks_per_mp = abs(arg1_int);
 
-  // Examine argument 2, number of threads per block.
+  // Examine argument 2, number of warps per block.
   //
   // 0: If arg1 is != 0, maximize number of warps per block.
   //    If arg1 is == 0, maximize number of warps per MP.
@@ -493,17 +495,17 @@ main(int argc, char **argv)
 
   const bool opt_p = argc >= 3 && argv[2][0] == 'p';
   const int arg2_int = argc < 3 ? 0 : atoi(argv[2]+opt_p);
-  const int thd_per_block_goal = arg2_int ?: 1024;
+  const int thd_per_block_goal = arg2_int ? arg2_int << wp_lg: 1024;
   const bool choose_wps_per_block = arg2_int == 0;
 
-  // Examine argument 3, size of array in MiB. Fractional values okay.
+  // Examine argument 3, size of array in elts per MP. Fractional values okay.
   //
-  app.num_vecs = argc < 4 ? 1 << 20 : int( atof(argv[3]) * (1<<20) );
+  app.num_vecs = argc < 4 ? num_mp << 20 : int( atof(argv[3]) * (num_mp<<20) );
 
   if ( thd_per_block_goal <= 0 || app.num_vecs <= 0 )
     {
-      printf("Usage: %s [ NUM_CUDA_BLOCKS_ ] [THD_PER_BLOCK|p] "
-             "[DATA_SIZE_MiB]\n",
+      printf("Usage: %s [ NUM_CUDA_BLOCKS | 0 ] [[p][ 0 | WP_PER_BLOCK]] "
+             "[NUM_M_ELTs_PER_SM]\n",
              argv[0]);
       exit(1);
     }
@@ -516,8 +518,11 @@ main(int argc, char **argv)
   NPerf_metric_collect("inst_executed");
   if ( opt_p )
     {
+      NPerf_metric_collect("gld_efficiency");
       NPerf_metric_collect("gst_efficiency");
       NPerf_metric_collect("shared_efficiency");
+      NPerf_metric_collect("l2_read_throughput");
+      NPerf_metric_collect("l2_write_throughput");
       NPerf_metric_collect("dram_read_throughput");
       NPerf_metric_collect("dram_write_throughput");
     }
@@ -553,8 +558,8 @@ main(int argc, char **argv)
   CE( cudaMalloc( &app.d_op,  op_size_bytes + overrun_size_bytes ) );
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
 
-  printf("Matrix size: %d x %d.  Vectors: %d.   %d blocks of %d thds.\n",
-         N, M, app.num_vecs, blocks_per_mp * num_mp, thd_per_block_goal);
+  printf("Matrix size: %d x %d.  Vectors: %d.\n",
+         N, M, app.num_vecs );
 
   // Initialize input array.
   //
@@ -593,7 +598,8 @@ main(int argc, char **argv)
       for ( auto e: vo ) *cptrn++ = e;
     }
 
-  const int64_t num_ops = int64_t(M) * N * app.num_vecs;  // Multiply-adds.
+  const int64_t num_ops_max_mxv = ( int64_t(M) * N + N + M ) * app.num_vecs;
+  const int64_t num_ops_max_iter = 7 * app.num_vecs;
 
   double elapsed_time_s = 86400; // Reassigned to minimum run time.
   const int output_width = stdout_width_get();
@@ -616,10 +622,6 @@ main(int argc, char **argv)
     //
     CE( cudaMemcpyToSymbol
         ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
-
-    // Launch kernel multiple times and keep track of the best time.
-    printf("Launching with %d blocks of up to %d threads. \n",
-           blocks_per_mp * num_mp, thd_per_block_goal);
 
     double tscale = 0;
 
@@ -720,6 +722,9 @@ main(int argc, char **argv)
               NPerf_metrics_collection_get()
               ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
+            const int64_t num_ops =
+              work_frac * num_ops_max_mxv + num_ops_max_iter;
+
             const int64_t amt_data_bytes =
               op_size_bytes + work_frac * ( in_size_bytes + out_size_bytes );
 
@@ -764,24 +769,40 @@ main(int argc, char **argv)
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
                 table.entry("work","%5.3f", work_frac);
-                table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
+                table.entry("t/µs","%5.0f", this_elapsed_time_s * 1e6);
                 table.entry
                   ("I/op","%4.1f",
-                   NPerf_metric_value_get("inst_executed") * 32.0 / num_ops );
+                   NPerf_metric_value_get("inst_executed")
+                   * 32.0 / max(int64_t(1),num_ops) );
                 if ( opt_p )
                   {
                     table.entry
-                      ("St eff","%5.1f%%",
-                       NPerf_metric_value_get("gst_efficiency"));
-                    table.entry
                       ("SM eff","%5.1f%%",
                        NPerf_metric_value_get("shared_efficiency"));
+                    table.header_span_start("R-Eff-%");
                     table.entry
-                      ("DRrθ","%5.1f",
+                      ("Ld","%3.0f",
+                       NPerf_metric_value_get("gld_efficiency"));
+                    table.entry
+                      ("St","%3.0f",
+                       NPerf_metric_value_get("gst_efficiency"));
+                    table.header_span_end();
+                    table.header_span_start("L2-Cache");
+                    table.entry
+                      ("Rd θ","%5.1f",
+                       NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
+                    table.entry
+                      ("Wr θ","%5.1f",
+                       NPerf_metric_value_get("l2_write_throughput") * 1e-9 );
+                    table.header_span_end();
+                    table.header_span_start("DRAM");
+                    table.entry
+                      ("Rd θ","%5.1f",
                        NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
                     table.entry
-                      ("DRwθ","%5.1f",
+                      ("Wr θ","%5.1f",
                        NPerf_metric_value_get("dram_write_throughput") * 1e-9 );
+                    table.header_span_end();
                   }
 
                 const bool plot_bandwidth = true;
