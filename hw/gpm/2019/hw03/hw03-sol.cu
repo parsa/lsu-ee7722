@@ -326,84 +326,55 @@ mxv_compress_prob1()
 
   const int thd_c_offset = threadIdx.x % CS;
   const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
-
+  const int thd_wp_c0 = lane & ~ ( CS - 1 );
 
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
 
   /// SOLUTION
-  __shared__ int workb[MAX_BLOCK_SIZE];
-  int *wwork = &workb[ threadIdx.x & ~wp_mk ];
+  __shared__ int workb[2 * MAX_BLOCK_SIZE];
+  int *wwork = &workb[ 2 * ( threadIdx.x & ~wp_mk ) ];
 
-  wwork[lane] = bl_start;
+  wwork[lane] = wwork[wp_sz + lane] = -1;
 
   int amt_wk_buf = 0;
-  int amt_wk_skip = 0;
 
-  for ( int hb = bl_start; hb < stop; )
+  for ( int hb = bl_start; hb < stop || amt_wk_buf > 0; hb += num_threads )
     {
+      const bool last_iter = hb + num_threads >= stop;
       const int h = hb + threadIdx.x;
-      const bool work = d_app.d_op[h] <= d_app.norm_threshold;
+      const bool work = hb < stop && d_app.d_op[h] <= d_app.norm_threshold;
 
       // Bit vector indicating which threads in this warp have work.
       const uint32_t have_work_wp_v = __ballot_sync(msk,work);
 
       // If there's nothing new and it's not the last iteration, continue.
-      if ( !have_work_wp_v && hb + num_threads < stop )
-        {
-          hb += num_threads;
-          continue;
-        }
+      if ( !have_work_wp_v && !last_iter ) continue;
 
       // Shift off bits corresponding to higher-numbered lanes.
+      const int amt_wk_here = __popc(have_work_wp_v);
       const uint32_t have_work_pf_v = have_work_wp_v << ( lane_last - lane );
       const uint32_t my_pf = __popc(have_work_pf_v);
 
-      const int amt_wk_here = __shfl_sync(msk, my_pf, lane_last);
-      const int amt_wk_new = amt_wk_here - amt_wk_skip;
-      const int next_work_amt = amt_wk_buf + amt_wk_new;
+      if ( work ) wwork[ amt_wk_buf + my_pf - 1] = h;
+      amt_wk_buf += amt_wk_here;
+      if ( amt_wk_buf < wp_sz && !last_iter ) continue;
 
-      {
-        const int idx = amt_wk_buf + my_pf - 1 - amt_wk_skip;
-        if ( work && idx >= amt_wk_buf && idx < wp_sz ) wwork[idx] = h;
-        amt_wk_buf = min(wp_sz,next_work_amt);
-        const int amt_wk_for_later = next_work_amt - amt_wk_buf;
-        if ( amt_wk_for_later )
-          amt_wk_skip = amt_wk_here - amt_wk_for_later;
-        else
-          {
-            amt_wk_skip = 0;
-            hb += num_threads;
-          }
-      }
-
-      if ( next_work_amt < wp_sz && hb < stop ) continue;
-      const int amt_wk_now = amt_wk_buf;
-      amt_wk_buf = 0;
-
-      // If true, no vector assigned to this thread.
-      const bool skip = lane >= amt_wk_now;
-
-      // If true, this thread is in a group in which at least one thread
-      // has a vector and at least one thread does not have a vector.
-      //
-      const bool tail_chunk = amt_wk_now < wp_sz;
-
-      if ( skip && !tail_chunk ) continue;
-
-      const int work_v_offset = wwork[lane];
+      if ( lane >= amt_wk_buf )
+        {
+          if ( thd_wp_c0 >= amt_wk_buf ) break;
+          wwork[lane] = wwork[thd_wp_c0];
+        }
 
       Elt_Type vout[M];
       for ( auto& e: vout ) e = 0;
 
+#pragma unroll
       for ( int c=0; c<N; c += CS )
         {
           for ( int g=0; g<CS; g++ )
             vxfer[g][threadIdx.x] =
-              d_app.d_in[ ( workb[thd_g_offset + g] ) * N
-                          + c + thd_c_offset ];
-
-          if ( skip ) continue;
+              d_app.d_in[ ( wwork[thd_wp_c0 + g] ) * N + c + thd_c_offset ];
 
           Elt_Type vin[CS];
           for ( int cc=0; cc<CS; cc++ )
@@ -414,23 +385,19 @@ mxv_compress_prob1()
               vout[r] += d_app.matrix[r][c+cc] * vin[cc];
         }
 
-      if ( skip && tail_chunk ) continue;
+#pragma unroll
+      for ( int rr=0; rr<M; rr += CS )
+        {
+          for ( int g=0; g<CS; g++ )
+            vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
+          for ( int g=0; g<CS; g++ )
+            d_app.d_out[ ( wwork[thd_wp_c0 + g] ) * M + rr + thd_c_offset ]
+              = vxfer[g][threadIdx.x];
+        }
 
-      if ( tail_chunk )
-#pragma unroll
-        for ( int r=0; r<M; r++ )
-          d_app.d_out[ ( work_v_offset ) * M + r ] = vout[r];
-      else
-#pragma unroll
-        for ( int rr=0; rr<M; rr += CS )
-          {
-            for ( int g=0; g<CS; g++ )
-              vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
-            for ( int g=0; g<CS; g++ )
-              d_app.d_out
-                [ ( workb[thd_g_offset + g] ) * M + rr + thd_c_offset ]
-                = vxfer[g][threadIdx.x];
-          }
+      wwork[lane] = wwork[lane+wp_sz];
+      amt_wk_buf -= wp_sz;
+
     }
 }
 
