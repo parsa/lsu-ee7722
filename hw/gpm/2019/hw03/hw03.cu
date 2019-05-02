@@ -85,6 +85,9 @@ mxv()
   //
   const int CS = chunk_size;
   const int num_threads = blockDim.x * gridDim.x;
+  const int wp_lg = 5;
+  const int wp_sz = 1 << wp_lg;
+  const int lane = threadIdx.x & ( wp_sz - 1 );
 
   // First element used by this block.
   const int bl_start = blockIdx.x * blockDim.x;
@@ -93,6 +96,7 @@ mxv()
   const int thd_c_offset = threadIdx.x % CS;
   const int thd_v_offset = threadIdx.x;
   const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
+  const int thd_wp_c0 = lane & ~ ( CS - 1 );
 
   const int MAX_BLOCK_SIZE = 1024;
   assert( threadIdx.x || blockDim.x <= MAX_BLOCK_SIZE );
@@ -101,7 +105,9 @@ mxv()
   for ( int hb = bl_start; hb<stop; hb += num_threads )
     {
       const bool skip = d_app.d_op[hb + thd_v_offset] > d_app.norm_threshold;
-      if ( __all_sync(0xffffffff, skip ) ) continue;
+      const uint32_t have_work_wp_v = __ballot_sync(~0,!skip);
+      if ( !have_work_wp_v ) continue;
+      const uint32_t chunk_wk_v = have_work_wp_v >> thd_wp_c0;
 
       Elt_Type vout[M];
       for ( auto& e: vout ) e = 0;
@@ -109,8 +115,9 @@ mxv()
       for ( int c=0; c<N; c += CS )
         {
           for ( int g=0; g<CS; g++ )
-            vxfer[g][threadIdx.x] =
-              d_app.d_in[ ( hb + thd_g_offset + g ) * N + c + thd_c_offset ];
+            if ( chunk_wk_v  &  1 << g )
+              vxfer[g][threadIdx.x] =
+                d_app.d_in[ ( hb + thd_g_offset + g ) * N + c + thd_c_offset ];
 
           if ( skip ) continue;
 
@@ -129,8 +136,9 @@ mxv()
           for ( int g=0; g<CS; g++ )
             vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
           for ( int g=0; g<CS; g++ )
-            d_app.d_out[ ( hb + thd_g_offset + g ) * M + rr + thd_c_offset ]
-              = vxfer[g][threadIdx.x];
+            if ( chunk_wk_v  &  1 << g )
+              d_app.d_out[ ( hb + thd_g_offset + g ) * M + rr + thd_c_offset ]
+                = vxfer[g][threadIdx.x];
         }
     }
 }
