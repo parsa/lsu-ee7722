@@ -277,7 +277,9 @@ typedef map<CUfunction,RTI_Kernel_Info> CUF_Hash;
 class RT_Info {
 public:
   RT_Info(){
-    cupti_inited = false;
+    cupti_on_requested = false;
+    cupti_on_pending = false;
+    cupti_on_failed = false;
     cupti_on = false;
     stop_tracing = false;
     event_tracing_user_on = true;
@@ -297,8 +299,10 @@ public:
     for ( auto ki: kernel_info_store ) free(ki);
   }
   static int need_run_get_call_count;
-  bool cupti_inited;      // True if CUPTI successfully initialized.
-  bool cupti_on; // True if user wants CUPTI instrumentation. 
+  bool cupti_on_requested; // True if user wants CUPTI instrumentation. 
+  bool cupti_on_pending;   // True if cupti is to be initialized.
+  bool cupti_on; // True if CUPTI successfully initialized.
+  bool cupti_on_failed;  // True if initialization tried and failed.
   bool event_callbacks_inited;
   bool stop_tracing;      // True if tracing was started unnecessarily.
   int call_trace_start, call_trace_count, call_trace_end;
@@ -306,6 +310,13 @@ public:
   CUpti_SubscriberHandle subscriber;
   CUfunction fake_fh_next;
   map<string,CUfunction> fake_fh_map;
+
+  bool nperf_init_finish();
+  bool cupti_check_on()
+  {
+    if ( cupti_on_pending ) nperf_init_finish();
+    return cupti_on;
+  }
 
   // Used to turn tracing on and off during a run.
   bool event_tracing_user_on;
@@ -912,32 +923,56 @@ NPerf_init_(bool turn_on)
   rt_info->call_trace_start = 0;
   rt_info->call_trace_end = rt_info->call_trace_start + 1;
 
-  rt_info->cupti_on = turn_on;
+  rt_info->cupti_on_requested = turn_on; // Keeps this value until exit.
+  rt_info->cupti_on_pending = turn_on;   // Set to false when init attempted.
 
-  if ( !rt_info->cupti_on ) return;
+  if ( !rt_info->cupti_on_pending ) return;
 
   // The code below must execute as early as possible, including
   // before any--ANY--CUDA API routines are called.
 
   CU(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DEVICE));
   CU(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_KERNEL));
-  CU(cuptiActivityRegisterCallbacks(cb_buffer_requested,cb_buffer_completed));
+
+  // Cannot complete initialization until a device is chosen.
+}
+
+bool
+RT_Info::nperf_init_finish()
+{
+  const CUptiResult err_reg_callbacks =
+    cuptiActivityRegisterCallbacks(cb_buffer_requested,cb_buffer_completed);
+
+  if ( err_reg_callbacks != CUPTI_SUCCESS )
+    {
+      cupti_on_failed = true;
+      cupti_on_pending = false;
+      cupti_on = false;
+      const char *err_str;
+      cuptiGetResultString(err_reg_callbacks, &err_str);
+      printf
+        ("Could not set up GPU event-register statistics: %s\n", err_str);
+      return false;
+    }
 
   CUptiResult cuptierr = cuptiSubscribe
-    (&rt_info->subscriber,(CUpti_CallbackFunc)traceCallback, (void*)rt_info);
+    (&subscriber,(CUpti_CallbackFunc)traceCallback, (void*)rt_info);
 
   if ( cuptierr != CUPTI_SUCCESS )
     {
+      // Actually, I don't expect this code to execute.
       CHECK_CUPTI_ERROR(cuptierr);
-      return;
+      return false;
     }
 
-  CU(cuptiEnableDomain(1, rt_info->subscriber, CUPTI_CB_DOMAIN_DRIVER_API));
-  CU(cuptiEnableDomain(1, rt_info->subscriber, CUPTI_CB_DOMAIN_RUNTIME_API));
-  CU(cuptiEnableDomain(1, rt_info->subscriber, CUPTI_CB_DOMAIN_RESOURCE));
-  CU(cuptiEnableDomain(1, rt_info->subscriber, CUPTI_CB_DOMAIN_SYNCHRONIZE));
+  CU(cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_DRIVER_API));
+  CU(cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_RUNTIME_API));
+  CU(cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_RESOURCE));
+  CU(cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_SYNCHRONIZE));
 
-  rt_info->cupti_inited = true;
+  cupti_on_pending = false;
+  cupti_on = true;
+  return true;
 }
 
 void
@@ -945,6 +980,8 @@ RT_Info::metrics_init()
 {
   if ( metrics_inited ) return;
   if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
+  cupti_check_on();
+
   metrics_inited = true;
 #if 0
 
@@ -992,9 +1029,10 @@ RT_Info::metrics_init()
 bool
 RT_Info::metric_add(string name)
 {
-  if ( !rt_info ) return false;
-  if ( !rt_info->cupti_on ) return false;
+  if ( !cupti_on_requested ) return false;
   if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
+  if ( !cupti_check_on() ) return false;
+
   CUpti_MetricID met_id;
   CUptiResult rv = cuptiMetricGetIdFromName(dev,name.c_str(),&met_id);
   if ( rv == CUPTI_ERROR_INVALID_METRIC_NAME ) return false;
@@ -1065,8 +1103,7 @@ bool
 RT_Info::need_run_get(const char* kernel_name)
 {
   if ( ! need_run_get_call_count++ ) return true;
-  if ( !rt_info ) return false;
-  if ( !rt_info->cupti_on ) return false;
+  if ( !cupti_check_on() ) return false;
   if ( !event_tracing_user_on ) return false;
 
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
@@ -1113,16 +1150,14 @@ RT_Info::kernel_et_get(T kernel_name)
 NPerf_Metric_Value
 RT_Info::metric_value_get(const char *metric_name, const char* kernel_name)
 {
-  if ( !rt_info || !rt_info->cupti_on )
-    return NPerf_Metric_Value(NPerf_Status_Off);
+  if ( !cupti_check_on() ) return NPerf_Metric_Value(NPerf_Status_Off);
   return metric_value_get(metric_name, kernel_get(kernel_name));
 }
 
 NPerf_Metric_Value
 RT_Info::metric_value_get(const char *metric_name, NPerf_Kernel_Data kd)
 {
-  if ( !rt_info || !rt_info->cupti_on )
-    return NPerf_Metric_Value(NPerf_Status_Off);
+  if ( !cupti_check_on() ) return NPerf_Metric_Value(NPerf_Status_Off);
   return metric_value_get(metric_name, kernel_get(kd));
 }
 
@@ -1242,7 +1277,7 @@ NPerf_min_launches_get()
 bool
 NPerf_metrics_collection_get()
 {
-  if ( !rt_info || !rt_info->cupti_on ) return false;
+  if ( !rt_info || !rt_info->cupti_check_on() ) return false;
   return rt_info->tracing_get();
 }
 bool
@@ -1306,7 +1341,7 @@ int
 RT_Info::atend()
 {
 
-  if ( !rt_info->cupti_inited ) return 0;
+  if ( !cupti_on ) return 0;
   if ( rt_info->stop_tracing ) return 0;
 
   if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
