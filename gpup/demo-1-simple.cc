@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation
 
@@ -9,6 +9,57 @@
 
 #if 0
 /// Background
+
+
+ /// Overall Simulation Program Structure - Physical Simulation
+ //
+ //  System State -- Describes Our Simulated World
+ //
+ //    Here, ball and platform.
+ //
+ //    Ball Structure Information
+ //      Holds: Position, Velocity.
+ //
+ //  
+ //  Forces and Governing Equations -- Describe dynamics.
+ //
+ //    Gravity. Here, a constant force.
+ //    Interaction with platform.  Bounce.
+ //
+ //
+ //  Evolution Time Step -- Routine that updates state based on model.
+ //
+ //    Determine forces on each ball.
+ //    Use forces to compute new velocity.
+ //    Use velocity to compute new position.
+
+ /// Graphics
+ //
+ //    OpenGL
+ //      Between "us" and frame buffer: OpenGL
+ //      We send triangles to OpenGL, which it renders on the frame buffer.
+ //      We'll get into alot more detail in near-future lectures.
+
+ //    Graphical Representation
+ //      Objects usually approximated by triangles.
+ //      Each object, say sphere, has a render routine.
+ //      The render routine uses position computed by physics simulation ..
+ //      .. to determine triangle locations. These are sent to OGL.
+
+
+ /// Structure of Program
+ //
+ //    Initialization routine -- Sets up our world, etc.
+ //    Time Step Routine -- Advances time in simulated world.
+ //    Render Routine -- Send graphical representation of world to OpenGL.
+
+
+ /// Program Execution
+ //
+ //    Program startup: main is called, just like any other C program.
+ //    main performs initialization ..
+ //    .. and tells window system to call one of our routines.
+ 
 
 /// Important Parts of Program
 //
