@@ -101,20 +101,12 @@ public:
   // Cylinder used to show location of ring.
   Cylinder hw01_ring_guide;
 
-  bool hw01_rail_inited;
+  bool opt_hw01_do_friction;
+  bool opt_hw01_spin;
+  float opt_hw01_spin_omega;
+  float opt_hw01_fric_coefficient;
 
-  // Variables defining the location and size of ring.
-  pCoor hw01_center;
-  pNorm hw01_axis;
-  float hw01_radius;
-
-  // Variables derived from hw01_axis and hw01_radius.
-  pVect hw01_x, hw01_y;  // In same plane as ring.
-
-  // Variables defining ball's rotation rate and position on the ring.
-  float hw01_omega;
-  float hw01_theta;
-
+  HW01_Stuff hw01;
 
   void ball_setup_1();
   void ball_setup_2();
@@ -159,7 +151,7 @@ World::init_graphics()
   opt_light_intensity = 100.2;
   light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
 
-  variable_control.insert(opt_light_intensity,"Light Intensity");
+  //  variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
@@ -314,7 +306,7 @@ World::render_objects(Render_Option option)
           // are only performed during construction, so there's no need
           // to feel guilty about having 100 sides or more.
           hw01_ring_guide.render
-            (hw01_center-hw01_axis*height,hw01_radius,2*height*hw01_axis);
+            (hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
 
           ///
           /// Live Classroom Demo Code (6 September 2019)
@@ -326,9 +318,9 @@ World::render_objects(Render_Option option)
 
           /// Circle Description
           //
-          // Center: hw01_center
-          // Axis: hw01_axis
-          // Radius: hw01_radius
+          // Center: hw01.center
+          // Axis: hw01.axis
+          // Radius: hw01.radius
 
           const int nsides = 100;
           const float delta_theta = 2 * M_PI / nsides;
@@ -337,18 +329,18 @@ World::render_objects(Render_Option option)
           glLineWidth( 3 );
           glBegin(GL_LINE_LOOP); // Draw a series of line segments.
 
-          pNorm vxn = hw01_axis.x != 0
-            ? pVect(hw01_axis.y,-hw01_axis.x,0)
-            : pVect(0,hw01_axis.z,-hw01_axis.z);
-          float circ_r = hw01_radius + balls[0].radius;
-          pVect vy = circ_r * cross(vxn, hw01_axis );
+          pNorm vxn = hw01.axis.x != 0
+            ? pVect(hw01.axis.y,-hw01.axis.x,0)
+            : pVect(0,hw01.axis.z,-hw01.axis.z);
+          float circ_r = hw01.radius + balls[0].radius;
+          pVect vy = circ_r * cross(vxn, hw01.axis );
           pVect vx = circ_r * vxn;
 
           for ( int i=0; i<nsides; i++ )
             {
               const float theta = i * delta_theta;
               pVect v = cos(theta) * vx + sin(theta) * vy;
-              pCoor p = hw01_center + v;
+              pCoor p = hw01.center + v;
 
               glNormal3fv(v); // The normal is used by lighting calculations.
               glVertex3fv(p); // Specify a point on the circle.
@@ -485,9 +477,14 @@ World::render()
     { "FREE", "FIXED", "LINE-F", "RING-A", "RING-F" };
 
   ogl_helper.fbprintf
-    ("Head Constr: %6s ('hrR') "
-     "Time Step: %8d  World Time: %11.6f  %s\n",
-     oc_str[hcon], time_step_count, world_time,
+    ("HW01: Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
+     oc_str[hcon],
+     hcon != OC_Ring_Free ? "---" :
+     opt_hw01_do_friction ? "ON " : "OFF",
+     opt_hw01_spin ? "ON " : "OFF");
+  ogl_helper.fbprintf
+    ("Time Step: %8d  World Time: %11.6f  %s\n",
+     time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
      "Press 'p' to pause."
      );
@@ -505,7 +502,7 @@ World::render()
      "Omega %+5.1f\n",
      ball.position.x,ball.position.y,ball.position.z,
      ball.velocity.x,ball.velocity.y,ball.velocity.z,
-     hw01_omega);
+     hw01.omega);
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -731,6 +728,9 @@ World::cb_keyboard()
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
+
+  case 'f': case 'F': opt_hw01_do_friction = !opt_hw01_do_friction; break;
+
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H':
     hball.constraint = hball.constraint ? OC_Free : OC_Fixed;
@@ -743,14 +743,13 @@ World::cb_keyboard()
   case 'p': case 'P': opt_pause = !opt_pause; break;
   case 'r':
     if ( con != OC_Ring_Free && con != OC_Ring_Animated )
-      hw01_rail_inited = false;
+      hw01.rail_inited = false;
     hball.constraint =
       hball.constraint == OC_Ring_Free ? OC_Ring_Animated : OC_Ring_Free;
-    if ( hball.constraint == OC_Ring_Animated ) hw01_omega = 1;
+    if ( hball.constraint == OC_Ring_Animated ) hw01.omega = 1;
     break;
   case 'R':
-    if ( con != OC_Line_Free ) hw01_rail_inited = false;
-    hball.constraint = OC_Line_Free;
+    opt_hw01_spin = !opt_hw01_spin;
     break;
   case 's': case 'S': balls_stop(); break;
   case ' ':
