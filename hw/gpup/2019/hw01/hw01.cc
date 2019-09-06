@@ -100,6 +100,15 @@
 
 class World;
 
+enum Object_Constraint
+{
+  OC_Free,
+  OC_Fixed,  // Position is never changed.
+  OC_Line_Free,
+  OC_Ring_Animated,
+  OC_Ring_Free
+};
+
 
 // Object Holding Ball State
 //
@@ -110,7 +119,9 @@ public:
 
   float mass;
   float radius;
+  Object_Constraint constraint;
 
+  pVect force;
   bool contact;                 // Can be used for special effects.
 
   void push(pVect amt);
@@ -125,9 +136,12 @@ public:
 void
 World::init()
 {
-  chain_length = 40;
-  balls = new Ball[chain_length];
- 
+  srand48(4702);
+  chain_length = 15;
+  balls.resize(chain_length);
+
+  variable_control.insert(hw01_omega,"Rotation rate.");
+
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 1000;
   variable_control.insert(opt_spring_constant,"Spring Constant");
@@ -137,10 +151,8 @@ World::init()
   gravity_accel = pVect(0,-opt_gravity_accel,0);
   variable_control.insert(opt_gravity_accel,"Gravity");
 
-  opt_time_step_hw01 = false;
-
-  opt_air_resistance = 0.001;
-  variable_control.insert(opt_air_resistance,"Air Resistance");  
+  opt_air_resistance = 0.01;
+  variable_control.insert(opt_air_resistance,"Air Resistance");
 
   world_time = 0;
   time_step_count = 0;
@@ -161,15 +173,15 @@ World::init()
 void
 World::ball_setup_1()
 {
-  /// Arrange balls almost vertically.
+  /// Arrange balls vertically.
 
   // Desired position of bottom ball.
   //
-  pCoor bottom_pos(12.5,distance_relaxed,-13.7);
+  pCoor bottom_pos(12.5,2*distance_relaxed,-13.7);
 
   // Desired distance between adjacent balls.
   //
-  pVect ball_separation(0.02, distance_relaxed, 0.01);  // Points up.
+  pVect ball_separation(0, distance_relaxed, 0);  // Points up.
 
   for ( int i=0; i<chain_length; i++ )
     {
@@ -180,11 +192,15 @@ World::ball_setup_1()
       ball->velocity = pVect(0,0,0);
       ball->radius = 0.3 * distance_relaxed;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
+      ball->constraint = OC_Free;
       ball->contact = false;
     }
 
-  opt_head_lock = true;
-  opt_tail_lock = false;
+  hw01_rail_inited = false;
+  balls[0].constraint = OC_Ring_Free;
+
+  const float size = 3;
+  hw01_radius = size + size * drand48();
 }
 
 void
@@ -209,9 +225,14 @@ World::ball_setup_2()
       ball->radius = ( i == chain_length - 1 ? 0.6 : 0.3 ) * distance_relaxed;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
+      ball->constraint = OC_Free;
     }
 
-  opt_head_lock = true;
+  hw01_rail_inited = false;
+  balls[0].constraint = OC_Ring_Free;
+
+  const float size = 3;
+  hw01_radius = size + size * drand48();
 }
 
 void
@@ -222,17 +243,8 @@ World::ball_setup_3()
 void
 World::ball_setup_4()
 {
-  hw01_center = pCoor(13.4,17.8,-9.2);
-  hw01_dir = pVect(drand48(),drand48()*4-10,drand48());
-  hw01_r = 1 + drand48() * 3;
-  hw01(hw01_center,hw01_dir,hw01_r);
 }
 
-void
-World::hw01(pCoor center, pVect dir, float r)
-{
-}
- 
 void
 World::ball_setup_5()
 {
@@ -242,43 +254,35 @@ World::ball_setup_5()
  /// Advance Simulation State by delta_t Seconds
 //
 void
-World::time_step_cpu_hw01(double delta_t)
+World::time_step_cpu(double delta_t)
 {
-  /// Homework 1 Problem 1 Solution Goes In This Routine
+  /// Homework 1 Solution In This Routine
 
   time_step_count++;
 
   //
-  /// Compute force and update velocity of each ball.
+  /// Compute total force acting on each ball
   //
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
 
-      // Skip locked balls.
-      //
-      if ( opt_head_lock && i == 0 || opt_tail_lock && i == chain_length - 1 )
-        {
-          ball->velocity = pVect(0,0,0);
-          continue;
-        }
-
-      pVect force(0,0,0);
+      ball->force = pVect(0,0,0);
 
       // Gravitational Force
       //
-      force += ball->mass * gravity_accel;
+      ball->force += ball->mass * gravity_accel;
 
       // Spring Force from Neighbor Balls
       //
-      for ( int direction: { -1, +1 } )
+      for ( int direction: { -2, -1, +1, +2 } )
         {
           const int n_idx = i + direction;  // Compute neighbor index.
 
           // Skip this neighbor if neighbor doesn't exit.
           //
           if ( n_idx < 0 ) continue;
-          if ( n_idx == chain_length ) continue;
+          if ( n_idx >= chain_length ) continue;
 
           Ball* const neighbor_ball = &balls[n_idx];
 
@@ -294,7 +298,7 @@ World::time_step_cpu_hw01(double delta_t)
           // or compressed (negative value).
           //
           const float spring_stretch =
-            distance_between_balls - distance_relaxed;
+            distance_between_balls - distance_relaxed * fabs(direction);
 
           // Compute the speed of ball towards neighbor_ball.
           //
@@ -314,178 +318,142 @@ World::time_step_cpu_hw01(double delta_t)
           const float spring_constant =
             gaining_e ? opt_spring_constant : opt_spring_constant * 0.7;
 
-          force += spring_constant * spring_stretch * ball_to_neighbor;
+          ball->force += spring_constant * spring_stretch * ball_to_neighbor;
         }
-
-      // Update Velocity
-      //
-      // This code assumes that force on ball is constant over time
-      // step. This is clearly wrong when balls are moving with
-      // respect to each other because the springs are changing
-      // length. This inaccuracy will make the simulation unstable
-      // when spring constant is large for the time step.
-      //
-      ball->velocity += ( force / ball->mass ) * delta_t;
-
-      // Air Resistance
-      //
-      const double fs = pow(1+opt_air_resistance,-delta_t);
-      ball->velocity *= fs;
     }
 
-  ///
-  /// Update Position of Each Ball
-  ///
+  // Compute location of ball on ring.
+  auto pos_compute = [&](float theta)
+    {
+      return hw01_center +
+        hw01_radius * ( cosf(theta) * hw01_x + sinf(theta) * hw01_y );
+    };
+
+  // Impact on velocity due to air resistance.
+  const double fs = pow(1+opt_air_resistance,-delta_t);
+
+  // Convenient head ball reference.
+  Ball& hball = balls[0];
+
+  /// Initialize Ring
+  //
+  //  This is done when ring is in a new position.
+  //
+  if ( !hw01_rail_inited && hball.constraint > OC_Fixed )
+    {
+      hw01_rail_inited = true;
+      hw01_theta = 0;
+
+      pNorm vdir(hball.velocity);
+
+      if ( vdir.magnitude < 0.00001 )
+        {
+          // If ball is not moving, choose ring axis randomly.
+
+          const float tilt_amt = 0.9;
+          hw01_axis = pNorm(tilt_amt*drand48(),1,tilt_amt*drand48());
+
+          // Find an axis orthogonal to hw01_axis.
+          //
+          hw01_x =
+            hw01_axis.x > hw01_axis.z
+            ? pNorm(-hw01_axis.y,hw01_axis.x,0)
+            : pNorm(0,-hw01_axis.z,hw01_axis.y);
+
+          // Find a place for the ring's center.
+          //
+          hw01_center = hball.position - hw01_x * hw01_radius;
+
+          // Set y and rotation rate.
+          hw01_y = cross(hw01_axis,hw01_x);
+
+          hw01_omega = hball.constraint == OC_Ring_Animated ? 1 : 0;
+        }
+      else
+        {
+          // If ball is moving, position ring so that velocity direction
+          // is a tangent to the ring.
+
+          hw01_y = vdir;
+          hw01_x = pNorm( cross( hw01_y, pVect(0,-1,0) ) );
+          hw01_axis = cross(hw01_x,hw01_y);
+          hw01_center = hball.position - hw01_radius * hw01_x;
+          hw01_omega = vdir.magnitude / hw01_radius;
+        }
+    }
 
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
 
-      // Update Position
-      //
-      // Assume that velocity is constant.
-      //
-      ball->position += ball->velocity * delta_t;
+      switch ( ball->constraint ) {
 
-      // Possible Collision with Platform
-      //
+      case OC_Free:
+        // Ball motion determined by forces computed in the code above.
 
-      // Skip if collision impossible.
-      //
-      if ( !platform_collision_possible(ball->position) ) continue;
-      if ( ball->position.y >= 0 ) continue;
+        // Update Velocity and Position
+        //
+        ball->velocity += ( ball->force / ball->mass ) * delta_t;
+        ball->velocity *= fs;
+        ball->position += ball->velocity * delta_t;
 
-      // Reflect y (vertical) component of velocity, with a reduction
-      // due to energy lost in the collision.
-      //
-      if ( ball->velocity.y < 0 )
-        ball->velocity.y = - 0.9 * ball->velocity.y;
+        // Possible Collision with Platform
+        //
+
+        // Skip if collision impossible.
+        //
+        if ( !platform_collision_possible(ball->position) ) break;
+        if ( ball->position.y >= ball->radius ) break;
+
+        // Reflect y (vertical) component of velocity, with a reduction
+        // due to energy lost in the collision.
+        //
+        if ( ball->velocity.y < 0 )
+          ball->velocity.y = - 0.9 * ball->velocity.y;
+        break;
+
+      case OC_Fixed:
+        // Ball does not move. Forces are ignored.
+
+        ball->velocity = pVect(0,0,0);
+        break;
+
+      case OC_Ring_Animated:
+        // Ball attached to ring and rotates with it at rate omega.
+        {
+          const double delta_theta = delta_t * hw01_omega;
+          ball->velocity =
+            hw01_omega * hw01_radius *
+            ( -sinf(hw01_theta) * hw01_x + cosf(hw01_theta) * hw01_y );
+          hw01_theta += delta_theta;
+          ball->position = pos_compute(hw01_theta);
+        }
+        break;
+
+      case OC_Ring_Free:
+        // Ball can slide along ring freely.
+        {
+          // Compute rotation rate from velocity.
+          pVect center_to_ball =
+            pVect(hw01_center,ball->position) / hw01_radius;
+          pVect dtan = cross(hw01_axis,center_to_ball);
+          assert( dtan.mag_sq() < 1.00001 ); // Make sure it's a unit vector.
+
+          const float force_tan = dot( ball->force, dtan );
+          const float delta_v = force_tan / ball->mass * delta_t;
+          const float delta_omega = delta_v / hw01_radius;
+          hw01_omega += delta_omega;
+          hw01_theta += hw01_omega * delta_t;
+          ball->velocity = hw01_omega * hw01_radius * dtan;
+          ball->position = pos_compute(hw01_theta);
+        }
+        break;
+
+      default: assert( false );
+      }
     }
 }
 
- /// Advance Simulation State by delta_t Seconds
-//
-void
-World::time_step_cpu_orig(double delta_t)
-{
-  time_step_count++;
-
-  //
-  /// Compute force and update velocity of each ball.
-  //
-  for ( int i=0; i<chain_length; i++ )
-    {
-      Ball* const ball = &balls[i];
-
-      // Skip locked balls.
-      //
-      if ( opt_head_lock && i == 0 || opt_tail_lock && i == chain_length - 1 )
-        {
-          ball->velocity = pVect(0,0,0);
-          continue;
-        }
-
-      pVect force(0,0,0);
-
-      // Gravitational Force
-      //
-      force += ball->mass * gravity_accel;
-
-      // Spring Force from Neighbor Balls
-      //
-      for ( int direction: { -1, +1 } )
-        {
-          const int n_idx = i + direction;  // Compute neighbor index.
-
-          if ( n_idx < 0 ) continue;
-          if ( n_idx == chain_length ) continue;
-
-          Ball* const neighbor_ball = &balls[n_idx];
-
-          // Construct a normalized (Unit) Vector from ball to neighbor.
-          //
-          pNorm ball_to_neighbor( ball->position, neighbor_ball->position );
-
-          // Get distance between balls using pNorm member magnitude.
-          //
-          const float distance_between_balls = ball_to_neighbor.magnitude;
-
-          // Compute by how much the spring is stretched (positive value)
-          // or compressed (negative value).
-          //
-          const float spring_stretch =
-            distance_between_balls - distance_relaxed;
-
-          // Compute the speed of ball towards neighbor_ball.
-          //
-          pVect delta_v = neighbor_ball->velocity - ball->velocity;
-          float delta_s = dot( delta_v, ball_to_neighbor );
-
-
-          // Determine whether spring is gaining energy (whether its length
-          // is getting further from its relaxed length).
-          //
-          const bool gaining_e = ( delta_s > 0.0 ) == ( spring_stretch > 0 );
-
-          // Use a smaller spring constant when spring is loosing energy,
-          // a quick and dirty way of simulating energy loss due to spring
-          // friction.
-          //
-          const float spring_constant =
-            gaining_e ? opt_spring_constant : opt_spring_constant * 0.7;
-
-          force += spring_constant * spring_stretch * ball_to_neighbor;
-        }
-
-      // Update Velocity
-      //
-      // This code assumes that force on ball is constant over time
-      // step. This is clearly wrong when balls are moving with
-      // respect to each other because the springs are changing
-      // length. This inaccuracy will make the simulation unstable
-      // when spring constant is large for the time step.
-      //
-      ball->velocity += ( force / ball->mass ) * delta_t;
-
-      // Air Resistance
-      //
-      const double fs = pow(1+opt_air_resistance,-delta_t);
-      ball->velocity *= fs;
-    }
-
-  ///
-  /// Update Position of Each Ball
-  ///
-
-  for ( int i=0; i<chain_length; i++ )
-    {
-      Ball* const ball = &balls[i];
-
-      // Update Position
-      //
-      // Assume that velocity is constant.
-      //
-      ball->position += ball->velocity * delta_t;
-
-      // Possible Collision with Platform
-      //
-
-      // Skip if collision impossible.
-      //
-      if ( !platform_collision_possible(ball->position) ) continue;
-      if ( ball->position.y >= 0 ) continue;
-
-      // Snap ball position to surface.
-      //
-      ball->position.y = 0;
-
-      // Reflect y (vertical) component of velocity, with a reduction
-      // due to energy lost in the collision.
-      //
-      if ( ball->velocity.y < 0 )
-        ball->velocity.y = - 0.9 * ball->velocity.y;
-    }
-}
 
 bool
 World::platform_collision_possible(pCoor pos)
@@ -526,7 +494,10 @@ void World::balls_translate(pVect amt)
 void World::balls_push(pVect amt)
 { for(int i=0;i<chain_length;i++)balls[i].push(amt);}
 void World::balls_stop()
-{ for(int i=0;i<chain_length;i++)balls[i].stop();}
+{
+  for ( auto& b: balls ) b.stop();
+  hw01_omega = 0;
+}
 void World::balls_freeze(){balls_stop();}
 
 
@@ -558,10 +529,7 @@ World::frame_callback()
 
       while ( world_time < world_time_target )
         {
-          if ( opt_time_step_hw01 )
-            time_step_cpu_hw01(time_step_duration);
-          else
-            time_step_cpu_orig(time_step_duration);
+          time_step_cpu(time_step_duration);
           world_time += time_step_duration;
         }
 

@@ -392,13 +392,13 @@ public:
 
 class Cylinder {
 public:
-  Cylinder(){ dont_set_color = true; inited = false; };
+  Cylinder(int sidesp = 10):sides(sidesp)
+  { dont_set_color = true; inited = false; };
 
   void init()
   {
     PStack<pVect> points;
     PStack<pVect> normals;
-    const int sides = 10;
     const double delta_theta = 2 * M_PI / sides;
 
     for ( int i=0; i<=sides; i++ )
@@ -413,14 +413,13 @@ public:
       }
     points_bo.take(points,GL_STATIC_DRAW);
     points_bo.to_gpu();
-    normals_bo.take(points,GL_STATIC_DRAW);
+    normals_bo.take(normals,GL_STATIC_DRAW);
     normals_bo.to_gpu();
     inited = true;
   }
 
   void render_shadow_volume_exact(pCoor base, float radius, pVect to_apex)
   {
-    const int sides = 10;
     const double delta_theta = 2 * M_PI / sides;
     const double base_radius = 1;
     const double apex_height = 1;
@@ -558,6 +557,7 @@ public:
   pBuffer_Object<pVect> points_bo;
   pBuffer_Object<pVect> normals_bo;
   bool inited;
+  int sides;
   void set_color(const pColor &c) { color = c;  dont_set_color = false; }
 
   bool dont_set_color;

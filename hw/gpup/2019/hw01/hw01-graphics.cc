@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation, Graphics Code
 
@@ -51,7 +51,7 @@ public:
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
+  World(pOpenGL_Helper &fb):ogl_helper(fb),hw01_ring_guide(100){init();}
   void init();
   void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
@@ -70,9 +70,6 @@ public:
   float opt_gravity_accel;      // Value chosen by user.
   pVect gravity_accel;          // Set to zero when opt_gravity is false;
   bool opt_gravity;
-  bool opt_head_lock, opt_tail_lock;
-  bool opt_time_step_hw01;
-  int s4_call_count;
 
   // Tiled platform for ball.
   //
@@ -101,20 +98,30 @@ public:
   pMatrix transform_mirror;
   int curr_setup;
 
-  pCoor hw01_center;
-  pVect hw01_dir;
-  float hw01_r;
-  bool hw01_show_cyl;
+  // Cylinder used to show location of ring.
+  Cylinder hw01_ring_guide;
 
-  void hw01(pCoor ctr, pVect dir, float r);
-  void hw01_alt(pCoor ctr, pVect dir, float r);
+  bool hw01_rail_inited;
+
+  // Variables defining the location and size of ring.
+  pCoor hw01_center;
+  pNorm hw01_axis;
+  float hw01_radius;
+
+  // Variables derived from hw01_axis and hw01_radius.
+  pVect hw01_x, hw01_y;  // In same plane as ring.
+
+  // Variables defining ball's rotation rate and position on the ring.
+  float hw01_omega;
+  float hw01_theta;
+
+
   void ball_setup_1();
   void ball_setup_2();
   void ball_setup_3();
   void ball_setup_4();
   void ball_setup_5();
-  void time_step_cpu_orig(double);
-  void time_step_cpu_hw01(double);
+  void time_step_cpu(double);
   void balls_stop();
   void balls_freeze();
   void balls_translate(pVect amt, int idx);
@@ -126,7 +133,7 @@ public:
   float opt_air_resistance;
   float distance_relaxed;
   int chain_length;
-  Ball *balls;
+  vector<Ball> balls;
   Sphere sphere;
 };
 
@@ -139,8 +146,6 @@ World::init_graphics()
   ///
 
   opt_platform_texture = true;
-  opt_head_lock = false;
-  opt_tail_lock = false;
 
   eye_location = pCoor(24.2,11.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
@@ -154,7 +159,6 @@ World::init_graphics()
   opt_light_intensity = 100.2;
   light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
 
-
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
@@ -167,7 +171,6 @@ World::init_graphics()
   platform_update();
   modelview_update();
 
-  hw01_show_cyl = false;
 }
 
 
@@ -279,8 +282,7 @@ World::render_objects(Render_Option option)
         {
           if ( balls[i].contact )
             sphere.color = color_gray;
-          else if ( i == 0 && opt_head_lock
-                    || i == chain_length-1 && opt_tail_lock )
+          else if ( balls[i].constraint )
             sphere.color = color_pale_green;
           else
             sphere.color = color_lsu_spirit_gold;
@@ -294,13 +296,65 @@ World::render_objects(Render_Option option)
                       ball2->position-ball1->position);
         }
 
-      if ( curr_setup >= 3 && hw01_show_cyl )
+      if ( balls[0].constraint > OC_Fixed )
         {
-          Cone c;
-          c.apex_radius = 1;
-          c.render_sides = 100;
-          c.set_color(color_gray);
-          c.render(hw01_center,hw01_r,hw01_dir);
+          /// Draw a cylinder to mark the ring constraining ball[0]'s motion.
+
+          // Set the color based on whether ball motion is merely constrained
+          // to the ring or ball position rotates around the ring at
+          // a fixed rate (omega).
+          //
+          hw01_ring_guide.set_color
+            ( balls[0].constraint == OC_Ring_Free
+              ? color_gray : 0.5*color_light_sky_blue );
+          const float height = balls[0].radius * 0.5;
+
+          // Draw a squat cylinder. The cylinder is constructed once
+          // and re-used every frame. The costly trigonometric operations
+          // are only performed during construction, so there's no need
+          // to feel guilty about having 100 sides or more.
+          hw01_ring_guide.render
+            (hw01_center-hw01_axis*height,hw01_radius,2*height*hw01_axis);
+
+          ///
+          /// Live Classroom Demo Code (6 September 2019)
+          //
+          // Example of how to draw a circle.
+          //
+          // Unlike the cylinder drawn above, the code below does trig
+          // every frame. How wasteful!
+
+          /// Circle Description
+          //
+          // Center: hw01_center
+          // Axis: hw01_axis
+          // Radius: hw01_radius
+
+          const int nsides = 100;
+          const float delta_theta = 2 * M_PI / nsides;
+
+          glColor3fv(color_red);
+          glLineWidth( 3 );
+          glBegin(GL_LINE_LOOP); // Draw a series of line segments.
+
+          pNorm vxn = hw01_axis.x != 0
+            ? pVect(hw01_axis.y,-hw01_axis.x,0)
+            : pVect(0,hw01_axis.z,-hw01_axis.z);
+          float circ_r = hw01_radius + balls[0].radius;
+          pVect vy = circ_r * cross(vxn, hw01_axis );
+          pVect vx = circ_r * vxn;
+
+          for ( int i=0; i<nsides; i++ )
+            {
+              const float theta = i * delta_theta;
+              pVect v = cos(theta) * vx + sin(theta) * vy;
+              pCoor p = hw01_center + v;
+
+              glNormal3fv(v); // The normal is used by lighting calculations.
+              glVertex3fv(p); // Specify a point on the circle.
+
+            }
+          glEnd();
         }
     }
 
@@ -426,13 +480,14 @@ World::render()
 
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
+  const Object_Constraint hcon = balls[0].constraint;
+  const char* const oc_str[] =
+    { "FREE", "FIXED", "LINE-F", "RING-A", "RING-F" };
+
   ogl_helper.fbprintf
-    ("Physics: %s ('v')  Cylinder: %s ('c')  "
+    ("Head Constr: %6s ('hrR') "
      "Time Step: %8d  World Time: %11.6f  %s\n",
-     opt_time_step_hw01 ? "HW01" : "ORIG",
-     curr_setup < 3 ? "       " :
-     hw01_show_cyl ? BLINK("VISIBLE","       ") : "HIDDEN ",
-     time_step_count, world_time,
+     oc_str[hcon], time_step_count, world_time,
      opt_pause ? BLINK("PAUSED, 'p' to unpause, SPC or S-SPC to step.","") :
      "Press 'p' to pause."
      );
@@ -446,9 +501,11 @@ World::render()
   Ball& ball = balls[0];
 
   ogl_helper.fbprintf
-    ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
+    ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f] "
+     "Omega %+5.1f\n",
      ball.position.x,ball.position.y,ball.position.z,
-     ball.velocity.x,ball.velocity.y,ball.velocity.z );
+     ball.velocity.x,ball.velocity.y,ball.velocity.z,
+     hw01_omega);
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -651,6 +708,10 @@ World::cb_keyboard()
   const bool shift = ogl_helper.keyboard_shift;
   const float move_amt = shift ? 2.0 : 0.4;
 
+  Ball& hball = balls[0];
+  Ball& tball = balls[chain_length-1];
+  Object_Constraint& con = hball.constraint;
+
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
   case FB_KEY_RIGHT: adjustment.x = move_amt; break;
@@ -669,17 +730,30 @@ World::cb_keyboard()
   case '5': ball_setup_5(); break;
   case 'b': opt_move_item = MI_Ball; break;
   case 'B': opt_move_item = MI_Ball_V; break;
-  case 'c': hw01_show_cyl = !hw01_show_cyl; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
-  case 'h': case 'H': opt_head_lock = !opt_head_lock; break;
-  case 't': case 'T': opt_tail_lock = !opt_tail_lock; break;
+  case 'h': case 'H':
+    hball.constraint = hball.constraint ? OC_Free : OC_Fixed;
+    break;
+  case 't': case 'T':
+    tball.constraint = tball.constraint ? OC_Free : OC_Fixed;
+    break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
+  case 'r':
+    if ( con != OC_Ring_Free && con != OC_Ring_Animated )
+      hw01_rail_inited = false;
+    hball.constraint =
+      hball.constraint == OC_Ring_Free ? OC_Ring_Animated : OC_Ring_Free;
+    if ( hball.constraint == OC_Ring_Animated ) hw01_omega = 1;
+    break;
+  case 'R':
+    if ( con != OC_Line_Free ) hw01_rail_inited = false;
+    hball.constraint = OC_Line_Free;
+    break;
   case 's': case 'S': balls_stop(); break;
-  case 'v': case 'V': opt_time_step_hw01 = !opt_time_step_hw01; break;
-  case ' ': 
+  case ' ':
     if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true; 
     break;
