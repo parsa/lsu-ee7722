@@ -412,7 +412,7 @@ public:
       }
     points_bo.take(points,GL_STATIC_DRAW);
     points_bo.to_gpu();
-    normals_bo.take(points,GL_STATIC_DRAW);
+    normals_bo.take(normals,GL_STATIC_DRAW);
     normals_bo.to_gpu();
     inited = true;
   }
