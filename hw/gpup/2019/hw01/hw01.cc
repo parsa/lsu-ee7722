@@ -415,9 +415,6 @@ World::time_step_cpu(double delta_t)
           //
           hw01.y = cross(hw01.axis,hw01.x);
 
-          const float l = hw01.y.mag();
-          assert( fabs(l-1) < 0.0001 );
-
           hw01.omega = hball.constraint == OC_Ring_Animated ? 1 : 0;
         }
       else
