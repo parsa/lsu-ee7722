@@ -139,7 +139,7 @@ World::init_graphics()
 
   opt_platform_texture = true;
 
-  eye_location = pCoor(24.2,11.6,-38.7);
+  eye_location = pCoor(24.2,14.6,-38.7);
   eye_direction = pVect(-0.42,-0.09,0.9);
 
 
@@ -288,7 +288,7 @@ World::render_objects(Render_Option option)
                       ball2->position-ball1->position);
         }
 
-      if ( balls[0].constraint > OC_Fixed )
+      if ( balls[0].constraint > OC_Locked )
         {
           /// Draw a cylinder to mark the ring constraining ball[0]'s motion.
 
@@ -297,8 +297,9 @@ World::render_objects(Render_Option option)
           // a fixed rate (omega).
           //
           hw01_ring_guide.set_color
-            ( balls[0].constraint == OC_Ring_Free
-              ? color_gray : 0.5*color_light_sky_blue );
+            ( balls[0].constraint == OC_Ring_Animated
+              ? 0.5*color_light_sky_blue :
+              opt_hw01_do_friction ? 0.4*color_khaki : color_gray );
           const float height = balls[0].radius * 0.5;
 
           // Draw a squat cylinder. The cylinder is constructed once
@@ -331,7 +332,7 @@ World::render_objects(Render_Option option)
 
           pNorm vxn = hw01.axis.x != 0
             ? pVect(hw01.axis.y,-hw01.axis.x,0)
-            : pVect(0,hw01.axis.z,-hw01.axis.z);
+            : pVect(0,hw01.axis.z,-hw01.axis.y);
           float circ_r = hw01.radius + balls[0].radius;
           pVect vy = circ_r * cross(vxn, hw01.axis );
           pVect vx = circ_r * vxn;
@@ -474,7 +475,7 @@ World::render()
 
   const Object_Constraint hcon = balls[0].constraint;
   const char* const oc_str[] =
-    { "FREE", "FIXED", "LINE-F", "RING-A", "RING-F" };
+    { "FREE", "LOCKED", "RING-A", "RING-F" };
 
   ogl_helper.fbprintf
     ("HW01: Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
@@ -733,10 +734,10 @@ World::cb_keyboard()
 
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H':
-    hball.constraint = hball.constraint ? OC_Free : OC_Fixed;
+    hball.constraint = hball.constraint ? OC_Free : OC_Locked;
     break;
   case 't': case 'T':
-    tball.constraint = tball.constraint ? OC_Free : OC_Fixed;
+    tball.constraint = tball.constraint ? OC_Free : OC_Locked;
     break;
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
@@ -789,8 +790,8 @@ World::cb_keyboard()
       adjustment *= rotall;
 
       switch ( opt_move_item ){
-      case MI_Ball: balls_translate(adjustment,0); break;
-      case MI_Ball_V: balls_push(adjustment,0); break;
+      case MI_Ball: balls_translate(adjustment,chain_length-1); break;
+      case MI_Ball_V: balls_push(adjustment,chain_length-1); break;
       case MI_Light: light_location += adjustment; break;
       case MI_Eye: eye_location += adjustment; break;
       default: break;

@@ -106,6 +106,7 @@ struct HW01_Stuff {
 
   /// Homework 1 -- Feel free to add new members to this structure.
 
+  // If false the ring location variables need to be updated.
   bool rail_inited;
 
   // Variables defining the location and size of ring.
@@ -127,8 +128,7 @@ struct HW01_Stuff {
 enum Object_Constraint
 {
   OC_Free,
-  OC_Fixed,  // Position is never changed.
-  OC_Line_Free,
+  OC_Locked,  // Position is never changed.
   OC_Ring_Animated,
   OC_Ring_Free
 };
@@ -161,7 +161,7 @@ void
 World::init()
 {
   srand48(4702);
-  chain_length = 15;
+  chain_length = 10;
   balls.resize(chain_length);
 
   opt_hw01_do_friction = false;
@@ -224,7 +224,7 @@ World::ball_setup_1()
       ball->position = bottom_pos + i * ball_separation;
 
       ball->velocity = pVect(0,0,0);
-      ball->radius = 0.3 * distance_relaxed;
+      ball->radius = 0.3;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->constraint = OC_Free;
       ball->contact = false;
@@ -232,9 +232,6 @@ World::ball_setup_1()
 
   hw01.rail_inited = false;
   balls[0].constraint = OC_Ring_Free;
-
-  const float size = 3;
-  hw01.radius = size + size * drand48();
 }
 
 void
@@ -256,7 +253,7 @@ World::ball_setup_2()
       ball->position = first_ball_pos + i * ball_separation;
 
       ball->velocity = pVect(0,0,0);
-      ball->radius = ( i == chain_length - 1 ? 0.6 : 0.3 ) * distance_relaxed;
+      ball->radius = ( i == 0 ? 0.6 : 0.3 );
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
       ball->constraint = OC_Free;
@@ -264,19 +261,18 @@ World::ball_setup_2()
 
   hw01.rail_inited = false;
   balls[0].constraint = OC_Ring_Free;
-
-  const float size = 3;
-  hw01.radius = size + size * drand48();
 }
 
 void
 World::ball_setup_3()
 {
+  ball_setup_1();
 }
 
 void
 World::ball_setup_4()
 {
+  ball_setup_2();
 }
 
 void
@@ -371,12 +367,14 @@ World::time_step_cpu(double delta_t)
 
   /// Initialize Ring
   //
-  //  This is done when ring is in a new position.
+  //  Initialize at start and when ring is in a new position.
   //
-  if ( !hw01.rail_inited && hball.constraint > OC_Fixed )
+  if ( !hw01.rail_inited && hball.constraint > OC_Locked )
     {
       hw01.rail_inited = true;
       hw01.theta = 0;
+      const float size = 3;
+      hw01.radius = curr_setup > 2 ? 4.5 : size + size * drand48();
 
       pNorm vdir(hball.velocity);
 
@@ -385,21 +383,40 @@ World::time_step_cpu(double delta_t)
           // If ball is not moving, choose ring axis randomly.
 
           const float tilt_amt = 0.9;
-          hw01.axis = pNorm(tilt_amt*drand48(),1,tilt_amt*drand48());
+          switch ( curr_setup ) {
+          case 1: case 2:  // Random angle.
+            hw01.axis = pNorm(tilt_amt*drand48(),1,tilt_amt*drand48());
+            break;
+          case 3: // Almost straight up.
+            hw01.axis = pNorm(0.2,1,-0.2);
+            break;
+          case 4:
+            hw01.axis =
+              cross( balls[chain_length-1].position - balls[0].position,
+                     pVect(0,1,0) );
+            break;
+          default:
+            hw01.axis = pNorm(tilt_amt*drand48(),1,tilt_amt*drand48());
+            break;
+          }
 
-          // Find an axis orthogonal to hw01.axis.
+          // Find an axis orthogonal to hw01.axis, use this for local x axis.
           //
           hw01.x =
-            hw01.axis.x > hw01.axis.z
-            ? pNorm(-hw01.axis.y,hw01.axis.x,0)
-            : pNorm(0,-hw01.axis.z,hw01.axis.y);
+            hw01.axis.z != 0 && hw01.x != 0
+            ? pNorm(hw01.axis.z,0,-hw01.axis.x)
+            : pNorm(1,0,0);
 
-          // Find a place for the ring's center.
+          // Use local x axis to find center position of ring.
           //
           hw01.center = hball.position - hw01.x * hw01.radius;
 
-          // Set y and rotation rate.
+          // Compute local y axis
+          //
           hw01.y = cross(hw01.axis,hw01.x);
+
+          const float l = hw01.y.mag();
+          assert( fabs(l-1) < 0.0001 );
 
           hw01.omega = hball.constraint == OC_Ring_Animated ? 1 : 0;
         }
@@ -408,33 +425,52 @@ World::time_step_cpu(double delta_t)
           // If ball is moving, position ring so that velocity direction
           // is a tangent to the ring.
 
+          // Set local y axis to direction of ball's velocity vector.
+          //
           hw01.y = vdir;
+          //
+          // This way, the ring smoothly "catches" the ball.
+
+          // Make local x axis orthogonal to the local and global y axes.
+          //
           hw01.x = pNorm( cross( hw01.y, pVect(0,-1,0) ) );
+
+          // Compute local z axis (the ring axis)
+          //
           hw01.axis = cross(hw01.x,hw01.y);
           hw01.center = hball.position - hw01.radius * hw01.x;
+
+          // Set omega so that speed of ring matches speed of ball.
+          //
           hw01.omega = vdir.magnitude / hw01.radius;
         }
 
     }
 
+  /// Update Velocity and Position of Each Ball
+  //
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
 
+      // Select appropriate velocity/position update based upon
+      // ball's constraint.
+
       switch ( ball->constraint ) {
 
       case OC_Free:
-        // Ball motion determined by forces computed in the code above.
+        //
+        // No constraints, use the force as computed above ..
+        // .. and check for and resolve platform collision.
 
         // Update Velocity and Position
         //
         ball->velocity += ( ball->force / ball->mass ) * delta_t;
-        ball->velocity *= fs;
+        ball->velocity *= fs;  // Air resistance.
         ball->position += ball->velocity * delta_t;
 
         // Possible Collision with Platform
         //
-
         // Skip if collision impossible.
         //
         if ( !platform_collision_possible(ball->position) ) break;
@@ -443,45 +479,69 @@ World::time_step_cpu(double delta_t)
         // Reflect y (vertical) component of velocity, with a reduction
         // due to energy lost in the collision.
         //
-        if ( ball->velocity.y < 0 )
-          ball->velocity.y = - 0.9 * ball->velocity.y;
+        if ( ball->velocity.y < 0 ) ball->velocity.y = - 0.9 * ball->velocity.y;
         break;
 
-      case OC_Fixed:
-        // Ball does not move. Forces are ignored.
+      case OC_Locked:
+        //
+        // Ball does not move. Forces are ignored and position does not change.
 
         ball->velocity = pVect(0,0,0);
         break;
 
       case OC_Ring_Animated:
-        // Ball attached to ring and rotates with it at rate omega.
+        //
+        // Ball attached to ring and rotates with it at fixed rate omega.
         {
+          // Compute amount by which ring will rotate during this time step.
+          //
           const double delta_theta = delta_t * hw01.omega;
+
+          // Update velocity vector.
+          //
           ball->velocity =
             hw01.omega * hw01.radius *
             ( -sinf(hw01.theta) * hw01.x + cosf(hw01.theta) * hw01.y );
+
+          // Update the position angle and the position Cartesian coordinate.
+          //
           hw01.theta += delta_theta;
           ball->position = pos_compute(hw01.theta);
         }
         break;
 
       case OC_Ring_Free:
+        //
         // Ball can slide along ring freely.
         {
-          /// Put Problem 1 solution code here, mostly.
+          /// Put Problem 1 solution here, mostly.
+
+          // Quantity ball->force is the force on the ball due to its
+          // neighbor and to gravity. Since the ball is constrained
+          // to move in a circle (along the ring) 
 
 
-          // Compute rotation rate from velocity.
           pVect center_to_ball =
             pVect(hw01.center,ball->position) / hw01.radius;
+          //
+          // Note: center_to_ball should be a unit vector.
+
           pVect dtan = cross(hw01.axis,center_to_ball);
           assert( dtan.mag_sq() < 1.0001 ); // Make sure it's a unit vector.
 
+          // Compute force in direction of motion along ring.
+          //
           const float force_tan = dot( ball->force, dtan );
+
+          // Compute change in velocity and the corresponding change
+          // in rotation rate.
+          //
           const float delta_v = force_tan / ball->mass * delta_t;
           const float delta_omega = delta_v / hw01.radius;
-          hw01.omega += delta_omega;
 
+          // Update the rotation rate, angle, linear velocity, and position.
+          //
+          hw01.omega += delta_omega;
           hw01.theta += hw01.omega * delta_t;
           ball->velocity = hw01.omega * hw01.radius * dtan;
           ball->position = pos_compute(hw01.theta);
@@ -491,6 +551,18 @@ World::time_step_cpu(double delta_t)
       default: assert( false );
       }
     }
+
+  if ( opt_hw01_spin && hball.constraint >= OC_Ring_Animated )
+    {
+      /// Put Problem 2 solution mostly here.
+      //
+      //  But, feel free to declare new members in HW01_Stuff
+
+
+
+
+    }
+
 }
 
 
