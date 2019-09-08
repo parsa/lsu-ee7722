@@ -630,14 +630,20 @@ public:
   pNorm(pVect from, pVect to){set(pVect(from,to));}
   pNorm(pCoor from, pCoor to){set(pVect(from,to));}
   pNorm(pVect v){set(v);}
-  void set(pVect v)
+  void set(const pVect& v)
   {
     mag_sq = dot(v,v);
     magnitude = sqrtf(mag_sq);
     pVect v2 = magnitude == 0 ? pVect(0,0,0) : v / magnitude;
     pVect::set(v2);
   }
-  void operator = (pVect v) { set(v); }
+  void operator = (const pVect& v) { set(v); }
+  void operator = (const pNorm& n)
+  {
+    pVect::set(n);
+    magnitude = n.magnitude;
+    mag_sq = n.mag_sq;
+  }
   float magnitude;
   float mag_sq;
 };
