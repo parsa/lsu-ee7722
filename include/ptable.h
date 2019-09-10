@@ -129,7 +129,8 @@ public:
         // Multi-Column Headers
         sort( span_info.begin(), span_info.end(),
               [](Span_Info a, Span_Info b)
-              { return a.col_num < b.col_num || a.ncols < b.ncols; } );
+              { return a.col_num < b.col_num
+                  || a.col_num == b.col_num && a.ncols < b.ncols; } );
         for ( auto& si: span_info )
           {
             if ( hls.back().length() > 0 ) hls.emplace_back("");
