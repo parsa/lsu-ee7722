@@ -50,8 +50,9 @@
 //
 //     :Def: Projection
 //           Transform from eye to clip.
+//
 
-//   Setting Matrices
+ ///  Setting Matrices
 //
 //  -- First, specify which matrix:
 //
@@ -89,8 +90,15 @@
        // Before: transform = my_matrix_a.
        // After: transform = my_matrix_a * my_matrix_b.
 
-       glMultTransposeMatrixf( my_matrix_b );
+       // Multiply the current transform by a new matrix in row-major order.
        //
+       glMultTransposeMatrixf( my_matrix_c );
+       //
+       // Before: transform = my_matrix_a * my_matrix_b.
+       // After: transform = my_matrix_a * my_matrix_b * my_matrix_c.
+       //
+       // Note: We are assuming that the layout of my_matrix_b is 
+       // column-major and my_matrix_c is row-major.
 
        // Multiply current transform by a right-hand rotation.
        //
@@ -100,13 +108,16 @@
        //
        glTranslatef( tran_x, tran_y, tran_z );
 
-       // Multiply current transform by a translation.
+       // Multiply current transform by a scale.
        //
        glScalef( s_x, s_y, s_z );
 
        // Multiply current transform by a perspective (frustum) projection.
        //
        glFrustum( left, right, bottom, top, near, far );
+       //
+       // Typically a perspective transform is used with the projection
+       // matrix.
 
 //  -- Third, leave things the way they were.
 //
@@ -149,7 +160,7 @@
 //
 //   Such a vector could easily represent two important quantities:
 //
-//     - Homogeneous coordinate: (x,y,z,w)
+//     - A homogeneous coordinate: (x,y,z,w)
 //     - A color with transparency:  (r,g,b,a)
 //
 //     Coordinates and colors make up a large fraction of the data
@@ -163,7 +174,7 @@
 //     ... is not worth the trouble of having two attribute sizes ...
 //     ... especially if one of those sizes is not a power of 2.
 //
-//  Attribute Values in the year 2017
+//  Attribute Values in the year 2019
 //
 //     Performance is still best when attributes are 4-element vectors.
 //     ( In fact, other kinds of values should also have a power-of-2 size.)
@@ -172,7 +183,7 @@
  /// Vertex Attributes
  //
  //  :lindholm01: Description of an early GPU, showing origin of attrib limits.
- //  http://www.ece.lsu.edu/koppel/gp/srefs/p149-lindholm.pdf
+ //  https://www.ece.lsu.edu/koppel/gp/srefs/p149-lindholm.pdf
  //
  //  Older versions of OpenGL defined 16 attributes ..
  //  .. each with a specific purpose.
@@ -580,12 +591,8 @@ World::render()
 
   pError_Check();
 
-  glColor3f(0.5,1,0.5);
-
-  glDisable(GL_LIGHTING);
-  glDisable(GL_DEPTH_TEST);
   frame_timer.frame_end();
-
+  ogl_helper.user_text_reprint();
   glutSwapBuffers();
 }
 
