@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
  /// Textures, Blending, the Alpha Test, and Stencils
 
@@ -8,14 +8,14 @@
 
 /// References
 //
-// :ogl45: OpenGL Specification Version 4.5
-//         http://www.opengl.org/registry/doc/glspec45.compatibility.pdf
+// :ogl46: OpenGL Specification Version 4.6
+//         http://www.opengl.org/registry/doc/glspec46.compatibility.pdf
 
 #if 0
 /// Background -- Textures
 //
 
-// :ogl45: Chapter 8
+// :ogl46: Chapter 8
 
 //  :Def: Texture
 //   An image applied to a primitive, like wallpaper.
@@ -77,7 +77,7 @@
 //   Texture filtering has a very strong impact on image appearance.
 //
 //   Texture filtering is compute intensive, and is one of the few
-//   graphics operations that still (in 2016) uses special-purpose GPU
+//   graphics operations that still (in 2019) uses special-purpose GPU
 //   hardware.
 
 
@@ -153,7 +153,7 @@
   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, 1);
 //
 //   - Load image into memory.
-//     Example below uses the Image Magick library
+//     Example below uses the Graphics Magick library
 //
   Magick::Image image( "my_cool_picture.jpeg" );
 //
@@ -178,8 +178,8 @@
 
 /// Background -- Fragment Tests, Blending, FB Update
 
- // :ogl45: Chapter 14: Fixed-Function Primitive Assembly and Rasterization
- // :ogl45: Chapter 17: Writing fragments and samples to the framebuffer.
+ // :ogl46: Chapter 14: Fixed-Function Primitive Assembly and Rasterization
+ // :ogl46: Chapter 17: Writing fragments and samples to the framebuffer.
 
  /// Major Steps
  //
@@ -253,7 +253,7 @@
 
 ///  Background -- Stencil Operations
 //
-//   :ogl45: Section 17.3.3
+//   :ogl46: Section 17.3.3
 //
 //   :Def: Stencil Buffer
 //   A layer of the frame buffer holding one integer for each pixel.
@@ -716,9 +716,12 @@ World::render()
   // Set parameters that apply to a texture (texture_id_syllabus).
   //
   glTexParameteri
-    (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+     texture_min_filters[opt_texture_min_filter].value);
+
   glTexParameteri
-    (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+     texture_mag_filters[opt_texture_mag_filter].value);
 
   // Set parameter for the active texture unit.
   //
