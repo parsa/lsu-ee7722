@@ -15,10 +15,9 @@
 template <typename T>
 class pBuffer_Object {
 public:
-  pBuffer_Object(){ data = NULL; init(); }
+  pBuffer_Object(){ init(); }
   ~pBuffer_Object()
   {
-    if ( data ) free(data);
     glDeleteBuffers(created,bids);
   }
 
@@ -38,24 +37,14 @@ public:
   T* alloc(int elements_p, GLenum hint = GL_DYNAMIC_COPY)
   {
     usage_hint = hint;
-    if ( data ) pError_Msg("Double allocation of pBuffer_Object.");
+    if ( !data.empty() ) pError_Msg("Double allocation of pBuffer_Object.");
     elements = elements_p;
     chars = elements * sizeof(T);
-    data = new T[elements];
+    data.resize(elements);
     created = 1;
     alloc_gpu_buffer();
     glBindBuffer(btarget,0);
-    return data;
-  }
-
-  void re_take(vector<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
-            GLenum default_target = GL_ARRAY_BUFFER)
-  {
-    const int elements_taking = stack.size();
-    const size_t sz_char = sizeof(T) * elements_taking;
-    T* const cpy = new T[elements_taking];
-    memcpy(cpy,stack.data(),sz_char);
-    re_take(cpy,elements_taking,hint,default_target);
+    return data.data();
   }
 
   void re_take(PStack<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
@@ -68,13 +57,21 @@ public:
   void re_take(T* stack, int elements_taking, GLenum hint = GL_DYNAMIC_COPY,
             GLenum default_target = GL_ARRAY_BUFFER)
   {
+    vector<T> cpy(stack,stack+elements_taking);
+    re_take( cpy, hint, default_target );
+  }
+
+  void re_take
+  ( vector<T>& stack,
+    GLenum hint = GL_DYNAMIC_COPY, GLenum default_target = GL_ARRAY_BUFFER)
+  {
     const bool first_alloc = !created;
+    const int elements_taking = stack.size();
     usage_hint = hint;
     btarget = default_target;
     if ( !first_alloc && elements_taking != elements )
       pError_Msg("Second filling of pBuffer_Object with different # elem.");
-    if ( !first_alloc ) free(data);
-    data = stack;
+    swap(data,stack);
     if ( !first_alloc ) return;
     elements = elements_taking;
     chars = elements * sizeof(T);
@@ -85,7 +82,14 @@ public:
   void take(PStack<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
             GLenum default_target = GL_ARRAY_BUFFER)
   {
-    if ( data ) pError_Msg("Double allocation of pBuffer_Object.");
+    if ( !data.empty() ) pError_Msg("Double allocation of pBuffer_Object.");
+    re_take(stack,hint,default_target);
+  }
+
+  void take(vector<T>& stack, GLenum hint = GL_DYNAMIC_COPY,
+            GLenum default_target = GL_ARRAY_BUFFER)
+  {
+    if ( !data.empty() ) pError_Msg("Double allocation of pBuffer_Object.");
     re_take(stack,hint,default_target);
   }
 
@@ -99,6 +103,7 @@ private:
   void alloc_gpu_buffer()
   {
     bind();
+    pError_Check();
     glBufferData(btarget,chars,NULL,usage_hint);
     pError_Check();
   }
@@ -107,7 +112,7 @@ public:
   void to_gpu()
   {
     bind();
-    glBufferData(btarget, chars, data, usage_hint);
+    glBufferData(btarget, chars, data.data(), usage_hint);
     pError_Check();
   }
 
@@ -116,7 +121,7 @@ public:
     bind();
     T* const from_data = (T*)glMapBuffer(GL_ARRAY_BUFFER,GL_READ_ONLY);
     pError_Check();
-    memcpy(data,from_data,chars);
+    memcpy(data.data(),from_data,chars);
     glUnmapBuffer(btarget);
     glBindBuffer(btarget,0);
   }
@@ -149,7 +154,7 @@ public:
   GLenum usage_hint;
   GLenum btarget;
   int created, current;
-  T *data;
+  vector<T> data;
   int elements, chars;
 };
 
