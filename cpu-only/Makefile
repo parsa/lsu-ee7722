@@ -8,13 +8,12 @@ GP_ROOT =  ..
 COURSE_INCLUDE_DIR = $(GP_ROOT)/include
 
 INCLUDE = -I$(COURSE_INCLUDE_DIR)
-LIBDIR  =
 
 PROG_NAMES = simple demo-1-one-triangle demo-2-many-triangles \
  demo-3-color-and-z-buffering demo-4-lighting demo-5-textures
 
-CFLAGSMAGIK_MAYBE := $(shell Magick++-config --cppflags --cxxflags)
-LDFLAGSMAGIK := $(shell Magick++-config  --ldflags --libs)
+CFLAGSMAGIK_MAYBE := $(shell GraphicsMagick++-config --cppflags --cxxflags)
+LDFLAGSMAGIK := $(shell GraphicsMagick++-config  --libs)
 ifeq ($(CFLAGSMAGIK_MAYBE),)
 CFLAGSMAGIK :=
 else
@@ -25,11 +24,10 @@ ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 
 default: $(PROG_NAMES)
 
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)  -g3  $(CFLAGSMAGIK)  -march=native
-COMPILERFLAGS = -Wall 
-CC = gcc
+CXXFLAGS = -std=c++11 -g3 -march=native -Wall -fopenmp
+CXXFLAGS +=  $(INCLUDE) $(CFLAGSMAGIK)
+
 CXX = g++
-CXXFLAGS = $(CFLAGS)
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt $(LDFLAGSMAGIK)
 
 OBJ_NAMES = $(PROG_NAMES:=.o)
@@ -37,11 +35,11 @@ OBJ_NAMES = $(PROG_NAMES:=.o)
 $(OBJ_NAMES): frame_buffer.h coord.h Makefile $(COURSE_INCLUDE_DIR)/misc.h
 
 $(PROG_NAMES): %: %.o Makefile
-	$(CXX) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LIBRARIES)
 
-.cc.o:
-	$(CXX) $(CFLAGS) -fverbose-asm -S $*.cc -o - | $(ASM_WSRC) > $*.s
-	$(CXX) $(CFLAGS) -c $*.s
+%.o: %.cc Makefile
+	$(CXX) $(CXXFLAGS) -fverbose-asm -S $*.cc -o - | $(ASM_WSRC) > $*.s
+	$(CXX) $(CXXFLAGS) -c $*.s
 
 clean:
 	/bin/rm -f *.s  *.o *~ *.sass *.cubin *.ptx *.html $(PROG_NAMES)
