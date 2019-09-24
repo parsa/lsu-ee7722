@@ -564,14 +564,18 @@ World::time_step_cpu(double delta_t)
               //
               float force_fric =
                 opt_hw01_fric_coefficient * force_other.magnitude;
+              //
+              // Note that force_fric is never negative.
 
               // Compute the change in rotation rate due to this force.
               //
               float delta_omega_fric =
                 force_fric / ( ball->mass * hw01.radius ) * delta_t;
 
-              // Compute the new rotation rate, taking care to set it
-              // to zero rather than changing its direction.
+              // Compute the new rotation rate by applying the
+              // frictional force in the direction opposite of
+              // rotation, and taking care to set it to zero rather
+              // than changing its direction if that would happen.
               //
               hw01.omega =
                 fabs(hw01.omega) < delta_omega_fric ? 0 :
