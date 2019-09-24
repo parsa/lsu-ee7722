@@ -8,7 +8,7 @@
  //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2019/hw02.pdf
  //
  //  Most of the solution should be in routine time_step_cpu.
- //  Also, feel free to add members to structure HW01_Stuff.
+ //  Also, feel free to add members to structure HW02_Stuff.
  //
  //  Only this file will be collected.
 
@@ -104,8 +104,6 @@ class World;
 struct HW01_Stuff {
   // This is a member of world, named hw01. E.g., hw01.rail_inited.
 
-  /// Homework 1 -- Feel free to add new members to this structure.
-
   // If false the ring location variables need to be updated.
   bool rail_inited;
 
@@ -125,7 +123,6 @@ struct HW01_Stuff {
 
   pMatrix xform_spin;   // Rotation matrix for spinning ring.
   double spin_delta_t;  // Delta t for which rotation matrix computed.
-
 };
 
 enum Object_Constraint
@@ -292,8 +289,6 @@ World::ball_setup_5()
 void
 World::time_step_cpu(double delta_t)
 {
-  /// Homework 1 Solution In This Routine
-
   time_step_count++;
 
   //
@@ -448,8 +443,6 @@ World::time_step_cpu(double delta_t)
           hw01.omega = vdir.magnitude / hw01.radius;
         }
 
-      /// SOLUTION -- Problem 2
-      //
       //  If we are here something about the ring has changed, so
       //  force the recomputation of the ring spin matrix.
       //
@@ -523,12 +516,9 @@ World::time_step_cpu(double delta_t)
         //
         // Ball can slide along ring freely.
         {
-          /// Put Problem 1 solution here, mostly.
-
           // Quantity ball->force is the force on the ball due to its
           // neighbor and to gravity. Since the ball is constrained
           // to move in a circle (along the ring) 
-
 
           pVect center_to_ball =
             pVect(hw01.center,ball->position) / hw01.radius;
@@ -552,8 +542,6 @@ World::time_step_cpu(double delta_t)
           //
           hw01.omega += delta_omega;
 
-          /// SOLUTION -- Problem 1
-          //
           if ( opt_hw01_do_friction )
             {
               // Find the force against the ring, which is anything
@@ -593,13 +581,6 @@ World::time_step_cpu(double delta_t)
 
   if ( opt_hw01_spin && hball.constraint >= OC_Ring_Animated )
     {
-      /// Put Problem 2 solution mostly here.
-      //
-      //  But, feel free to declare new members in HW01_Stuff
-
-
-      /// SOLUTION -- Problem 2
-
       // Check whether rotation matrix needs to be updated.
       //
       if ( hw01.spin_delta_t != delta_t )
@@ -743,41 +724,42 @@ World::render_cylinder(Render_Option roption)
 
   /// Draw bumps.
   const float size = opt_hw02_size;
-  const float spacing = size / 2;
-  const float delta_theta = ( size + spacing ) / hw01.radius;
+  const float spacing = size;
+  const int n_per_rev = 2 * M_PI * hw01.radius / ( size + spacing ) + 0.5;
+  const float delta_theta = 2 * M_PI / ( n_per_rev + 0.5 );
   const float size_d_theta = size / ( sqrtf(2) * hw01.radius );
   pNorm ax(hw01.x), ay(hw01.y);
   const float r = hw01.radius + size * 0.5;
   glColor3fv(color_red);
-  const int n_rings = max(1, int( 2 * height / ( size + spacing ) ) );
+  const float n_revs = max(1.0f, 2 * height / ( size + spacing ) );
+  const float theta_stop = 2 * M_PI * n_revs;
   pVect vd = 0.5 * sqrtf(2) * size * hw01.axis;
-  for ( int i=0; i<n_rings; i++ )
+  pCoor ctr0 = hw01.center - hw01.axis * height;
+  const float ndz_per_rev = ( size + spacing ) / ( 0.5 * sqrtf(2) * size );
+  const float theta_to_ndz = ndz_per_rev / ( 2 * M_PI );
+  for ( float theta = 0;  theta < theta_stop;  theta += delta_theta )
     {
-      const float theta_0 = i & 1 ? delta_theta / 2 : 0;
-      pVect vdi = vd * 2 * i;
-      pCoor ctr = hw01.center - hw01.axis * height + vdi;
-      for ( float theta = theta_0;  theta < 2 * M_PI;  theta += delta_theta )
-        {
-          pVect nt = ax * sinf(theta) + ay * cosf(theta);
-          pCoor ctop = ctr + r * nt;
-          pVect nl =
-            ax * sinf(theta-size_d_theta) + ay * cosf(theta-size_d_theta);
-          pVect nr =
-            ax * sinf(theta+size_d_theta) + ay * cosf(theta+size_d_theta);
-          pCoor cl = ctr + r * nl + vd;
-          pCoor cr = ctr + r * nr + vd;
-          pCoor cbot = ctop + vd + vd;
-          glBegin(GL_TRIANGLE_STRIP);
-          glNormal3fv(nt);
-          glVertex3fv(ctop);
-          glNormal3fv(nl);
-          glVertex3fv(cl);
-          glNormal3fv(nr);
-          glVertex3fv(cr);
-          glNormal3fv(nt);
-          glVertex3fv(cbot);
-          glEnd();
-        }
+      pCoor ctr = ctr0 + vd * theta * theta_to_ndz;
+
+      pVect nt = ax * sinf(theta) + ay * cosf(theta);
+      pCoor ctop = ctr + r * nt;
+      pVect nl =
+        ax * sinf(theta-size_d_theta) + ay * cosf(theta-size_d_theta);
+      pVect nr =
+        ax * sinf(theta+size_d_theta) + ay * cosf(theta+size_d_theta);
+      pCoor cl = ctr + r * nl + vd;
+      pCoor cr = ctr + r * nr + vd;
+      pCoor cbot = ctop + vd + vd;
+      glBegin(GL_TRIANGLE_STRIP);
+      glNormal3fv(nt);
+      glVertex3fv(ctop);
+      glNormal3fv(nl);
+      glVertex3fv(cl);
+      glNormal3fv(nr);
+      glVertex3fv(cr);
+      glNormal3fv(nt);
+      glVertex3fv(cbot);
+      glEnd();
     }
 
 }
