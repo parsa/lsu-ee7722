@@ -100,7 +100,7 @@ public:
       {
         PixelPacket& p = pp[i];
         const int sum = p.red + p.blue + p.green;
-        p.opacity = (typeof p.opacity)( MaxRGB - sum * 0.3333333 );
+        p.opacity = decltype(p.opacity)( MaxRGB - sum * 0.3333333 );
         p.red = p.blue = p.green = MaxRGB;
       }
   }
@@ -134,7 +134,9 @@ private:
 
 class pGraphics_State {
 public:
-  pGraphics_State():texture(NULL){}
+  pGraphics_State():texture(NULL){
+    Magick::InitializeMagick(NULL);
+  }
   pTexture *texture;
 };
 

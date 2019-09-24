@@ -84,7 +84,7 @@ public:
   ~pString(){
     if(s) free(s);
   };
-  char *sprintf(const char *fmt,...)
+  char *sprintf(const char *fmt,...)  __attribute__ ((format(printf,2,3)))
   {
     va_list ap;
 

@@ -81,8 +81,6 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
 
   pMatrix_Frustum frustum(12,20,1,20);
 
-  pCoor cx1 = frustum * center_eye * c0;
-
 
   // Transform to window coordinates.
   //
@@ -91,13 +89,9 @@ render_one_triangle(pFrame_Buffer &frame_buffer)
 
   pMatrix_Translate center_window(1,1,0);
 
-  pCoor cx2 = center_window * frustum * center_eye * c0;
-
   pMatrix_Scale scale(win_width/2);
 
   pMatrix transform = scale * center_window * frustum * center_eye;
-
-  pCoor cx3 = transform * c0;
 
   //
   // Apply transformation to transform triangle coordinates from

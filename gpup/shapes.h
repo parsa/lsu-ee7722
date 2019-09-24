@@ -78,11 +78,12 @@ Sphere::init(int slicesp)
   const double epsilon = 0.001 * delta_theta;
   const double pi_me = M_PI - epsilon;  // pi minus epsilon.
   const double two_pi_me = two_pi - epsilon;
-  PStack<pVect> points;
-  PStack<float> tex_coord;
+  vector<pVect> points;
+  vector<float> tex_coord;
   bool up = true;
-  points += pVect(0,1,0);
-  tex_coord += 1-(delta_theta/two_pi) * 0.5;  tex_coord += 0;
+  points.emplace_back(0,1,0);
+  tex_coord.push_back( 1-(delta_theta/two_pi) * 0.5 );
+  tex_coord.push_back( 0 );
   for ( double theta = 0; theta < two_pi_me; theta += delta_theta )
     {
       const double theta1 = theta + delta_theta;
@@ -100,15 +101,17 @@ Sphere::init(int slicesp)
           const float x0 = slice_r * cos_th0;
           const float z0 = slice_r * sin_th0;
           const float tc_t = eta / M_PI;
-          points += pVect(x0,y,z0);
-          tex_coord += 1-tc_s0;  tex_coord += tc_t;
-          points += pVect(slice_r * cos_th1, y, slice_r * sin_th1);
-          tex_coord += 1-tc_s1;  tex_coord += tc_t;
+          points.emplace_back(x0,y,z0);
+          tex_coord.push_back(1-tc_s0);  tex_coord.push_back(tc_t);
+          points.emplace_back(slice_r * cos_th1, y, slice_r * sin_th1);
+          tex_coord.push_back(1-tc_s1);  tex_coord.push_back(tc_t);
         }
-      points += pVect(0,up ? 1 : -1,0);
-      tex_coord += 1-(tc_s0 + tc_s1) * 0.5;  tex_coord += up ? 0 : 1;
+      points.emplace_back(0,up ? 1 : -1,0);
+      tex_coord.push_back(1-(tc_s0 + tc_s1) * 0.5);
+      tex_coord.push_back(up ? 0 : 1);
       up = !up;
     }
+  pError_Check();
   points_bo.take(points,GL_STATIC_DRAW);
   points_bo.to_gpu();
   tex_coord_bo.take(tex_coord,GL_STATIC_DRAW);
@@ -266,7 +269,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   shadow_volume_points_bo.bind();
   glVertexPointer(3,GL_FLOAT,sizeof(pVect),0);
   glEnableClientState(GL_VERTEX_ARRAY);
-  glDrawArrays(GL_QUAD_STRIP,0,shadow_volume_points_bo.elements);
+  glDrawArrays(GL_TRIANGLE_STRIP,0,shadow_volume_points_bo.elements);
   glDisableClientState(GL_VERTEX_ARRAY);
   glPopMatrix();
 }
@@ -323,7 +326,7 @@ public:
             const bool facing_light = dot(quad_normal,l_to_00) > 0;
             glFrontFace(facing_light ? GL_CCW : GL_CW );
 
-            glBegin(GL_QUAD_STRIP);
+            glBegin(GL_TRIANGLE_STRIP);
             glVertex3fv(p00);
             glVertex3fv(p00_2);
             glVertex3fv(p01);
@@ -367,7 +370,7 @@ public:
     glMultTransposeMatrixf(xform.a);
 
     if ( !dont_set_color ) glColor3fv(color);
-    glBegin(GL_QUAD_STRIP);
+    glBegin(GL_TRIANGLE_STRIP);
     for ( int i=0; i<=sides; i++ )
       {
         const double theta = delta_theta * i;
@@ -395,8 +398,8 @@ public:
 
   void init()
   {
-    PStack<pVect> points;
-    PStack<pVect> normals;
+    vector<pVect> points;
+    vector<pVect> normals;
     const int sides = 10;
     const double delta_theta = 2 * M_PI / sides;
 
@@ -405,10 +408,10 @@ public:
         const double theta = delta_theta * i;
         const double cos_t = cos(theta);
         const double sin_t = sin(theta);
-        normals += pVect( cos_t, sin_t, 0 );
-        normals += pVect( cos_t, sin_t, 0 );
-        points += pVect( cos_t, sin_t, 1 );
-        points += pVect( cos_t, sin_t, 0 );
+        normals.emplace_back( cos_t, sin_t, 0 );
+        normals.emplace_back( cos_t, sin_t, 0 );
+        points.emplace_back( cos_t, sin_t, 1 );
+        points.emplace_back( cos_t, sin_t, 0 );
       }
     points_bo.take(points,GL_STATIC_DRAW);
     points_bo.to_gpu();
@@ -465,7 +468,7 @@ public:
             const bool facing_light = dot(quad_normal,l_to_00) > 0;
             glFrontFace(facing_light ? GL_CCW : GL_CW );
 
-            glBegin(GL_QUAD_STRIP);
+            glBegin(GL_TRIANGLE_STRIP);
             glVertex3fv(p00);
             glVertex3fv(p00_2);
             glVertex3fv(p01);
@@ -508,7 +511,7 @@ public:
     pVect l_to_pn(light_pos,cor_pn);
     pVect l_to_pp(light_pos,cor_pp);
 
-    glBegin(GL_QUAD_STRIP);
+    glBegin(GL_TRIANGLE_STRIP);
 
     glVertex3fv(cor_nn); glVertex3fv(cor_nn + 1000 * l_to_nn );
     glVertex3fv(cor_np); glVertex3fv(cor_np + 1000 * l_to_np );
