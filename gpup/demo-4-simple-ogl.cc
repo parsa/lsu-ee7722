@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
  /// Minimal OpenGL Program
 
@@ -73,6 +73,10 @@
 /// OpenGL Primitives and The Rendering Pass
 //
 // :ogl46: Section 10.1  Primitives
+
+ // :Practice Problems:
+ //  2018 Final Exam Problem 1 Drawing simple figures.
+ // https://www.ece.lsu.edu/koppel/gpup/2018/fe.pdf
 
  // :Def: OpenGL Primitive
  // A shape (or collection of shapes) that OpenGL can render on to the
@@ -229,6 +233,8 @@ render()
 
   // Note: Coordinate spaces and transformation matrices described
   // in demo-5-more-ogl.cc.
+  //
+  // In other words, you can skip ahead to the "Purple Triangle" section.
 
   // Tell OpenGL that subsequent matrix commands are for modelview matrix.
   //
