@@ -38,6 +38,10 @@
 //     During a Rendering Pass
 //     - Provide a texture coordinate for each vertex, indicating
 //       what part of the texture image corresponds to the vertex location.
+//       :Practice Problems:
+//        Fall 2017 Midterm Exam Problem 3
+//        https://www.ece.lsu.edu/koppel/gpup/2017/mt.pdf
+//        https://www.ece.lsu.edu/koppel/gpup/2017/mt-sol.pdf
 //
  /// What Happens (In a Simple Case)
 //
