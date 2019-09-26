@@ -7,7 +7,7 @@
  //
  //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2019/hw02.pdf
  //
- //  Most of the solution should be in routine time_step_cpu.
+ //  Most of the solution should be in routine render_cylinder.
  //  Also, feel free to add members to structure HW02_Stuff.
  //
  //  Only this file will be collected.
@@ -125,6 +125,12 @@ struct HW01_Stuff {
   double spin_delta_t;  // Delta t for which rotation matrix computed.
 };
 
+struct HW02_Stuff {
+  // This is a member of world, named hw02.
+  // Feel free to add members as needed.
+
+};
+
 enum Object_Constraint
 {
   OC_Free,
@@ -161,11 +167,17 @@ void
 World::init()
 {
   srand48(4702);
+
+  opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
+
   chain_length = 10;
   balls.resize(chain_length);
 
-  opt_hw02_size = 0.025;
+  opt_hw02_size = 0.1;
   variable_control.insert(opt_hw02_size,"Bump Size");
+
+  opt_tryoutf = 0;
+  variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
 
   opt_hw01_do_friction = false;
   opt_hw01_spin = false;
@@ -173,11 +185,16 @@ World::init()
   hw01.opt_spin_omega = 0.2;
 
   hw01.omega = 1;
-  variable_control.insert(hw01.omega,"Rotation rate.");
-  variable_control.insert(hw01.opt_spin_omega,"Spin rate.");
-
   opt_hw01_fric_coefficient = 0.1;
-  variable_control.insert(opt_hw01_fric_coefficient,"Friction Coefficient");
+
+  const bool hw01_controls = false;
+
+  if ( hw01_controls )
+    {
+      variable_control.insert(hw01.omega,"Rotation rate.");
+      variable_control.insert(hw01.opt_spin_omega,"Spin rate.");
+      variable_control.insert(opt_hw01_fric_coefficient,"Friction Coefficient");
+    }
 
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 1000;
@@ -713,7 +730,7 @@ World::render_cylinder(Render_Option roption)
     ( balls[0].constraint == OC_Ring_Animated
       ? 0.5*color_light_sky_blue :
       opt_hw01_do_friction ? 0.4*color_khaki : color_gray );
-  const float height = balls[0].radius * 0.5;
+  const float height = balls[0].radius * 2;
 
   // Draw a squat cylinder. The cylinder is constructed once
   // and re-used every frame. The costly trigonometric operations
@@ -722,45 +739,69 @@ World::render_cylinder(Render_Option roption)
   hw01_ring_guide.render
     (hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
 
-  /// Draw bumps.
+  /// Place Homework 2 Problem 2 solution code somewhere below.
+
+  /// Draw Squares (Diamonds) Above the Ring
+  //
   const float size = opt_hw02_size;
-  const float spacing = size;
+  const float spacing = 2*size;
   const int n_per_rev = 2 * M_PI * hw01.radius / ( size + spacing ) + 0.5;
   const float delta_theta = 2 * M_PI / ( n_per_rev + 0.5 );
   const float size_d_theta = size / ( sqrtf(2) * hw01.radius );
   pNorm ax(hw01.x), ay(hw01.y);
-  const float r = hw01.radius + size * 0.5;
-  glColor3fv(color_red);
+  const float r = hw01.radius + size * 3;
   const float n_revs = max(1.0f, 2 * height / ( size + spacing ) );
   const float theta_stop = 2 * M_PI * n_revs;
   pVect vd = 0.5 * sqrtf(2) * size * hw01.axis;
   pCoor ctr0 = hw01.center - hw01.axis * height;
   const float ndz_per_rev = ( size + spacing ) / ( 0.5 * sqrtf(2) * size );
   const float theta_to_ndz = ndz_per_rev / ( 2 * M_PI );
+
+  // Information associated with a diamond.
+  //
+  struct Info {
+    pCoor ctr; // Point on the cylinder axis beneath diamond.
+    pVect nc, nl, nr; // Normals from cylinder axis to diamond points.
+    pCoor ctop, cl, cr, cbot; // Vertices of the diamond.
+  };
+
+  vector<Info> info;
+
+  // Compute information about each diamond and store it in an array.
+  //
   for ( float theta = 0;  theta < theta_stop;  theta += delta_theta )
     {
-      pCoor ctr = ctr0 + vd * theta * theta_to_ndz;
+      Info e; // E is for element.
+      e.ctr = ctr0 + vd * theta * theta_to_ndz;
+      e.nc = ax * sinf(theta) + ay * cosf(theta);
+      e.ctop = e.ctr + r * e.nc;
+      e.nl = ax * sinf(theta-size_d_theta) + ay * cosf(theta-size_d_theta);
+      e.nr = ax * sinf(theta+size_d_theta) + ay * cosf(theta+size_d_theta);
+      e.cl = e.ctr + r * e.nl + vd;
+      e.cr = e.ctr + r * e.nr + vd;
+      e.cbot = e.ctop + vd + vd;
+      info.push_back(e);
+    }
 
-      pVect nt = ax * sinf(theta) + ay * cosf(theta);
-      pCoor ctop = ctr + r * nt;
-      pVect nl =
-        ax * sinf(theta-size_d_theta) + ay * cosf(theta-size_d_theta);
-      pVect nr =
-        ax * sinf(theta+size_d_theta) + ay * cosf(theta+size_d_theta);
-      pCoor cl = ctr + r * nl + vd;
-      pCoor cr = ctr + r * nr + vd;
-      pCoor cbot = ctop + vd + vd;
+  // Use information to draw diamonds.
+  //
+  glColor3fv(color_tan);
+
+  for ( auto& e: info )
+    {
       glBegin(GL_TRIANGLE_STRIP);
-      glNormal3fv(nt);
-      glVertex3fv(ctop);
-      glNormal3fv(nl);
-      glVertex3fv(cl);
-      glNormal3fv(nr);
-      glVertex3fv(cr);
-      glNormal3fv(nt);
-      glVertex3fv(cbot);
+      glNormal3fv(e.nc);
+      glVertex3fv(e.ctop);
+      glNormal3fv(e.nl);
+      glVertex3fv(e.cl);
+      glNormal3fv(e.nr);
+      glVertex3fv(e.cr);
+      glNormal3fv(e.nc);
+      glVertex3fv(e.cbot);
       glEnd();
     }
+
+  glColor3fv(color_olive_drab);
 
 }
 
@@ -769,6 +810,12 @@ main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
+
+# ifdef __OPTIMIZE__
+  popengl_helper.ogl_debug_set(false);
+# else
+  popengl_helper.ogl_debug_set(true);
+# endif
 
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.frame_callback_w,&world);

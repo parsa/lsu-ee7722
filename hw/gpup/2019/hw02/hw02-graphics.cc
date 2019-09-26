@@ -93,6 +93,9 @@ public:
   bool opt_single_time_step;  // Simulate for one time step.
   int viewer_shadow_volume;
 
+  bool opt_tryout1, opt_tryout2, opt_tryout3;
+  float opt_tryoutf;
+
   pCoor eye_location;
   pVect eye_direction;
   pMatrix modelview;
@@ -109,6 +112,7 @@ public:
 
   HW01_Stuff hw01;
 
+  HW02_Stuff hw02;
   float opt_hw02_size;
 
   void ball_setup_1();
@@ -142,8 +146,8 @@ World::init_graphics()
 
   opt_platform_texture = true;
 
-  eye_location = pCoor(24.2,14.6,-38.7);
-  eye_direction = pVect(-0.42,-0.09,0.9);
+  eye_location = pCoor(13.5,17.0,-16.8);
+  eye_direction = pVect(-0.42,-0.18,0.89);
 
 
   platform_xmin = -40; platform_xmax = 40;
@@ -424,7 +428,11 @@ World::render()
     { "FREE", "LOCKED", "RING-A", "RING-F" };
 
   ogl_helper.fbprintf
-    ("HW01: Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
+    ("HW02: Tryout 1,2,3: %s, %s, %s  ('yYZ') "
+     "Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
+     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout2 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout3 ? BLINK("ON ","   ") : "OFF",
      oc_str[hcon],
      hcon != OC_Ring_Free ? "---" :
      opt_hw01_do_friction ? "ON " : "OFF",
@@ -699,6 +707,11 @@ World::cb_keyboard()
     opt_hw01_spin = !opt_hw01_spin;
     break;
   case 's': case 'S': balls_stop(); break;
+
+  case 'y': opt_tryout1 = !opt_tryout1; break;
+  case 'Y': opt_tryout2 = !opt_tryout2; break;
+  case 'Z': opt_tryout3 = !opt_tryout3; break;
+
   case ' ':
     if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true; 
