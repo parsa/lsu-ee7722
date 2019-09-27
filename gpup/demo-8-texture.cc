@@ -529,6 +529,7 @@ public:
   bool opt_recompute;
 
   float tex_scale;  // Amount by which to scale the texture on the triangle.
+  float tri_tilt;   // Amount by which to tilt single triangle.
   GLuint texture_id_syllabus;
   GLuint texture_id_image;
 
@@ -560,6 +561,9 @@ World::init()
 
   tex_scale = 1;
   variable_control.insert(tex_scale,"Texture Scaling");
+
+  tri_tilt = 2;
+  variable_control.insert(tri_tilt,"Triangle Tilt");
 
   variable_control.insert(opt_light_intensity,"Light Intensity");
 
@@ -742,15 +746,16 @@ World::render()
   // Specify vertices for a triangle.
   //
 
-  const float dz = 2;
-
-  glNormal3f(0,1,0);
-  glTexCoord2f(tex_scale * 1.0, tex_scale * 1.0);
-  glVertex3f( 9.5, -5, dz + -3.2 );
-  glTexCoord2f(tex_scale * 0.00, tex_scale * 0.0);
-  glVertex3f( 0,   5, dz + -5 );
-  glTexCoord2f(tex_scale * 1.0, tex_scale * 0.0);  
-  glVertex3f( 9,   6, dz + -9 );
+  glNormal3f(0,1,0); // Use the same normal for all vertices.
+  glColor3f(0,1,0); // Green
+  glTexCoord2f( tex_scale * 0.0, tex_scale * 0.0 );
+  glVertex3f( 0,   5, -7 );
+  glColor3f(1,0,0); // Red
+  glTexCoord2f( tex_scale * 1.0, tex_scale * 0.0 );
+  glVertex3f( 9,   6,  -7 );
+  glColor3f(0,0,1); // Blue
+  glTexCoord2f( tex_scale * 1.0, tex_scale * 1.0 );
+  glVertex3f( 9.5, -4, -1.2 + tri_tilt );
 
   glEnd();
 
