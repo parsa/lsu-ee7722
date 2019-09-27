@@ -41,7 +41,7 @@
 //       :Practice Problems:
 //        Fall 2017 Midterm Exam Problem 3
 //        https://www.ece.lsu.edu/koppel/gpup/2017/mt.pdf
-//        https://www.ece.lsu.edu/koppel/gpup/2017/mt-sol.pdf
+//        https://www.ece.lsu.edu/koppel/gpup/2017/mt_sol.pdf
 //
  /// What Happens (In a Simple Case)
 //
@@ -66,12 +66,12 @@
 //
 //   :Example:  Very simple texture fetch.
 //      Suppose original texture image is 1000 by 1000 pixels.
-//      Suppose texture_coor = { 0.050, 0.070 }.
+//      Suppose texture_coor = { 0.50, 0.070 }.
 //      Fetch would return value of image texel at 50,70.
 //
-//      Suppose an adjacent fragment had texture_coor = { 0.150, 0.170 }
-//      Fetch would return value of image texel at 150,170 ---
-//        --- SKIPPING 100 image texels in each axis.
+//      Suppose an adjacent fragment had texture_coor = { 0.150, 0.070 }
+//      Fetch would return value of image texel at 150,070 ---
+//        --- SKIPPING 100 image texels on the horizontal axis.
 
 //
 //   :Def: Texture Filtering
@@ -430,6 +430,8 @@ pEnum_Label texture_env_modes[] = {
 };
 
 pEnum_Label texture_min_filters[] = {
+  ENUM_LABEL( GL_NEAREST ),
+  ENUM_LABEL( GL_LINEAR ),
   ENUM_LABEL( GL_NEAREST_MIPMAP_NEAREST ),
   ENUM_LABEL( GL_LINEAR_MIPMAP_NEAREST ),
   ENUM_LABEL( GL_NEAREST_MIPMAP_LINEAR ),
@@ -556,10 +558,10 @@ World::init()
   sphere_location = pCoor(0,0,-5);
   sphere_size = 5;
 
-  variable_control.insert(opt_light_intensity,"Light Intensity");
-
-  tex_scale = 2;
+  tex_scale = 1;
   variable_control.insert(tex_scale,"Texture Scaling");
+
+  variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
 
@@ -743,11 +745,11 @@ World::render()
   const float dz = 2;
 
   glNormal3f(0,1,0);
-  glTexCoord2f(tex_scale * 0.95, tex_scale * 1.0);
+  glTexCoord2f(tex_scale * 1.0, tex_scale * 1.0);
   glVertex3f( 9.5, -5, dz + -3.2 );
-  glTexCoord2f(tex_scale * 0.00, tex_scale * 0.1);
+  glTexCoord2f(tex_scale * 0.00, tex_scale * 0.0);
   glVertex3f( 0,   5, dz + -5 );
-  glTexCoord2f(tex_scale * 0.90, tex_scale * 0.0);  
+  glTexCoord2f(tex_scale * 1.0, tex_scale * 0.0);  
   glVertex3f( 9,   6, dz + -9 );
 
   glEnd();
