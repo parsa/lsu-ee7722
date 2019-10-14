@@ -48,7 +48,7 @@ struct App
   MultiType *insn_out_d;
   void **a;
   uint *result_d;
-  clock_t *wp_time_d;
+  clock_t *wp_time_d, *thd_time_d;
   double madd_coef;
 };
 
@@ -111,12 +111,14 @@ mb_op_latency()
 
   clock_t delta = 0;
 
+  auto body = [&](int j) { accum += accum * coef; };
+
 #pragma unroll 1
   for ( int i=0; i<app_c.n_iters; i += unroll_deg_op_lat )
     {
       clock_t start = clock();
 #pragma unroll unroll_deg_op_lat
-      for ( int j=0; j<unroll_deg_op_lat; j++ ) accum += accum * coef;
+      for ( int j=0; j<unroll_deg_op_lat; j++ ) body(j);
       clock_t mid = clock();
 #pragma unroll unroll_deg_op_lat2
       for ( int j=0; j<unroll_deg_op_lat2; j++ ) accum += accum * coef;
@@ -189,6 +191,7 @@ public:
         //
         gpu_dev_num = gpu_choose_index();
         CE(cudaSetDevice(gpu_dev_num));
+        gpu_info_print();
         printf("Using GPU %d\n",gpu_dev_num);
         gpu_info.get_gpu_info(gpu_dev_num);
       }
@@ -401,6 +404,8 @@ MB_Main::run_mem_latency(int argc, char **argv)
   const size_t max_out_size_elts = max_num_threads;
   const size_t max_out_size_bytes = max_out_size_elts * sizeof(app.result_d[0]);
   const size_t max_wp_time_size_bytes = max_num_wps * sizeof(app.wp_time_d[0]);
+  const size_t max_thd_time_size_bytes =
+    max_num_threads * sizeof(app.thd_time_d[0]);
 
   const size_t in_size_elts = size_t(app.array_n_elts);
   const size_t in_size_bytes = in_size_elts * sizeof( app.a[0] );
@@ -409,7 +414,8 @@ MB_Main::run_mem_latency(int argc, char **argv)
   //
   CE( cudaMalloc( &app.a,  in_size_bytes ) );
   CE( cudaMalloc( &app.result_d,  max_out_size_bytes ) );
-  CE( cudaMalloc( &app.wp_time_d,  max_wp_time_size_bytes ) );
+  CE( cudaMalloc( &app.thd_time_d,  max_thd_time_size_bytes ) );
+  app.wp_time_d = app.thd_time_d;
 
   vector<uint> result_h(max_out_size_elts);
   vector<clock_t> wp_time_h(max_num_wps);
@@ -542,6 +548,7 @@ MB_Main::run_mem_latency(int argc, char **argv)
           const uint n_elt_mask = n_elts - 1;
           for ( uint i=0; i<out_size_elts; i++ )
             {
+              if ( i % 32 ) continue;
               const uint expect = ( i + app.n_iters * stride ) & n_elt_mask;
 
               if ( expect != result_h[i] )

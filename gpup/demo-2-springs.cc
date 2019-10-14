@@ -547,6 +547,14 @@ main(int argv, char **argc)
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
 
+# ifdef __OPTIMIZE__
+  glDisable(GL_DEBUG_OUTPUT);
+# else
+  glEnable(GL_DEBUG_OUTPUT);
+# endif
+  glDebugMessageControl(GL_DONT_CARE,GL_DONT_CARE,
+                        GL_DEBUG_SEVERITY_NOTIFICATION,0,NULL,false);
+
   popengl_helper.rate_set(30);
   popengl_helper.display_cb_set(world.frame_callback_w,&world);
 }

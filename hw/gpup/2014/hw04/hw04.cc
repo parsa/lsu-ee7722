@@ -502,23 +502,36 @@ World::render_spiral1()
 
       // Find a vector that's orthogonal to v12.
       //
-      pNorm van = v12.x == 0 ? pVect(0,v12.z,-v12.y) : pVect(v12.y,-v12.x,0);
-      pNorm vbn = cross(v12,van);
+      pNorm ax = v12.x == 0 ? pVect(0,v12.z,-v12.y) : pVect(v12.y,-v12.x,0);
+      pNorm ay = cross(v12,ax);
 
-      pVect va = van * spiral_radius;
-      pVect vb = vbn * spiral_radius;
+      pVect vx = ax * spiral_radius;
+      pVect vy = ay * spiral_radius;
 
       for ( float t=0; t<0.999; t += delta_t )
         {
           pCoor p = pos1 + t * v12;
           theta += delta_t * omega;
-          pVect radial = va * cos(theta) + vb * sin(theta);
+
+          // Compute a vector from the spiral axis to a point on the spiral.
+          //
+          pVect radial = vx * cos(theta) + vy * sin(theta);
+
+          // Find a vector in the "direction" of the spiral motion as
+          // if t were time.
+          //
+          pVect tangial = -omega * vx * sin(theta) + omega * vy * cos(theta);
+          //
+          // Note: expression above is derivative of radial w.r.t. t.
+
           pCoor p_outer = p + radial;
           const float inner_frac = 0.5;
           pCoor p_inner = p + inner_frac * radial;
-          pVect tangial = -omega * va * sin(theta) + omega * vb * cos(theta);
           pVect tang = v12 + tangial;
           pVect tang_inner = v12 + inner_frac * tangial;
+
+          // Compute a vector pointing up.
+          //
           pNorm norm = cross(radial,tang);
           pNorm norm_inner = cross(radial,tang_inner);
 

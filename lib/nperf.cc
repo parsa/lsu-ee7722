@@ -1030,7 +1030,19 @@ bool
 RT_Info::metric_add(string name)
 {
   if ( !cupti_on_requested ) return false;
-  if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
+  if ( dev == device_null )
+    {
+      CUresult rv = cuCtxGetDevice(&dev);
+      if ( rv == CUDA_ERROR_NOT_INITIALIZED )
+        {
+          fprintf(stderr,
+                  "metric_add for %s called too early,"
+                  " it must be called after CUDA initialized.\n",
+                  name.c_str());
+          exit(1);
+        }
+    }
+
   if ( !cupti_check_on() ) return false;
 
   CUpti_MetricID met_id;
@@ -1107,7 +1119,14 @@ RT_Info::need_run_get(const char* kernel_name)
   if ( !event_tracing_user_on ) return false;
 
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
-  if ( !ki ) return true;
+  if ( !ki && need_run_get_call_count > 0 )
+    {
+      fprintf(stderr, "NPerf: Problem hooking CUDA calls. Turning off.\n");
+      cupti_on_failed = true;
+      cupti_on = false;
+      return false;
+    }
+  if ( !ki ) return need_run_get_call_count < 2;
   if ( ki->call_count_lite == 0 ) return true;
   if ( !metrics.eg_sets ) return false;
   if ( ki->md.set_rounds == 0 ) return true;

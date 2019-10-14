@@ -179,7 +179,7 @@ __host__ int main(int argc, char** argv)
 
 /// Shared Address Space
 
- /// Size 48 kiB
+ /// Size 48 kiB  (Before CC 7.0)   
 
  /// Scope
  //
@@ -198,6 +198,30 @@ __host__ int main(int argc, char** argv)
  /// Transfer Between CPU and GPU
  //
  //  Not easily accomplished.
+
+
+/// Local Address Space
+
+ /// Size 512 kiB per thread.
+
+ /// Scope
+ //
+ //  Each thread has its own local address space.
+
+ /// Declaration
+ //
+ //  In procedure scope declared without a qualifier:
+ //
+ //  :Syntax:  TYPE VARNAME;
+ //  :Sample:  float my_array[20];
+
+ /// Implementation  <- IMPORTANT
+ //
+ //  Registers, If Possible
+ //  Some L1 cache, depending on CC.
+ //  L2, device memory.
+ //
+
 
 
 

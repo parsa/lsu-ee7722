@@ -16,8 +16,8 @@
 #include "util.h"
 #include <ptable.h>
 
-const int slen = 28;
-struct Some_Struct
+const int slen = 24;
+struct __align__(32) Some_Struct
 {
   float f0, f1;
   char str[slen];
@@ -77,22 +77,25 @@ ss_g_only(Some_Struct* ss_out, const Some_Struct* ss_in)
     }
 }
 
+typedef int4 my_type;
+// typedef Some_Struct my_type;
+
 extern "C" __global__ void
 ss_sh(Some_Struct* ss_out, const Some_Struct* ss_in)
 {
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
 
-  const int ss_size_words = sizeof(Some_Struct) / sizeof(uint32_t);
+  const int ss_size_words = sizeof(Some_Struct) / sizeof(my_type);
 
   __shared__ Some_Struct ss_blk[1024];
 
   // Cast pointers to Some_Struct to pointers to integers so that
   // Some_Struct data can be moved around as a simple array of integers.
   //
-  uint32_t* const ss_blk_wds = (uint32_t*) &ss_blk[0];
-  uint32_t* const ss_in_wds = (uint32_t*) &ss_in[0];
-  uint32_t* const ss_out_wds = (uint32_t*) &ss_out[0];
+  my_type* const ss_blk_wds = (my_type*) &ss_blk[0];
+  my_type* const ss_in_wds = (my_type*) &ss_in[0];
+  my_type* const ss_out_wds = (my_type*) &ss_out[0];
 
   /// SOLUTION
 
@@ -114,10 +117,10 @@ ss_sh(Some_Struct* ss_out, const Some_Struct* ss_in)
 
       // Load elements (structures) operated on by this warp.
       for ( int i=0; i<ss_size_words; i++ )
-        ss_blk_wds[ wp_num * wp_sz * ss_size_words + lane + i * wp_sz]
+        ss_blk_wds[     wp_num * wp_sz * ss_size_words + lane + i * wp_sz    ]
           = ss_in_wds[h_wds + i * wp_sz];
 
-      Some_Struct  elt = ss_blk[threadIdx.x];
+      Some_Struct  elt = ss_blk[  threadIdx.x   ];
       Some_Struct& elt_out = ss_blk[threadIdx.x];
 
       bool ord = elt.f0 <= elt.f1;

@@ -67,7 +67,7 @@ out Data
 #ifdef _GEOMETRY_SHADER_
 
 layout ( triangles ) in;
-layout ( triangle_strip, max_vertices = 4 ) out;
+layout ( triangle_strip, max_vertices = 6 ) out;
 
 in Data
 {
@@ -188,6 +188,10 @@ gs_main_helix()
   const bool type_a = In[0].hidx < In[2].hidx;
   vec4 color_adjust = type_a ? vec4(0.5,0.5,0.5,1) : vec4(1);
 
+  vec4 ctr_e = vec4(0);
+  for ( int i=0; i<3; i++ ) ctr_e += In[i].vertex_e;
+  ctr_e *= 1.0/3;
+
   for ( int i=0; i<3; i++ )
     {
       // Send the adjusted colors.
@@ -205,6 +209,30 @@ gs_main_helix()
       EmitVertex();
     }
   EndPrimitive();
+
+  vec4 color_adjust2 = !type_a ? vec4(0.5,0.5,0.5,1) : vec4(1);
+
+  for ( int i=0; i<3; i++ )
+    {
+      // Send the adjusted colors.
+      //
+      gl_FrontColor = vec4(1,0,0,1);
+      gl_BackColor = vec4(1,0,0,1);
+
+      vertex_e.xyz = ctr_e.xyz + ( In[i].vertex_e.xyz - ctr_e.xyz ) * 0.3 +
+        normalize(In[i].normal_e) * 0.2;
+      vertex_e.w = 1;
+
+      // Pass the other values through unmodified.
+      //
+      gl_Position = gl_ProjectionMatrix * vertex_e;
+      tex_coord = In[i].tex_coord;
+      normal_e = In[i].normal_e;
+
+      EmitVertex();
+    }
+  EndPrimitive();
+
 }
 
 #endif

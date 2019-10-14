@@ -169,6 +169,7 @@ cuda_thread_start()
   const int start = elt_per_thread * tid;
   const int stop = start + elt_per_thread;
 
+# pragma unroll 1
   for ( int h=start; h<stop; h++ )
     d_app.d_m_out[h] = d_app.d_v_in[h] + 1;
 

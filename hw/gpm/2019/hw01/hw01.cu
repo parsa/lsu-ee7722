@@ -1,7 +1,7 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
  /// Spring 2019
- /// Homework 1
+ /// Homework 1 -- SOLUTION
  //
  //  Assignment: https://www.ece.lsu.edu/koppel/gp/2019/hw01.pdf
  //
@@ -94,16 +94,42 @@ ss_sh(Some_Struct* ss_out, const Some_Struct* ss_in)
   uint32_t* const ss_in_wds = (uint32_t*) &ss_in[0];
   uint32_t* const ss_out_wds = (uint32_t*) &ss_out[0];
 
+  /// SOLUTION
+
+  // Prepare some common warp-related constants values.
+  //
+  const int wp_lg = 5;
+  const int wp_sz = 1 << wp_lg;
+  assert( wp_sz == warpSize );
+  const int wp_mk = wp_sz - 1;  // Warp mask.
+  const int lane = tid & wp_mk;
+  const int wp_num = threadIdx.x >> wp_lg;
+
   for ( int h=tid; h<d_app.n_elts; h += num_threads )
     {
-      Some_Struct elt = ss_in[h];
-      Some_Struct elt_out;
+      // Compute element number accessed by first thread in this warp.
+      const int h_wp = h - lane;
+      // Compute word number accessed by first thread in this warp.
+      const int h_wds = h_wp * ss_size_words + lane;
+
+      // Load elements (structures) operated on by this warp.
+      for ( int i=0; i<ss_size_words; i++ )
+        ss_blk_wds[ wp_num * wp_sz * ss_size_words + lane + i * wp_sz]
+          = ss_in_wds[h_wds + i * wp_sz];
+
+      Some_Struct  elt = ss_blk[threadIdx.x];
+      Some_Struct& elt_out = ss_blk[threadIdx.x];
+
       bool ord = elt.f0 <= elt.f1;
       elt_out.f0 = ord ? elt.f0 : elt.f1;
       elt_out.f1 = ord ? elt.f1 : elt.f0;
       int delta = elt.f0 == elt.f1 ? 0 : ord ? -1 : 1;
-      for ( int i=0; i<slen; i++ ) elt_out.str[i] = elt.str[i] + delta;
-      ss_out[h] = elt_out;
+      for ( int i=0; i<slen; i++ ) elt_out.str[i] += delta;
+
+      // Store elements (structures) operated on by this warp.
+      for ( int i=0; i<ss_size_words; i++ )
+        ss_out_wds[h_wds + i * wp_sz]
+          = ss_blk_wds[ wp_num * wp_sz * ss_size_words + lane + i * wp_sz];
     }
 }
 

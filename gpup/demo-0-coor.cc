@@ -1,5 +1,14 @@
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
+//
+ /// Course (EE 4702-1) Coordinate Library (coord.h) Code Examples
+//
+//   Simple examples of the use of pCoor, pVect, pNorm, etc.
+
+
 #include <stdio.h>
 #include <string.h>
+
+// Load the 
 #include "../include/coord.h"
 
 // Suppress warnings about unused variables.
@@ -194,7 +203,7 @@ sample_code()
   pVect vec_12b = c2 - c1;   // Subtraction of coords yields vector.
   pVect vec_12c = v2 - v1;   // Vector subtraction.
   pCoor c2c = c1 + vec_12b;  // Coord + vec yields a coordinate.
-  pVect vscaled = 5 * vec_12b;  // Multiply each element.
+  pVect vscaled = 5 * vec_12b;  // Multiply each element by scalar, 5.
 
 
   /// Coordinate Member Functions

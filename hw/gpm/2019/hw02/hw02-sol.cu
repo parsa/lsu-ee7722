@@ -636,7 +636,7 @@ main(int argc, char **argv)
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
-                table.entry("Lw/µs","%6.1f",
+                table.entry("Lw/µs","%6.3f",
                             this_elapsed_time_s*1e6 / iter_per_thd );
                 table.entry
                   ("I/op","%4.1f",

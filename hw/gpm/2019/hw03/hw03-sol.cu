@@ -424,13 +424,15 @@ print_gpu_and_kernel_info()
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
-#if 1
+#if 0
   info.GET_INFO(mxv);
   info.GET_INFO(mxv_atomic);
   info.GET_INFO(mxv_pfx_shared);
   info.GET_INFO(mxv_pfx_ballot);
   info.GET_INFO(mxv_pfx_prob1);
 #else
+  info.GET_INFO(mxv);
+  info.GET_INFO(mxv_pfx_ballot);
   info.GET_INFO(mxv_pfx_prob1);
 #endif
 
