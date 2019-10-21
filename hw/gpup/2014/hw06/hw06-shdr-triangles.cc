@@ -87,15 +87,15 @@ vs_main_triangles()
 
   // Find a vector that's orthogonal to v12.
   //
-  vec3 van =
+  vec3 ax =
     normalize(v12.x == 0 ? vec3(0,v12.z,-v12.y) : vec3(v12.y,-v12.x,0));
 
-  // Find a vector that's orthogonal to v12 and van.
+  // Find a vector that's orthogonal to v12 and ax.
   //
-  vec3 vbn = normalize(cross(v12,van));
+  vec3 ay = normalize(cross(v12,ax));
 
-  vec3 va = van * spiral_radius;
-  vec3 vb = vbn * spiral_radius;
+  vec3 vx = ax * spiral_radius;
+  vec3 vy = ay * spiral_radius;
 
   // Point on line between ball1 and ball2.
   //
@@ -103,7 +103,7 @@ vs_main_triangles()
 
   // Vector from p to spiral outer edge.
   //
-  vec3 radial = va * cos(theta) + vb * sin(theta);
+  vec3 radial = vx * cos(theta) + vy * sin(theta);
   vec3 p_outer = p + radial;
 
   const float inner_frac = 0.5;
@@ -111,7 +111,7 @@ vs_main_triangles()
 
   // Compute surface normals.
   //
-  vec3 tangial = -omega * va * sin(theta) + omega * vb * cos(theta);
+  vec3 tangial = -omega * vx * sin(theta) + omega * vy * cos(theta);
   vec3 tang = v12 + tangial;
   vec3 tang_inner = v12 + inner_frac * tangial;
   vec3 norm = normalize(cross(radial,tang));
