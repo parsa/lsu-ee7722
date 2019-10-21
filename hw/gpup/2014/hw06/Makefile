@@ -21,15 +21,10 @@ OPT_FLAGS = -O3
 CUDUMP = $(CUDAPATH)/bin/cuobjdump
 CUXX = $(CUDAPATH)/bin/nvcc
 CXX = $(CUXX)
-#CXX = g++
 
 .SUFFIXES: .cu .cuh
 
-MAGICKCXX_RAW := $(shell Magick++-config --cppflags --cxxflags)
-# Remove openmp, which doesn't play well with nvcc.
-MAGICKCXX := $(filter-out -fopenmp,$(MAGICKCXX_RAW))
-
-PACKAGE_CXXFLAGS = $(MAGICKCXX)
+PACKAGE_CXXFLAGS = $(shell GraphicsMagick++-config --cppflags --cxxflags)
 
 CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) --std=c++11 \
 	 -g -Xcompiler -Wall -Xcompiler -Wno-strict-aliasing \
@@ -38,7 +33,7 @@ CXXFLAGS = $(INCLUDE) $(PACKAGE_CXXFLAGS) $(OPTFLAGS) --std=c++11 \
 LINKFLAGS = $(OPTFLAGS)
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags)
+  $(shell GraphicsMagick++-config --ldflags --libs)
 LIBDIR  =
 
 default: hw06 hw06sol
