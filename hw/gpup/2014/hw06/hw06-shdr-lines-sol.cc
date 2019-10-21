@@ -81,11 +81,14 @@ vs_main_lines()
   const float spiral_radius = 0.5;
   const float omega = 10;
 
-  const int bidx = gl_Vertex.x;
-  const int ti = gl_Vertex.y;
+  const int bidx = gl_Vertex.x;  // i in the CPU code, the ball number.
+  const int ti = gl_Vertex.y;    // Integer version of t from CPU code.
 
+  // Position relative to top of whole spiral. Used only to compute angle.
   const int radial_idx = bidx * opt_segments + ti;
+
   const float delta_t = 1.0 / opt_segments;
+  // Position relative to top of segment: 0 top, 1 bottom, etc.
   const float t = float(ti) * delta_t;
   const float theta = delta_t * radial_idx * omega;
 
