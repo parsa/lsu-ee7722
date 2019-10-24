@@ -112,7 +112,7 @@ public:
 
   HW01_Stuff hw01;
 
-  HW02_Stuff hw02;
+  HW03_Stuff hw03;
   float opt_hw02_size;
 
   void ball_setup_1();
@@ -134,6 +134,15 @@ public:
   int chain_length;
   vector<Ball> balls;
   Sphere sphere;
+
+  int light_state_get()
+    {
+      GLboolean l0, l1;
+      glGetBooleanv(GL_LIGHT0,&l0);
+      glGetBooleanv(GL_LIGHT1,&l1);
+      return int(l0) | (int(l1)<<1);
+    };
+
 };
 
 

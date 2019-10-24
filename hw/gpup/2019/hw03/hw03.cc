@@ -124,9 +124,26 @@ struct HW01_Stuff {
   double spin_delta_t;  // Delta t for which rotation matrix computed.
 };
 
-struct HW02_Stuff {
+
+
+// Information associated with a diamond.
+//
+struct Bump_Info {
+  pCoor ctr; // Point on the cylinder axis beneath diamond.
+  pVect nc, nl, nr; // Normals from cylinder axis to diamond points.
+  pCoor ctop, cl, cr, cbot; // Vertices of the diamond.
+};
+
+struct HW03_Stuff {
   // This is a member of world, named hw03.
   // Feel free to add members as needed.
+
+  pShader *sp_fixed;  // OpenGL default shaders.
+  pShader *sp_strip_plus;
+  pShader *sp_instances;
+
+  bool bump_stale;
+  vector<Bump_Info> bump_info;
 
 };
 
@@ -173,7 +190,9 @@ World::init()
   balls.resize(chain_length);
 
   opt_hw02_size = 0.1;
-  variable_control.insert(opt_hw02_size,"Bump Size");
+  hw03.bump_stale = true;
+  variable_control.insert
+    (opt_hw02_size,"Bump Size").set_on_change(hw03.bump_stale);
 
   opt_tryoutf = 0;
   variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
@@ -213,6 +232,17 @@ World::init()
   frame_timer.work_unit_set("Steps / s");
 
   init_graphics();
+
+  /// Code added for Homework 3
+  //
+
+  // Initialize shaders.
+
+  hw03.sp_fixed = new pShader();
+  hw03.sp_strip_plus =
+    new pShader
+    ( "hw03-shdr.cc",
+      "vs_strip_plus();", "gs_strip_plus();", "fs_main();");
 
   curr_setup = 1; ball_setup_1();
 }
@@ -463,6 +493,7 @@ World::time_step_cpu(double delta_t)
       //  force the recomputation of the ring spin matrix.
       //
       hw01.spin_delta_t = 0;
+      hw03.bump_stale = true;
     }
 
   /// Update Velocity and Position of Each Ball
@@ -624,6 +655,8 @@ World::time_step_cpu(double delta_t)
       hw01.x.normalize();
       hw01.y.normalize();
       hw01.axis.normalize();
+
+      hw03.bump_stale = true;
     }
 
 }
@@ -738,69 +771,72 @@ World::render_cylinder(Render_Option roption)
   hw01_ring_guide.render
     (hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
 
-  /// Draw Squares (Diamonds) Above the Ring
-  //
   const float size = opt_hw02_size;
-  const float spacing = 2*size;
-  const int n_per_rev = 2 * M_PI * hw01.radius / ( size + spacing ) + 0.5;
-  const float delta_theta = 2 * M_PI / ( n_per_rev + 0.5 );
-  const float size_d_theta = size / ( sqrtf(2) * hw01.radius );
-  pNorm ax(hw01.x), ay(hw01.y);
   const float r = hw01.radius + size * 3;
-  const float n_revs = max(1.0f, 2 * height / ( size + spacing ) );
-  const float theta_stop = 2 * M_PI * n_revs;
-  pVect vd = 0.5 * sqrtf(2) * size * hw01.axis;
-  pCoor ctr0 = hw01.center - hw01.axis * height;
-  const float ndz_per_rev = ( size + spacing ) / ( 0.5 * sqrtf(2) * size );
-  const float theta_to_ndz = ndz_per_rev / ( 2 * M_PI );
 
-  // Information associated with a diamond.
-  //
-  struct Info {
-    pCoor ctr; // Point on the cylinder axis beneath diamond.
-    pVect nc, nl, nr; // Normals from cylinder axis to diamond points.
-    pCoor ctop, cl, cr, cbot; // Vertices of the diamond.
-  };
-
-  vector<Info> info;
-
-  // Compute information about each diamond and store it in an array.
-  //
-  for ( float theta = 0;  theta < theta_stop;  theta += delta_theta )
+  if ( hw03.bump_stale )
     {
-      Info e; // E is for element.
-      e.ctr = ctr0 + vd * theta * theta_to_ndz;
-      e.nc = ax * sinf(theta) + ay * cosf(theta);
-      e.ctop = e.ctr + r * e.nc;
-      e.nl = ax * sinf(theta-size_d_theta) + ay * cosf(theta-size_d_theta);
-      e.nr = ax * sinf(theta+size_d_theta) + ay * cosf(theta+size_d_theta);
-      e.cl = e.ctr + r * e.nl + vd;
-      e.cr = e.ctr + r * e.nr + vd;
-      e.cbot = e.ctop + vd + vd;
-      info.push_back(e);
+      hw03.bump_info.clear();
+
+      /// Draw Squares (Diamonds) Above the Ring
+      //
+      const float spacing = 2*size;
+      const int n_per_rev = 2 * M_PI * hw01.radius / ( size + spacing ) + 0.5;
+      const float delta_theta = 2 * M_PI / ( n_per_rev + 0.5 );
+      const float size_d_theta = size / ( sqrtf(2) * hw01.radius );
+      pNorm ax(hw01.x), ay(hw01.y);
+      const float n_revs = max(1.0f, 2 * height / ( size + spacing ) );
+      const float theta_stop = 2 * M_PI * n_revs;
+      pVect vd = 0.5 * sqrtf(2) * size * hw01.axis;
+      pCoor ctr0 = hw01.center - hw01.axis * height;
+      const float ndz_per_rev = ( size + spacing ) / ( 0.5 * sqrtf(2) * size );
+      const float theta_to_ndz = ndz_per_rev / ( 2 * M_PI );
+
+      // Compute information about each diamond and store it in an array.
+      //
+      for ( float theta = 0;  theta < theta_stop;  theta += delta_theta )
+        {
+          Bump_Info e; // E is for element.
+          e.ctr = ctr0 + vd * theta * theta_to_ndz;
+          e.nc = ax * sinf(theta) + ay * cosf(theta);
+          e.ctop = e.ctr + r * e.nc;
+          e.nl = ax * sinf(theta-size_d_theta) + ay * cosf(theta-size_d_theta);
+          e.nr = ax * sinf(theta+size_d_theta) + ay * cosf(theta+size_d_theta);
+          e.cl = e.ctr + r * e.nl + vd;
+          e.cr = e.ctr + r * e.nr + vd;
+          e.cbot = e.ctop + vd + vd;
+          hw03.bump_info.push_back(e);
+        }
+      hw03.bump_stale = false;
+    }
+
+  if ( opt_tryout1 )
+    {
+      hw03.sp_strip_plus->use();
+      const int light_state = light_state_get();
+      glUniform1i(2, light_state);
+      glUniform3i(3, opt_tryout1, opt_tryout2, opt_tryout3 );
+      glUniform1f(4, opt_tryoutf);
     }
 
   // Use information to draw diamonds.
   //
   glColor3fv(color_tan);
 
-  for ( auto& e: info )
+  const bool one_strip = opt_tryout2;
+
+  if ( one_strip ) glBegin(GL_TRIANGLE_STRIP);
+
+  for ( auto& e: hw03.bump_info )
     {
-      glBegin(GL_TRIANGLE_STRIP);
+      if ( !one_strip ) glBegin(GL_TRIANGLE_STRIP);
       glNormal3fv(e.nc);
       glVertex3fv(e.ctop);
-      glNormal3fv(e.nl);
       glVertex3fv(e.cl);
-      glNormal3fv(e.nr);
       glVertex3fv(e.cr);
-      glNormal3fv(e.nc);
       glVertex3fv(e.cbot);
-      glEnd();
+      if ( !one_strip ) glEnd();
     }
-
-  // Use tryout to turn affect on and off.
-  //
-  if ( !opt_tryout1 ) return;
 
   // Switch color to use from now on.
   //
@@ -810,7 +846,7 @@ World::render_cylinder(Render_Option roption)
   //
   const float dr = hw01.radius - r;
 
-  for ( auto& e: info )
+  for ( auto& e: hw03.bump_info )
     {
 
       // Construct an array of coordinates that can be used to
@@ -827,7 +863,7 @@ World::render_cylinder(Render_Option roption)
           { e.ctop+e.nc*dr, e.cr+e.nr*dr, e.cbot+e.nc*dr, e.cl+e.nr*dr}
         };
 
-      glBegin(GL_TRIANGLE_STRIP);
+      if ( !one_strip ) glBegin(GL_TRIANGLE_STRIP);
 
       // Render Block's Sides
       //
@@ -855,8 +891,13 @@ World::render_cylinder(Render_Option roption)
           for ( auto v: spts ) glVertex3fv( v );
         }
 
-      glEnd();
+      if ( !one_strip ) glEnd();
     }
+
+  if ( one_strip ) glEnd();
+
+  hw03.sp_fixed->use();
+
 }
 
 int
