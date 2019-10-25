@@ -229,7 +229,8 @@ public:
         cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
         cuda_prop.major == 3 ? 192 :
         cuda_prop.major == 5 ? 128 :
-        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 64 : 128 ) : 0;
+        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 64 : 128 ) :
+        cuda_prop.major == 7 ? 64 : 0;
 
       const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
 
@@ -238,7 +239,8 @@ public:
         cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 16 : 4 ) :
         cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
         cuda_prop.major == 5 ? 4 :
-        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 32 : 4 ) : 0;
+        cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 32 : 4 ) :
+        cuda_prop.major == 7 ? ( cuda_prop.minor == 0 ? 32 : 2 ) : 0;
 
       chip_bw_Bps =
         2 * cuda_prop.memoryClockRate * 1000.0
