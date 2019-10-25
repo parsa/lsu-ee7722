@@ -294,6 +294,8 @@ public:
     device_data_collected = false;
     kernel_last = NULL;
     metrics_inited = false;
+    metrics_unusable_pending = true;
+    metrics_unusable_val = false;
   };
   ~RT_Info(){
     for ( auto ki: kernel_info_store ) free(ki);
@@ -439,8 +441,24 @@ public:
 private:
   Metrics metrics;
   void metrics_init();
-  bool metrics_inited;
+  bool metrics_unusable_pending, metrics_unusable_val, metrics_inited;
 public:
+  bool metrics_unusable()
+    {
+      if ( metrics_unusable_pending )
+        {
+          metrics_unusable_pending = false;
+          assert( dev != device_null );
+          // Need to re-write for CC >= 7.5.
+          int cc_major, cc_minor;
+          CE( cuDeviceGetAttribute
+              (&cc_major,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,dev) );
+          CE( cuDeviceGetAttribute
+              (&cc_minor,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,dev) );
+          metrics_unusable_val = cc_major > 7 || cc_major == 7 && cc_minor >= 5;
+        }
+      return metrics_unusable_val;
+    }
   bool metric_add(string metric_name);
   template<typename T> double kernel_et_get(T k);
   int kernel_nlaunches_get(const char *kernel_name);
@@ -981,6 +999,7 @@ RT_Info::metrics_init()
   if ( metrics_inited ) return;
   if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
   cupti_check_on();
+  if ( metrics_unusable() ) return;
 
   metrics_inited = true;
 #if 0
@@ -1044,6 +1063,7 @@ RT_Info::metric_add(string name)
     }
 
   if ( !cupti_check_on() ) return false;
+  if ( metrics_unusable() ) return false;
 
   CUpti_MetricID met_id;
   CUptiResult rv = cuptiMetricGetIdFromName(dev,name.c_str(),&met_id);
