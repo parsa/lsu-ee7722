@@ -453,6 +453,13 @@ struct pVariable_Control_Elt
   int *ivar;
   int inc, min, max;
   bool exponential;
+  bool *on_change_ptr, on_change_dummy;
+
+  pVariable_Control_Elt& set_on_change(bool& sv)
+    {
+      on_change_ptr = &sv;
+      return *this;
+    }
   double get_val() const { return var ? *var : double(*ivar); }
 };
 
@@ -463,7 +470,7 @@ public:
     size = 0;  storage = (pVariable_Control_Elt*)malloc(0); current = NULL;
     inc_factor_def = pow(10,1.0/45);
   }
-  void insert(int &var, const char *name, int inc = 1,
+  pVariable_Control_Elt& insert(int &var, const char *name, int inc = 1,
               int min = 0, int max = 0x7fffffff )
   {
     pVariable_Control_Elt* const elt = insert_common(name);
@@ -471,10 +478,11 @@ public:
     elt->inc = 1;
     elt->min = min;
     elt->max = max;
-    elt->exponential = false;
+    return *elt;
   }
 
-  void insert(float &var, const char *name, float inc_factor = 0, 
+  pVariable_Control_Elt&
+  insert(float &var, const char *name, float inc_factor = 0,
               bool exponentialp = true )
   {
     pVariable_Control_Elt* const elt = insert_common(name);
@@ -482,12 +490,14 @@ public:
     elt->inc_factor = inc_factor ? inc_factor : inc_factor_def;
     elt->dec_factor = 1.0 / elt->inc_factor;
     elt->exponential = exponentialp;
+    return *elt;
   }
 
-  void insert_linear(float &var, const char *name, float inc_factor = 0)
-  { insert(var,name,inc_factor,false); }
+  pVariable_Control_Elt&
+  insert_linear(float &var, const char *name, float inc_factor = 0)
+  { return insert(var,name,inc_factor,false); }
 
-  void insert_power_of_2
+  pVariable_Control_Elt& insert_power_of_2
   (int &var, const char *name, int min = 1, int max = 0x7fffffff)
   {
     pVariable_Control_Elt* const elt = insert_common(name);
@@ -497,6 +507,7 @@ public:
     elt->min = min;
     elt->max = max;
     elt->exponential = true;
+    return *elt;
   }
 
 private:
@@ -510,6 +521,7 @@ private:
     elt->name = strdup(name);
     elt->ivar = NULL;
     elt->var = NULL;
+    elt->on_change_ptr = &elt->on_change_dummy;
     return elt;
   }
 public:
@@ -520,12 +532,15 @@ public:
       {
         if ( current->exponential ) current->var[0] *= current->inc_factor;
         else                        current->var[0] += current->inc_factor;
+        current->on_change_ptr[0] = true;
       }
     else
       {
+        const int prev_val = current->ivar[0];
         if ( current->exponential ) current->ivar[0] <<= 1;
         else                        current->ivar[0] += current->inc;
         set_min(current->ivar[0],current->max);
+        if ( prev_val != current->ivar[0] ) current->on_change_ptr[0] = true;
       }
   }
   void adjust_lower() {
@@ -534,12 +549,15 @@ public:
       {
         if ( current->exponential ) current->var[0] *= current->dec_factor;
         else                        current->var[0] -= current->inc_factor;
+        current->on_change_ptr[0] = true;
       }
     else
       {
+        const int prev_val = current->ivar[0];
         if ( current->exponential ) current->ivar[0] >>= 1;
         else                        current->ivar[0] -= current->inc;
         set_max(current->ivar[0],current->min);
+        if ( prev_val != current->ivar[0] ) current->on_change_ptr[0] = true;
       }
   }
   void switch_var_right()
@@ -607,7 +625,10 @@ public:
   debug_msg_callback
   (uint source, uint tp, uint id, uint severity, int length,
    const char* message, const void *user_data)
-  { printf("--- DBG MSG severity %d\n%s\n",severity,message); }
+  {
+    printf("--- DBG MSG severity %d\n%s\n",severity,message);
+    assert( severity != GL_DEBUG_SEVERITY_HIGH );
+  }
 
   double next_frame_time, frame_period;
   static void cb_timer_w(int data){ opengl_helper_self_->cbTimer(data); }
