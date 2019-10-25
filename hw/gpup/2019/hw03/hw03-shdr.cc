@@ -1,28 +1,35 @@
 /// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
-
+ /// Homework 3
+//
+//   Solution goes in this file and in hw03.cc
 
 // Specify version of OpenGL Shading Language.
 //
 #version 460 compatibility
 
 
-layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
-layout ( binding = 2 ) buffer spr { vec4 sphere_pos_rad[]; };
-layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
-
-// Use this variable to debug your code. Press 'y' to toggle tryout.x
-// and 'Y' to toggle debug_bool.y (between true and false).
+// Use this variable, tryout, to debug your code. Press 'y' to toggle
+// tryout.x and 'Y' to toggle debug_bool.y (between true and false).
 //
 layout ( location = 3 ) uniform bvec3 tryout;
 layout ( location = 2 ) uniform int lighting_options;
 layout ( location = 4 ) uniform float tryoutf;
-layout ( location = 5 ) uniform bool mirrored;
-layout ( location = 6 ) uniform mat4 trans_proj;
+
+layout ( location = 5 ) uniform vec4 color_diamond;
+layout ( location = 6 ) uniform vec4 color_edge;
+
+
+layout ( location = 7 ) uniform vec4 hw03_scalars1;
+layout ( location = 8 ) uniform vec4 ctr0;
+
+
+/// Code for Strip-Plus Shaders Immediately Below
+//  (Code for points shaders further below.)
+
+#ifndef HW03_POINTS
 
 #ifdef _VERTEX_SHADER_
-
-in vec2 gl_MultiTexCoord0;
 
 // Interface block for vertex shader output / geometry shader input.
 //
@@ -30,7 +37,6 @@ out Data_to_GS
 {
   vec3 normal_e;
   vec4 vertex_e;
-  vec2 gl_TexCoord[1];
   vec4 color;
   vec4 gl_Position;
 
@@ -41,17 +47,11 @@ out Data_to_GS
 void
 vs_strip_plus()
 {
-  // Here, the vertex shader does nothing except pass variables
-  // to the geometry shader.
-
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  normal_e = normalize(gl_NormalMatrix * gl_Normal);
-  gl_TexCoord[0] = gl_MultiTexCoord0;
+  normal_e = gl_NormalMatrix * gl_Normal;
   color = gl_Color;
 }
-
-
 
 #endif
 
@@ -62,7 +62,6 @@ in Data_to_GS
 {
   vec3 normal_e;
   vec4 vertex_e;
-  vec2 gl_TexCoord[1];
   vec4 color;
   vec4 gl_Position;
 } In[];
@@ -71,7 +70,6 @@ out Data_to_FS
 {
   vec3 normal_e;
   vec4 vertex_e;
-  vec2 gl_TexCoord[1];
   flat vec4 color;
 };
 
@@ -93,16 +91,103 @@ gs_strip_plus()
       vertex_e = In[i].vertex_e;
       color = In[i].color;
       gl_Position = In[i].gl_Position;
-      gl_TexCoord[0] = In[i].gl_TexCoord[0];
       EmitVertex();
     }
   EndPrimitive();
 }
 
+#endif
 
+/// Code for Strip-Plus Shaders Above
+
+#else
+
+/// Code for Points Shaders Below 
+
+
+#ifdef _VERTEX_SHADER_
+
+// Interface block for vertex shader output / geometry shader input.
+//
+out Data_to_GS
+{
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec4 color;
+  vec4 gl_Position;
+
+  // Any changes here must also be made to the fragment shader input.
+
+};
+
+
+void
+vs_points()
+{
+  int vid = gl_VertexID;
+
+  // Be sure to remove unneeded code. You can remove this comment too.
+
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+  vertex_e = gl_ModelViewMatrix * gl_Vertex;
+  normal_e = normalize(gl_NormalMatrix * gl_Normal);
+  color = gl_Color;
+}
 
 #endif
 
+
+#ifdef _GEOMETRY_SHADER_
+
+in Data_to_GS
+{
+  vec3 normal_e;
+  vec4 vertex_e;
+  vec4 color;
+  vec4 gl_Position;
+
+} In[];
+
+out Data_to_FS
+{
+  vec3 normal_e;
+  vec4 vertex_e;
+  flat vec4 color;
+};
+
+// Type of primitive at geometry shader input.
+//
+layout ( points ) in;
+
+// Type of primitives emitted geometry shader output.
+//
+layout ( triangle_strip, max_vertices = 3 ) out;
+
+
+void
+gs_points()
+{
+#ifdef xxxx
+  for ( int i=0; i<3; i++ )
+    {
+      normal_e = In[i].normal_e;
+      vertex_e = In[i].vertex_e;
+      color = In[i].color;
+      gl_Position = In[i].gl_Position;
+      EmitVertex();
+    }
+  EndPrimitive();
+#endif
+}
+
+#endif
+
+/// Code for Points Shaders Above
+
+#endif
+
+
+/// Code below is common to all problems.
 
 #ifdef _FRAGMENT_SHADER_
 
@@ -110,11 +195,9 @@ uniform sampler2D tex_unit_0;
 
 in Data_to_FS
 {
-  vec3 normal_e;
+  flat vec3 normal_e;
   vec4 vertex_e;
-  vec2 gl_TexCoord[1];
   flat vec4 color;
-
 };
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
@@ -126,15 +209,11 @@ fs_main()
   // Perform lighting, fetch and blend texture, then emit fragment.
   //
 
-  // Get filtered texel.
-  //
-  vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
-
   vec4 color2 = gl_FrontFacing ? color : vec4(0.5,0,0,1);
 
   // Multiply filtered texel color with lighted color of fragment.
   //
-  gl_FragColor = texel * generic_lighting(vertex_e, color2, normal_e);
+  gl_FragColor = generic_lighting(vertex_e, color2, normal_e);
 
   // Copy fragment depth unmodified.
   //

@@ -7,23 +7,10 @@
  //
  //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2019/hw03.pdf
  //
- //  Most of the solution should be in routine render_cylinder.
+ //  Put the solution in this file and in hw03-shdr.cc.
+ //  In this file modify routine render_cylinder.
  //
- //  Only this file will be collected.
-
-
-/// Purpose
-//
-//   Demonstrate simulation of string modeled as point masses and springs
-
-
-/// What Code Does
-
-// Simulates a string of beads over a platform. The string is modeled
-// as point masses connected by springs with a long relaxed
-// length. The platform consists of tiles, some are purple-tinted
-// mirrors (showing a reflection of the ball), the others show the
-// course syllabus.
+ //  This file and hw03-shdr.cc will be collected.
 
 
 ///  Keyboard Commands
@@ -140,7 +127,7 @@ struct HW03_Stuff {
 
   pShader *sp_fixed;  // OpenGL default shaders.
   pShader *sp_strip_plus;
-  pShader *sp_instances;
+  pShader *sp_points;
 
   bool bump_stale;
   vector<Bump_Info> bump_info;
@@ -185,6 +172,7 @@ World::init()
   srand48(4702);
 
   opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
+  opt_shader = 0;
 
   chain_length = 10;
   balls.resize(chain_length);
@@ -243,6 +231,11 @@ World::init()
     new pShader
     ( "hw03-shdr.cc",
       "vs_strip_plus();", "gs_strip_plus();", "fs_main();");
+  hw03.sp_points =
+    new pShader
+    ( "hw03-shdr.cc",
+      "vs_points();", "gs_points();", "fs_main();",
+      "#define HW03_POINTS");
 
   curr_setup = 1; ball_setup_1();
 }
@@ -771,26 +764,28 @@ World::render_cylinder(Render_Option roption)
   hw01_ring_guide.render
     (hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
 
+  /// Draw Squares (Diamonds) Above the Ring
+  //
+
   const float size = opt_hw02_size;
-  const float r = hw01.radius + size * 3;
+  const float r = hw01.radius * 1.1;
+  const float spacing = 2*size;
+  const int n_per_rev = 2 * M_PI * hw01.radius / ( size + spacing ) + 0.5;
+  const float delta_theta = 2 * M_PI / ( n_per_rev + 0.5 );
+  const float size_d_theta = size / ( sqrtf(2) * hw01.radius );
+  pNorm ax(hw01.x), ay(hw01.y);
+  const float n_revs = max(1.0f, 2 * height / ( size + spacing ) );
+  const float theta_stop = 2 * M_PI * n_revs;
+  pVect vd = 0.5 * sqrtf(2) * size * hw01.axis;
+  pCoor ctr0 = hw01.center - hw01.axis * height;
+  const float ndz_per_rev = ( size + spacing ) / ( 0.5 * sqrtf(2) * size );
+  const float theta_to_ndz = ndz_per_rev / ( 2 * M_PI );
+  // Distance from diamond vertices to cylinder.
+  const float dr = hw01.radius - r;
 
   if ( hw03.bump_stale )
     {
       hw03.bump_info.clear();
-
-      /// Draw Squares (Diamonds) Above the Ring
-      //
-      const float spacing = 2*size;
-      const int n_per_rev = 2 * M_PI * hw01.radius / ( size + spacing ) + 0.5;
-      const float delta_theta = 2 * M_PI / ( n_per_rev + 0.5 );
-      const float size_d_theta = size / ( sqrtf(2) * hw01.radius );
-      pNorm ax(hw01.x), ay(hw01.y);
-      const float n_revs = max(1.0f, 2 * height / ( size + spacing ) );
-      const float theta_stop = 2 * M_PI * n_revs;
-      pVect vd = 0.5 * sqrtf(2) * size * hw01.axis;
-      pCoor ctr0 = hw01.center - hw01.axis * height;
-      const float ndz_per_rev = ( size + spacing ) / ( 0.5 * sqrtf(2) * size );
-      const float theta_to_ndz = ndz_per_rev / ( 2 * M_PI );
 
       // Compute information about each diamond and store it in an array.
       //
@@ -810,20 +805,47 @@ World::render_cylinder(Render_Option roption)
       hw03.bump_stale = false;
     }
 
-  if ( opt_tryout1 )
+  if ( opt_shader )
     {
-      hw03.sp_strip_plus->use();
+      if ( opt_shader == 1 )
+        hw03.sp_strip_plus->use();
+      else
+        hw03.sp_points->use();
+
+      // Common setup for both shaders.
+      //
       const int light_state = light_state_get();
       glUniform1i(2, light_state);
       glUniform3i(3, opt_tryout1, opt_tryout2, opt_tryout3 );
       glUniform1f(4, opt_tryoutf);
+      glUniform4fv(5,1, color_tan); // color_diamond
+      glUniform4fv(6,1, color_olive_drab); // color_edge
+    }
+
+  if ( opt_shader == 2 )
+    {
+      /// Code for PROBLEM 2  goes here, and in hw03-shdr.cc.
+      //
+      glUniform4f(7,delta_theta,r,theta_to_ndz,size_d_theta);
+      glUniform4fv(8,1,ctr0);
+
+      // Provide additional uniforms if needed.
+
+      // DO NOT send arrays to the rendering pipeline ..
+      // .. the vertex shader should rely only on gl_VertexID and uniforms.
+
+      glDrawArrays(GL_POINTS, 0, n_revs * n_per_rev);
+      hw03.sp_fixed->use();
+      return;
     }
 
   // Use information to draw diamonds.
   //
   glColor3fv(color_tan);
 
-  const bool one_strip = opt_tryout2;
+  // If true, render everything below with one triangle strip.
+  //
+  const bool one_strip = opt_shader;
 
   if ( one_strip ) glBegin(GL_TRIANGLE_STRIP);
 
@@ -831,20 +853,16 @@ World::render_cylinder(Render_Option roption)
     {
       if ( !one_strip ) glBegin(GL_TRIANGLE_STRIP);
       glNormal3fv(e.nc);
-      glVertex3fv(e.ctop);
-      glVertex3fv(e.cl);
-      glVertex3fv(e.cr);
-      glVertex3fv(e.cbot);
+      glVertex4fv(e.ctop);
+      glVertex4fv(e.cl);
+      glVertex4fv(e.cr);
+      glVertex4fv(e.cbot);
       if ( !one_strip ) glEnd();
     }
 
   // Switch color to use from now on.
   //
   glColor3fv(color_olive_drab);
-
-  // Distance from diamond vertices to cylinder.
-  //
-  const float dr = hw01.radius - r;
 
   for ( auto& e: hw03.bump_info )
     {
@@ -888,7 +906,7 @@ World::render_cylinder(Render_Option roption)
 
           // Emit the coordinates of the side.
           //
-          for ( auto v: spts ) glVertex3fv( v );
+          for ( auto v: spts ) glVertex4fv( v );
         }
 
       if ( !one_strip ) glEnd();
@@ -897,7 +915,6 @@ World::render_cylinder(Render_Option roption)
   if ( one_strip ) glEnd();
 
   hw03.sp_fixed->use();
-
 }
 
 int

@@ -49,6 +49,8 @@ public:
 
 #include <gp/colors.h>
 
+const char *sh_names[] = { "FIXED", "STRIP-PLUS", "POINTS" };
+
 class World {
 public:
   World(pOpenGL_Helper &fb):ogl_helper(fb),hw01_ring_guide(100){init();}
@@ -114,6 +116,7 @@ public:
 
   HW03_Stuff hw03;
   float opt_hw02_size;
+  uint opt_shader;
 
   void ball_setup_1();
   void ball_setup_2();
@@ -167,7 +170,7 @@ World::init_graphics()
   opt_light_intensity = 100.2;
   light_location = pCoor(platform_xmax,platform_xmax,platform_zmin);
 
-  //  variable_control.insert(opt_light_intensity,"Light Intensity");
+  variable_control.insert(opt_light_intensity,"Light Intensity");
 
   opt_move_item = MI_Eye;
   opt_pause = false;
@@ -437,15 +440,19 @@ World::render()
     { "FREE", "LOCKED", "RING-A", "RING-F" };
 
   ogl_helper.fbprintf
-    ("HW02: Tryout 1,2,3: %s, %s, %s  ('yYZ') "
-     "Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
-     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
-     opt_tryout2 ? BLINK("ON ","   ") : "OFF",
-     opt_tryout3 ? BLINK("ON ","   ") : "OFF",
+    ("HW02: Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
      oc_str[hcon],
      hcon != OC_Ring_Free ? "---" :
      opt_hw01_do_friction ? "ON " : "OFF",
      opt_hw01_spin ? "ON " : "OFF");
+
+  ogl_helper.fbprintf
+    ("HW03: Tryout 1,2,3: %s, %s, %s  ('yYZ')  Shader %s ('v')\n",
+     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout2 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout3 ? BLINK("ON ","   ") : "OFF",
+     sh_names[opt_shader]);
+
   ogl_helper.fbprintf
     ("Time Step: %8d  World Time: %11.6f  %s\n",
      time_step_count, world_time,
@@ -646,11 +653,11 @@ World::render()
 
   // Render Marker for Light Source
   //
+  glColor3f(0.5,1,0.5);
+
   insert_tetrahedron(light_location,0.5);
 
   pError_Check();
-
-  glColor3f(0.5,1,0.5);
 
   frame_timer.frame_end();
 
@@ -716,6 +723,10 @@ World::cb_keyboard()
     opt_hw01_spin = !opt_hw01_spin;
     break;
   case 's': case 'S': balls_stop(); break;
+
+  case 'v': case 'V': opt_shader++;
+    if ( opt_shader >= sizeof(sh_names)/sizeof(sh_names[0]) ) opt_shader = 0;
+    break;
 
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
