@@ -263,11 +263,40 @@
 //   A layer of the frame buffer holding one integer for each pixel.
 //
 //   :Def: Stencil Test
-//   A per-fragment test that uses the stencil buffer.
+//   A test that a fragment must pass in order to be written to frame buffer.
+//   The stencil test is some requirement on value in stencil buffer.
 //   For example, if stencil buffer value = 0, test fails, discard fragment.
 //
 //   :Def: Stencil Operation
 //   The conditions under which stencil buffer updated.
+
+
+ /// Stencil Buffer
+//
+//   A frame buffer layer. (Other layers include color and depth.)
+//   Holds an integer value (for each pixel).
+
+//  To Initialize Stencil Buffer
+//
+//    Use glClearStencil to specify value ..
+//    .. and glClear with GL_STENCIL_BUFFER_BIT to write stencil buffer.
+
+  // Set value to init each pixel to. Doesn't have to be seve.
+  //
+  glClearStencil(7);
+  //
+  // This just prepares the value, it doesn't change the stencil buffer.
+
+  // Change the stencil value of every pixel to value set previously with
+  // glClearStencil, seven in the example above.
+  //
+  glClear( GL_STENCIL_BUFFER_BIT );
+
+
+  // Multiple layers can be cleared at once.
+  //
+  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+
 
 
  /// Stencil Test
@@ -283,8 +312,8 @@
    //           Can provide one test for the front, and a different
    //            test for the back.
    //
-   //   FUNC -> GL_NEVER, GL_ALWAYS, GL_LESS, GL_LEQUAL, GL_EQUAL,
-   //           GL_GEQUAL, GL_NOTEQUAL
+   //   FUNC -> GL_LESS, GL_LEQUAL, GL_EQUAL, GL_NOTEQUAL, GL_GEQUAL, 
+   //           GL_NEVER, GL_ALWAYS
    //
    //   REF  -> An integer. 
    //           The stencil buffer contents will be compared to REF.
@@ -292,6 +321,9 @@
    //   MASK -> An integer.
    //           Used to select which bits of the stencil value to use.
    //           For simpler uses, MASK = -1 (all 1s in binary).
+   //
+   //   VAL  -> The value currently in the stencil buffer at the
+   //           fragment's location.
    //
    //   Test passes if:  REF & MASK  FUNC  VAL & MASK
    //   Typical:         12  & 0xff   <    34  & 0xff   (Test passes)
@@ -313,7 +345,7 @@
  /// Stencil Operation, For Writing Stencil Buffer
 //
 //   Stencil Operation specifies conditions for writing stencil buffer ..
-//   .. and show the stencil buffer is changed.
+//   .. and how the stencil buffer should be changed (e.g., write, increment)
 //
 //   Typical operation: Write the stencil buffer if the depth test passes.
 //
@@ -322,23 +354,30 @@
  //
  // Specify how stencil buffer value is modified in each of three situations:
  //
- //   DPASS: How to modify if the depth test passes.  Easy to understand.
  //   SFAIL: How to modify if the stencil test fails.
+ //   DPASS: How to modify if the depth test passes.  Easy to understand.
  //   DFAIL: How to modify if the depth test fails.
  //
  //   Values for SFAIL, DFAIL, DPASS:
- //     GL_KEEP: 
- //       Don't do anything. (Don't change stencil buffer value.)
- //
- //     GL_ZERO, GL_INCR, GL_DECR, GL_INVERT:
- //       Set to zero, add 1, subtract 1, bitwise invert.
- //       Arithmetic is saturating: 0-1 = 0.
  //
  //     GL_REPLACE:
  //       Set stencil value to reference value that was used in glStencilFunc.
  //
  //     GL_INCR_WRAP, GL_DECR_WRAP
- //       Add one to stencil value, ignore overflow. (0-1 = max value.)
+ //       Add or subtract one to stencil value,
+ //       if there is an overflow use low bits.
+ //       E.g. assuming 4 bit buffer::  15 + 1 = 0
+ //
+ //     GL_INCR, GL_DECR
+ //       Add or subtract one to stencil value,
+ //       if there is an overflow keep prior value.
+ //       E.g. assuming 4 bit buffer::  15 + 1 = 15
+ //
+ //     GL_KEEP: 
+ //       Don't do anything. (Don't change stencil buffer value.)
+ //
+ //     GL_ZERO, GL_INVERT:
+ //       Set to zero, flip bits.
 
  // :Example:
  //
