@@ -164,6 +164,8 @@ World::init_graphics()
   opt_shadow_volumes_visible = false;
   opt_shadows = true;
 
+  opt_fill = 0;
+
   sphere.init(40);
 
   platform_update();
