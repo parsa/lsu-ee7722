@@ -4,7 +4,7 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 layout ( location = 1 ) uniform vec4 color_front;
 layout ( location = 2 ) uniform vec4 color_back;
@@ -43,7 +43,7 @@ out Data_to_GS
 
   float t;
   vec4 ctr;
-  vec3 norm, binorm;
+  vec3 ax, ay; // Local axes for cylinder.
 
   // For shadow volumes
   bool endpoint;
@@ -80,9 +80,9 @@ vs_main_2()
   // Compute local x and y axes for drawing a cylinder.
   //
   vec3 ydir = mix(b1_ydir[iid].xyz, b2_ydir[iid].xyz, t);
-  vec3 norm_raw = cross(tan,ydir);
-  norm = normalize(norm_raw);
-  binorm = cross(tan,norm);
+  vec3 ax_raw = cross(tan,ydir);
+  ax = normalize(ax_raw);
+  ay = cross(tan,ax);
 }
 
 void
@@ -148,7 +148,7 @@ in Data_to_GS
 
   float t;
   vec4 ctr;
-  vec3 norm, binorm;
+  vec3 ax, ay; // Local axes for cylinder.
 
   // For shadow volumes
   bool endpoint;
@@ -184,8 +184,8 @@ gs_main_2()
     {
       const float theta = j * ( 2 * M_PI / sides );
 
-      vec3 vect0 = cos(theta) * In[0].norm + sin(theta) * In[0].binorm;
-      vec3 vect1 = cos(theta) * In[1].norm + sin(theta) * In[1].binorm;
+      vec3 vect0 = cos(theta) * In[0].ax + sin(theta) * In[0].ay;
+      vec3 vect1 = cos(theta) * In[1].ax + sin(theta) * In[1].ay;
       vec4 pt0 = In[0].ctr + vec4(rad * vect0,0);
       vec4 pt1 = In[1].ctr + vec4(rad * vect1,0);
 
