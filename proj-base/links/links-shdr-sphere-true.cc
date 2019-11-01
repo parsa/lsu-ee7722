@@ -1,10 +1,64 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
 
 
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
+
+/// Background -- True Spheres
+///
+
+ /// True Sphere
+ //
+ //  A sphere rendered perfectly.
+ //  (A tessellation using triangles is not perfect since the triangles
+ //   approximate the sphere surface.)
+
+ // Each sphere rendered using one (one!) vertex.
+ //
+ // Buffer Objects / Arrays
+ //
+ //  Each array has one element per sphere.
+ //
+ //  sphere_pos_rad.  A vec4.
+ //    sphere_pos_rad[i].xyz
+ //      Coordinates of center of sphere i.
+ //    sphere_pos_rad[i].w
+ //      Radius of sphere i.
+ //
+ //  sphere_rot. A mat4
+ //    Orientation of sphere. (A rotation matrix.)
+ //
+ //  sphere_color. A vec4.
+ //    Sphere color.
+
+ /// Rendering Pass
+ //
+ //   Input primitive is point.
+ //   There are no input attributes ..
+ //   .. other than gl_VertexID which is automatically generated.
+ //
+ ///   Vertex Shader
+ //
+ //      Passes gl_VertexID to geometry shader.
+ //      That's all the vertex shader does.
+ //
+ ///   Geometry Shader
+ //
+ //      Input: Point
+ //      Output: Triangle Strip
+ //
+ //      Generates a square (two triangles) around sphere.
+ //      From eye, the square perfectly frames the sphere.
+ //
+ ///   Fragment Shader
+ //
+ //      Determines whether pixel covered by sphere ..
+ //      .. and if so, the coordinates of that point on the sphere.
+ //      Fragment is dropped if pixel not covered by sphere ..
+ //      .. otherwise determines normal and texture coordinates.
+
 
 
 layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
@@ -67,31 +121,31 @@ gs_main()
   // Eye location in object space.
   vec3 e_o = vec3(gl_ModelViewMatrixInverse * vec4(0,0,0,1));
 
-  // Vectors from eye to sphere center.
+  // Vector from eye to sphere center.
   vec3 ec_o = ctr_o - e_o;  // Eye to Center (of sphere).
-  float ec_len = length(ec_o);
-  vec3 ne = ec_o / ec_len;
 
   // Vectors orthogonal to ec_o.
   //
   vec3 atr_o = abs(ec_o);
   int min_idx = atr_o.x < atr_o.y ? ( atr_o.x < atr_o.z ? 0 : 2 )
     : ( atr_o.y < atr_o.z ? 1 : 2 );
-  vec3 nx_raw = min_idx == 0 ? vec3(0,-ec_o.z,ec_o.y)
+  vec3 ax_raw = min_idx == 0 ? vec3(0,-ec_o.z,ec_o.y)
     : min_idx == 1 ? vec3(-ec_o.z,0,ec_o.x) : vec3(-ec_o.y,ec_o.x,0);
-  vec3 nx = normalize(nx_raw);
-  vec3 ny = cross(ne,nx);
+  vec3 ax = normalize(ax_raw);
+  vec3 ay = normalize(cross(ec_o,ax));
 
   // Compute center of the limb, lmb_o, the circle formed by the most
   // distant visible parts of the sphere surface.
-  float sin_theta = r / ec_len;
-  float a = r * sin_theta;
-  vec3 lmb_o = ctr_o - a * ne;
+  float sin_theta_sq = r * r / dot(ec_o,ec_o);
+
+  // The following is equivalent to the simplified expression for lmb_o:
+  //  vec3 lmb_o = ctr_o - sin_theta * r * ec_o / length(ec_o);
+  vec3 lmb_o = ctr_o - sin_theta_sq * ec_o;
 
   // Compute axes to draw the limb.
-  float b = r * sqrt( 1 - sin_theta * sin_theta );
-  vec3 ax = b * nx;
-  vec3 ay = b * ny;
+  float b = r * sqrt( 1 - sin_theta_sq );
+  vec3 vx = b * ax;
+  vec3 vy = b * ay;
 
   mat4 mvp = trans_proj * gl_ModelViewMatrix;
 
@@ -99,7 +153,7 @@ gs_main()
   for ( int i = -1; i < 2; i += 2 )
     for ( int j = -1; j < 2; j += 2 )
       {
-        vertex_o = lmb_o + ax * i + ay * j;
+        vertex_o = lmb_o + vx * i + vy * j;
         gl_Position = mvp * vec4(vertex_o,1);
         EmitVertex();
       }
