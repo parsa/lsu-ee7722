@@ -41,9 +41,6 @@ out Data_to_GS
 void
 vs_main()
 {
-  // Here, the vertex shader does nothing except pass variables
-  // to the geometry shader.
-
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
   normal_e = normalize(gl_NormalMatrix * gl_Normal);
@@ -57,15 +54,17 @@ vs_main_instances_sphere()
   vec4 pos_rad = sphere_pos_rad[gl_InstanceID];
   float rad = pos_rad.w;
   mat4 rot = transpose(sphere_rot[gl_InstanceID]);
-  vec4 normr = rot * gl_Vertex;
+  vec4 normr = rot * gl_Vertex;  // mad: 16-4 = 12
   vec3 normal_o = normr.xyz;
-  vec4 vertex_o = vec4( pos_rad.xyz + rad * normal_o, 1 );
+  vec4 vertex_o = vec4( pos_rad.xyz + rad * normal_o, 1 );  // mad:3
 
-  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;
-  vertex_e = gl_ModelViewMatrix * vertex_o;
-  normal_e = normalize(gl_NormalMatrix * normal_o );
+  gl_Position = gl_ModelViewProjectionMatrix * vertex_o;  // mad: 16
+  vertex_e = gl_ModelViewMatrix * vertex_o;               // mad: 16
+  normal_e = normalize(gl_NormalMatrix * normal_o );      // mad: 12, spc: 1
   gl_TexCoord[0] = gl_MultiTexCoord0;
   color = sphere_color[gl_InstanceID];
+
+  // Total work: mad: 59,  spc: 1
 }
 
 void

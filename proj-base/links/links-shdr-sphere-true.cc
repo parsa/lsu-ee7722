@@ -59,6 +59,57 @@
  //      Fragment is dropped if pixel not covered by sphere ..
  //      .. otherwise determines normal and texture coordinates.
 
+ /// Efficiency: True Sphere v. Tessellated Sphere
+ //
+ //  Operation Background
+ //
+ //    mad: 
+ //      Multiply add.
+ //      Performed by a "CUDA Core"
+ //      "Cost" of one multiply or one add same as cost of one mad.
+ //
+ //    special:
+ //      Operations using special functional unit.
+ //      Include reciprocal, reciprocal square root. Used for division, sqrt.
+ //      From CC 5.0 (Maxell) to present (Turing/Volta) ..
+ //      .. cost is 4 times that of a mad.
+ //
+ //    trig:
+ //      Operations requiring library code.
+ //      Assume cost is 20 * mad.
+ //
+ //
+ /// Tessellated Sphere
+ //    Code in links-shdr.cc.
+ //
+ //    Rendered using an instanced rendering pass:
+ //      One rendering pass renders n spheres.
+ //      Vertex shader input is for vertex on a radius=1 sphere at origin.
+ //      Instance ID used to retrieve actual radius, center, and rotation.
+ //
+ //    Vertex Shader Estimated Work per Vertex
+ //      59 mad, 1 special.
+ //      Cost: 63
+ //
+ //    Let s denote number of slices. Approximate: s^2 vertices in tessellation.
+ //
+ /// True Sphere
+ //    Code in this file.
+ //
+ //    Fragment Shader Extra Work per Fragment
+ //      Note: Extra work means work not done by tessellated sphere's fragment
+ //            shader. 
+ //      61 mad, 7 special, 2 trig
+ //      Cost: 61 + 7*4 + 2*20 = 129
+ //
+ /// Comparison
+ //
+ //   Work FS True / Work VS Tess = 129 / 63 approx 2
+ //
+ //   Expect True Sphere better when:
+ //     Tess Sphere  Frag / Vtx ratio < 0.5
+ //
+
 
 
 layout ( binding = 1 ) buffer sr { mat4 sphere_rot[]; };
@@ -186,56 +237,58 @@ fs_main()
   vec3 ctr_oo = pos_rad.xyz;
   vec3 ctr_o = mirrored ? ctr_oo * vec3(1,-1,1) : ctr_oo;
 
-  float rsq = pos_rad.w * pos_rad.w;
+  float rsq = pos_rad.w * pos_rad.w;   // mad: 1
 
   // Eye location in object-space coordinates.
-  vec3 e_o = vec3( gl_ModelViewMatrixInverse * vec4(0,0,0,1) );
+  vec3 e_o = vec3( gl_ModelViewMatrixInverse * vec4(0,0,0,1) );  // mad: 0
 
   // Prepare to compute intersection of ray from eye to through fragment with
   // sphere. That intersection is the point on the sphere corresponding
   // to this fragment.
   //
   vec3 ef = vertex_o - e_o;
-  float ef_d_ef = dot(ef,ef);
+  float ef_d_ef = dot(ef,ef);  // mad: 3
   vec3 ce = e_o-ctr_o;
-  float ce_d_ce = dot(ce,ce);
-  float ef_d_ce = dot(ef,ce);
+  float ce_d_ce = dot(ce,ce);  // mad: 3
+  float ef_d_ce = dot(ef,ce);  // mad: 3
   float qfa = ef_d_ef;
-  float qfb = 2 * ef_d_ce;
+  float qfb = 2 * ef_d_ce;     // mad: 1
   float qfc = ce_d_ce - rsq;
-  float discr = qfb*qfb - 4 * qfa * qfc;
+  float discr = qfb*qfb - 4 * qfa * qfc;  // mad: 3
 
   // If outside the limb, return.
   if ( discr < 0 ) discard;
 
   // Finish computing coordinate of point for this fragment.
   //
-  float t = ( -qfb - sqrt( discr ) ) / ( 2 * qfa );
-  vec4 sur_o = vec4(e_o + t * ef, 1);
+  float t = ( -qfb - sqrt( discr ) ) / ( 2 * qfa ); // mad: 1;  spc: 2
+  vec4 sur_o = vec4(e_o + t * ef, 1);               // mad: 1
 
   {
     // Compute clip-space depth. Take care so that compiler avoids full
     // matrix / vector multiplication.
-    vec4 sur_e = gl_ModelViewMatrix * sur_o;
-    vec4 sur_c = trans_proj * vec4(0,0,2*sur_e.z,1);
-    gl_FragDepth = sur_c.z / sur_c.w;
+    vec4 sur_e = gl_ModelViewMatrix * sur_o;          // mad: 4
+    vec4 sur_c = trans_proj * vec4(0,0,2*sur_e.z,1);  // mad: 1
+    gl_FragDepth = sur_c.z / sur_c.w;                 // spc: 1
   }
 
   // Compute eye-space coordinate and vector of unreflected point.
   //
   vec4 sur_oo = mirrored ? sur_o * vec4(1,-1,1,1) : sur_o;
-  vec3 normal_oo = normalize(sur_oo.xyz - ctr_oo);
-  vec3 normal_ee = normalize(gl_NormalMatrix * normal_oo);
-  vec4 sur_ee = gl_ModelViewMatrix * sur_oo;
+  vec3 normal_oo = normalize(sur_oo.xyz - ctr_oo);         // mad: 3  spc: 1
+  vec3 normal_ee = normalize(gl_NormalMatrix * normal_oo); // mad: 12 spc: 1
+  vec4 sur_ee = gl_ModelViewMatrix * sur_oo;               // mad: 16
 
   // Use sphere-local coordinates to compute texture coordinates.
   //
-  vec3 sur_l = mat3(sphere_rot[vertex_id]) * normal_oo;
+  vec3 sur_l = mat3(sphere_rot[vertex_id]) * normal_oo;    // mad: 9
   float pi = 3.14159265359;
   float tpi = 2 * pi;
-  float theta = atan(sur_l.x,sur_l.z);
-  float eta = acos(sur_l.y);
-  vec2 tcoord = vec2( ( 1.5 * pi + theta ) / tpi, eta / pi );
+  float theta = atan(sur_l.x,sur_l.z);                     // trg: 1
+  float eta = acos(sur_l.y);                               // trg: 1
+  vec2 tcoord = vec2( ( 1.5 * pi + theta ) / tpi, eta / pi );  // spc: 2
+
+  // Totals: mad: 61   spc: 7   trg: 2
 
   // Get filtered texel.
   //
