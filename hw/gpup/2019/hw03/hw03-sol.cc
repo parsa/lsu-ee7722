@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
- /// Homework 3
+ /// Homework 3 -- SOLUTION
  //
 
  /// Instructions
@@ -229,11 +229,11 @@ World::init()
   hw03.sp_fixed = new pShader();
   hw03.sp_strip_plus =
     new pShader
-    ( "hw03-shdr.cc",
+    ( "hw03-shdr-sol.cc",
       "vs_strip_plus();", "gs_strip_plus();", "fs_main();");
   hw03.sp_points =
     new pShader
-    ( "hw03-shdr.cc",
+    ( "hw03-shdr-sol.cc",
       "vs_points();", "gs_points();", "fs_main();",
       "#define HW03_POINTS");
 
@@ -834,6 +834,15 @@ World::render_cylinder(Render_Option roption)
       // DO NOT send arrays to the rendering pipeline ..
       // .. the vertex shader should rely only on gl_VertexID and uniforms.
 
+      /// SOLUTION -- Problem 2
+      //
+      // Send additional items needed to construct the protrusions.
+      //
+      glUniform3fv(9,1,ax);
+      glUniform3fv(10,1,ay);
+      glUniform3fv(11,1,vd);
+      glUniform1f(12,dr);
+
       glDrawArrays(GL_POINTS, 0, n_revs * n_per_rev);
       hw03.sp_fixed->use();
       return;
@@ -852,9 +861,19 @@ World::render_cylinder(Render_Option roption)
   for ( auto& e: hw03.bump_info )
     {
       if ( !one_strip ) glBegin(GL_TRIANGLE_STRIP);
-      glNormal3fv(e.nc);
+
+      /// SOLUTION -- Problem 1
+      //
+      //  Emit a zero normal to signal the start of a new strip.
+      //
+      if ( opt_shader ) glNormal3f(0,0,0); else glNormal3fv(e.nc);
+
       glVertex4fv(e.ctop);
       glVertex4fv(e.cl);
+
+      /// SOLUTION -- Problem 1
+      //  Emit the normal after the first two vertices.
+      glNormal3fv(e.nc);
       glVertex4fv(e.cr);
       glVertex4fv(e.cbot);
       if ( !one_strip ) glEnd();
@@ -883,12 +902,34 @@ World::render_cylinder(Render_Option roption)
 
       if ( !one_strip ) glBegin(GL_TRIANGLE_STRIP);
 
+      /// SOLUTION -- Problem 1
+      //
+      //  This is where we want to re-start the triangle strip. So set
+      //  the normal to zero if we are using the points shader.
+      //
+      if ( opt_shader ) glNormal3f(0,0,0);
+
       // Render Block's Sides
       //
       // Each iteration does one of four sides.
       //
-      for ( int i0=0; i0<4; i0++ )
+      /// SOLUTION -- Problem 1
+      //
+      //  Change number of iterations to 5 because we need
+      //  to render pts[0][0] and pts[0][1] twice.
+      //
+      for ( int i=0; i<5; i++ )
         {
+          // SOLUTION -- Problem 1
+          // Exit the loop on the fifth iteration for the ordinary shader.
+          if ( !opt_shader && i == 4 ) break;
+
+          // SOLUTION -- Problem 1
+          // Compute i0.
+          const int i0 = i & 0x3;
+          //
+          // Note that when i = 4, i0 will be set to zero.
+
           // Index i0 is one edge of the block, compute i1, the next edge.
           //
           const int i1 = ( i0 + 1 ) & 0x3;
@@ -898,15 +939,41 @@ World::render_cylinder(Render_Option roption)
           //
           vector<pCoor> spts;
           for ( int j: {i0,i1} ) for ( int i: {1,0} ) spts.push_back(pts[i][j]);
-
-          // Determine and emit the normal of the side.
+          // Determine the normal of the side.
           //
           pNorm n = cross(spts[2],spts[1],spts[0]);
-          glNormal3fv(n);
 
           // Emit the coordinates of the side.
           //
-          for ( auto v: spts ) glVertex4fv( v );
+          if ( opt_shader )
+            {
+              /// SOLUTION -- Problem 1
+              //
+              //  Just emit two vertices, those  of the current edge.
+
+              glVertex4fv( pts[1][i0] );
+              glVertex4fv( pts[0][i0] );
+
+              // Because of the way the normal was computed, the normal
+              // applies to the triangles completed in the next iteration,
+              // so set the normal after rather than before the vertices.
+              //
+              glNormal3fv(n);
+            }
+          else
+            {
+              // The code below is written for the default shader in
+              // which there is no way to re-start a triangle strip in
+              // the middle of a rendering pass. It is the same code
+              // that was in the non-solution version of the routine.
+              //
+              // Emit four vertices describing one side of the protrusion.
+              //
+              // The vertices are along edge i0 and i1.
+              //
+              glNormal3fv(n);
+              for ( auto v: spts ) glVertex4fv( v );
+            }
         }
 
       if ( !one_strip ) glEnd();

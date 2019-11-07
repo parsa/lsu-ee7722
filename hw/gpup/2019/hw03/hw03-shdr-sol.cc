@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
- /// Homework 3
+ /// Homework 3 -- SOLUTION
 //
 //   Solution goes in this file and in hw03.cc
 
@@ -23,6 +23,14 @@ layout ( location = 6 ) uniform vec4 color_edge;
 layout ( location = 7 ) uniform vec4 hw03_scalars1;
 layout ( location = 8 ) uniform vec4 ctr0;
 
+ /// SOLUTION -- Problem 2
+//
+//  Add additional uniforms needed to construct the protrusions.
+//
+layout ( location = 9 ) uniform vec3 ax;
+layout ( location = 10 ) uniform vec3 ay;
+layout ( location = 11 ) uniform vec3 vd;
+layout ( location = 12 ) uniform float hw03_scalars2;
 
 /// Code for Strip-Plus Shaders Immediately Below
 //  (Code for points shaders further below.)
@@ -85,6 +93,13 @@ layout ( triangle_strip, max_vertices = 3 ) out;
 void
 gs_strip_plus()
 {
+  /// SOLUTION -- Problem 1
+  //
+  //  If the normal provided for the provoking (3rd) vertex is zero
+  //  this must be the start of a new triangle strip, so return.
+  //
+  if ( In[2].normal_e == vec3(0,0,0) ) return;
+
   for ( int i=0; i<3; i++ )
     {
       normal_e = In[i].normal_e;
@@ -118,20 +133,18 @@ out Data_to_GS
 
   // Any changes here must also be made to the fragment shader input.
 
+  /// SOLUTION
+  int vertex_id;
 };
 
 
+ /// SOLUTION -- Problem 2
+//
+//   All the vertex shader does is pass along the vertex ID.
 void
 vs_points()
 {
-  int vid = gl_VertexID;
-
-  // Be sure to remove unneeded code. You can remove this comment too.
-
-  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-  vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  normal_e = normalize(gl_NormalMatrix * gl_Normal);
-  color = gl_Color;
+  vertex_id = gl_VertexID;
 }
 
 #endif
@@ -146,11 +159,14 @@ in Data_to_GS
   vec4 color;
   vec4 gl_Position;
 
+  /// SOLUTION -- Problem 2
+  int vertex_id;
+
 } In[];
 
 out Data_to_FS
 {
-  vec3 normal_e;
+  flat vec3 normal_e;
   vec4 vertex_e;
   flat vec4 color;
 };
@@ -161,24 +177,93 @@ layout ( points ) in;
 
 // Type of primitives emitted geometry shader output.
 //
-layout ( triangle_strip, max_vertices = 3 ) out;
+// SOLUTION -- Problem 2
+// Increase max_vertices to 14.
+layout ( triangle_strip, max_vertices = 14 ) out;
 
 
 void
 gs_points()
 {
-#ifdef xxxx
-  for ( int i=0; i<3; i++ )
+  /// SOLUTION -- Problem 2
+
+  // Retrieve the scalars and assign them to helpfully named variables.
+  //
+  float delta_theta = hw03_scalars1.x;
+  float r = hw03_scalars1.y;
+  float theta_to_ndz = hw03_scalars1.z;
+  float size_d_theta = hw03_scalars1.w;
+  float dr = hw03_scalars2;
+
+  // Compute theta.
+  //
+  float theta = delta_theta * In[0].vertex_id;
+
+  // Compute the coordinates of the diamond. (The protrusion's top.)
+  //
+  vec3 ctr = ctr0.xyz + vd * theta * theta_to_ndz;
+  vec3 nc = ax * sin(theta) + ay * cos(theta);
+  vec3 ctop = ctr + r * nc;
+  vec3 nl = ax * sin(theta-size_d_theta) + ay * cos(theta-size_d_theta);
+  vec3 nr = ax * sin(theta+size_d_theta) + ay * cos(theta+size_d_theta);
+  vec3 cl = ctr + r * nl + vd;
+  vec3 cr = ctr + r * nr + vd;
+  vec3 cbot = ctop + vd + vd;
+
+  // Prepare an array of object-space coordinates of vertices
+  // describing the protrusion, and use that to initialize an array of
+  // eye-space coordinates.
+  //
+  vec3 pts_o[8] =
+    { ctop,       cr,       cbot,       cl,
+      ctop+nc*dr, cr+nr*dr, cbot+nc*dr, cl+nr*dr };
+  vec4 pts_e[8];
+  for ( int i=0; i<8; i++ ) pts_e[i] = gl_ModelViewMatrix * vec4(pts_o[i],1);
+
+  // Emit the diamond-shaped protrusion top.
+  //
+  color = color_diamond;
+  normal_e = gl_NormalMatrix * nl;
+
+  int ord[4] = { 1, 0, 2, 3 }; // Order in which to emit vertices.
+  for ( int i=0; i<4; i++ )
     {
-      normal_e = In[i].normal_e;
-      vertex_e = In[i].vertex_e;
-      color = In[i].color;
-      gl_Position = In[i].gl_Position;
+      vertex_e = pts_e[ord[i]];  // Retrieve vertices in the correct order.
+      gl_Position = gl_ProjectionMatrix * vertex_e;
       EmitVertex();
     }
   EndPrimitive();
-#endif
+
+  // Emit the sides.
+  //
+  color = color_edge;
+
+  for ( int i=0; i<5; i++ )
+    {
+      int i0 = i & 0x3;          // The current edge.
+      int i1 = ( i + 1 ) & 0x3;  // The next edge. (Used to compute the normal.)
+
+      vertex_e = pts_e[i0+4];
+      gl_Position = gl_ProjectionMatrix * vertex_e;
+      EmitVertex();
+
+      vertex_e = pts_e[i0];
+      gl_Position = gl_ProjectionMatrix * vertex_e;
+      EmitVertex();
+
+      // This normal will be used for the next two vertices.
+      //
+      normal_e =
+        cross( pts_e[i1].xyz   - pts_e[i0].xyz,
+               pts_e[i0+4].xyz - pts_e[i0].xyz );
+      //
+      // Note that because the interpolation qualifier of normal_e is
+      // flat the normal only has to be correct for the provoking
+      // vertex.
+    }
+  EndPrimitive();
 }
+
 
 #endif
 
