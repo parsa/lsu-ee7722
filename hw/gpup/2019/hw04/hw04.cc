@@ -127,7 +127,9 @@ struct HW04_Stuff {
 
   pShader *sp_fixed;  // OpenGL default shaders.
   pShader *sp_strip_plus;
+  pShader *sp_strip_plus_sv;
   pShader *sp_points;
+  pShader *sp_points_sv;
 
   bool bump_stale;
   vector<Bump_Info> bump_info;
@@ -231,11 +233,20 @@ World::init()
     new pShader
     ( "hw04-shdr.cc",
       "vs_strip_plus();", "gs_strip_plus();", "fs_main();");
+  hw04.sp_strip_plus_sv =
+    new pShader
+    ( "hw04-shdr.cc",
+      "vs_strip_plus_sv();", "gs_strip_plus_sv();", "fs_main_sv();");
   hw04.sp_points =
     new pShader
     ( "hw04-shdr.cc",
       "vs_points();", "gs_points();", "fs_main();",
-      "#define HW03_POINTS");
+      "#define HW04_POINTS");
+  hw04.sp_points_sv =
+    new pShader
+    ( "hw04-shdr.cc",
+      "vs_points();", "gs_points_sv();", "fs_main_sv();",
+      "#define HW04_POINTS");
 
   curr_setup = 1; ball_setup_1();
 }
@@ -762,7 +773,10 @@ World::render_cylinder(Render_Option roption)
   // are only performed during construction, so there's no need
   // to feel guilty about having 100 sides or more.
   hw01_ring_guide.render
-    (hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
+    (roption,hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
+
+
+  if ( roption == RO_Shadow_Volumes && !opt_shader ) return;
 
   /// Draw Squares (Diamonds) Above the Ring
   //
@@ -808,9 +822,15 @@ World::render_cylinder(Render_Option roption)
   if ( opt_shader )
     {
       if ( opt_shader == 1 )
-        hw04.sp_strip_plus->use();
+        {
+          if ( roption == RO_Shadow_Volumes )
+            hw04.sp_strip_plus_sv->use(); else hw04.sp_strip_plus->use();
+        }
       else
-        hw04.sp_points->use();
+        {
+          if ( roption == RO_Shadow_Volumes )
+            hw04.sp_points_sv->use(); else hw04.sp_points->use();
+        }
 
       // Common setup for both shaders.
       //
@@ -841,6 +861,8 @@ World::render_cylinder(Render_Option roption)
   // Use information to draw diamonds.
   //
   glColor3fv(color_tan);
+
+  /// Problem 1 solution goes below and other places.
 
   // If true, render everything below with one triangle strip.
   //

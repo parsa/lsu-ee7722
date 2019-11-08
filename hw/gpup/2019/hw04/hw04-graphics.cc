@@ -26,8 +26,6 @@
 #include <gp/texture-util.h>
 #include "shapes.h"
 
-enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
-
 class Render_FCtx {
 public:
   Render_FCtx(const pCoor& light, const pCoor& eye)
@@ -104,6 +102,9 @@ public:
   pMatrix transform_mirror;
   int curr_setup;
 
+  bool opt_shadows, opt_shadow_volumes;
+  bool opt_mirror;
+
   // Cylinder used to show location of ring.
   Cylinder hw01_ring_guide;
 
@@ -156,11 +157,14 @@ World::init_graphics()
   /// Graphical Model Initialization
   ///
 
+  opt_shadow_volumes = false;
+  opt_shadows = true;
+  opt_mirror = true;
+
   opt_platform_texture = true;
 
   eye_location = pCoor(13.5,17.0,-16.8);
   eye_direction = pVect(-0.42,-0.18,0.89);
-
 
   platform_xmin = -40; platform_xmax = 40;
   platform_zmin = -40; platform_zmax = 40;
@@ -275,6 +279,7 @@ World::render_objects(Render_Option option)
 #endif
       cone.light_pos = light_location;
       sphere.light_pos = light_location;
+      hw01_ring_guide.light_pos = light_location;
 
       for ( int i=0; i<chain_length; i++ )
         sphere.render_shadow_volume(balls[i].radius,balls[i].position);
@@ -285,6 +290,14 @@ World::render_objects(Render_Option option)
           cone.render_shadow_volume
             (ball1->position,0.3*ball1->radius,
              ball2->position-ball1->position);
+        }
+      if ( balls[0].constraint > OC_Locked )
+        {
+          pGL_Restore_Later({GL_COLOR_SUM});
+          glEnable(GL_COLOR_SUM);
+          if ( opt_tryout3 ) glColorMask(false,false,false,false);
+          render_cylinder(option);
+          if ( opt_tryout3 ) glColorMask(true,true,true,true);
         }
     }
   else
@@ -447,11 +460,13 @@ World::render()
      opt_hw01_spin ? "ON " : "OFF");
 
   ogl_helper.fbprintf
-    ("HW03: Tryout 1,2,3: %s, %s, %s  ('yYZ')  Shader %s ('v')\n",
+    ("HW04: Tryout 1,2,3: %s, %s, %s  ('yYZ')  Shader %s ('v')  "
+     "Shadows %s ('oO')\n",
      opt_tryout1 ? BLINK("ON ","   ") : "OFF",
      opt_tryout2 ? BLINK("ON ","   ") : "OFF",
      opt_tryout3 ? BLINK("ON ","   ") : "OFF",
-     sh_names[opt_shader]);
+     sh_names[opt_shader],
+     opt_shadow_volumes ? "VOL" : opt_shadows ? "ON ": "OFF");
 
   ogl_helper.fbprintf
     ("Time Step: %8d  World Time: %11.6f  %s\n",
@@ -576,72 +591,73 @@ World::render()
 
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_color);
 
-  //
-  // First pass, render using only ambient light.
-  //
-  glDisable(GL_LIGHT0);
+  if ( opt_shadows )
+    {
+      //
+      // First pass, render using only ambient light.
+      //
+      glDisable(GL_LIGHT0);
 
-  // Send balls, tiles, and platform to opengl.
-  // Do occlusion test too.
-  //
-  render_objects(RO_Normally);
+      // Send balls, tiles, and platform to opengl.
+      // Do occlusion test too.
+      //
+      render_objects(RO_Normally);
 
-  //
-  // Second pass, add on light0.
-  //
+      //
+      // Second pass, add on light0.
+      //
 
-  // Turn off ambient light, turn on light 0.
-  //
-  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, color_black);
-  glEnable(GL_LIGHT0);
+      // Turn off ambient light, turn on light 0.
+      //
+      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, color_black);
+      glEnable(GL_LIGHT0);
 
+      glClear(GL_STENCIL_BUFFER_BIT);
 
-  glClear(GL_STENCIL_BUFFER_BIT);
+      // Make sure that only stencil buffer written.
+      //
+      glColorMask(false,false,false,false);
+      glDepthMask(false);
 
-  // Make sure that only stencil buffer written.
-  //
-#ifndef DB_SV
-  glColorMask(false,false,false,false);
-  glDepthMask(false);
+      // Don't waste time computing lighting.
+      //
+      glDisable(GL_LIGHTING);
+      glDisable(GL_TEXTURE_2D);
 
-  // Don't waste time computing lighting.
-  //
-  glDisable(GL_LIGHTING);
-#endif
-  glDisable(GL_TEXTURE_2D);
-
-  // Set up stencil test to count shadow volume surfaces: plus 1 for
-  // entering the shadow volume, minus 1 for leaving the shadow
-  // volume.
-  //
-  glEnable(GL_STENCIL_TEST);
-  // sfail, dfail, dpass
-  glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
-  glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
-  glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
+      // Set up stencil test to count shadow volume surfaces: plus 1 for
+      // entering the shadow volume, minus 1 for leaving the shadow
+      // volume.
+      //
+      glEnable(GL_STENCIL_TEST);
+      // sfail, dfail, dpass
+      glStencilOpSeparate(GL_FRONT,GL_KEEP,GL_KEEP,GL_INCR_WRAP);
+      glStencilOpSeparate(GL_BACK,GL_KEEP,GL_KEEP,GL_DECR_WRAP);
+      glStencilFuncSeparate(GL_FRONT_AND_BACK,GL_ALWAYS,1,-1); // ref, mask
  
-  // Write stencil with shadow locations based on shadow volumes
-  // cast by light0 (light_location).  Shadowed locations will
-  // have a positive stencil value.  Routine will set viewer_shadow_volume
-  // to the number of view volumes containing the eye.
-  //
-  render_objects(RO_Shadow_Volumes);
+      // Write stencil with shadow locations based on shadow volumes
+      // cast by light0 (light_location).  Shadowed locations will
+      // have a positive stencil value.  Routine will set viewer_shadow_volume
+      // to the number of view volumes containing the eye.
+      //
+      render_objects(RO_Shadow_Volumes);
 
-  glEnable(GL_LIGHTING);
-  glColorMask(true,true,true,true);
-  glDepthMask(true);
+      glEnable(GL_LIGHTING);
+      glColorMask(true,true,true,true);
+      glDepthMask(true);
 
-  // Use stencil test to prevent writes to shadowed areas.
-  //
-  glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-  glStencilFunc(GL_EQUAL,viewer_shadow_volume,-1); // ref, mask
+      // Use stencil test to prevent writes to shadowed areas.
+      //
+      glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
+      glStencilFunc(GL_EQUAL,viewer_shadow_volume,-1); // ref, mask
 
-  // Allow pixels to be re-written.
-  //
-  glDepthFunc(GL_LEQUAL);
-  glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_ADD);
-  glBlendFunc(GL_ONE,GL_ONE);
+      // Allow pixels to be re-written.
+      //
+      glDepthFunc(GL_LEQUAL);
+      glEnable(GL_BLEND);
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFunc(GL_ONE,GL_ONE);
+
+    }
 
   // Render.
   //
@@ -712,6 +728,15 @@ World::cb_keyboard()
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
+
+  case 'm': case 'M': opt_mirror = !opt_mirror; break;
+  case 'o': opt_shadows = !opt_shadows; break;
+  case 'O':
+    opt_shadow_volumes = !opt_shadow_volumes;
+    if ( opt_shadow_volumes ) opt_shadows = true;
+    break;
+
+
   case 'r':
     if ( con != OC_Ring_Free && con != OC_Ring_Animated )
       hw01.rail_inited = false;

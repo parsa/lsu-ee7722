@@ -6,6 +6,8 @@
 #ifndef SHAPES_H
 #define SHAPES_H
 
+enum Render_Option { RO_Normally, RO_Simple, RO_Shadow_Volumes };
+
 class Sphere {
 public:
   Sphere(){ opt_texture = true; };
@@ -485,6 +487,16 @@ public:
     glPopMatrix();
     glFrontFace(GL_CCW);
   }
+
+  void render(Render_Option ro, pCoor base, float radius, pVect to_apex)
+    {
+      switch ( ro ) {
+      case RO_Normally: render(base,radius,to_apex); break;
+      case RO_Shadow_Volumes:
+        render_shadow_volume_exact(base,radius,to_apex); break;
+      default: assert( false );
+      }
+    }
 
   void render_shadow_volume(pCoor base, float radius, pVect to_apex)
   {

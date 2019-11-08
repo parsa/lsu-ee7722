@@ -34,7 +34,7 @@ layout ( location = 12 ) uniform float hw04_scalars2;
 /// Code for Strip-Plus Shaders Immediately Below
 //  (Code for points shaders further below.)
 
-#ifndef HW03_POINTS
+#ifndef HW04_POINTS
 
 #ifdef _VERTEX_SHADER_
 
@@ -54,11 +54,25 @@ out Data_to_GS
 void
 vs_strip_plus()
 {
+  /// Problem 1 solution goes here and other places.
+
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
   vertex_e = gl_ModelViewMatrix * gl_Vertex;
   normal_e = gl_NormalMatrix * gl_Normal;
   color = gl_Color;
 }
+
+
+void
+vs_strip_plus_sv()
+{
+  /// Problem 1 solution goes here and other places.
+
+  // Pass data to geometry shader unchanged.
+  gl_Position = gl_Vertex;
+  normal_e = gl_Normal;
+}
+
 
 #endif
 
@@ -75,7 +89,7 @@ in Data_to_GS
 
 out Data_to_FS
 {
-  vec3 normal_e;
+  flat vec3 normal_e;
   vec4 vertex_e;
   flat vec4 color;
 };
@@ -86,13 +100,14 @@ layout ( triangles ) in;
 
 // Type of primitives emitted geometry shader output.
 //
-layout ( triangle_strip, max_vertices = 3 ) out;
+layout ( triangle_strip, max_vertices = 8 ) out;
 
 
 void
 gs_strip_plus()
 {
-  //
+  /// Problem 1 solution goes here and other places.
+
   //  If the normal provided for the provoking (3rd) vertex is zero
   //  this must be the start of a new triangle strip, so return.
   //
@@ -104,6 +119,44 @@ gs_strip_plus()
       vertex_e = In[i].vertex_e;
       color = In[i].color;
       gl_Position = In[i].gl_Position;
+      EmitVertex();
+    }
+  EndPrimitive();
+}
+
+
+void
+gs_strip_plus_sv()
+{
+  if ( In[2].normal_e == vec3(0,0,0) ) return;
+
+  // Get object space coordinates of light.
+  vec4 l_pos_o = gl_ModelViewMatrixInverse * gl_LightSource[0].position;
+  float sv_len = 1000;  // Size of shadow volume.
+
+  vec3 norm = In[2].normal_e;
+
+  // Is light illuminating the front face or the back face?
+  //
+  bool front_lit = dot( norm, l_pos_o.xyz - In[0].gl_Position.xyz ) > 0;
+  //
+  // We need to know this so that the front of the triangles forming
+  // our shadow volume surface faces the light side (and the backs
+  // face the shadow side).
+
+  for ( int ii=0; ii<4; ii++ )
+    {
+      int i = ii % 3;
+      vec4 v = In[i].gl_Position;  // Shorter name, v, for convenience.
+      // Light to vertex.
+      vec3 ltov = normalize( v.xyz - l_pos_o.xyz );
+
+      // Vertex far from the light.
+      vec4 vfar = vec4( v.xyz + sv_len * ltov, 1 );
+
+      gl_Position = gl_ModelViewProjectionMatrix * ( front_lit ? v : vfar );
+      EmitVertex();
+      gl_Position = gl_ModelViewProjectionMatrix * ( front_lit ? vfar : v );
       EmitVertex();
     }
   EndPrimitive();
@@ -175,9 +228,13 @@ layout ( points ) in;
 // Increase max_vertices to 14.
 layout ( triangle_strip, max_vertices = 14 ) out;
 
+void gs_points_common(bool shadow_volumes);
+void gs_points() { gs_points_common(false); }
+void gs_points_sv() { gs_points_common(true); }
+
 
 void
-gs_points()
+gs_points_common(bool shadow_volumes)
 {
 
   // Retrieve the scalars and assign them to helpfully named variables.
@@ -212,6 +269,13 @@ gs_points()
       ctop+nc*dr, cr+nr*dr, cbot+nc*dr, cl+nr*dr };
   vec4 pts_e[8];
   for ( int i=0; i<8; i++ ) pts_e[i] = gl_ModelViewMatrix * vec4(pts_o[i],1);
+
+  if ( shadow_volumes )
+    {
+      /// Put Problem 2 Solution Here.
+
+      return;
+    }
 
   // Emit the diamond-shaped protrusion top.
   //
@@ -295,6 +359,14 @@ fs_main()
 
   // Copy fragment depth unmodified.
   //
+  gl_FragDepth = gl_FragCoord.z;
+}
+
+void
+fs_main_sv()
+{
+  vec4 color = gl_FrontFacing ? vec4(0,0,0.5,1) : vec4(0.5,0,0,1);
+  gl_FragColor = color;
   gl_FragDepth = gl_FragCoord.z;
 }
 
