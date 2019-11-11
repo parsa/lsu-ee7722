@@ -772,8 +772,9 @@ World::render_cylinder(Render_Option roption)
   // and re-used every frame. The costly trigonometric operations
   // are only performed during construction, so there's no need
   // to feel guilty about having 100 sides or more.
-  hw01_ring_guide.render
-    (roption,hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
+  if ( !opt_shadow_volumes )
+    hw01_ring_guide.render
+      (roption,hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
 
 
   if ( roption == RO_Shadow_Volumes && !opt_shader ) return;

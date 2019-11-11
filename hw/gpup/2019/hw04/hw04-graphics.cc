@@ -91,7 +91,6 @@ public:
   bool opt_pause;
   bool opt_single_frame;      // Simulate for one frame.
   bool opt_single_time_step;  // Simulate for one time step.
-  int viewer_shadow_volume;
 
   bool opt_tryout1, opt_tryout2, opt_tryout3;
   float opt_tryoutf;
@@ -255,9 +254,6 @@ World::render_objects(Render_Option option)
   Render_FCtx fc(light_location,eye_location);
   Render_Ctx rc(fc);
 
-  if ( option == RO_Shadow_Volumes )
-    viewer_shadow_volume = 0;
-
   if ( option == RO_Normally )
     {
       glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1.0);
@@ -294,10 +290,17 @@ World::render_objects(Render_Option option)
       if ( balls[0].constraint > OC_Locked )
         {
           pGL_Restore_Later({GL_COLOR_SUM});
-          glEnable(GL_COLOR_SUM);
-          if ( opt_tryout3 ) glColorMask(false,false,false,false);
+          if ( opt_shadow_volumes )
+            {
+              glDepthMask(true);
+              glColorMask(true,true,true,true);
+            }
           render_cylinder(option);
-          if ( opt_tryout3 ) glColorMask(true,true,true,true);
+          if ( opt_shadow_volumes )
+            {
+              glDepthMask(false);
+              glColorMask(false,false,false,false);
+            }
         }
     }
   else
@@ -636,8 +639,7 @@ World::render()
  
       // Write stencil with shadow locations based on shadow volumes
       // cast by light0 (light_location).  Shadowed locations will
-      // have a positive stencil value.  Routine will set viewer_shadow_volume
-      // to the number of view volumes containing the eye.
+      // have a positive stencil value.
       //
       render_objects(RO_Shadow_Volumes);
 
@@ -648,7 +650,7 @@ World::render()
       // Use stencil test to prevent writes to shadowed areas.
       //
       glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);
-      glStencilFunc(GL_EQUAL,viewer_shadow_volume,-1); // ref, mask
+      glStencilFunc(GL_EQUAL,0,-1); // ref, mask
 
       // Allow pixels to be re-written.
       //
