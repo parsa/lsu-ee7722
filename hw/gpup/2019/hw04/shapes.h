@@ -1,4 +1,4 @@
-/// LSU EE X70X-X (Fall 2018), GPU X -*- c++ -*-
+/// LSU EE X70X-X (Fall 2019), GPU X -*- c++ -*-
 //
  /// Quick-and-Dirty Routines for Drawing some OpenGL Shapes
 
@@ -254,7 +254,7 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
   pNorm na = l_to_c_dir.x == 0 ? pVect(0,-l_to_c_dir.z,l_to_c_dir.y)
     : pVect(-l_to_c_dir.y,l_to_c_dir.x,0);
   pVect va = r1 * na;
-  pVect vb = cross(l_to_c_dir,va);
+  pVect vb = cross(-l_to_c_dir,va);
   pMatrix transform; transform.set_identity();
   transform.set_col(0,va);
   transform.set_col(1,vb);
