@@ -277,78 +277,80 @@ Sphere::render_shadow_volume(float radiusp, pCoor center)
 
 class Cone {
 public:
-  Cone(){ apex_radius = 0.1; dont_set_color = true; };
+  Cone()
+  {
+    apex_radius = 0.1;
+    dont_set_color = true;
+    render_sides = 10;
+    ends_hidden = false;
+  };
+
   void render_shadow_volume(pCoor base, float radius, pVect to_apex)
   {
-    const int sides = 10;
-    const double delta_theta = 2 * M_PI / sides;
-    const double base_radius = 1;
-    const double apex_height = 1;
-    const float to_height = to_apex.mag();
+    const float sv_len = 1000;
+    const int sides = ends_hidden ? 1 : render_sides;
 
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+    pNorm az(-to_apex);
+    pNorm ax = az.x > az.y ? pVect(-az.z, 0, az.x) : pVect(0, -az.z, az.y);
+    pVect ay = cross(az,ax);
 
-    pVect from_apex(0,0,1);
-    pNorm rn(from_apex,to_apex);
-    const float rot_angle = pangle(from_apex,to_apex);
+    pCoor ctr[2] = { base, base + to_apex };
+    pVect base_to_l(ctr[0],light_pos), apex_to_l(ctr[1],light_pos);
 
-    pMatrix_Translate trans_transl(base);
-    pMatrix_Rotation trans_rot(rn,rot_angle);
-    pMatrix_Scale trans_scale(radius); trans_scale.rc(2,2) = to_height;
-    pMatrix xform = trans_transl * trans_rot * trans_scale;
+    pNorm lx = dot(base_to_l,ax) * ax + dot(base_to_l,ay) * ay;
+    pNorm ly = cross(az,lx);
 
-    glMultTransposeMatrixf(xform.a);
+    float r[2] = { radius, float(apex_radius)*radius };
+    bool lit[2] = { dot(base_to_l,to_apex) < 0, dot(apex_to_l,to_apex) > 0 };
+    pVect vlxa[2], vlya[2];
+    int sidesa[2][2];
+    float eta[2], delta_thetaa[2][2];
 
-    pMatrix inv = invert(xform);
-    pCoor light_local = inv * light_pos;
-
-    pCoor ptop(0,0,apex_height);
-    pCoor pbottom(0,0,0);
-    pCoor p00, p01;
-    const float height = 1000;
-
-    for ( int i=0; i<=sides; i++ )
+    for ( int h=0; h<2; h++ )
       {
-        const double theta = delta_theta * i;
-        const double cos_t = cos(theta);
-        const double sin_t = sin(theta);
-        pCoor p10( apex_radius * cos_t, apex_radius * sin_t, apex_height);
-        pCoor p11( base_radius * cos_t, base_radius * sin_t, 0);
-        if ( i )
-          {
-            pNorm l_to_00(light_local,p00);
-            pCoor p00_2 = p00 + height * l_to_00;
-            pCoor p01_2 = p01 + height * pNorm(light_local,p01);
-            pCoor p10_2 = p10 + height * pNorm(light_local,p10);
-            pCoor p11_2 = p11 + height * pNorm(light_local,p11);
-            pVect quad_normal = cross(p00,p01,p11);
-            const bool facing_light = dot(quad_normal,l_to_00) > 0;
-            glFrontFace(facing_light ? GL_CCW : GL_CW );
-
-            glBegin(GL_TRIANGLE_STRIP);
-            glVertex3fv(p00);
-            glVertex3fv(p00_2);
-            glVertex3fv(p01);
-            glVertex3fv(p01_2);
-            glVertex3fv(p11);
-            glVertex3fv(p11_2);
-            glVertex3fv(p10);
-            glVertex3fv(p10_2);
-            glVertex3fv(p00);
-            glVertex3fv(p00_2);
-            glEnd();
-          }
-        p00 = p10;
-        p01 = p11;
+        vlxa[h] = r[h] * lx;  vlya[h] = r[h] * ly;
+        eta[h] = r[h] >= lx.magnitude ? 0 : acosf( r[h]/lx.magnitude );
+        sidesa[h][0] = eta[h] ? max(1, int(sides * eta[h] / M_PI + 0.5) ) : 0;
+        sidesa[h][1] = max( 1, sides - sidesa[h][0] );
+        delta_thetaa[h][0] = -2 * eta[h] / sidesa[h][0];
+        delta_thetaa[h][1] = 2 * ( M_PI - eta[h] ) / sidesa[h][1];
       }
 
-    glPopMatrix();
-    glFrontFace(GL_CCW);
+    vector<pCoor> coors; coors.reserve( 4 * ( sides + 2 ) );
+    vector<bool> surfaces = { true };
+    if ( !ends_hidden ) surfaces.push_back( false );
+
+    for ( bool outer: surfaces )
+      {
+        const int idx_st = coors.size();
+        for ( int h: { 0, 1 } )
+          {
+            const bool far = lit[h] == outer;
+            const float delta_theta = ( h ? -1 : 1 ) * delta_thetaa[h][far];
+            if ( delta_theta == 0 ) continue;
+            const float eta_0 = h ? -eta[1] : eta[0];
+            for ( int i=0; i<=sidesa[h][far]; i++ )
+              {
+                const float theta = eta_0 + i * delta_theta;
+                pCoor p = ctr[h] + vlxa[h]*cosf(theta) + vlya[h]*sinf(theta);
+                coors.push_back(p);
+                coors.emplace_back( p + sv_len * pNorm(light_pos,p) );
+              }
+          }
+        coors.push_back(coors[idx_st]);
+        coors.push_back(coors[idx_st+1]);
+      }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glVertexPointer(4,GL_FLOAT,sizeof(coors[0]),coors.data());
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glDrawArrays(GL_TRIANGLE_STRIP,0,coors.size());
+    glDisableClientState(GL_VERTEX_ARRAY);
   }
+
   void render(pCoor base, float radius, pVect to_apex)
   {
-    const int sides = 10;
+    const int sides = render_sides;
     const double delta_theta = 2 * M_PI / sides;
     const double base_radius = 1;
     const double apex_height = 1;
@@ -386,6 +388,8 @@ public:
 
   void set_color(const pColor &c) { color = c;  dont_set_color = false; }
 
+  int render_sides;
+  bool ends_hidden; // If so, don't waste time on shadow volume for ends.
   bool dont_set_color;
   pColor color;
   pCoor light_pos;
@@ -422,71 +426,60 @@ public:
 
   void render_shadow_volume_exact(pCoor base, float radius, pVect to_apex)
   {
+    const float sv_len = 1000;
     const int sides = 10;
-    const double delta_theta = 2 * M_PI / sides;
-    const double base_radius = 1;
-    const double apex_height = 1;
-    const float to_height = to_apex.mag();
 
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+    pNorm az(-to_apex);
+    pNorm ax = az.x > az.y ? pVect(-az.z, 0, az.x) : pVect(0, -az.z, az.y);
+    pVect ay = cross(az,ax);
 
-    pVect from_apex(0,0,1);
-    pNorm rn(from_apex,to_apex);
-    const float rot_angle = pangle(from_apex,to_apex);
+    pVect base_to_l(base,light_pos);
+    pCoor apex = base + to_apex;
+    pVect apex_to_l(apex,light_pos);
 
-    pMatrix_Translate trans_transl(base);
-    pMatrix_Rotation trans_rot(rn,rot_angle);
-    pMatrix_Scale trans_scale(radius); trans_scale.rc(2,2) = to_height;
-    pMatrix xform = trans_transl * trans_rot * trans_scale;
+    pNorm lx = dot(base_to_l,ax) * ax + dot(base_to_l,ay) * ay;
+    pNorm ly = cross(az,lx);
+    pVect vlx = radius * lx,  vly = radius * ly;
 
-    glMultTransposeMatrixf(xform.a);
+    const float eta = radius >= lx.magnitude ? 0 : acosf( radius/lx.magnitude );
 
-    pMatrix inv = invert(xform);
-    pCoor light_local = inv * light_pos;
+    const int sides_near = sides * eta / M_PI + 0.5;
+    const int sidesa[2] = { sides_near, sides - sides_near };
+    const float delta_thetaa[2] =
+      { -2 * eta / sidesa[0], 2 * ( 3.141592653f - eta ) / sidesa[1] };
+    const bool lit[2] =
+      { dot(base_to_l,to_apex) < 0, dot(apex_to_l,to_apex) > 0 };
 
-    pCoor ptop(0,0,apex_height);
-    pCoor pbottom(0,0,0);
-    pCoor p00, p01;
-    const float height = 1000;
+    pCoor ctr[2] = { base, apex };
+    const float etaa[2] = { eta, -eta };
 
-    for ( int i=0; i<=sides; i++ )
+    vector<pCoor> coors; coors.reserve( 4 * ( sides + 2 ) );
+
+    for ( bool outer: { true, false } )
       {
-        const double theta = delta_theta * i;
-        const double cos_t = cos(theta);
-        const double sin_t = sin(theta);
-        pCoor p10( base_radius * cos_t, base_radius * sin_t, apex_height);
-        pCoor p11( base_radius * cos_t, base_radius * sin_t, 0);
-        if ( i )
+        const int idx_st = coors.size();
+        for ( int h: { 0, 1 } )
           {
-            pNorm l_to_00(light_local,p00);
-            pCoor p00_2 = p00 + height * l_to_00;
-            pCoor p01_2 = p01 + height * pNorm(light_local,p01);
-            pCoor p10_2 = p10 + height * pNorm(light_local,p10);
-            pCoor p11_2 = p11 + height * pNorm(light_local,p11);
-            pVect quad_normal = cross(p00,p01,p11);
-            const bool facing_light = dot(quad_normal,l_to_00) > 0;
-            glFrontFace(facing_light ? GL_CCW : GL_CW );
-
-            glBegin(GL_TRIANGLE_STRIP);
-            glVertex3fv(p00);
-            glVertex3fv(p00_2);
-            glVertex3fv(p01);
-            glVertex3fv(p01_2);
-            glVertex3fv(p11);
-            glVertex3fv(p11_2);
-            glVertex3fv(p10);
-            glVertex3fv(p10_2);
-            glVertex3fv(p00);
-            glVertex3fv(p00_2);
-            glEnd();
+            const bool far = lit[h] == outer;
+            const float delta_theta = ( h ? -1 : 1 ) * delta_thetaa[far];
+            if ( delta_theta == 0 ) continue;
+            for ( int i=0; i<=sidesa[far]; i++ )
+              {
+                const float theta = etaa[h] + i * delta_theta;
+                pCoor p = ctr[h] + vlx * cosf(theta) + vly * sinf(theta);
+                coors.push_back(p);
+                coors.emplace_back( p + sv_len * pNorm(light_pos,p) );
+              }
           }
-        p00 = p10;
-        p01 = p11;
+        coors.push_back(coors[idx_st]);
+        coors.push_back(coors[idx_st+1]);
       }
 
-    glPopMatrix();
-    glFrontFace(GL_CCW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glVertexPointer(4,GL_FLOAT,sizeof(coors[0]),coors.data());
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glDrawArrays(GL_TRIANGLE_STRIP,0,coors.size());
+    glDisableClientState(GL_VERTEX_ARRAY);
   }
 
   void render_shadow_volume(pCoor base, float radius, pVect to_apex)
