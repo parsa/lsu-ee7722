@@ -939,7 +939,7 @@ World::render_cylinder(Render_Option roption)
           // triangle strip.
           //
           vector<pCoor> spts;
-          for ( int j: {i0,i1} ) for ( int i: {1,0} ) spts.push_back(pts[i][j]);
+          for ( int j: {i0,i1} ) for ( int k: {1,0} ) spts.push_back(pts[k][j]);
           // Determine the normal of the side.
           //
           pNorm n = cross(spts[2],spts[1],spts[0]);

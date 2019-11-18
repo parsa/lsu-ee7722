@@ -897,7 +897,7 @@ World::render_cylinder(Render_Option roption)
           // triangle strip.
           //
           vector<pCoor> spts;
-          for ( int j: {i0,i1} ) for ( int i: {1,0} ) spts.push_back(pts[i][j]);
+          for ( int j: {i0,i1} ) for ( int k: {1,0} ) spts.push_back(pts[k][j]);
 
           // Determine and emit the normal of the side.
           //
