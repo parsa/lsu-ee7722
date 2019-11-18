@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
- /// Homework 4
+ /// Homework 4 -- SOLUTION
  //
 
  /// Instructions
@@ -231,20 +231,20 @@ World::init()
   hw04.sp_fixed = new pShader();
   hw04.sp_strip_plus =
     new pShader
-    ( "hw04-shdr.cc",
+    ( "hw04-shdr-sol.cc",
       "vs_strip_plus();", "gs_strip_plus();", "fs_main();");
   hw04.sp_strip_plus_sv =
     new pShader
-    ( "hw04-shdr.cc",
+    ( "hw04-shdr-sol.cc",
       "vs_strip_plus_sv();", "gs_strip_plus_sv();", "fs_main_sv();");
   hw04.sp_points =
     new pShader
-    ( "hw04-shdr.cc",
+    ( "hw04-shdr-sol.cc",
       "vs_points();", "gs_points();", "fs_main();",
       "#define HW04_POINTS");
   hw04.sp_points_sv =
     new pShader
-    ( "hw04-shdr.cc",
+    ( "hw04-shdr-sol.cc",
       "vs_points();", "gs_points_sv();", "fs_main_sv();",
       "#define HW04_POINTS");
 
@@ -875,15 +875,23 @@ World::render_cylinder(Render_Option roption)
     {
       if ( !one_strip ) glBegin(GL_TRIANGLE_STRIP);
 
-      //  Emit a zero normal to signal the start of a new strip.
-      //
-      if ( opt_shader ) glNormal3f(0,0,0); else glNormal3fv(e.nc);
+      /// SOLUTION -- Problem 1
+      //  Don't emit normals with using strip_plus shader.
+      if ( !opt_shader ) glNormal3fv(e.nc);
 
-      glVertex4fv(e.ctop);
-      glVertex4fv(e.cl);
+      pCoor vtop(e.ctop);
+      pCoor vl(e.cl);
 
-      //  Emit the triangle normal after the first two vertices.
-      glNormal3fv(e.nc);
+      /// SOLUTION -- Problem 1
+      //  Set the w component of the first two vertices to zero.
+      if ( opt_shader ) { vtop.w = vl.w = 0; }
+
+      glVertex4fv(vtop);
+      glVertex4fv(vl);
+
+      /// SOLUTION -- Problem 1
+      //  Only emit the normal for the fixed shader.
+      if ( !opt_shader ) glNormal3fv(e.nc);
       glVertex4fv(e.cr);
       glVertex4fv(e.cbot);
       if ( !one_strip ) glEnd();
@@ -915,7 +923,9 @@ World::render_cylinder(Render_Option roption)
       //  This is where we want to re-start the triangle strip. So set
       //  the normal to zero if we are using the points shader.
       //
-      if ( opt_shader ) glNormal3f(0,0,0);
+      /// SOLUTION -- Problem 1
+      //  Don't emit normal. (For the solution commented the line below.)
+      //  if ( opt_shader ) glNormal3f(0,0,0);
 
       // Render Block's Sides
       //
@@ -950,14 +960,16 @@ World::render_cylinder(Render_Option roption)
             {
               //  Just emit two vertices, those  of the current edge.
 
-              glVertex4fv( pts[1][i0] );
-              glVertex4fv( pts[0][i0] );
-
-              // Because of the way the normal was computed, the normal
-              // applies to the triangles completed in the next iteration,
-              // so set the normal after rather than before the vertices.
+              /// SOLUTION -- Problem 1
               //
-              glNormal3fv(n);
+              //  Set w component of first two vertices to zero ..
+              //  .. and don't emit a normal. (Code setting normal removed.
+              pCoor v1 = pts[1][i0];
+              pCoor v2 = pts[0][i0];
+              if ( !i ) v1.w = v2.w = 0;
+
+              glVertex4fv( v1 );
+              glVertex4fv( v2 );
             }
           else
             {

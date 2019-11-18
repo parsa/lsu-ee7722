@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
- /// Homework 4
+ /// Homework 4 -- SOLUTION
 //
 //   Solution goes in this file and in hw04.cc
 
@@ -42,7 +42,11 @@ layout ( location = 12 ) uniform float hw04_scalars2;
 //
 out Data_to_GS
 {
-  vec3 normal_e;
+  /// SOLUTION -- Problem 1
+  //
+  //  Remove normal from output, and add a new variable, ts_start.
+  //  vec3 normal_e;
+  bool ts_start; // Triangle-strip start. True for first two vertices of ts.
   vec4 vertex_e;
   vec4 color;
   vec4 gl_Position;
@@ -56,9 +60,19 @@ vs_strip_plus()
 {
   /// Problem 1 solution goes here and other places.
 
-  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-  vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  normal_e = gl_NormalMatrix * gl_Normal;
+  /// SOLUTION -- Problem 1
+  //  Restore w component to 1.
+  //
+  vec4 v_o = vec4( gl_Vertex.xyz, 1 );
+
+  ts_start = gl_Vertex.w == 0;
+  gl_Position = gl_ModelViewProjectionMatrix * v_o;
+  vertex_e = gl_ModelViewMatrix * v_o;
+
+  /// SOLUTION -- Problem 1
+  //  Remove code using normal. Instead normal will be computed in geometry
+  //  shader.
+  //  normal_e = gl_NormalMatrix * gl_Normal;
   color = gl_Color;
 }
 
@@ -70,7 +84,10 @@ vs_strip_plus_sv()
 
   // Pass data to geometry shader unchanged.
   gl_Position = gl_Vertex;
-  normal_e = gl_Normal;
+
+  /// SOLUTION -- Problem 1
+  //  Remove code handling normal.
+  //  normal_e = gl_Normal;
 }
 
 
@@ -81,7 +98,11 @@ vs_strip_plus_sv()
 
 in Data_to_GS
 {
-  vec3 normal_e;
+  /// SOLUTION -- Problem 1
+  //  Remove normal.
+  //  Add ts_start.
+  //  vec3 normal_e;
+  bool ts_start;  // True for first two vertices of a triangle strip.
   vec4 vertex_e;
   vec4 color;
   vec4 gl_Position;
@@ -111,11 +132,23 @@ gs_strip_plus()
   //  If the normal provided for the provoking (3rd) vertex is zero
   //  this must be the start of a new triangle strip, so return.
   //
-  if ( In[2].normal_e == vec3(0,0,0) ) return;
+
+  /// SOLUTION -- Problem 1
+  //
+  //  Don't emit triangle if last vertex starts a new strip.
+  //
+  if ( In[2].ts_start ) return;
+
+  /// SOLUTION -- Problem 1
+  //
+  //  Since normal is no longer a pipeline input, compute it ourselves here.
+  //
+  normal_e =
+    cross( In[2].vertex_e.xyz - In[1].vertex_e.xyz,
+           In[0].vertex_e.xyz - In[1].vertex_e.xyz );
 
   for ( int i=0; i<3; i++ )
     {
-      normal_e = In[i].normal_e;
       vertex_e = In[i].vertex_e;
       color = In[i].color;
       gl_Position = In[i].gl_Position;
@@ -128,13 +161,21 @@ gs_strip_plus()
 void
 gs_strip_plus_sv()
 {
-  if ( In[2].normal_e == vec3(0,0,0) ) return;
+  /// SOLUTION -- Problem 1
+  //
+  //  Don't emit triangle strip if last vertex starts a new strip.
+  if ( In[2].gl_Position.w == 0 ) return;
 
   // Get object space coordinates of light.
   vec4 l_pos_o = gl_ModelViewMatrixInverse * gl_LightSource[0].position;
   float sv_len = 1000;  // Size of shadow volume.
 
-  vec3 norm = In[2].normal_e;
+  /// SOLUTION -- Problem 1
+  //
+  //  Need to compute our own normal.
+  vec3 norm =
+    cross( In[2].gl_Position.xyz - In[1].gl_Position.xyz,
+           In[0].gl_Position.xyz - In[1].gl_Position.xyz );
 
   // Is light illuminating the front face or the back face?
   //
@@ -147,7 +188,11 @@ gs_strip_plus_sv()
   for ( int ii=0; ii<4; ii++ )
     {
       int i = ii % 3;
-      vec4 v = In[i].gl_Position;  // Shorter name, v, for convenience.
+      /// SOLUTION -- Problem 1
+      //
+      //  Need to replace w component with 1.
+      //
+      vec4 v = vec4( In[i].gl_Position.xyz,1);
       // Light to vertex.
       vec3 ltov = normalize( v.xyz - l_pos_o.xyz );
 
@@ -273,6 +318,119 @@ gs_points_common(bool shadow_volumes)
   if ( shadow_volumes )
     {
       /// Put Problem 2 Solution Here.
+
+      /// SOLUTION -- Problem 2
+
+      // Get object space coordinates of light source zero.
+      vec4 l_pos = gl_ModelViewMatrixInverse * gl_LightSource[0].position;
+      float sv_len = 1000;  // Size of shadow volume.
+
+      // Compute normal of top of protrusion. (The diamond.)
+      //
+      vec3 top_norm_o =
+        cross( pts_o[2].xyz - pts_o[1].xyz, pts_o[0].xyz - pts_o[1].xyz );
+      //
+      // Using the normal determine if the top is lit.
+      //
+      bool top_lit = dot( top_norm_o, l_pos.xyz - pts_o[0].xyz ) > 0;
+
+      // Prepare an array indicating which sides are lit.
+      //
+      bool side_lit[4];
+      //
+      for ( int i0=0; i0<4; i0++ )
+        {
+          int i1 = ( i0 + 1 ) & 0x3;  // The next edge. (To find the normal.)
+
+          // Compute normal for side i0.
+          //
+          vec3 side_norm_o =
+            cross( pts_o[i0+4].xyz - pts_o[i0].xyz,
+                   pts_o[i1].xyz   - pts_o[i0].xyz );
+
+          // Find a vector from the side to the light.
+          //
+          vec3 vtol = l_pos.xyz - pts_o[i0].xyz;
+
+          // If their dot product is positive the side faces the light.
+          //
+          side_lit[i0] = dot(vtol,side_norm_o) > 0;
+        }
+
+      int l_clo = top_lit ? 0 : 4;  // Offset for side close to light.
+      int l_far = top_lit ? 4 : 0;  // Offset for side far from light.
+      //
+      // Note: pts_o[ 1     ]: Vertex 1 of the diamond (above the ring).
+      //       pts_o[ 1 + 4 ]: The point below vertex 1, on the ring.
+      //       pts_o[ 1 + l_clo ]:
+      //         pts_o[1],   if pts_o[1] is closer to the light;
+      //         pts_o[1+4], if pts_o[1+4] is closer to the light.
+      //       pts_o[ 1 + l_far ]:
+      //         pts_o[1+4], if pts_o[1] is closer to the light;
+      //         pts_o[1],   if pts_o[1+4] is closer to the light.
+
+
+      // Iterate around the diamond's vertices.
+      // Note that vertex 0 visited twice (i=0 and i=4).
+      //
+      for ( int i=0; i<5; i++ )
+        {
+          // Compute the current vertex number.
+          //
+          int i0 = i & 0x3;
+          int i1 = ( i + 1 ) & 0x3; // Next vertex number. Not used.
+
+
+          // Compute the previous vertex number.
+          //
+          int ip = ( i - 1 ) & 0x3;
+
+          // The current side is the side using edge i0/i1.
+          // The previous side is the side using edge ip/i0.
+
+          // Look up whether the previous side and the current side are lit.
+          bool pl = side_lit[ip], cl = side_lit[i0];
+
+          // For each diamond vertex we need to emit either one or two
+          // shadow volume edges. One edge is emitted if both the
+          // current and previous sides are either both lit or both
+          // dark. Element lev[0] indicates whether the first edge is
+          // on the diamond (0) or on the ring (4). If lev[1] then
+          // there is no second edge, otherwise it indicates whether
+          // that second edge is on the diamond or ring.
+
+          int lev[2];
+          lev[0] = pl ? l_far : l_clo;
+          lev[1] = pl == cl ? -1 : pl ? l_clo : l_far;
+
+          // Emit the two edges of the shadow volume.
+          //
+          for ( int j=0; j<2; j++ )
+            {
+              if ( lev[j] < 0 ) continue;
+
+              // The vertex of the shadow volume shared with the protrusion.
+              //
+              vec3 v = pts_o[ i0 + lev[j] ];
+
+              // Compute the shadow volume vertex far away (in the
+              // direction of the light).
+              vec3 ltov = normalize( v - l_pos.xyz );
+              vec3 vfar = v + sv_len * ltov;
+
+              // Emit the two shadow volume vertices. Flip the order
+              // if the diamond is not lit.
+
+              gl_Position = gl_ModelViewProjectionMatrix
+                * vec4(top_lit ? v : vfar, 1);
+              EmitVertex();
+
+              gl_Position = gl_ModelViewProjectionMatrix
+                * vec4(top_lit ? vfar : v, 1);
+              EmitVertex();
+            }
+        }
+      EndPrimitive();
 
       return;
     }
