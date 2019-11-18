@@ -691,8 +691,9 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const bool shift = ogl_helper.keyboard_shift;
-  const float move_amt = shift ? 2.0 : 0.4;
+  const bool kb_mod_s = ogl_helper.keyboard_shift;
+  const bool kb_mod_c = ogl_helper.keyboard_control;
+  const float move_amt = kb_mod_s ? 2.0 : kb_mod_c ? 0.04 : 0.4;
 
   Ball& hball = balls[0];
   Ball& tball = balls[chain_length-1];
@@ -760,7 +761,7 @@ World::cb_keyboard()
   case 'Z': opt_tryout3 = !opt_tryout3; break;
 
   case ' ':
-    if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
+    if ( kb_mod_s ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true; 
     break;
   case 9: variable_control.switch_var_right(); break;
