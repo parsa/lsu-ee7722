@@ -77,7 +77,7 @@ __shared__ float4 forces[12];
  //    (Copying to a place where it can be accessed quickly.)
 
 
- /// Barrier Synchronization (__syncthreads)
+ /// Barrier Synchronization (__syncthreads, __syncwarp)
  //
  //  When a group is working together on a multi-step project ..
  //  .. sometimes everyone must finish step x ..
@@ -110,6 +110,12 @@ __shared__ float4 forces[12];
  //  - Must be called by all (active) threads in a block. (Or by none at all.)
  //  - No thread executes "Stuff after" until all threads call __syncthreads.
  //
+
+ /// __syncwarp
+ //  Implements a warp-wide barrier.
+ //
+ //  Uses of __syncwarp can be omitted in places where the compiler will
+ //  converge the threads in a warp.
 
 
 
