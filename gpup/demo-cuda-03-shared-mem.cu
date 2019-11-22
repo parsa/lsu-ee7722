@@ -1,11 +1,11 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2019), GPU Programming
 //
 
  /// Shared memory CUDA Example, without LSU ECE helper classes.
 
 /// References
 //
-//  :ccpg10: CUDA C Programming Guide Version 10
+//  :ccpg10: CUDA C Programming Guide Version 10.2
 //           https://docs.nvidia.com/cuda/cuda-c-programming-guide
 //
 
@@ -320,6 +320,14 @@ cuda_thread_start()
   // Save the sum for this lane in shared memory.
   //
   our_mag_sums[threadIdx.x] = lane_mag_sum;
+
+  // Wait for all threads in the warp to finish.
+  //
+  __syncwarp();
+  //
+  // Because of the return above there will only be one warp per block.
+  //
+  // The __syncwarp is not needed on devices before CC 7.0.
 
   // Have just thread 0 finish up.
   //
