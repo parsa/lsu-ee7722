@@ -12,9 +12,9 @@
  //  This code demonstrates different methods of all-to-all access in
  //  CUDA, such as the accesses to array in the code below:
  //
-     for ( int x=0; x<n; x++ )
-       for ( int y=0; y<n; y++ )
-         sum += array[ x ] * array[ y ];
+     for ( int a=0; a<n; a++ )
+       for ( int b=0; b<n; b++ )
+         sum += array[ a ] * array[ b ];
  //
  ///  See routines time_step_intersect_1 and time_step_intersect_2 in
  //  demo-cuda-04-acc-pat-cuda.cu. Instead of array, this code
@@ -133,6 +133,29 @@ time_step_intersect_1()
   // Compute the smallest "a" element index that this block will handle.
   //
   const int a_idx_block = blockIdx.x * a_per_block;
+
+  /// Assignment of "a" and "b" Values to Threads --- Simple Case
+  //
+  //  The table below is an example of how this routine
+  //  assigns "a" and "b" elements to threads.  The table
+  //  is based upon the following values:
+  //
+  //    G, gridDim = 256, # MPs (SMs) = 8
+  //    B, blockDim = 8,  blockIdx = 2,   n, hi.phys_helix_segments = 1024
+  //    a_per_block = 8,  thd_per_a = 1,  a_idx_block = 16
+  //
+  // tIx     al   a      b ---> 
+  //   0     0    16     0  1  2 ... 1023
+  //   1     1    17     0  1  2 ... 1023
+  //   2     2    18     0  1  2 ... 1023
+  //   3     3    19     0  1  2 ... 1023
+  //   4     4    20     0  1  2 ... 1023
+  //   |     |     |     |
+  //   |     |     |     |
+  //   |     |     |     |--------> b_idx_start
+  //   |     |     |--------------> a_idx
+  //   |     |--------------------> a_local_idx
+  //   |--------------------------> threadIdx.x
 
   /// Assignment of "a" and "b" Values to Threads
   //
