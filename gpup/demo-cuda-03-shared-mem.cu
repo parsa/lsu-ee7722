@@ -111,7 +111,7 @@ __shared__ float4 forces[12];
  //  - No thread executes "Stuff after" until all threads call __syncthreads.
  //
 
- /// __syncwarp
+ /// __syncwarp()
  //  Implements a warp-wide barrier.
  //
  //  Uses of __syncwarp can be omitted in places where the compiler will
