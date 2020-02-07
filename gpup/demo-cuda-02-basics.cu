@@ -1,11 +1,11 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
 
 /// References
 //
-//  :ccpg10: CUDA C Programming Guide Version 10
+//  :ccpg10: CUDA C Programming Guide Version 10.2
 //           https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
 
@@ -25,8 +25,8 @@
 //   Compute Capabilities
 //
 //   -- CC 1.0, 1.1, 1.2, 1.3
-//      Tesla. (Not to be confused with the Tesla board.)
-//      Now considered obsolete.
+//      Tesla. (Not to be confused with the Tesla product line.)
+//      Now considered obsolete (the CC, not the product line).
 //
 //   -- CC 2.0, 2.1
 //      Fermi
@@ -118,7 +118,7 @@
 //        FP add, mul, madd.
 //        FP div, sqrt, trig.
 //     NVIDIA GPU Units:
-//        CUDA Core:  Can perform most single-precision non-divide FP.
+//        CUDA Core, FP32:  Can perform most single-precision non-divide FP.
 //        Special Func Unit: division, reciprocal square root, approx trig.
 //        Load / Store: Read and write from memory.
 
@@ -418,6 +418,7 @@ main(int argc, char **argv)
 
   // Compute correct answer.
   //
+#pragma omp parallel for
   for ( int i=0; i<app.array_size; i++ )
     {
       float4 p = app.h_in[i];
