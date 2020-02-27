@@ -1,0 +1,38 @@
+#!/usr/bin/perl -w
+
+# De-mangle procedure names in NVidia SASS (assembly language) files.
+
+my $demangle_prog = `which c++filt 2>/dev/null`;
+chomp( $demangle_prog );
+
+while ( <STDIN> ) {
+
+  # Remove path from source code file names. (One day make path relative.)
+  #
+  if ( m/^\s+\/\/\#\# File/ )
+    {
+      my ( $prefix, $path, $line ) =
+        m/(^\s+\/\/)\s*\#\#\s*File\s+[""]([^""]+)[""],\s*line\s*(.*)/;
+      if ( $line )
+        {
+          my (@pieces) = split /\//, $path;
+          print "$prefix Source: $pieces[-1]:$line\n";
+          next;
+        }
+    }
+
+  if ( $demangle_prog ) {
+      my( $pre,$mangled,$post ) =
+        m!^((?://-+)?\s*\.(?:(?:section\s+\.)?text\.|global)\s*)([_a-zA-Z0-9]+)(.*)!;
+      if ( $mangled )
+        {
+          my $clear = `$demangle_prog $mangled`;
+          if ( $clear && chomp($clear) )
+            {
+              print $pre.$clear.$post."\n";
+              next;
+            }
+        }
+    }
+  print $_;
+};

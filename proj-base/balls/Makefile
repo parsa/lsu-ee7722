@@ -9,7 +9,7 @@ GP_ROOT =  ../..
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
-CUDUMPFLAGS = --print-line-info --print-code 
+CUDUMPFLAGS = --print-line-info --print-code -ndf
 # -Xnvopencc -LIST:source=on
 
 CUCC = $(CUDAPATH)/bin/nvcc
@@ -18,7 +18,7 @@ CXX = g++
 INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
-
+SASS_FILTER = $(GP_ROOT)/util/sass-filter
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
@@ -89,9 +89,9 @@ endif
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
+	$(CUCC) $(CUFLAGS) -src-in-ptx -ptx $*.cu -o $*.ptx
+	$(CUCC) $(CUFLAGS) -lineinfo -cubin $*.cu -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin | $(SASS_FILTER) > $*.sass
 
 balls: $(addsuffix .o,$(basename $(SRC_FILES)))
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)

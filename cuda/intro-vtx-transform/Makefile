@@ -4,7 +4,7 @@ GP_ROOT =  ../..
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
-CUDUMPFLAGS = --print-code 
+CUDUMPFLAGS = --print-code --print-line-info
 # --print-line-info 
 # --print-instruction-encoding
 # --print-life-ranges --life-range-mode wide
@@ -25,6 +25,7 @@ INCLUDE += -I$(GP_ROOT)/lib
 
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
+SASS_FILTER = $(GP_ROOT)/util/sass-filter
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
@@ -52,7 +53,7 @@ CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
+CXX_ONLY_FLAGS = -std=c++11
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
@@ -103,9 +104,9 @@ endif
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
 	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
+	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx &
+	$(CUCC) $(CUFLAGS) -lineinfo -cubin $*.cu -o $*.cubin
+	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin | $(SASS_FILTER) > $*.sass
 
 $(all):%: %.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
