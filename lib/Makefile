@@ -42,7 +42,7 @@ CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 $(shell Magick++-config --cppflags --cxxflags)
+CXX_ONLY_FLAGS = -std=c++11
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 

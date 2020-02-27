@@ -9,8 +9,8 @@ GPINCLUDE = -I../include
 
 # Flags for c++ compiler only.
 #
-CCFLAGS =  $(shell Magick++-config --cxxflags) -Wall -std=gnu++11 \
-	-Wno-strict-aliasing -Wno-parentheses \
+CCFLAGS =  $(shell GraphicsMagick++-config --cppflags --cxxflags) \
+	-Wall -std=gnu++11 -Wno-strict-aliasing -Wno-parentheses \
 	-I $(CUDAPATH)/include
 
 # Flags that should be passed to both nvcc and the c++ compiler.
@@ -27,7 +27,7 @@ CXX = g++
 .SUFFIXES: .cu .cuh
 
 LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
-  $(shell Magick++-config --ldflags) 
+  $(shell GraphicsMagick++-config --libs) 
 
 
 default:balloon
