@@ -1,9 +1,3 @@
-#include <stdio.h>
-#include <assert.h>
-#include <ptable.h>
-#include "util.h"
-#include "misc.h"
-
 /// LSU EE 7722 - GPU Microarchitecture
 //
  /// Microbenchmark Code
@@ -11,6 +5,11 @@
  //  Load latency
  //  MADD latency.
 
+#include <stdio.h>
+#include <assert.h>
+#include <ptable.h>
+#include "util.h"
+#include "misc.h"
 
 const int unroll_deg = 10;
 const int unroll_deg_op_lat = 20;
@@ -403,7 +402,8 @@ MB_Main::run_mem_latency(int argc, char **argv)
 
   const size_t max_out_size_elts = max_num_threads;
   const size_t max_out_size_bytes = max_out_size_elts * sizeof(app.result_d[0]);
-  const size_t max_wp_time_size_bytes = max_num_wps * sizeof(app.wp_time_d[0]);
+  const size_t [[gnu::unused]] max_wp_time_size_bytes =
+    max_num_wps * sizeof(app.wp_time_d[0]);
   const size_t max_thd_time_size_bytes =
     max_num_threads * sizeof(app.thd_time_d[0]);
 
