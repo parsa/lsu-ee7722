@@ -97,10 +97,10 @@ endif
 	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
 	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
 	$(CXX) $(CXXFLAGS) -c $*.s
-	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
+	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-cuda-debug.o
 
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
-	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
+	$(CUCC) $(CUFLAGS) -G -c $*.cu -o $*-cuda-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
 	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
 	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
@@ -108,9 +108,9 @@ endif
 
 $(all):%: %.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
-	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
+	$(CUCC) $(CUFLAGS) -o $@-cuda-debug $(^:.o=-cuda-debug.o) $(LIBRARIES)
 
 clean:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
-	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9] \
+	$(all) $(all:=-cuda-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9] \
 	 *.d.[0-9][0-9][0-9][0-9][0-9][0-9] *.d.[0-9][0-9][0-9][0-9]
