@@ -2,8 +2,23 @@
 
 # De-mangle procedure names in NVidia SASS (assembly language) files.
 
+$show_source_code = 0;
+
+while ( @ARGV )
+  {
+    my $arg = shift;
+    if ( $arg eq '--show-source-code' )
+      {
+        $show_source_code = 1;
+        next;
+      }
+    die "Unexpected arg, \"$arg\"\n";
+  }
+
 my $demangle_prog = `which c++filt 2>/dev/null`;
 chomp( $demangle_prog );
+
+my %file_source_lines;
 
 while ( <STDIN> ) {
 
@@ -13,10 +28,27 @@ while ( <STDIN> ) {
     {
       my ( $prefix, $path, $line ) =
         m/(^\s+\/\/)\s*\#\#\s*File\s+[""]([^""]+)[""],\s*line\s*(.*)/;
+
+      if ( $show_source_code && $path && !exists $file_source_lines{$path} )
+        {
+          if ( open SRC, $path )
+            {
+              $file_source_lines{$path} = [<SRC>];
+              close SRC;
+            }
+          else
+            {
+              $file_source_lines{$path} = [];
+            }
+        }
+
       if ( $line )
         {
           my (@pieces) = split /\//, $path;
-          print "$prefix Source: $pieces[-1]:$line\n";
+          my $lines =
+            exists $file_source_lines{$path} ? $file_source_lines{$path} : [];
+          my $src = $line && $line <= @$lines ? " ".$lines->[$line-1] : "\n";
+          print "// $pieces[-1]:$line$src";
           next;
         }
     }
