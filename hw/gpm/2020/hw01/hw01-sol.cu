@@ -1,7 +1,7 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
  /// Spring 2020
- /// Homework 1
+ /// Homework 1 -- SOLUTION
  //
  //  Assignment: https://www.ece.lsu.edu/koppel/gp/2020/hw01.pdf
  //
@@ -95,17 +95,25 @@ conv_wbuf()
   //
   // DO NOT use dapp.w[j] in this routine.
 
+  /// SOLUTION -- Problem 1
+  //
+  //  Declare a local array and fill it with the weights (dapp.d_w).
+  //
+  float w[Dj];
+  for ( int j=0; j<Dj; j++ ) w[j] = dapp.d_w[j];
+
   for ( int h=tid; h<dapp.array_size; h += n_threads )
     {
       float s = 0;
-      for ( int j=0; j<Dj; j++ ) s += dapp.d_in[h+j] * dapp.d_w[j];
+      // SOLUTION - Use w instead of dapp.d_w.
+      for ( int j=0; j<Dj; j++ ) s += dapp.d_in[h+j] * w[j];
       dapp.d_out[h] = s;
     }
 
 }
 
 __global__ void
-conv_inbuf_a()
+conv_inbuf_wp_a()
 {
   constexpr int wp_lg = 5;
   constexpr int wp_sz = 1 << wp_lg;
@@ -118,17 +126,72 @@ conv_inbuf_a()
   const int [[gnu::unused]] wp_ldx = threadIdx.x >> wp_lg;
   const int [[gnu::unused]] lane = threadIdx.x % wp_sz;
 
-  for ( int h=tid; h<dapp.array_size; h += n_threads )
+  /// SOLUTION -- Problem 2 -- Using a barrier (syncwarp).
+
+  // First, find number of array elements per warp, rounding up.
+  //
+  const int elt_per_wp_raw = ( dapp.array_size + n_wps - 1 ) / n_wps;
+
+  // Next, round up to a multiple of warp size. This will avoid overlap.
+  //
+  const int elt_per_wp = ( elt_per_wp_raw + wp_sz - 1 ) & ~( wp_sz - 1 );
+  //
+  // Note: wp_sz - 1 is 31 or 0x1f.
+  // The ~ is bitwise NOT, so  ~0x1f  is  0xffffffe0.
+  // The & is bitwise AND, so   x & ~0x1f  
+  //   sets the least significant 5 bits of x to zero,
+  //   making it a multiple of 32.
+
+  // Find the starting and ending element for this warp.
+  //
+  const int wp_start = elt_per_wp * wp_idx;
+  const int wp_end = min( wp_start + elt_per_wp, dapp.array_size );
+
+  // This solution won't work if Dj > wp_sz.
+  assert( wp_sz >= Dj );
+
+  // Declare an array to hold input elements.
+  // Each warp uses 64 elements of this array.
+  //
+  __shared__ float in_buffer[2048];
+
+  // Declare a pointer to this warp's part of the shared array.
+  //
+  float* const wp_buf = &in_buffer[ wp_ldx * 2 * wp_sz ];
+
+  // Load the first set of values.
+  //
+  wp_buf[ wp_sz + lane ] = dapp.d_in[ wp_start + lane ];
+
+  for ( int hw=wp_start; hw<wp_end; hw += wp_sz )
     {
+      const int h = hw + lane;
+
+      // Move data loaded in the previous iteration ..
+      //
+      wp_buf[ lane ] = wp_buf[ wp_sz + lane ];
+      //
+      // .. and load the next set of values.
+      //
+      wp_buf[ wp_sz + lane ] = dapp.d_in[ wp_sz + h ];
+
+      // Make sure that the assignment to wp_buf above is done before
+      // the code below.
+      //
+      __syncwarp();
+      //
+      // The __syncwarp call is being used to tell the compiler to not
+      // move the  "wp_buf[ wp_sz + lane ] = dapp.d_in[ wp_sz + h ];"
+      // line past the __syncwarp.
+
       float s = 0;
-      for ( int j=0; j<Dj; j++ ) s += dapp.d_in[h+j] * dapp.w[j];
+      for ( int j=0; j<Dj; j++ ) s += wp_buf[ lane + j ] * dapp.w[j];
       dapp.d_out[h] = s;
     }
-
 }
 
 __global__ void
-conv_inbuf_b()
+conv_inbuf_wp_b()
 {
   constexpr int wp_lg = 5;
   constexpr int wp_sz = 1 << wp_lg;
@@ -141,15 +204,156 @@ conv_inbuf_b()
   const int [[gnu::unused]] wp_ldx = threadIdx.x >> wp_lg;
   const int [[gnu::unused]] lane = threadIdx.x % wp_sz;
 
-  for ( int h=tid; h<dapp.array_size; h += n_threads )
+  /// SOLUTION -- Problem 2 -- Using a volatile declaration.
+
+  // First, find number of array elements per warp, rounding up.
+  //
+  const int elt_per_wp_raw = ( dapp.array_size + n_wps - 1 ) / n_wps;
+
+  // Next, round up to a multiple of warp size. This will avoid overlap.
+  //
+  const int elt_per_wp = ( elt_per_wp_raw + wp_sz - 1 ) & ~( wp_sz - 1 );
+  //
+  // Note: wp_sz - 1 is 31 or 0x1f.
+  // The ~ is bitwise NOT, so  ~0x1f  is  0xffffffe0.
+  // The & is bitwise AND, so   x & ~0x1f  
+  //   sets the least significant 5 bits of x to zero,
+  //   making it a multiple of 32.
+
+  // Find the starting and ending element for this warp.
+  //
+  const int wp_start = elt_per_wp * wp_idx;
+  const int wp_end = min( wp_start + elt_per_wp, dapp.array_size );
+
+  // This solution won't work if Dj > wp_sz.
+  assert( wp_sz >= Dj );
+
+  // Declare an array to hold input elements.
+  // Each warp uses 64 elements of this array.
+  //
+  __shared__ volatile float in_buffer[2048];
+  //
+  // Note: the volatile attribute tells the compiler that values in
+  // the array (in this case) can be changed by other threads (or in
+  // other cases, by hardware). This forces the compiler to load a
+  // value each time it is needed, and to store values in to the
+  // variable at the place in the code an assignment like
+  // in_buffer[x]=y appears.
+  //
+  // For example, suppose in_buffer[x] appears in two places in the
+  // code and x is the same in both places. Without the volatile
+  // qualifier the compile would load in_buffer[x] into a register,
+  // and use that register at each place in the code in_buffer[x]
+  // appears. But, if in_buffer is declared with the volatile
+  // qualifier the compiler will load in_buffer[x] from shared memory
+  // twice, one each place it appears in the code.
+
+  // Declare a pointer to this warp's part of the shared array.
+  //
+  volatile float* const wp_buf = &in_buffer[ wp_ldx * 2 * wp_sz ];
+
+  // Load the first set of values.
+  //
+  wp_buf[ wp_sz + lane ] = dapp.d_in[ wp_start + lane ];
+
+  for ( int hw=wp_start; hw<wp_end; hw += wp_sz )
     {
+      const int h = hw + lane;
+
+      // Move data loaded in the previous iteration ..
+      //
+      wp_buf[ lane ] = wp_buf[ wp_sz + lane ];
+      //
+      // .. and load the next set of values.
+      //
+      wp_buf[ wp_sz + lane ] = dapp.d_in[ wp_sz + h ];
+
       float s = 0;
-      for ( int j=0; j<Dj; j++ ) s += dapp.d_in[h+j] * dapp.w[j];
+      for ( int j=0; j<Dj; j++ ) s += wp_buf[ lane + j ] * dapp.w[j];
       dapp.d_out[h] = s;
     }
 }
 
+__global__ void
+conv_inbuf_class()
+{
+  constexpr int wp_lg = 5;
+  constexpr int wp_sz = 1 << wp_lg;
+  const int n_threads = blockDim.x * gridDim.x;
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int n_wps = n_threads >> wp_lg;
+  assert( n_wps << wp_lg == n_threads );
 
+  const int [[gnu::unused]] wp_idx = tid >> wp_lg;
+  const int [[gnu::unused]] wp_ldx = threadIdx.x >> wp_lg;
+  const int [[gnu::unused]] lane = threadIdx.x % wp_sz;
+
+  /// SOLUTION -- Written during class on 13 March.
+
+  // First, find number of array elements per warp, rounding up.
+  //
+  const int elt_per_wp_raw = ( dapp.array_size + n_wps - 1 ) / n_wps;
+
+  // Next, round up to a multiple of warp size. This will avoid overlap.
+  //
+  const int elt_per_wp = ( elt_per_wp_raw + wp_sz - 1 ) & ~( wp_sz - 1 );
+
+  // Find the starting and ending element for this warp.
+  //
+  const int wp_start = elt_per_wp * wp_idx;
+  const int wp_end = min( wp_start + elt_per_wp, dapp.array_size );
+
+  const int mask = 63;
+  __shared__ float in_buffer[2048];
+
+  float* const wp_buf = &in_buffer[ wp_ldx * 2 * wp_sz ];
+
+  int idx1 = 0;
+
+  wp_buf[ idx1 + lane ] = dapp.d_in[ wp_start + lane ];
+
+  for ( int h_wp=wp_start; h_wp<wp_end; h_wp += wp_sz )
+    {
+      const int h = h_wp + lane;
+      wp_buf[ ( idx1 + wp_sz + lane ) & mask ] = dapp.d_in[ wp_sz + h ];
+
+      __syncwarp();
+
+      float s = 0;
+      for ( int j=0; j<Dj; j++ )
+        s += wp_buf[ ( idx1 + lane + j ) & mask ] * dapp.w[j];
+      dapp.d_out[h] = s;
+
+      idx1 += wp_sz;
+    }
+}
+
+__global__ void
+conv_inbuf_block()
+{
+  /// Alternative Approach -- Divide array between blocks.
+
+  const int tx = threadIdx.x;  // Space-saving abbreviation.
+  const int elt_per_block = ( dapp.array_size + gridDim.x - 1 ) / gridDim.x;
+  const int bl_start = elt_per_block * blockIdx.x;
+  const int bl_end = min( bl_start + elt_per_block, dapp.array_size );
+
+  __shared__ float in_buffer[2048];
+  in_buffer[tx+blockDim.x] = dapp.d_in[bl_start+tx];
+
+  for ( int hb=bl_start; hb<bl_end; hb += blockDim.x )
+    {
+      const int h = hb + tx;
+      __syncthreads();
+      in_buffer[tx] = in_buffer[tx+blockDim.x];
+      in_buffer[tx+blockDim.x] = dapp.d_in[h+blockDim.x];
+      __syncthreads();
+
+      float s = 0;
+      for ( int j=0; j<Dj; j++ ) s += in_buffer[tx+j] * dapp.w[j];
+      dapp.d_out[h] = s;
+    }
+}
 
 
 
@@ -167,11 +371,17 @@ print_gpu_and_kernel_info()
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
-  info.GET_INFO(conv_simple);
-  info.GET_INFO(conv_efficient);
+  const bool show_all = false;
+  if ( show_all )
+    {
+      info.GET_INFO(conv_simple);
+      info.GET_INFO(conv_efficient);
+    }
   info.GET_INFO(conv_wbuf);
-  info.GET_INFO(conv_inbuf_a);
-  info.GET_INFO(conv_inbuf_b);
+  info.GET_INFO(conv_inbuf_wp_a);
+  info.GET_INFO(conv_inbuf_wp_b);
+  info.GET_INFO(conv_inbuf_block);
+  info.GET_INFO(conv_inbuf_class);
 
   // Print information about kernel.
   //

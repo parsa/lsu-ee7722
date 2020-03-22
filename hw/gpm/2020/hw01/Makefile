@@ -4,7 +4,7 @@ GP_ROOT =  ../../../..
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
-CUDUMPFLAGS = --print-code 
+CUDUMPFLAGS = --print-code --print-line-info
 # --print-line-info 
 # --print-instruction-encoding
 # --print-life-ranges --life-range-mode wide
@@ -25,7 +25,7 @@ INCLUDE += -I$(GP_ROOT)/lib
 
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
-SASS_FILTER = $(GP_ROOT)/util/sass-filter
+SASS_FILTER = $(GP_ROOT)/util/sass-filter --show-source-code
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
@@ -103,7 +103,7 @@ endif
 	$(CUCC) $(CUFLAGS) -G -c $*.cu -o $*-cuda-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
 	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
+	$(CUCC) $(CUFLAGS) -lineinfo -cubin $*.cu -o $*.cubin
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin | $(SASS_FILTER) > $*.sass
 
 $(all):%: %.o
