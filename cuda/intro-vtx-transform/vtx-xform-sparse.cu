@@ -95,8 +95,8 @@ mxv()
 
   for ( int hb = bl_start; hb<stop; hb += num_threads )
     {
-      const bool have_work =
-        d_app.d_op[hb + thd_v_offset] <= d_app.norm_threshold;
+      const int h = hb + thd_v_offset;
+      const bool have_work = d_app.d_op[h] <= d_app.norm_threshold;
       const uint32_t have_work_wp_v = __ballot_sync(~0,have_work);
       if ( !have_work_wp_v ) continue;
       const uint32_t chunk_wk_v = have_work_wp_v >> thd_wp_c0;
@@ -135,12 +135,14 @@ mxv()
     }
 }
 
+typedef int worka_t;
+
 // Declare a type for the compression function. This is needed for the
 // templates.
-typedef int (*Compress_Func)(bool have_work, short* const &work_assignments);
+typedef int (*Compress_Func)(bool have_work, worka_t* const &work_assignments);
 
 __device__ int
-compress_atomic(bool have_work, short* const &worka)
+compress_atomic(bool have_work, worka_t* const &worka)
 {
   __shared__ int amt_work_block; // Number of threads with work.
   __syncthreads();
@@ -152,11 +154,11 @@ compress_atomic(bool have_work, short* const &worka)
 }
 
 __device__ int
-compress_prefix_shared(bool have_work, short* const &worka)
+compress_prefix_shared(bool have_work, worka_t* const &worka)
 {
   const int MAX_BLOCK_SIZE = 1024;
-  short* const prefix_array = worka;
-  short my_val = have_work;
+  worka_t* const prefix_array = worka;
+  worka_t my_val = have_work;
   for ( int dist = 1; dist < MAX_BLOCK_SIZE; dist <<= 1 )
     {
       __syncthreads();
@@ -174,7 +176,7 @@ compress_prefix_shared(bool have_work, short* const &worka)
 }
 
 __device__ int
-compress_prefix_ballot(bool have_work, short* const &worka)
+compress_prefix_ballot(bool have_work, worka_t* const &worka)
 {
   const int wp_lg = 5;
   const int wp_sz = 1 << wp_lg;
@@ -230,7 +232,7 @@ mxv_compress()
   const int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
 
-  __shared__ short worka[MAX_BLOCK_SIZE]; // Work assignment.
+  __shared__ int worka[MAX_BLOCK_SIZE]; // Work assignment.
   worka[threadIdx.x] = threadIdx.x;
 
   for ( int hb = bl_start; hb<stop; hb += num_threads )
@@ -296,6 +298,104 @@ mxv_compress()
     }
 }
 
+__global__ void
+mxv_compress_wps()
+{
+  const int wp_lg = 5;
+  const int wp_sz = 1 << wp_lg;
+  const int wp_mk = wp_sz - 1;
+  const int lane_last = wp_sz - 1;
+  const int lane = threadIdx.x & wp_mk;
+  const int wp_idx = threadIdx.x >> wp_lg;
+  const uint32_t msk = ~0;
+
+  // Group (chunk) size: The number of threads that cooperate to read
+  // and write vectors.
+  //
+  const int CS = chunk_size;
+  const int num_threads = blockDim.x * gridDim.x;
+
+  // First element used by this block.
+  const int bl_start = blockIdx.x * blockDim.x;
+  const int stop = d_app.num_vecs;
+
+  const int thd_c_offset = threadIdx.x % CS;
+  const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
+  const int thd_wp_c0 = lane & ~ ( CS - 1 );
+
+  constexpr int MAX_BLOCK_SIZE = 1024;
+  __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
+
+  __shared__ int workb[2 * MAX_BLOCK_SIZE];
+  int *wwork = &workb[ 2 * ( threadIdx.x & ~wp_mk ) ];
+
+  wwork[lane] = wwork[wp_sz + lane] = -1;
+
+  int amt_wk_buf = 0;
+
+  for ( int hb = bl_start; hb < stop || amt_wk_buf > 0; hb += num_threads )
+    {
+      const bool last_iter = hb + num_threads >= stop;
+      const int h = hb + threadIdx.x;
+      const bool work = hb < stop && d_app.d_op[h] <= d_app.norm_threshold;
+
+      // Bit vector indicating which threads in this warp have work.
+      const uint32_t have_work_wp_v = __ballot_sync(msk,work);
+
+      // If there's nothing new and it's not the last iteration, continue.
+      if ( !have_work_wp_v && !last_iter ) continue;
+
+      // Shift off bits corresponding to higher-numbered lanes.
+      const int amt_wk_here = __popc(have_work_wp_v);
+      const uint32_t have_work_pf_v = have_work_wp_v << ( lane_last - lane );
+      const uint32_t my_pf = __popc(have_work_pf_v);
+
+      if ( work ) wwork[ amt_wk_buf + my_pf - 1] = h;
+      amt_wk_buf += amt_wk_here;
+      if ( amt_wk_buf < wp_sz && !last_iter ) continue;
+
+      if ( lane >= amt_wk_buf )
+        {
+          if ( thd_wp_c0 >= amt_wk_buf ) break;
+          wwork[lane] = wwork[thd_wp_c0];
+        }
+
+      Elt_Type vout[M];
+      for ( auto& e: vout ) e = 0;
+
+#pragma unroll
+      for ( int c=0; c<N; c += CS )
+        {
+          for ( int g=0; g<CS; g++ )
+            vxfer[g][threadIdx.x] =
+              d_app.d_in[ ( wwork[thd_wp_c0 + g] ) * N + c + thd_c_offset ];
+
+          Elt_Type vin[CS];
+          for ( int cc=0; cc<CS; cc++ )
+            vin[cc] = vxfer[ thd_c_offset ][ thd_g_offset + cc ];
+
+          for ( int r=0; r<M; r++ )
+            for ( int cc=0; cc<CS; cc++ )
+              vout[r] += d_app.matrix[r][c+cc] * vin[cc];
+        }
+
+#pragma unroll
+      for ( int rr=0; rr<M; rr += CS )
+        {
+          for ( int g=0; g<CS; g++ )
+            vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
+          for ( int g=0; g<CS; g++ )
+            d_app.d_out[ ( wwork[thd_wp_c0 + g] ) * M + rr + thd_c_offset ]
+              = vxfer[g][threadIdx.x];
+        }
+
+      wwork[lane] = wwork[lane+wp_sz];
+      amt_wk_buf -= wp_sz;
+
+    }
+}
+
+
 extern "C" __global__ void mxv_atomic() { mxv_compress<compress_atomic>(); }
 extern "C" __global__ void mxv_pfx_shared()
 { mxv_compress<compress_prefix_shared>(); }
@@ -319,8 +419,9 @@ print_gpu_and_kernel_info()
 
   info.GET_INFO(mxv);
   info.GET_INFO(mxv_atomic);
-  info.GET_INFO(mxv_pfx_shared);
-  info.GET_INFO(mxv_pfx_ballot);
+  //  info.GET_INFO(mxv_pfx_shared);
+  //  info.GET_INFO(mxv_pfx_ballot);
+  info.GET_INFO(mxv_compress_wps);
 
   // Print information about kernel.
   //
