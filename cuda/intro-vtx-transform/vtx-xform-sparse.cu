@@ -104,12 +104,28 @@ mxv()
       Elt_Type vout[M];
       for ( auto& e: vout ) e = 0;
 
+      const bool overlap_loads = true;
+
       for ( int c=0; c<N; c += CS )
         {
-          for ( int g=0; g<CS; g++ )
-            if ( chunk_wk_v  &  1 << g )
-              vxfer[g][threadIdx.x] =
-                d_app.d_in[ ( hb + thd_g_offset + g ) * N + c + thd_c_offset ];
+          if ( overlap_loads )
+            {
+              Elt_Type vx[CS];
+              for ( int g=0; g<CS; g++ )
+                vx[g] = chunk_wk_v  &  1 << g
+                  ? d_app.d_in[ ( hb+thd_g_offset + g )*N + c + thd_c_offset ]
+                  : 0;
+
+              for ( int g=0; g<CS; g++ ) vxfer[g][threadIdx.x] = vx[g];
+            }
+          else
+            {
+              for ( int g=0; g<CS; g++ )
+                  vxfer[g][threadIdx.x] =
+                    chunk_wk_v  &  1 << g
+                    ? d_app.d_in[( hb+thd_g_offset + g )*N + c + thd_c_offset ]
+                    : 0;
+            }
 
           if ( !have_work ) continue;
 
@@ -262,10 +278,12 @@ mxv_compress()
 
       for ( int c=0; c<N; c += CS )
         {
+          Elt_Type vx[CS];
           for ( int g=0; g<CS; g++ )
-            vxfer[g][threadIdx.x] =
-              d_app.d_in[ ( hb + worka[thd_g_offset + g] ) * N
+            vx[g] = d_app.d_in[ ( hb + worka[thd_g_offset + g] ) * N
                           + c + thd_c_offset ];
+
+          for ( int g=0; g<CS; g++ ) vxfer[g][threadIdx.x] = vx[g];
 
           if ( skip ) continue;
 
@@ -306,7 +324,6 @@ mxv_compress_wps()
   const int wp_mk = wp_sz - 1;
   const int lane_last = wp_sz - 1;
   const int lane = threadIdx.x & wp_mk;
-  const int wp_idx = threadIdx.x >> wp_lg;
   const uint32_t msk = ~0;
 
   // Group (chunk) size: The number of threads that cooperate to read
