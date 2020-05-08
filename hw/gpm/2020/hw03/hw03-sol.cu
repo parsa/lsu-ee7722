@@ -189,8 +189,7 @@ conv_prob2_inefficient()
       const int ro = h / dapp.out_nc;
       const int co = h % dapp.out_nc;
 
-      float s[n_per_thd];
-      for ( auto& e: s ) e = 0;
+      float s[n_per_thd] = { 0 };
 
 #pragma unroll
       for ( int rw=0; rw<w_nr; rw++ )
@@ -270,8 +269,7 @@ conv_prob2t()
 
         // Initialize sum for the n_per_thd outputs.
         //
-        float s[n_per_thd];
-        for ( auto& e: s ) e = 0;
+        float s[n_per_thd] = { 0 };
 
         // The unroll pragmata are important, if the loops aren't unrolled
         // the values of widx-k*w_nc, used to index dapp.s, will not
