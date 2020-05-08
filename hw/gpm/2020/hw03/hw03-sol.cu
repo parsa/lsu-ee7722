@@ -91,8 +91,7 @@ conv_wbuf()
             const int ci = co + cw;
             const int iidx = ri * dapp.in_nc + ci;
             const int widx = rw * w_nc + cw;
-            const float din =
-              use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+            const float din = dapp.d_in[iidx];
             s += din * dapp.w[widx];
           }
       dapp.d_out[h] = s;
@@ -162,8 +161,7 @@ conv_prob1()
                 const int ci = co + cw;
                 const int iidx = ri * dapp.in_nc + ci;
                 const int widx = rw * w_nc + cw;
-                const float din =
-                  use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+                const float din = dapp.d_in[iidx];
                 s += din * dapp.w[widx];
               }
           dapp.d_out[oidx] = s;
@@ -201,8 +199,7 @@ conv_prob2_inefficient()
           {
             const int ri = ro + rw,  ci = co + cw;
             const int iidx = ri * dapp.in_nc + ci;
-            const float din =
-              use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+            const float din = dapp.d_in[iidx];
 
             // Compute output for each of n_per_thd rows.
             //
@@ -245,10 +242,7 @@ conv_probfutil()
                 const int ci = co + cw;
                 const int iidx = ri * dapp.in_nc + ci;
                 const int widx = rw * w_nc + cw;
-                if ( use_ro )
-                  s += __ldg(&dapp.d_in[iidx]) * dapp.w[widx];
-                else
-                  s += dapp.d_in[iidx] * dapp.w[widx];
+                s += dapp.d_in[iidx] * dapp.w[widx];
               }
           dapp.d_out[oidx] = s;
 
@@ -292,8 +286,7 @@ conv_prob2t()
             {
               const int ri = ro + rw,  ci = co + cw;
               const int iidx = ri * dapp.in_nc + ci;
-              const float din =
-                use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+              const float din = dapp.d_in[iidx];
 
               // Compute output for each of n_per_thd rows.
               //
