@@ -1,7 +1,7 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
  /// Spring 2020
- /// Homework 3
+ /// Homework 3 -- Partial SOLUTION  (Problem 3 solution omitted.)
  //
  //  Assignment: https://www.ece.lsu.edu/koppel/gp/2020/hw03.pdf
  //
@@ -31,6 +31,9 @@ T ceil2(T x) { return x <= 0 ? 0 : T(1) << fl1(x-1); }
 constexpr int wc_max = 16;
 constexpr int wr_max = 16;
 constexpr int w_elts_max = wc_max * wr_max;
+
+constexpr bool use_ro = false;
+
 
 struct App
 {
@@ -81,13 +84,16 @@ conv_wbuf()
 
 #pragma unroll
       for ( int rw=0; rw<w_nr; rw++ )
+#pragma unroll
         for ( int cw=0; cw<w_nc; cw++ )
           {
             const int ri = ro + rw;
             const int ci = co + cw;
             const int iidx = ri * dapp.in_nc + ci;
             const int widx = rw * w_nc + cw;
-            s += dapp.d_in[iidx] * dapp.w[widx];
+            const float din =
+              use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+            s += din * dapp.w[widx];
           }
       dapp.d_out[h] = s;
     }
@@ -98,66 +104,228 @@ __global__ void
 conv_prob1()
 {
   const int block_dim = blockDim.x;
-  const int n_threads = block_dim * gridDim.x;
   const int tid = threadIdx.x + blockIdx.x * block_dim;
-  const int n_elt = dapp.out_nr * dapp.out_nc;
 
-  assert( w_nr == dapp.w_nr );
-  assert( w_nc == dapp.w_nc );
+  // Make sure that template parameters match actual weight array size.
+  assert( w_nr == dapp.w_nr && w_nc == dapp.w_nc );
 
-  for ( int h=tid; h<n_elt; h += n_threads )
+  /// SOLUTION -- Problem 1.
+  //
+  //  Assign a group of columns to each block. Choose number of columns
+  //  to largest amount for which data fits in cache.
+
+  // Number of floats that will fit in the L1 or texture cache.
+  const int cache_elts = use_ro ? 4 << 10 : 16 << 10;
+
+  // Find the maximum number of columns that a block can handle without
+  // exceeding the assumed cache capacity, cache_elts.
+  //
+  const float qa = w_nr;  // Quadratic formula coefficient.
+  const float qb = block_dim + w_nr * w_nc - cache_elts;
+  const float qc = w_nc;
+  const float bwid_raw = ( -qb + sqrt( qb*qb - 4 * qa * qc ) ) / ( 2 * qa );
+  assert( bwid_raw >= 0 );
+
+  // Round number of columns down to a multiple of 8 (for request
+  // efficiency) and clamp between 8 and the block size.
+  //
+  const int block_wid =
+    min( block_dim, max(8, int(bwid_raw) & ~0x7 ) );
+  const int block_ht = block_dim / block_wid;
+
+  // Number of columns handled by all blocks.
+  const int grid_calc_wid = block_wid * gridDim.x;
+
+  // The initial row and column handled by this thread.
+  const int thread_c0 = blockIdx.x * block_wid + tid % block_wid;
+  const int thread_r0 = threadIdx.x / block_wid;
+
+  for ( int cc = 0; cc < dapp.out_nc; cc += grid_calc_wid )
     {
-      const int ro = h / dapp.out_nc;
-      const int co = h % dapp.out_nc;
+      const int co = cc + thread_c0;
+      if ( co >= dapp.out_nc ) break;
 
-      float s = 0;
+      for ( int rr = 0; rr < dapp.out_nr; rr += block_ht )
+        {
+          const int ro = rr + thread_r0;
+          if ( ro >= dapp.out_nr ) break;
+          const int oidx = ro * dapp.out_nc + co;
+
+          float s = 0;
 
 #pragma unroll
-      for ( int rw=0; rw<w_nr; rw++ )
-        for ( int cw=0; cw<w_nc; cw++ )
-          {
-            const int ri = ro + rw;
-            const int ci = co + cw;
-            const int iidx = ri * dapp.in_nc + ci;
-            const int widx = rw * w_nc + cw;
-            s += dapp.d_in[iidx] * dapp.w[widx];
-          }
-      dapp.d_out[h] = s;
+          for ( int rw=0; rw<w_nr; rw++ )
+#pragma unroll
+            for ( int cw=0; cw<w_nc; cw++ )
+              {
+                const int ri = ro + rw;
+                const int ci = co + cw;
+                const int iidx = ri * dapp.in_nc + ci;
+                const int widx = rw * w_nc + cw;
+                const float din =
+                  use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+                s += din * dapp.w[widx];
+              }
+          dapp.d_out[oidx] = s;
+        }
     }
 }
 
 template <int w_nr, int w_nc>
 __global__ void
-conv_prob2()
+conv_prob2_inefficient()
 {
+  constexpr int n_per_thd = 8;
   const int block_dim = blockDim.x;
   const int n_threads = block_dim * gridDim.x;
   const int tid = threadIdx.x + blockIdx.x * block_dim;
+
+  // Inefficient solution to Problem 2.
+  // To be used for a final exam question.
+
+  const int h_0 = tid * n_per_thd;
   const int n_elt = dapp.out_nr * dapp.out_nc;
 
-  assert( w_nr == dapp.w_nr );
-  assert( w_nc == dapp.w_nc );
-
-  for ( int h=tid; h<n_elt; h += n_threads )
+  for ( int h=h_0; h<n_elt; h += n_threads*n_per_thd )
     {
       const int ro = h / dapp.out_nc;
       const int co = h % dapp.out_nc;
 
-      float s = 0;
+      float s[n_per_thd];
+      for ( auto& e: s ) e = 0;
 
 #pragma unroll
       for ( int rw=0; rw<w_nr; rw++ )
-        for ( int cw=0; cw<w_nc; cw++ )
+#pragma unroll
+        for ( int cw=0; cw<w_nc+n_per_thd-1; cw++ )
           {
-            const int ri = ro + rw;
-            const int ci = co + cw;
+            const int ri = ro + rw,  ci = co + cw;
             const int iidx = ri * dapp.in_nc + ci;
-            const int widx = rw * w_nc + cw;
-            s += dapp.d_in[iidx] * dapp.w[widx];
+            const float din =
+              use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+
+            // Compute output for each of n_per_thd rows.
+            //
+            for ( int k=0; k<n_per_thd; k++ )
+              {
+                // Find column number of weight array to use for output k.
+                const int cwk = cw - k;
+                const int widxk = rw * w_nc + cwk;
+                if (  cwk >= 0  &&  cwk < w_nc  )
+                  s[k] += din * dapp.w[ widxk ];
+              }
           }
-      dapp.d_out[h] = s;
+
+      // Write output for n_per_thd rows.
+      for ( int k=0; k<n_per_thd; k++ ) dapp.d_out[h+k] = s[k];
     }
 }
+
+template <int w_nr, int w_nc>
+__global__ void
+conv_probfutil()
+{
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int n_threads = blockDim.x * gridDim.x;
+
+  /// Another possible final exam question.
+
+  for ( int co = tid;  co < dapp.out_nc;  co += n_threads )
+    {
+      for ( int ro = 0;  ro < dapp.out_nr;  ro++ )
+        {
+          const int oidx = ro * dapp.out_nc + co;
+          float s = 0;
+
+#pragma unroll
+          for ( int rw=0; rw<w_nr; rw++ )
+            for ( int cw=0; cw<w_nc; cw++ )
+              {
+                const int ri = ro + rw;
+                const int ci = co + cw;
+                const int iidx = ri * dapp.in_nc + ci;
+                const int widx = rw * w_nc + cw;
+                if ( use_ro )
+                  s += __ldg(&dapp.d_in[iidx]) * dapp.w[widx];
+                else
+                  s += dapp.d_in[iidx] * dapp.w[widx];
+              }
+          dapp.d_out[oidx] = s;
+
+        }
+    }
+}
+
+template <int w_nr, int w_nc, int n_per_thd>
+__device__ void
+conv_prob2t()
+{
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int n_threads = blockDim.x * gridDim.x;
+
+  /// SOLUTION -- Problem 2.
+
+  //  Each thread operates on n_per_thd outputs at a time.
+  //  The n_per_thd outputs are in consecutive rows and the same column.
+  //  Each thread operates on an entire column.
+
+  for ( int co = tid;  co < dapp.out_nc;  co += n_threads )
+    for ( int ro = 0;  ro < dapp.out_nr;  ro += n_per_thd )
+      {
+        const int oidx = ro * dapp.out_nc + co;
+
+        // Initialize sum for the n_per_thd outputs.
+        //
+        float s[n_per_thd];
+        for ( auto& e: s ) e = 0;
+
+        // The unroll pragmata are important, if the loops aren't unrolled
+        // the values of widx-k*w_nc, used to index dapp.s, will not
+        // be compile-time constants and so whatever instruction throughput
+        // benefit that was gained by performing n_per_thd FMA's per global
+        // load will be 
+
+#pragma unroll
+        for ( int rw=0; rw<w_nr+n_per_thd-1; rw++ )
+#pragma unroll
+          for ( int cw=0; cw<w_nc; cw++ )
+            {
+              const int ri = ro + rw,  ci = co + cw;
+              const int iidx = ri * dapp.in_nc + ci;
+              const float din =
+                use_ro ? __ldg(&dapp.d_in[iidx]) : dapp.d_in[iidx];
+
+              // Compute output for each of n_per_thd rows.
+              //
+              for ( int k=0; k<n_per_thd; k++ )
+                {
+                  // Find row number of weight array to use for output k.
+                  const int rwk = rw - k;
+                  const int widxk = rwk * w_nc + cw;
+                  if (  rwk >= 0  &&  rwk < w_nr )
+                    s[k] += din * dapp.w[ widxk ];
+                }
+            }
+
+        // Write output for n_per_thd rows.
+        for ( int k=0; k<n_per_thd; k++ )
+          dapp.d_out[ oidx + k * dapp.out_nc ] = s[k];
+      }
+}
+
+
+// Instantiate Problem 2 modules at different n_per_thd values.
+
+template <int w_nr, int w_nc>
+__global__ void conv_prob21() {conv_prob2t<w_nr,w_nc,1>();}
+template <int w_nr, int w_nc>
+__global__ void conv_prob22() {conv_prob2t<w_nr,w_nc,2>();}
+template <int w_nr, int w_nc>
+__global__ void conv_prob24() {conv_prob2t<w_nr,w_nc,4>();}
+template <int w_nr, int w_nc>
+__global__ void conv_prob28() {conv_prob2t<w_nr,w_nc,8>();}
+template <int w_nr, int w_nc>
+__global__ void conv_prob216() {conv_prob2t<w_nr,w_nc,16>();}
 
 
 
@@ -213,10 +381,16 @@ main(int argc, char **argv)
       kernel_map[#k].push_back(idx); \
       if ( !rc_uses[make_pair(r,c)]++ ) rc_list.emplace_back(r,c); }
 
+
   #define SPECIALIZE_KERNEL(r,c) \
     EXAMINE_KERNEL(conv_wbuf,r,c); \
     EXAMINE_KERNEL(conv_prob1,r,c); \
-    EXAMINE_KERNEL(conv_prob2,r,c);
+    EXAMINE_KERNEL(conv_prob2_inefficient,r,c); \
+    EXAMINE_KERNEL(conv_prob21,r,c); \
+    EXAMINE_KERNEL(conv_prob22,r,c); \
+    EXAMINE_KERNEL(conv_prob24,r,c);\
+    EXAMINE_KERNEL(conv_prob28,r,c);
+
 
   SPECIALIZE_KERNEL(8,8);
   SPECIALIZE_KERNEL(16,16);
@@ -268,7 +442,7 @@ main(int argc, char **argv)
 
   // Examine argument 3, number of array columns per MP.
   //
-  const double col_per_mp = argc < 4 ? 128.0 : atof(argv[3]);
+  const double col_per_mp = argc < 4 ? 1024 : atof(argv[3]);
 
   // Want array size to be larger than L2 cache.
   //
@@ -293,13 +467,16 @@ main(int argc, char **argv)
       exit(1);
     }
 
+  const int n_per_thd_max = 32;
   const size_t in_msize_elts = app.in_nr * app.in_nc;
   const size_t in_msize_bytes = in_msize_elts * sizeof( app.h_in[0] );
   const size_t w_msize_elts = app.w_nr * app.w_nc;
   const size_t w_msize_bytes = w_msize_elts * sizeof( app.h_w[0] );
   const size_t out_size_elts = app.out_nr * app.out_nc;
   const size_t out_size_bytes = out_size_elts * sizeof( app.h_out[0] );
-  const size_t overrun_size_bytes = num_blocks * 1024 * sizeof( app.h_in[0] );
+  const size_t overrun_size_bytes =
+    app.out_nc * n_per_thd_max * sizeof( app.h_in[0] ) +
+    num_blocks * 1024 * sizeof( app.h_in[0] );
 
   // Allocate storage for CPU copy of data.
   //
