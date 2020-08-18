@@ -44,7 +44,7 @@ COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
+CUCC_ONLY_FLAGS = -std c++17 --gpu-architecture=$(GPU_ARCH)
 
 # Used by the CUDA compiler (ptxas)
 #
@@ -53,7 +53,7 @@ PTXASFLAGS = -Xptxas --warn-on-local-memory-usage \
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 \
+CXX_ONLY_FLAGS = -std=c++17 \
 	$(shell GraphicsMagick++-config --cppflags --cxxflags)
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)

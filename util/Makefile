@@ -21,8 +21,8 @@ SRC_FILE = gpu-get-cc.cc
 
 .SUFFIXES: .cu .cuh
 
-COMMONFLAGS = -g -std=c++11 -Xcompiler -Wall -Xcompiler -Wno-unused-function \
-  $(INCLUDE) $(OPT_FLAGS) -Xcompiler -Wno-parentheses --gpu-architecture=sm_35
+COMMONFLAGS = -g -std=c++17 -Xcompiler -Wall -Xcompiler -Wno-unused-function \
+  $(INCLUDE) $(OPT_FLAGS) -Xcompiler -Wno-parentheses --gpu-architecture=sm_70
 
 CXXFLAGS = $(COMMONFLAGS)
 

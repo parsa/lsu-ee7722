@@ -1548,7 +1548,7 @@ World::data_cpu_to_gpu_dynamic()
     if ( do_move )                                                            \
       {                                                                       \
         for ( int i=0; i<n_balls; i++ )                                       \
-          memcpy(&c.h_##balls.memb[i],&balls[i]->memb,size_elt_bytes);        \
+          c.h_##balls.memb[i] = balls[i]->memb;                               \
         CE( cudaMemcpy                                                        \
             ( c.balls.memb, c.h_##balls.memb,                                 \
               size_bytes, cudaMemcpyDefault ) );                              \
@@ -1606,13 +1606,12 @@ World::data_gpu_to_cpu_dynamic()
 #define MOVE(n_balls,balls,memb)                                              \
   {                                                                           \
     const int size_elt_fr_bytes = sizeof(c.balls.memb[0]);                    \
-    const int size_elt_to_bytes = sizeof(balls[0]->memb);                     \
     const int size_bytes = n_balls * size_elt_fr_bytes;                       \
     CE( cudaMemcpy                                                            \
         ( c.h_##balls.memb, c.balls.memb, size_bytes,                         \
           cudaMemcpyDeviceToHost ) );                                         \
     for ( int i=0; i<n_balls; i++ )                                           \
-      memcpy(&balls[i]->memb,&c.h_##balls.memb[i], size_elt_to_bytes);        \
+      balls[i]->memb = c.h_##balls.memb[i];                                   \
   }
 
   MOVE(n_balls,balls,position);

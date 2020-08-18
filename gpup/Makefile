@@ -1,4 +1,4 @@
-### LSU EE 4702-1 (Fall 2016), GPU Programming
+### LSU EE 4702-1 (Fall 2020), GPU Programming
 ##
 ##  Makefile for Classroom Demos
 ##
@@ -44,12 +44,11 @@ COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
-   --ptxas-options=-v -lineinfo
+CUCC_ONLY_FLAGS = -std c++17 --gpu-architecture=$(GPU_ARCH) -lineinfo
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11 \
+CXX_ONLY_FLAGS = -std=c++17 \
  $(shell GraphicsMagick++-config --cppflags --cxxflags)
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
