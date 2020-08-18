@@ -166,7 +166,7 @@
 //       BW limit in GTX 780:     288 GB/s
 //
 //   - Level 2 Cache  (Not caché, please).
-//     Size varies, about 1 MiB.
+//     Size varies, about 4 MiB.
 //     Requires about 200 cycles to obtain data.
 //     Much higher BW limit.
 //
