@@ -593,6 +593,15 @@ public:
   vector<tuple<bool,GLuint> > settings;
 };
 
+class pGL_Disable_Restore_Later : public pGL_Restore_Later {
+public:
+  pGL_Disable_Restore_Later(const vector<GLuint> caps):
+    pGL_Restore_Later(caps)
+    {
+      for ( auto cap: caps ) glDisable(cap);
+    }
+};
+
 class pOpenGL_Helper {
 public:
   pOpenGL_Helper(int& argc, char** argv)
