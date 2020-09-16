@@ -1,13 +1,12 @@
-/// LSU EE 4702-1 (Fall 2019), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
- /// Homework 1 -- SOLUTION
+ /// Homework 1
  //
 
  /// Instructions
  //
- //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2019/hw01.pdf
+ //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2020/hw01.pdf
  //
- //  Most of the solution should be in routine time_step_cpu.
  //  Also, feel free to add members to structure HW01_Stuff.
  //
  //  Only this file will be collected.
@@ -102,30 +101,19 @@
 class World;
 
 struct HW01_Stuff {
-  // This is a member of world, named hw01. E.g., hw01.rail_inited.
 
   /// Homework 1 -- Feel free to add new members to this structure.
+  // This is a member of world, named hw01. E.g., hw01.markers_show;
 
-  // If false the ring location variables need to be updated.
-  bool rail_inited;
+  HW01_Stuff():opt_rot_speed(10),markers_show(false){}
 
-  // Variables defining the location and size of ring.
-  pCoor center;
-  pNorm axis;
-  float radius;
+  float opt_rot_speed;
 
-  // Variables derived from axis and radius.
-  pVect x, y;  // In same plane as ring.
 
-  // Variables defining ball's rotation rate and position on the ring.
-  float omega;
-  float theta;
-
-  float opt_spin_omega;
-
-  /// SOLUTION
-  pMatrix xform_spin;   // Rotation matrix for spinning ring.
-  double spin_delta_t;  // Delta t for which rotation matrix computed.
+  // For debugging.
+  bool markers_show;  // If true, show vectors and positions assigned below.
+  pVect mark_vec_red, mark_vec_green, mark_vec_blue;
+  pCoor mark_pos_white, mark_pos_red, mark_pos_green;
 
 };
 
@@ -165,20 +153,13 @@ void
 World::init()
 {
   srand48(4702);
-  chain_length = 10;
+
+  opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
+
+  chain_length = 21;
   balls.resize(chain_length);
 
-  opt_hw01_do_friction = false;
-  opt_hw01_spin = false;
-
-  hw01.opt_spin_omega = 0.2;
-
-  hw01.omega = 1;
-  variable_control.insert(hw01.omega,"Rotation rate.");
-  variable_control.insert(hw01.opt_spin_omega,"Spin rate.");
-
-  opt_hw01_fric_coefficient = 0.1;
-  variable_control.insert(opt_hw01_fric_coefficient,"Friction Coefficient");
+  variable_control.insert(hw01.opt_rot_speed,"Rotation Speed");
 
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 1000;
@@ -211,35 +192,142 @@ World::init()
 void
 World::ball_setup_1()
 {
-  /// Arrange balls vertically.
+  ball_setup_hw01(1);
+}
+void
+World::ball_setup_2()
+{
+  ball_setup_hw01(2);
+}
+void
+World::ball_setup_3()
+{
+  ball_setup_hw01(3);
+}
 
-  // Desired position of bottom ball.
-  //
-  pCoor bottom_pos(12.5,2*distance_relaxed,-13.7);
 
-  // Desired distance between adjacent balls.
+void
+World::ball_setup_hw01(int option)
+{
+  /// Homework 1:  
+  //  Most of the solution goes in this file.
+
+  const bool opt_special_dist_relaxed = option > 1;
+  const bool opt_spin = option > 2;
+
+  // The position of the first ball is the same each time.
   //
-  pVect ball_separation(0, distance_relaxed, 0);  // Points up.
+  pCoor first_pos(12.5, chain_length * distance_relaxed, -13.7);
+
+  // This randomly chosen unit vector points from first to last pos.
+  //
+  pNorm ax( -drand48(), -drand48()/3, -drand48()/7 );
+
+  // Distance between first and last ball.
+  //
+  const float first_last_dist =
+    ( 0.2 + drand48()*0.6 ) * distance_relaxed * ( chain_length - 1 );
+
+  // Length of chain between first and last ball.
+  //
+  const float chain_distance = distance_relaxed * ( chain_length - 1 );
+
+  // The position of the last ball.
+  //
+  pCoor last_pos = first_pos + first_last_dist * ax;
+
+  // Compute a local z axis, az, that is parallel to the global x/z axis.
+  //
+  pNorm az = cross( ax, pVect(0,1,0) );
+
+  // Compute a local y axis.
+  //
+  pVect ay = cross( az, ax );
+  //
+  // This is a tilted version of the global y axis.
+
+  // Construct an ellipse defined as follows:
+  //
+  //  Imagine the chain were inflexible string and the ends
+  //  were attached to first_pos and last_pos.
+  //
+  //  Stretch the string tight using an imaginary pencil tip. The
+  //  ellipse is formed by the possible locations of the pencil top/
+  //
+  //  Note: the ellipse is in the plane with normal az.
+  //
+  // In geometric terminology:
+  //
+  //  The foci are at first_pos and last_pos.
+  //  The distance between the foci is first_last_dist.
+  //
+  // Eccentricity of ellipse.
+  //
+  const float ec = first_last_dist / chain_distance;
+
+  // Halfway point between the two balls. This will be the origin
+  // of the local space in which the ellipse is drawn.
+  //
+  pCoor mid_pos = first_pos + 0.5 * first_last_dist * ax;
+
+  // Compute handy values.
+  //
+  const float ays = ay.y * ay.y,  axs = ax.y * ax.y,  ecs = ec * ec;
+
+  // Compute local x coordinate of point on ellipse that has the
+  // minimum value of y in the global coordinate space. This assumes
+  // that ax.y < 0;
+  //
+  const float lx_min =
+    -chain_distance * 0.5 * ax.y / sqrt( axs + ays * ( 1 - ecs ) );
+
+  // Compute local y coordinate of point on ellipse corresponding to lx_min.
+  //
+  const float ly_min =
+    -sqrt( ( chain_distance * chain_distance / 4 - lx_min * lx_min )
+           * ( 1 - ecs ) );
+
+  // Compute coordinates of the point on the ellipse with the minimum local y.
+  //
+  pCoor nadir_pos = mid_pos + lx_min * ax + ly_min * ay;
+
+
+  // Verify that distance from first, to nadir, to last is correct.
+  pNorm dfn(first_pos,nadir_pos);
+  pNorm dln(last_pos,nadir_pos);
+  assert( fabs( dfn.magnitude + dln.magnitude - chain_distance ) < 0.0001 );
+
+  // Set markers that will be displayed when the simulation is paused.
+  // These may be useful for debugging. Feel free to change them.
+  //
+  hw01.markers_show = true;
+  hw01.mark_vec_red = ax;     // Red needle points along ax.
+  hw01.mark_vec_green = -ay;
+  hw01.mark_vec_blue = az;
+  hw01.mark_pos_white = first_pos;
+  hw01.mark_pos_red = last_pos;
+  hw01.mark_pos_green = nadir_pos;
+
 
   for ( int i=0; i<chain_length; i++ )
     {
-      Ball* const ball = &balls[chain_length-i-1];
+      Ball* const ball = &balls[i];
 
-      ball->position = bottom_pos + i * ball_separation;
+      pCoor pos = first_pos + i * first_last_dist / ( chain_length-1 ) * ax;
 
+      ball->position = pos;
       ball->velocity = pVect(0,0,0);
-      ball->radius = 0.3;
+      ball->radius = 0.2;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
-      ball->constraint = OC_Free;
+      ball->constraint = i > 0 && i < chain_length - 1 ? OC_Free : OC_Locked;
       ball->contact = false;
     }
-
-  hw01.rail_inited = false;
-  balls[0].constraint = OC_Ring_Free;
 }
 
+
+
 void
-World::ball_setup_2()
+World::ball_setup_4()
 {
   /// Arrange and size balls to form a pendulum.
 
@@ -263,20 +351,7 @@ World::ball_setup_2()
       ball->constraint = OC_Free;
     }
 
-  hw01.rail_inited = false;
-  balls[0].constraint = OC_Ring_Free;
-}
-
-void
-World::ball_setup_3()
-{
-  ball_setup_1();
-}
-
-void
-World::ball_setup_4()
-{
-  ball_setup_2();
+  balls[0].constraint = OC_Ring_Animated;
 }
 
 void
@@ -290,8 +365,6 @@ World::ball_setup_5()
 void
 World::time_step_cpu(double delta_t)
 {
-  /// Homework 1 Solution In This Routine
-
   time_step_count++;
 
   //
@@ -309,7 +382,7 @@ World::time_step_cpu(double delta_t)
 
       // Spring Force from Neighbor Balls
       //
-      for ( int direction: { -2, -1, +1, +2 } )
+      for ( int direction: { -1, +1 } )
         {
           const int n_idx = i + direction;  // Compute neighbor index.
 
@@ -356,103 +429,8 @@ World::time_step_cpu(double delta_t)
         }
     }
 
-  // Compute location of ball on ring.
-  auto pos_compute = [&](float theta)
-    {
-      return hw01.center +
-        hw01.radius * ( cosf(theta) * hw01.x + sinf(theta) * hw01.y );
-    };
-
   // Impact on velocity due to air resistance.
   const double fs = pow(1+opt_air_resistance,-delta_t);
-
-  // Convenient head ball reference.
-  Ball& hball = balls[0];
-
-  /// Initialize Ring
-  //
-  //  Initialize at start and when ring is in a new position.
-  //
-  if ( !hw01.rail_inited && hball.constraint > OC_Locked )
-    {
-      hw01.rail_inited = true;
-      hw01.theta = 0;
-      const float size = 3;
-      hw01.radius = curr_setup > 2 ? 4.5 : size + size * drand48();
-
-      pNorm vdir(hball.velocity);
-
-      if ( vdir.magnitude < 0.00001 )
-        {
-          // If ball is not moving, choose ring axis randomly.
-
-          const float tilt_amt = 0.9;
-          switch ( curr_setup ) {
-          case 1: case 2:  // Random angle.
-            hw01.axis = pNorm(tilt_amt*drand48(),1,tilt_amt*drand48());
-            break;
-          case 3: // Almost straight up.
-            hw01.axis = pNorm(0.2,1,-0.2);
-            break;
-          case 4:
-            hw01.axis =
-              cross( balls[chain_length-1].position - balls[0].position,
-                     pVect(0,1,0) );
-            break;
-          default:
-            hw01.axis = pNorm(tilt_amt*drand48(),1,tilt_amt*drand48());
-            break;
-          }
-
-          // Find an axis orthogonal to hw01.axis, use this for local x axis.
-          //
-          hw01.x =
-            hw01.axis.z != 0 && hw01.x != 0
-            ? pNorm(hw01.axis.z,0,-hw01.axis.x)
-            : pNorm(1,0,0);
-
-          // Use local x axis to find center position of ring.
-          //
-          hw01.center = hball.position - hw01.x * hw01.radius;
-
-          // Compute local y axis
-          //
-          hw01.y = cross(hw01.axis,hw01.x);
-
-          hw01.omega = hball.constraint == OC_Ring_Animated ? 1 : 0;
-        }
-      else
-        {
-          // If ball is moving, position ring so that velocity direction
-          // is a tangent to the ring.
-
-          // Set local y axis to direction of ball's velocity vector.
-          //
-          hw01.y = vdir;
-          //
-          // This way, the ring smoothly "catches" the ball.
-
-          // Make local x axis orthogonal to the local and global y axes.
-          //
-          hw01.x = pNorm( cross( hw01.y, pVect(0,-1,0) ) );
-
-          // Compute local z axis (the ring axis)
-          //
-          hw01.axis = cross(hw01.x,hw01.y);
-          hw01.center = hball.position - hw01.radius * hw01.x;
-
-          // Set omega so that speed of ring matches speed of ball.
-          //
-          hw01.omega = vdir.magnitude / hw01.radius;
-        }
-
-      /// SOLUTION -- Problem 2
-      //
-      //  If we are here something about the ring has changed, so
-      //  force the recomputation of the ring spin matrix.
-      //
-      hw01.spin_delta_t = 0;
-    }
 
   /// Update Velocity and Position of Each Ball
   //
@@ -496,141 +474,9 @@ World::time_step_cpu(double delta_t)
         ball->velocity = pVect(0,0,0);
         break;
 
-      case OC_Ring_Animated:
-        //
-        // Ball attached to ring and rotates with it at fixed rate omega.
-        {
-          // Compute amount by which ring will rotate during this time step.
-          //
-          const double delta_theta = delta_t * hw01.omega;
-
-          // Update velocity vector.
-          //
-          ball->velocity =
-            hw01.omega * hw01.radius *
-            ( -sinf(hw01.theta) * hw01.x + cosf(hw01.theta) * hw01.y );
-
-          // Update the position angle and the position Cartesian coordinate.
-          //
-          hw01.theta += delta_theta;
-          ball->position = pos_compute(hw01.theta);
-        }
-        break;
-
-      case OC_Ring_Free:
-        //
-        // Ball can slide along ring freely.
-        {
-          /// Put Problem 1 solution here, mostly.
-
-          // Quantity ball->force is the force on the ball due to its
-          // neighbor and to gravity. Since the ball is constrained
-          // to move in a circle (along the ring) 
-
-
-          pVect center_to_ball =
-            pVect(hw01.center,ball->position) / hw01.radius;
-          //
-          // Note: center_to_ball should be a unit vector.
-
-          pVect dtan = cross(hw01.axis,center_to_ball);
-          assert( dtan.mag_sq() < 1.0001 ); // Make sure it's a unit vector.
-
-          // Compute force in direction of motion along ring.
-          //
-          const float force_tan = dot( ball->force, dtan );
-
-          // Compute change in velocity and the corresponding change
-          // in rotation rate.
-          //
-          const float delta_v = force_tan / ball->mass * delta_t;
-          const float delta_omega = delta_v / hw01.radius;
-
-          // Update the rotation rate, angle, linear velocity, and position.
-          //
-          hw01.omega += delta_omega;
-
-          /// SOLUTION -- Problem 1
-          //
-          if ( opt_hw01_do_friction )
-            {
-              // Find the force against the ring, which is anything
-              // not in the direction of the normal.
-              //
-              pNorm force_other = ball->force - force_tan * dtan;
-
-              // Compute the magnitude of frictional force due to this
-              // force against the ring.
-              //
-              float force_fric =
-                opt_hw01_fric_coefficient * force_other.magnitude;
-              //
-              // Note that force_fric is never negative.
-
-              // Compute the change in rotation rate due to this force.
-              //
-              float delta_omega_fric =
-                force_fric / ( ball->mass * hw01.radius ) * delta_t;
-
-              // Compute the new rotation rate by applying the
-              // frictional force in the direction opposite of
-              // rotation, and taking care to set it to zero rather
-              // than changing its direction if that would happen.
-              //
-              hw01.omega =
-                fabs(hw01.omega) < delta_omega_fric ? 0 :
-                hw01.omega < 0 ? hw01.omega + delta_omega_fric :
-                hw01.omega - delta_omega_fric;
-            }
-
-          hw01.theta += hw01.omega * delta_t;
-          ball->velocity = hw01.omega * hw01.radius * dtan;
-          ball->position = pos_compute(hw01.theta);
-        }
-        break;
-
       default: assert( false );
       }
     }
-
-  if ( opt_hw01_spin && hball.constraint >= OC_Ring_Animated )
-    {
-      /// Put Problem 2 solution mostly here.
-      //
-      //  But, feel free to declare new members in HW01_Stuff
-
-
-      /// SOLUTION -- Problem 2
-
-      // Check whether rotation matrix needs to be updated.
-      //
-      if ( hw01.spin_delta_t != delta_t )
-        {
-          pNorm spin_axis = cross(pVect(0,1,0),hw01.axis);
-
-          // Compute new rotation matrix.
-          //
-          hw01.xform_spin.set_rotation
-            (spin_axis, hw01.opt_spin_omega * delta_t);
-
-          // Remember that this was computed for this particular delta_t.
-          //
-          hw01.spin_delta_t = delta_t;
-        }
-
-      // Rotate local axes of the ring.
-      //
-      hw01.x = hw01.xform_spin * hw01.x;
-      hw01.y = hw01.xform_spin * hw01.y;
-      hw01.axis = hw01.xform_spin * hw01.axis;
-
-      // Normalize to correct for accumulated error.
-      //
-      hw01.x.normalize();
-      hw01.y.normalize();
-      hw01.axis.normalize();
-    }
-
 }
 
 
@@ -675,7 +521,6 @@ void World::balls_push(pVect amt)
 void World::balls_stop()
 {
   for ( auto& b: balls ) b.stop();
-  hw01.omega = 0;
 }
 void World::balls_freeze(){balls_stop();}
 

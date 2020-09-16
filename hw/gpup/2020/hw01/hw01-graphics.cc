@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2019), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
  /// Simple Demo of Dynamic Simulation, Graphics Code
 
@@ -49,7 +49,7 @@ public:
 
 class World {
 public:
-  World(pOpenGL_Helper &fb):ogl_helper(fb),hw01_ring_guide(100){init();}
+  World(pOpenGL_Helper &fb):ogl_helper(fb){init();}
   void init();
   void init_graphics();
   static void frame_callback_w(void *moi){((World*)moi)->frame_callback();}
@@ -90,27 +90,23 @@ public:
   bool opt_single_time_step;  // Simulate for one time step.
   int viewer_shadow_volume;
 
+  bool opt_tryout1, opt_tryout2, opt_tryout3;
+  float opt_tryoutf;
+
   pCoor eye_location;
   pVect eye_direction;
   pMatrix modelview;
   pMatrix transform_mirror;
-  int curr_setup;
-
-  // Cylinder used to show location of ring.
-  Cylinder hw01_ring_guide;
-
-  bool opt_hw01_do_friction;
-  bool opt_hw01_spin;
-  float opt_hw01_spin_omega;
-  float opt_hw01_fric_coefficient;
 
   HW01_Stuff hw01;
 
+  int curr_setup;
   void ball_setup_1();
   void ball_setup_2();
   void ball_setup_3();
   void ball_setup_4();
   void ball_setup_5();
+  void ball_setup_hw01(int option);
   void time_step_cpu(double);
   void balls_stop();
   void balls_freeze();
@@ -137,8 +133,8 @@ World::init_graphics()
 
   opt_platform_texture = true;
 
-  eye_location = pCoor(24.2,14.6,-38.7);
-  eye_direction = pVect(-0.42,-0.09,0.9);
+  eye_location = pCoor(7,14.6,-38.7);
+  eye_direction = pNorm(0,0,1);
 
 
   platform_xmin = -40; platform_xmax = 40;
@@ -286,67 +282,29 @@ World::render_objects(Render_Option option)
                       ball2->position-ball1->position);
         }
 
-      if ( balls[0].constraint > OC_Locked )
+      if ( hw01.markers_show && opt_pause )
         {
-          /// Draw a cylinder to mark the ring constraining ball[0]'s motion.
+          pGL_Disable_Restore_Later drl( {GL_TEXTURE_2D} );
 
-          // Set the color based on whether ball motion is merely constrained
-          // to the ring or ball position rotates around the ring at
-          // a fixed rate (omega).
-          //
-          hw01_ring_guide.set_color
-            ( balls[0].constraint == OC_Ring_Animated
-              ? 0.5*color_light_sky_blue :
-              opt_hw01_do_friction ? 0.4*color_khaki : color_gray );
-          const float height = balls[0].radius * 0.5;
-
-          // Draw a squat cylinder. The cylinder is constructed once
-          // and re-used every frame. The costly trigonometric operations
-          // are only performed during construction, so there's no need
-          // to feel guilty about having 100 sides or more.
-          hw01_ring_guide.render
-            (hw01.center-hw01.axis*height,hw01.radius,2*height*hw01.axis);
-
-          ///
-          /// Live Classroom Demo Code (6 September 2019)
-          //
-          // Example of how to draw a circle.
-          //
-          // Unlike the cylinder drawn above, the code below does trig
-          // every frame. How wasteful!
-
-          /// Circle Description
-          //
-          // Center: hw01.center
-          // Axis: hw01.axis
-          // Radius: hw01.radius
-
-          const int nsides = 100;
-          const float delta_theta = 2 * M_PI / nsides;
-
-          glColor3fv(color_red);
-          glLineWidth( 3 );
-          glBegin(GL_LINE_LOOP); // Draw a series of line segments.
-
-          pNorm vxn = hw01.axis.x != 0
-            ? pVect(hw01.axis.y,-hw01.axis.x,0)
-            : pVect(0,hw01.axis.z,-hw01.axis.y);
-          float circ_r = hw01.radius + balls[0].radius;
-          pVect vy = circ_r * cross(vxn, hw01.axis );
-          pVect vx = circ_r * vxn;
-
-          for ( int i=0; i<nsides; i++ )
-            {
-              const float theta = i * delta_theta;
-              pVect v = cos(theta) * vx + sin(theta) * vy;
-              pCoor p = hw01.center + v;
-
-              glNormal3fv(v); // The normal is used by lighting calculations.
-              glVertex3fv(p); // Specify a point on the circle.
-
-            }
-          glEnd();
+          Ball* const ballh = &balls[0];
+          Cone axis_marker; axis_marker.apex_radius = 0.01;
+          glColor3fv( color_red );
+          axis_marker.render(ballh->position, 0.1*ballh->radius,
+                             5 * hw01.mark_vec_red);
+          glColor3fv( color_green );
+          axis_marker.render(ballh->position, 0.1*ballh->radius,
+                             5 * hw01.mark_vec_green);
+          glColor3fv( color_light_blue );
+          axis_marker.render(ballh->position, 0.1*ballh->radius,
+                             5 * hw01.mark_vec_blue);
+          sphere.color = color_white;
+          sphere.render( 0.2, hw01.mark_pos_white );
+          sphere.color = color_red;
+          sphere.render( 0.2, hw01.mark_pos_red );
+          sphere.color = color_green;
+          sphere.render( 0.2, hw01.mark_pos_green );
         }
+
     }
 
   glDisable(GL_COLOR_SUM);
@@ -476,11 +434,12 @@ World::render()
     { "FREE", "LOCKED", "RING-A", "RING-F" };
 
   ogl_helper.fbprintf
-    ("HW01: Head Constr: %6s ('hr')  Friction %3s ('f')  Spin %s ('R')\n",
+    ("HW01: Head Constr: %6s ('hr')  Tryout 1,2,3: %s, %s, %s  ('yYZ')\n",
      oc_str[hcon],
-     hcon != OC_Ring_Free ? "---" :
-     opt_hw01_do_friction ? "ON " : "OFF",
-     opt_hw01_spin ? "ON " : "OFF");
+     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout2 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout3 ? BLINK("ON ","   ") : "OFF");
+
   ogl_helper.fbprintf
     ("Time Step: %8d  World Time: %11.6f  %s\n",
      time_step_count, world_time,
@@ -497,11 +456,9 @@ World::render()
   Ball& ball = balls[0];
 
   ogl_helper.fbprintf
-    ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f] "
-     "Omega %+5.1f\n",
+    ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      ball.position.x,ball.position.y,ball.position.z,
-     ball.velocity.x,ball.velocity.y,ball.velocity.z,
-     hw01.omega);
+     ball.velocity.x,ball.velocity.y,ball.velocity.z);
 
   pVariable_Control_Elt* const cvar = variable_control.current;
   ogl_helper.fbprintf("VAR %s = %.5f  (TAB or '`' to change, +/- to adjust)\n",
@@ -701,12 +658,19 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const bool shift = ogl_helper.keyboard_shift;
-  const float move_amt = shift ? 2.0 : 0.4;
+  const bool kb_mod_s = ogl_helper.keyboard_shift;
+  const bool kb_mod_c = ogl_helper.keyboard_control;
+  const float move_amt = kb_mod_s ? 2.0 : kb_mod_c ? 0.04 : 0.4;
 
   Ball& hball = balls[0];
   Ball& tball = balls[chain_length-1];
-  Object_Constraint& con = hball.constraint;
+
+  uint32_t key_dig = ogl_helper.keyboard_key - '0';
+  if ( key_dig < 6 )
+    {
+      if ( key_dig != unsigned(curr_setup) ) hw01.markers_show = false;
+      curr_setup = key_dig;
+    }
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
@@ -728,8 +692,6 @@ World::cb_keyboard()
   case 'B': opt_move_item = MI_Ball_V; break;
   case 'e': case 'E': opt_move_item = MI_Eye; break;
 
-  case 'f': case 'F': opt_hw01_do_friction = !opt_hw01_do_friction; break;
-
   case 'g': case 'G': opt_gravity = !opt_gravity; break;
   case 'h': case 'H':
     hball.constraint = hball.constraint ? OC_Free : OC_Locked;
@@ -740,19 +702,14 @@ World::cb_keyboard()
   case 'l': case 'L': opt_move_item = MI_Light; break;
   case 'n': case 'N': opt_platform_texture = !opt_platform_texture; break;
   case 'p': case 'P': opt_pause = !opt_pause; break;
-  case 'r':
-    if ( con != OC_Ring_Free && con != OC_Ring_Animated )
-      hw01.rail_inited = false;
-    hball.constraint =
-      hball.constraint == OC_Ring_Free ? OC_Ring_Animated : OC_Ring_Free;
-    if ( hball.constraint == OC_Ring_Animated ) hw01.omega = 1;
-    break;
-  case 'R':
-    opt_hw01_spin = !opt_hw01_spin;
-    break;
   case 's': case 'S': balls_stop(); break;
+
+  case 'y': opt_tryout1 = !opt_tryout1; break;
+  case 'Y': opt_tryout2 = !opt_tryout2; break;
+  case 'Z': opt_tryout3 = !opt_tryout3; break;
+
   case ' ':
-    if ( shift ) opt_single_time_step = true; else opt_single_frame = true;
+    if ( kb_mod_c ) opt_single_time_step = true; else opt_single_frame = true;
     opt_pause = true; 
     break;
   case 9: variable_control.switch_var_right(); break;
@@ -761,9 +718,6 @@ World::cb_keyboard()
   case '+':case '=': variable_control.adjust_higher(); break;
   default: printf("Unknown key, %d\n",ogl_helper.keyboard_key); break;
   }
-
-  uint32_t key_dig = ogl_helper.keyboard_key - '0';
-  if ( key_dig < 6 ) curr_setup = key_dig;
 
   gravity_accel.y = opt_gravity ? -opt_gravity_accel : 0;
 
