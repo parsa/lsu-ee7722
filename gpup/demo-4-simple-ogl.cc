@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2019), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
  /// Minimal OpenGL Program
 
