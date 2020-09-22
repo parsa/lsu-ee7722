@@ -351,7 +351,6 @@ World::ball_setup_4()
       ball->constraint = OC_Free;
     }
 
-  balls[0].constraint = OC_Ring_Animated;
 }
 
 void
