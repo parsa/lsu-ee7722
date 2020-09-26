@@ -498,49 +498,50 @@ World::render()
   //
   glColor3fv(lsu_spirit_gold);
 
-  const double delta_eta = M_PI / slices;
+  const float delta_eta = M_PI / slices;
 
   // Outer (eta) Loop: Iterate over longitude (north-to-south).
   // Inner (theta) Loop: Iterate over latitude (east-to-west)
 
-  for ( double eta0 = 0; eta0 < M_PI - 0.0001 - delta_eta; eta0 += delta_eta )
+  for ( int slice = 0; slice < slices - 1; slice++ )
     {
-      const double eta1 = eta0 + delta_eta;
-      const float  y0 = cos(eta0),        y1 = cos(eta1);
-      const double slice_r0 = sin(eta0),  slice_r1 = sin(eta1);
-      const double delta_theta = delta_eta * slice_r1;
+      const float eta0 = slice * delta_eta;
+      const float eta1 = eta0 + delta_eta;
+      const float y0 = cosf(eta0),        y1 = cosf(eta1);
+      const float slice_r0 = sinf(eta0),  slice_r1 = sinf(eta1);
+      const float delta_theta = delta_eta * slice_r1;
 
-      for ( double theta0 = 0; theta0 < 2 * M_PI; theta0 += delta_theta )
+      for ( float theta0 = 0; theta0 < 2 * M_PI; theta0 += delta_theta )
         {
-          const double theta1 = theta0 + delta_theta;
+          const float theta1 = theta0 + delta_theta;
 
           /// Triangle 1
 
           // Vertex 1
-          glNormal3f( slice_r1 * cos(theta0), y1, slice_r1 * sin(theta0) );
-          glVertex3f( slice_r1 * cos(theta0), y1, slice_r1 * sin(theta0) );
+          glNormal3f( slice_r1 * cosf(theta0), y1, slice_r1 * sinf(theta0) );
+          glVertex3f( slice_r1 * cosf(theta0), y1, slice_r1 * sinf(theta0) );
 
           // Vertex 2
-          glNormal3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
-          glVertex3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
+          glNormal3f( slice_r0 * cosf(theta0), y0, slice_r0 * sinf(theta0) );
+          glVertex3f( slice_r0 * cosf(theta0), y0, slice_r0 * sinf(theta0) );
 
           // Vertex 3      
-          glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
-          glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
+          glNormal3f( slice_r1 * cosf(theta1), y1, slice_r1 * sinf(theta1) );
+          glVertex3f( slice_r1 * cosf(theta1), y1, slice_r1 * sinf(theta1) );
 
           /// Triangle 2
 
           // Vertex 3      
-          glNormal3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
-          glVertex3f( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
+          glNormal3f( slice_r1 * cosf(theta1), y1, slice_r1 * sinf(theta1) );
+          glVertex3f( slice_r1 * cosf(theta1), y1, slice_r1 * sinf(theta1) );
 
           // Vertex 2
-          glNormal3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
-          glVertex3f( slice_r0 * cos(theta0), y0, slice_r0 * sin(theta0) );
+          glNormal3f( slice_r0 * cosf(theta0), y0, slice_r0 * sinf(theta0) );
+          glVertex3f( slice_r0 * cosf(theta0), y0, slice_r0 * sinf(theta0) );
 
           // Vertex 4
-          glNormal3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
-          glVertex3f( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
+          glNormal3f( slice_r0 * cosf(theta1), y0, slice_r0 * sinf(theta1) );
+          glVertex3f( slice_r0 * cosf(theta1), y0, slice_r0 * sinf(theta1) );
 
         }
     }
@@ -552,7 +553,7 @@ World::render()
   //  The code is inefficient for the following reasons:
   //
   //  * Trigonometric functions are re-computed.  The compiler may
-  //    realize that two nearby calls of sin(theta) will return the
+  //    realize that two nearby calls of sinf(theta) will return the
   //    same value, but don't bet on it.  Even so, they at least need
   //    to be re-computed each frame. Instead the trig values (or better
   //    the coordinates) should be saved in an array and re-used, only
