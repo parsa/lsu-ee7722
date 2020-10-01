@@ -338,12 +338,13 @@ World::render()
       const float slice_r0 = sinf(eta0),  slice_r1 = sinf(eta1);
       const int segs = max(3, int( 2 * slices * max(slice_r0,slice_r1) ) );
       const float delta_theta = 2 * M_PI / segs;
-      const bool show_eta = eta0 == opt_show_eta;
+      const bool show_eta = opt_show && eta0 == opt_show_eta;
       pColor slice_color = show_eta ? lsu_spirit_purple : lsu_spirit_gold;
 
       if ( show_eta &&
            ( opt_change_theta || delta_theta != show_delta_theta_seen ) )
         {
+          // Update value of opt_show_theta.
           const int prev_slice = opt_show_theta / delta_theta + 0.5;
           const int seg = ( segs + prev_slice + opt_change_theta ) % segs;
           opt_show_theta = seg * delta_theta;
@@ -468,7 +469,7 @@ World::cb_keyboard()
       case MI_Ball: sphere_location += radjustment; break;
       case MI_Slice:
         if ( adjustment.x )
-          opt_change_theta = adjustment.x < 0 ? -1 : 1;
+          opt_change_theta = adjustment.x < 0 ? 1 : -1;
         else if ( const float adj = -adjustment.y + adjustment.z )
           opt_change_eta = adj < 0 ? -1 : 1;
         break;
