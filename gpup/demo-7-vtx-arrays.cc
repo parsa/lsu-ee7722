@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
  /// Vertex Arrays, Buffer Objects
 
@@ -87,7 +87,7 @@
  //    Affects inputs and outputs to rendering pipeline stages.
  //
  //    Determined by GPU.
- //      Pascal-generation desktop GPU: 300 GB/s.
+ //      Turing-generation desktop GPU: 500 GB/s.
  //
  //  GPU Computation
  //
@@ -97,7 +97,8 @@
  //
  //    For NVidia devices:
  //      Product of number of "CUDA Cores" and graphics clock frequency.
- //        GTX 1080: 2560 * 1.911 GHz = 4892 10^9
+ //        GTX 1080: 2560 * 1.91 GHz = 4892 10^9
+ //        RTX 2080: 3072 * 1.81 GHz = 5560 10^9
  //
  //      This indicates the number of multiply/add operations per second.
  //
@@ -430,11 +431,11 @@ World::render()
 
           // Vertex 1
           //
-          sphere_coords.push_back( pCoor( slice_r1, y1, 0 ) );
+          sphere_coords.emplace_back( slice_r1, y1, 0 );
 
           // Vertex 2
           //
-          sphere_coords.push_back( pCoor( slice_r0, y0, 0 ) );
+          sphere_coords.emplace_back( slice_r0, y0, 0 );
 
           for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
             {
@@ -442,14 +443,14 @@ World::render()
 
               // Vertex 3  (Used for three triangles.)
               //
-              sphere_coords.push_back
-                ( pCoor( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) ) );
+              sphere_coords.emplace_back
+                ( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
 
               // Vertex 4  (Used for three triangles.)
               //
 
-              sphere_coords.push_back
-                ( pCoor( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) ) );
+              sphere_coords.emplace_back
+                ( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
             }
 
         }
