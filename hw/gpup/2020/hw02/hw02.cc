@@ -2,13 +2,16 @@
 //
  /// Homework 2
  //
+ /// Instructions
+ //
+ //  Read the assignment: https://www.ece.lsu.edu/koppel/gpup/2020/hw02.pdf
+ //
+ //  Only this file will be collected.
+ //
  //  Note: this file based on demo-5-more-ogl.cc
 
  /// Simple Demo of OpenGL
 
-/// Purpose
-//
-//   Demonstrate simple opengl.
 
 
 /// What Code Does
@@ -90,7 +93,7 @@ public:
   //
   pFrame_Timer frame_timer;
 
-  bool opt_tryout1, opt_tryout2;
+  bool opt_tryout1, opt_tryout2, opt_tryout3;
 
   bool opt_show_lines; // Set normal to triangle normal.
 
@@ -147,6 +150,8 @@ World::init()
   opt_show_eta = 1.73;
   show_delta_eta_seen = -1;
 
+  opt_tryout1 = opt_tryout2 = opt_tryout3 = false;
+
 }
 
 void
@@ -200,6 +205,10 @@ World::render()
   //  Print messages using utility functions provided for this course.
   //
 
+  const double time_now = time_wall_fp();
+  const bool blink_visible = int64_t(time_now*3) & 1;
+# define BLINK(txt,pad) ( blink_visible ? txt : pad )
+
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
@@ -213,9 +222,16 @@ World::render()
      light_location.x, light_location.y, light_location.z);
 
   ogl_helper.fbprintf
+    ("Tryout 1,2,3: %s, %s, %s  ('yYZ')  Show lines: %s ('n') \n",
+     opt_tryout1 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout2 ? BLINK("ON ","   ") : "OFF",
+     opt_tryout3 ? BLINK("ON ","   ") : "OFF",
+     opt_show_lines ? BLINK("ON ","   ") : "OFF");
+
+  ogl_helper.fbprintf
     ("HW02: Show slice: %3s ('c' to toggle)  "
      "Show eta: %5.3f,  theta: %5.3f (%sarrows to change)\n",
-     opt_show ? "ON " : "OFF",
+     opt_show ? "ON " : BLINK("OFF","   "),
      opt_show_eta, opt_show_theta,
      opt_move_item != MI_Slice ? "'s' then " : "");
 
@@ -248,47 +264,40 @@ World::render()
   // Frustum: left, right, bottom, top, near, far
   glFrustum(-.8,.8,-.8/aspect,.8/aspect,1,5000);
 
-  /// Viewport Transformation
-  //
-  //  This is not set explicitly under ordinary circumstances.
-  //  The transformation is automatically set based on the window size.
-
-  //
-  // -------------------------------------------------------------------------
-
-
   ///
   /// Paint Single Triangle.
   ///
 
-  glColor3ub( 0x78, 0x8d, 0xf6); // Red, Green, Blue
+  if ( !opt_show )
+    {
+      glColor3ub( 0x78, 0x8d, 0xf6); // Red, Green, Blue
 
-  //  Indicate type of primitive.
-  //
-  glBegin(GL_TRIANGLES);
+      //  Indicate type of primitive.
+      //
+      glBegin(GL_TRIANGLES);
 
-  /// Specify normal for triangle.
-  //
-  // Use cross product function (in coord.h) to find normal.
-  //
-  pNorm tri_norm = cross(pVect(0,5,-5),pVect(9,6,-0));
-  glNormal3fv(tri_norm);  // Set current normal.
-  // Note: pNorm, pVect, pCoor, and pColor objects can be used as
-  // arguments to OpenGL functions with names ending in 3fv.
+      /// Specify normal for triangle.
+      //
+      // Use cross product function (in coord.h) to find normal.
+      //
+      pNorm tri_norm = cross(pVect(0,5,-5),pVect(9,6,-0));
+      glNormal3fv(tri_norm);  // Set current normal.
+      // Note: pNorm, pVect, pCoor, and pColor objects can be used as
+      // arguments to OpenGL functions with names ending in 3fv.
 
-  // Specify vertices for a triangle.
-  //
-  glVertex3f( 0, 0, 0 );
-  glVertex3f( 0,   5, -5 );
-  glVertex3f( 9,   6, -9 );
+      // Specify vertices for a triangle.
+      //
+      glVertex3f( 0, 0, 0 );
+      glVertex3f( 0,   5, -5 );
+      glVertex3f( 9,   6, -9 );
 
-  glEnd();
+      glEnd();
 
+    }
 
   ///
   /// Paint a Sphere
   ///
-
 
   // In sphere's coordinate space the sphere center is at the origin
   // and its radius is one. Therefore we need to adjust the modelview
@@ -306,26 +315,46 @@ World::render()
   const pColor lsu_spirit_gold(0xf9b237);
   const pColor color_red(0xaa0000);
 
-  /// Start Sending Triangles
-  //
-  //  OpenGL state is now set up, start sending triangles!
-
-  glBegin(opt_show_lines ? GL_LINE_STRIP : GL_TRIANGLES);
-
-
   const float delta_eta = M_PI / slices;
   const int slice_max = slices - 2;
+  int show_slice = -1;
 
+  /// Update  opt_show_eta and opt_show_theta
+  //
+  //  Variable opt_show_eta indicates the value of eta for which to
+  //  show construction lines. Likewise for opt_show_theta. These
+  //  variables are adjusted (if necessary) so that they are a
+  //  multiple of delta_eta and delta_theta, respectively.
+  //
   if ( opt_change_eta || delta_eta != show_delta_eta_seen )
     {
       const int prev_slice = opt_show_eta / delta_eta + 0.5;
       const int targ_slice = prev_slice + opt_change_eta;
-      const int slice =
+      show_slice =
         targ_slice < 0 ? slice_max : targ_slice > slice_max ? 0 : targ_slice;
-      opt_show_eta = slice * delta_eta;
+      opt_show_eta = show_slice * delta_eta;
       opt_change_eta = 0;
       show_delta_eta_seen = delta_eta;
     }
+  auto update_show_delta_theta = [&]( float delta_theta, int segs )
+    {
+      if ( !opt_change_theta && delta_theta == show_delta_theta_seen ) return;
+      const int prev_slice = opt_show_theta / delta_theta + 0.5;
+      const int seg = ( segs + prev_slice + opt_change_theta ) % segs;
+      opt_show_theta = seg * delta_theta;
+      opt_change_theta = 0;
+      show_delta_theta_seen = delta_theta;
+    };
+
+
+  ///
+  /// Homework 2 --- Most or all of the solution starts here.
+  ///
+  //  Modify the slice/seg loop nest, and add code before and
+  //  after the loop nest.
+
+
+  glBegin( opt_show_lines ? GL_LINE_STRIP : GL_TRIANGLES );
 
   // Outer (slice,eta)  Loop: Iterate over longitude (north-to-south).
   // Inner (segs,theta) Loop: Iterate over latitude (east-to-west)
@@ -336,21 +365,14 @@ World::render()
       const float eta1 = eta0 + delta_eta;
       const float y0 = cosf(eta0),        y1 = cosf(eta1);
       const float slice_r0 = sinf(eta0),  slice_r1 = sinf(eta1);
+
       const int segs = max(3, int( 2 * slices * max(slice_r0,slice_r1) ) );
       const float delta_theta = 2 * M_PI / segs;
       const bool show_eta = opt_show && eta0 == opt_show_eta;
       pColor slice_color = show_eta ? lsu_spirit_purple : lsu_spirit_gold;
 
-      if ( show_eta &&
-           ( opt_change_theta || delta_theta != show_delta_theta_seen ) )
-        {
-          // Update value of opt_show_theta.
-          const int prev_slice = opt_show_theta / delta_theta + 0.5;
-          const int seg = ( segs + prev_slice + opt_change_theta ) % segs;
-          opt_show_theta = seg * delta_theta;
-          opt_change_theta = 0;
-          show_delta_theta_seen = delta_theta;
-        }
+      if ( show_eta )
+        update_show_delta_theta( delta_theta, segs );
 
       for ( int seg = 0; seg < segs; seg++ )
         {
@@ -392,6 +414,7 @@ World::render()
     }
 
   glEnd();
+
 
   glPopMatrix();
 
@@ -437,6 +460,7 @@ World::cb_keyboard()
   case 'n': opt_show_lines = !opt_show_lines; break;
   case 'y': opt_tryout1 = !opt_tryout1; break;
   case 'Y': opt_tryout2 = !opt_tryout2; break;
+  case 'Z': opt_tryout3 = !opt_tryout3; break;
   case 9: variable_control.switch_var_right(); break;
   case 96: variable_control.switch_var_left(); break; // `, until S-TAB works.
   case '-':case '_': variable_control.adjust_lower(); break;
@@ -484,6 +508,12 @@ main(int argv, char **argc)
 {
   pOpenGL_Helper popengl_helper(argv,argc);
   World world(popengl_helper);
+
+# ifdef __OPTIMIZE__
+  popengl_helper.ogl_debug_set(false);
+# else
+  popengl_helper.ogl_debug_set(true);
+# endif
 
   // Specify default frame update rate.
   //
