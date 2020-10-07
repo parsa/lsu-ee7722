@@ -30,7 +30,7 @@ LIBRARIES =  -lX11 -lglut -lGL -lGLU -lm -lpthread  -lrt \
   $(shell GraphicsMagick++-config --ldflags --libs) 
 LIBDIR  =
 
-default: hw01
+default: hw01 hw01-sol
 
 
 .cc.o:

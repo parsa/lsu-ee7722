@@ -1,6 +1,6 @@
 /// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
- /// Homework 1
+ /// Homework 1 -- SOLUTION
  //
 
  /// Instructions
@@ -136,6 +136,10 @@ public:
   float mass;
   float radius;
   Object_Constraint constraint;
+
+  /// SOLUTION -- 2020 Homework 1, Problem 1, Part b
+  //
+  float distance_relaxed;  // Spring from this ball to next ball in array.
 
   pVect force;
   bool contact;                 // Can be used for special effects.
@@ -309,19 +313,69 @@ World::ball_setup_hw01(int option)
   hw01.mark_pos_green = nadir_pos;
 
 
+  /// SOLUTION -- 2020 Homework 1, Problem 1, Part a
+  //
+  //  Compute index of last ball in the line starting at first_pos.
+  //
+  const int i_stop = dfn.magnitude / distance_relaxed;
+
   for ( int i=0; i<chain_length; i++ )
     {
       Ball* const ball = &balls[i];
 
-      pCoor pos = first_pos + i * first_last_dist / ( chain_length-1 ) * ax;
+      /// SOLUTION -- 2020 Homework 1, Problem 1, Part a
+      //
+      //  Compute position of ball assuming it is in the line starting
+      //  at first_pos.
+      //
+      pCoor pos_ff = first_pos + i * distance_relaxed * dfn;
+      //
+      //  Compute position of ball assuming it is in the line ending
+      //  at last_pos.
+      //
+      pCoor pos_ll =
+        last_pos + ( chain_length - 1 - i ) * distance_relaxed * dln;
+      //
+      //  Balls 0, 1, ..., i_stop use pos_ff for their position ..
+      //  .. and balls i_stop + 1, i_stop + 2, ... chain_length -1 use pos_ll.
+      //
+      ball->position = i <= i_stop  ? pos_ff : pos_ll;
 
-      ball->position = pos;
       ball->velocity = pVect(0,0,0);
       ball->radius = 0.2;
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->constraint = i > 0 && i < chain_length - 1 ? OC_Free : OC_Locked;
       ball->contact = false;
+
+      /// SOLUTION -- 2020 Homework 1, Problem 1, Part b
+      //
+      //  Set distance relaxed to the distance between this and previous ball
+      //  if opt_special_dist_relaxed and if the i-1 ball is on the line
+      //  from first_pos and this ball is on the line to last_pos.
+      //
+      ball->distance_relaxed =
+        opt_special_dist_relaxed && i == i_stop + 1
+        ? pNorm(balls[i-1].position,ball->position).magnitude
+        : distance_relaxed;
     }
+
+  /// SOLUTION -- 2020 Homework 1, Problem 1, Part c
+  //
+  if ( opt_spin )
+    for ( auto& b: balls )
+      {
+        pVect to_b0(b.position, first_pos);
+
+        // Compute distance from this ball to the closest point on ax.
+        //
+        const float dist = dot( to_b0, ay );
+        //
+        // This only works when the ball is on the ax/ay plane.
+
+        // Make velocity proportional to distance.
+        //
+        b.velocity = 10 * dist * az;
+      }
 }
 
 
@@ -349,6 +403,12 @@ World::ball_setup_4()
       ball->mass = 4/3.0 * M_PI * pow(ball->radius,3);
       ball->contact = false;
       ball->constraint = OC_Free;
+
+      /// SOLUTION -- 2020 Homework 1, Problem 1, Part b
+      //
+      //  Need to initialize distance_relaxed wherever balls are inited.
+      //
+      ball->distance_relaxed = distance_relaxed;
     }
 
 }
@@ -400,11 +460,24 @@ World::time_step_cpu(double delta_t)
           //
           const float distance_between_balls = ball_to_neighbor.magnitude;
 
+          /// SOLUTION -- 2020 Homework 1, Problem 1, Part b
+          //
+          //  Find index of the higher-numbered ball. It is the one with
+          //  the distance_relaxed value to use.
+          //
+          const int idx_gt = max(i,n_idx);
+
           // Compute by how much the spring is stretched (positive value)
           // or compressed (negative value).
           //
+          /// SOLUTION -- 2020 Homework 1, Problem 1, Part b
+          //
+          //  Get the relaxed distance from the ball rather than using
+          //  World::distance_relaxed.
+          //
           const float spring_stretch =
-            distance_between_balls - distance_relaxed * fabs(direction);
+            distance_between_balls
+            - balls[idx_gt].distance_relaxed * fabs(direction);
 
           // Compute the speed of ball towards neighbor_ball.
           //
