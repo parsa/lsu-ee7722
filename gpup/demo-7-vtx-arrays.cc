@@ -416,14 +416,14 @@ World::render()
       /// Initialize array coords with sphere's coordinates.
       // 
 
-      const double delta_eta = M_PI / opt_slices;
+      const float delta_eta = M_PI / opt_slices;
 
-      for ( double eta = 0; eta < M_PI - 0.0001 - delta_eta; eta += delta_eta )
+      for ( float eta = 0; eta < M_PI - 0.0001 - delta_eta; eta += delta_eta )
         {
-          const double eta1 = eta + delta_eta;
-          const float  y0 = cos(eta),        y1 = cos(eta1);
-          const double slice_r0 = sin(eta),  slice_r1 = sin(eta1);
-          const double delta_theta = delta_eta * slice_r1;
+          const float eta1 = eta + delta_eta;
+          const float  y0 = cosf(eta),        y1 = cosf(eta1);
+          const float slice_r0 = sinf(eta),  slice_r1 = sinf(eta1);
+          const float delta_theta = delta_eta * slice_r1;
 
           // Add first two vertices of triangle strip.
           // Note that a vertex is added to list one coordinate at a time.
@@ -437,24 +437,21 @@ World::render()
           //
           sphere_coords.emplace_back( slice_r0, y0, 0 );
 
-          for ( double theta = 0; theta < 2 * M_PI; theta += delta_theta )
+          for ( float theta = 0; theta < 2 * M_PI; theta += delta_theta )
             {
-              const double theta1 = theta + delta_theta;
+              const float theta1 = theta + delta_theta;
 
               // Vertex 3  (Used for three triangles.)
               //
               sphere_coords.emplace_back
-                ( slice_r1 * cos(theta1), y1, slice_r1 * sin(theta1) );
+                ( slice_r1 * cosf(theta1), y1, slice_r1 * sinf(theta1) );
 
               // Vertex 4  (Used for three triangles.)
               //
-
               sphere_coords.emplace_back
-                ( slice_r0 * cos(theta1), y0, slice_r0 * sin(theta1) );
+                ( slice_r0 * cosf(theta1), y0, slice_r0 * sinf(theta1) );
             }
-
         }
-
     }
 
   ///
@@ -634,6 +631,11 @@ World::render()
       //
       glGenBuffers(n, &gpu_buffer);
 
+      //   - Use buffer object in place of a CPU (client) array.
+      //     Do this each time a command, like glVertexPointer, reads
+      //      array data.
+      //
+      glBindBuffer(GL_ARRAY_BUFFER, gpu_buffer);
 
       //  - Copy data from CPU into buffer object.
       //    Do this whenever data changes.
@@ -643,12 +645,6 @@ World::render()
          n_bytes ,          // Amount of data (bytes) to copy.
          data_ptr,          // Pointer to data to copy.
          GL_STATIC_DRAW);   // Hint about who, when, how accessed.
-
-      //   - Use buffer object in place of a CPU (client) array.
-      //     Do this each time a command, like glVertexPointer, reads
-      //      array data.
-      //
-      glBindBuffer(GL_ARRAY_BUFFER, gpu_buffer);
 
       /// Note: The code above is an exampe, it doesn't execute. The real code
       /// appears below.
