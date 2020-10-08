@@ -325,21 +325,12 @@ World::ball_setup_hw01(int option)
 
       /// SOLUTION -- 2020 Homework 1, Problem 1, Part a
       //
-      //  Compute position of ball assuming it is in the line starting
-      //  at first_pos.
+      //  Compute ball position based either on position relative to
+      //  first_pos or on position relative to last_pos.
       //
-      pCoor pos_ff = first_pos + i * distance_relaxed * dfn;
-      //
-      //  Compute position of ball assuming it is in the line ending
-      //  at last_pos.
-      //
-      pCoor pos_ll =
-        last_pos + ( chain_length - 1 - i ) * distance_relaxed * dln;
-      //
-      //  Balls 0, 1, ..., i_stop use pos_ff for their position ..
-      //  .. and balls i_stop + 1, i_stop + 2, ... chain_length -1 use pos_ll.
-      //
-      ball->position = i <= i_stop  ? pos_ff : pos_ll;
+      ball->position = i <= i_stop
+        ? first_pos +                      i   * distance_relaxed * dfn
+        : last_pos  + ( chain_length - 1 - i ) * distance_relaxed * dln;
 
       ball->velocity = pVect(0,0,0);
       ball->radius = 0.2;
@@ -349,9 +340,13 @@ World::ball_setup_hw01(int option)
 
       /// SOLUTION -- 2020 Homework 1, Problem 1, Part b
       //
-      //  Set distance relaxed to the distance between this and previous ball
-      //  if opt_special_dist_relaxed and if the i-1 ball is on the line
-      //  from first_pos and this ball is on the line to last_pos.
+      //  Ball::distance_relaxed is the relaxed distance of the spring
+      //  connecting ball i to ball i-1.
+      //
+      //  Set distance_relaxed to the distance between this and
+      //  previous ball if opt_special_dist_relaxed and if the i-1
+      //  ball is on the line from first_pos and this ball is on the
+      //  line to last_pos.
       //
       ball->distance_relaxed =
         opt_special_dist_relaxed && i == i_stop + 1
@@ -361,12 +356,20 @@ World::ball_setup_hw01(int option)
 
   /// SOLUTION -- 2020 Homework 1, Problem 1, Part c
   //
+  //  Compute the spin direction. (This will be the same as az AoTW.)
+  //
+  pNorm spin_dir = cross(first_pos,nadir_pos,last_pos);
+  //
   if ( opt_spin )
     for ( auto& b: balls )
       {
+        //  Set speed of each ball to 10 times distance between ball
+        //  and nearest point on line through first_pos and last_pos.
+
         pVect to_b0(b.position, first_pos);
 
-        // Compute distance from this ball to the closest point on ax.
+        // Compute distance from this ball to the closest point on
+        // first_pos/last_pos line.
         //
         const float dist = dot( to_b0, ay );
         //
@@ -374,7 +377,7 @@ World::ball_setup_hw01(int option)
 
         // Make velocity proportional to distance.
         //
-        b.velocity = 10 * dist * az;
+        b.velocity = dist * 10 * spin_dir;
       }
 }
 
