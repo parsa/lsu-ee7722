@@ -317,7 +317,7 @@ World::ball_setup_hw01(int option)
   //
   //  Compute index of last ball in the line starting at first_pos.
   //
-  const int i_stop = dfn.magnitude / distance_relaxed;
+  const int i_dir_change = 0.9999f + dfn.magnitude / distance_relaxed;
 
   for ( int i=0; i<chain_length; i++ )
     {
@@ -328,7 +328,7 @@ World::ball_setup_hw01(int option)
       //  Compute ball position based either on position relative to
       //  first_pos or on position relative to last_pos.
       //
-      ball->position = i <= i_stop
+      ball->position = i < i_dir_change
         ? first_pos +                      i   * distance_relaxed * dfn
         : last_pos  + ( chain_length - 1 - i ) * distance_relaxed * dln;
 
@@ -349,7 +349,7 @@ World::ball_setup_hw01(int option)
       //  line to last_pos.
       //
       ball->distance_relaxed =
-        opt_special_dist_relaxed && i == i_stop + 1
+        opt_special_dist_relaxed && i == i_dir_change
         ? pNorm(balls[i-1].position,ball->position).magnitude
         : distance_relaxed;
     }
