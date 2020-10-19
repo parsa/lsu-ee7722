@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2016), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
  /// Fragment Shader / Phong Shading Demonstration
 
@@ -7,7 +7,7 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e, bool front);
@@ -27,14 +27,31 @@ layout ( location = 1 ) uniform vec4 material_color;
 // and fragment shader.
 //
 #ifdef _VERTEX_SHADER_
-out vec3 var_normal_e;
-out vec4 var_vertex_e;
-out vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
+
+// Declare some outputs as a group. These are grouped together
+// because they are used by the generic lighting routine.
+//
+out VF_Generic_Lighting
+  {
+    vec3 normal_e;
+    vec4 vertex_e;
+  } GLiO; // Generic Lighting Output Block
+
+// Re-declare pre-defined gl_TexCoord as a vec3.
+out vec2 gl_TexCoord[];
+
 #endif
+
 #ifdef _FRAGMENT_SHADER_
-in vec3 var_normal_e;
-in vec4 var_vertex_e;
-in vec2 gl_TexCoord[]; // We can change its interpolation, say to noperspective.
+
+in VF_Generic_Lighting
+  {
+    vec3 normal_e;
+    vec4 vertex_e;
+  } GLiI; // Generic Lighting Input Block
+
+in vec2 gl_TexCoord[];  // Declaring this is optional, since it's predefined.
+
 uniform sampler2D tex_unit_0;
 #endif
 
@@ -49,7 +66,7 @@ vs_main_lighting()
   // gl_Vertex, gl_Normal, gl_Color
   //
   // (storage qualifier "in") (Compatibility Profile)
-  // See OGSL Spec 4.5 Section 7.2
+  // See OGSL Spec 4.6 Section 7.2
 
   /// Pre-Defined Outputs
   //
@@ -62,7 +79,7 @@ vs_main_lighting()
   // gl_ModelViewMatrix, gl_NormalMatrix, gl_ModelViewProjectionMatrix, ..
   //
   // (storage qualifier uniform) (Compatibility Profile)
-  // See OGSL Spec 4.3 Section 7.4.1
+  // See OGSL Spec 4.6 Section 7.4.1
 
   // Transform vertex coordinate to clip space.
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
@@ -139,8 +156,8 @@ vs_main_phong()
   // Compute eye-space vertex coordinate and normal.
   // These are outputs of the vertex shader and inputs to the frag shader.
   //
-  var_vertex_e = gl_ModelViewMatrix * gl_Vertex;
-  var_normal_e = normalize(gl_NormalMatrix * gl_Normal);
+  GLiO.vertex_e = gl_ModelViewMatrix * gl_Vertex;
+  GLiO.normal_e = normalize(gl_NormalMatrix * gl_Normal);
 
   // Copy color to output unmodified. Lighting calculations will
   // be performed in the fragment shader.
@@ -171,11 +188,16 @@ fs_main_phong()
   vec4 our_color = gl_Color;
 #endif
 
+  // Normalize because interpolation does not preserve length.
+  //
+  vec3 nnormal_e = normalize(GLiI.normal_e);
+
+  vec4 lighted_color =
+    generic_lighting( GLiI.vertex_e, our_color, nnormal_e, gl_FrontFacing );
+
   // Multiply filtered texel color with lighted color of fragment.
   //
-  gl_FragColor =
-    texel * generic_lighting
-    (var_vertex_e,our_color,normalize(var_normal_e),gl_FrontFacing);
+  gl_FragColor = texel * lighted_color;
 
   // Copy fragment depth unmodified.
   //
