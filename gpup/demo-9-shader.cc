@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
  /// Shaders
 
@@ -769,7 +769,9 @@ World::cb_keyboard()
   if ( !ogl_helper.keyboard_key ) return;
   pVect adjustment(0,0,0);
   pVect user_rot_axis(0,0,0);
-  const float move_amt = 0.4;
+  const bool kb_mod_s = ogl_helper.keyboard_shift;
+  const bool kb_mod_c = ogl_helper.keyboard_control;
+  const float move_amt = kb_mod_s ? 2.0 : kb_mod_c ? 0.08 : 0.4;
 
   switch ( ogl_helper.keyboard_key ) {
   case FB_KEY_LEFT: adjustment.x = -move_amt; break;
