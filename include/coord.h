@@ -337,7 +337,8 @@ public:
 
   operator const pVect4 () const;
 
-  float elt(int idx) const { return (&x)[idx]; }
+  float& elt(int idx) { return (&x)[idx]; }
+  float& operator [] (int idx) { return elt(idx); }
 
   pVect mask(int8_t components) const
   {
