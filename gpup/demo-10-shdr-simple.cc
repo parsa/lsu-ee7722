@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2017), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
 
  /// See demo-10-shader.cc for details.
@@ -6,7 +6,7 @@
 
 // Specify version of OpenGL Shading Language.
 //
-#version 450 compatibility
+#version 460 compatibility
 
 // The extension below defines useful--though deprecated--shader input
 // and output variables. The code in this file lazily makes use of
@@ -67,7 +67,7 @@ out Data
 #ifdef _GEOMETRY_SHADER_
 
 layout ( triangles ) in;
-layout ( triangle_strip, max_vertices = 6 ) out;
+layout ( triangle_strip, max_vertices = 3 ) out;
 
 in Data
 {
@@ -205,29 +205,6 @@ gs_main_helix()
       tex_coord = In[i].tex_coord;
       normal_e = In[i].normal_e;
       vertex_e = In[i].vertex_e;
-
-      EmitVertex();
-    }
-  EndPrimitive();
-
-  vec4 color_adjust2 = !type_a ? vec4(0.5,0.5,0.5,1) : vec4(1);
-
-  for ( int i=0; i<3; i++ )
-    {
-      // Send the adjusted colors.
-      //
-      gl_FrontColor = vec4(1,0,0,1);
-      gl_BackColor = vec4(1,0,0,1);
-
-      vertex_e.xyz = ctr_e.xyz + ( In[i].vertex_e.xyz - ctr_e.xyz ) * 0.3 +
-        normalize(In[i].normal_e) * 0.2;
-      vertex_e.w = 1;
-
-      // Pass the other values through unmodified.
-      //
-      gl_Position = gl_ProjectionMatrix * vertex_e;
-      tex_coord = In[i].tex_coord;
-      normal_e = In[i].normal_e;
 
       EmitVertex();
     }
