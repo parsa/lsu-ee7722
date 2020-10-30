@@ -1,7 +1,9 @@
 /// LSU EE EE 7722/ EE 4702-X, GPU Prog/MicroArch
 //
- /// Links Project Base Code
+ /// Homework 3.
  //
+ ///  Do not put the solution in this file.
+ ///  Put the solution in file hw03-shdr.cc.
 
 /// Purpose
 //

@@ -1,6 +1,8 @@
 /// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
  ///  Homework 3 
+ //
+ //   Modify this file.
 
 // Specify version of OpenGL Shading Language.
 //
