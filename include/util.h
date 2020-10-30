@@ -447,14 +447,35 @@ pFrame_Timer::frame_end()
 
 struct pVariable_Control_Elt
 {
+  friend class pVariable_Control;
   char *name;
   float *var;
   float inc_factor, dec_factor;
   int *ivar;
   int inc, min, max;
+  float fmin, fmax;
+  bool use_fmin, use_fmax;
   bool exponential;
   bool *on_change_ptr, on_change_dummy;
 
+  pVariable_Control_Elt& set_min(float min)
+    {
+      fmin = min;
+      use_fmin = true;
+      return *this;
+    }
+  pVariable_Control_Elt& set_max(float max)
+    {
+      fmax = max;
+      use_fmax = true;
+      return *this;
+    }
+
+private:
+  void apply_min() { if ( use_fmin && *var < fmin ) *var = fmin; }
+  void apply_max() { if ( use_fmax && *var > fmax ) *var = fmax; }
+
+public:
   pVariable_Control_Elt& set_on_change(bool& sv)
     {
       on_change_ptr = &sv;
@@ -522,6 +543,7 @@ private:
     elt->ivar = NULL;
     elt->var = NULL;
     elt->on_change_ptr = &elt->on_change_dummy;
+    elt->use_fmax = elt->use_fmin = false;
     return elt;
   }
 public:
@@ -533,6 +555,7 @@ public:
         if ( current->exponential ) current->var[0] *= current->inc_factor;
         else                        current->var[0] += current->inc_factor;
         current->on_change_ptr[0] = true;
+        current->apply_max();
       }
     else
       {
@@ -550,6 +573,7 @@ public:
         if ( current->exponential ) current->var[0] *= current->dec_factor;
         else                        current->var[0] -= current->inc_factor;
         current->on_change_ptr[0] = true;
+        current->apply_min();
       }
     else
       {
