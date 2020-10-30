@@ -442,7 +442,9 @@ public:
       return int(l0) | (int(l1)<<1);
     };
 
-  pShader *sp_hw03;
+  pShader *sp_hw03_one;
+  pShader *sp_hw03_many;
+  float opt_hw03_hole_frac;
 
 };
 
@@ -466,10 +468,16 @@ World::init_graphics()
   opt_head_lock = false;
   opt_tail_lock = false;
   opt_tryout1 = opt_tryout2 = false;
-  opt_tryoutf = 0;
-  variable_control.insert_linear(opt_tryoutf,"Tryout F",0.1);
+  opt_normal_sphere = true;
 
-  eye_location = pCoor(24.2,11.6,-38.7);
+  opt_hw03_hole_frac = 0.5;
+  variable_control.insert_linear(opt_hw03_hole_frac,"opt_hw03_hole_frac",0.05)
+    .set_min(0).set_max(1);
+
+  opt_tryoutf = 0;
+  variable_control.insert_linear(opt_tryoutf,"opt_tryoutf",0.1);
+
+  eye_location = pCoor(18.6, 10.0, -21);
   eye_direction = pVect(-0.42,-0.09,0.9);
 
   platform_xmin = -40; platform_xmax = 40;
@@ -500,9 +508,12 @@ World::init_graphics()
 
   opt_sides = 20;
   opt_segments = 15;
-  variable_control.insert(opt_sides,"Link Sides");
-  variable_control.insert(opt_segments,"Link Segments");
+  if ( false ) {
+    variable_control.insert(opt_sides,"Link Sides");
+    variable_control.insert(opt_segments,"Link Segments");
+  }
   opt_hide_stuff = 0;
+
 }
 
 
@@ -627,7 +638,7 @@ World::render_objects(Render_Option option)
 
           pShader_Use use( sp_instances_sv );
           glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
-          glUniform1f(4, opt_tryoutf);
+          glUniform2f(4, opt_tryoutf, opt_hw03_hole_frac);
           glUniform1i(5, mirrored );
           glUniformMatrix4fv(6, 1, true, transform_projection);
 
@@ -667,7 +678,7 @@ World::render_objects(Render_Option option)
           pShader_Use use( sp_shaders[opt_sphere_shader].second );
           glUniform1i(2, light_state);
           glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
-          glUniform1f(4, opt_tryoutf);
+          glUniform2f(4, opt_tryoutf, opt_hw03_hole_frac);
           glUniform1i(5, mirrored );
           glUniformMatrix4fv(6, 1, true, transform_projection);
 
@@ -828,6 +839,8 @@ World::render()
   const bool blink_visible = int64_t(time_now*3) & 1;
 # define BLINK(txt,pad) ( blink_visible ? txt : pad )
 
+  const bool lots_of_lines = false;
+
   ogl_helper.fbprintf("%s\n",frame_timer.frame_rate_text_get());
 
   ogl_helper.fbprintf
@@ -854,6 +867,7 @@ World::render()
 
   Ball& ball = *balls[0];
 
+  if ( lots_of_lines )
   ogl_helper.fbprintf
     ("Head Ball Pos  [%5.1f,%5.1f,%5.1f] Vel [%+5.1f,%+5.1f,%+5.1f]\n",
      ball.position.x,ball.position.y,ball.position.z,
@@ -864,14 +878,14 @@ World::render()
      balls.size(), links.size(), gpu_physics_method_str[opt_physics_method]);
 
   ogl_helper.fbprintf
-    ("Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  Sphere: %s  ('z')  "
+    ("Sphere: %s  ('z')  Hide: %c%c%c ('!@#')  Effect: %c%c ('or')  "
      "Tryout 1: %s  ('y')  Tryout 2: %s  ('Y')  Normals: %s ('n')\n",
+     sp_shaders[opt_sphere_shader].first.c_str(),
      opt_hide_stuff & OH_Sphere ? 'S' : '_',
      opt_hide_stuff & OH_Links ? 'L' : '_',
      opt_hide_stuff & OH_Platform ? 'P' : '_',
      opt_shadows ? 'S' : '_',
      opt_mirror ? 'M' : '_',
-     sp_shaders[opt_sphere_shader].first.c_str(),
      opt_tryout1 ? BLINK("ON ","   ") : "OFF",
      opt_tryout2 ? BLINK("ON ","   ") : "OFF",
      opt_normal_sphere ? "SPHERE" : "TRI");
@@ -1215,21 +1229,26 @@ void
 World::init(int argc, char **argv)
 {
   chain_length = 14;
+  const bool many_controls = false;
 
   opt_time_step_duration = 0.00003;
-  variable_control.insert(opt_time_step_duration,"Time Step Duration");
+  if ( many_controls )
+    variable_control.insert(opt_time_step_duration,"Time Step Duration");
 
   distance_relaxed = 15.0 / chain_length;
   opt_spring_constant = 500;
-  variable_control.insert(opt_spring_constant,"Spring Constant");
+  if ( many_controls )
+    variable_control.insert(opt_spring_constant,"Spring Constant");
 
   opt_gravity_accel = 9.8;
   opt_gravity = true;
   gravity_accel = pVect(0,-opt_gravity_accel,0);
-  variable_control.insert(opt_gravity_accel,"Gravity");
+  if ( many_controls )
+    variable_control.insert(opt_gravity_accel,"Gravity");
 
   opt_air_resistance = 0.04;
-  variable_control.insert(opt_air_resistance,"Air Resistance");
+  if ( many_controls )
+    variable_control.insert(opt_air_resistance,"Air Resistance");
 
   world_time = 0;
   time_step_count = 0;
@@ -1296,8 +1315,9 @@ World::init(int argc, char **argv)
 
   opt_block_size = 32;
 
-  variable_control.insert_power_of_2
-    (opt_block_size, "Block Size", 32, block_size_max);
+  if ( many_controls )
+    variable_control.insert_power_of_2
+      (opt_block_size, "Block Size", 32, block_size_max);
 
   c.alloc_n_balls = 0;
   c.alloc_n_links = 0;
@@ -1329,19 +1349,29 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
-  sp_hw03 = new pShader
+  sp_hw03_one = new pShader
     ("hw03-shdr.cc",
      "vs_main_instances_sphere(); ", // Used to render many spheres at once.
-     "gs_main_simple();", // Name of geometry shader main routine.
-     "fs_main();"         // Name of fragment shader main routine.
+     "gs_main_one_triangle();",      // Name of geometry shader main routine.
+     "fs_main_one_triangle();"       // Name of fragment shader main routine.
+     );
+  sp_hw03_many = new pShader
+    ("hw03-shdr.cc",
+     "vs_main_instances_sphere(); ", // Used to render many spheres at once.
+     "gs_main_many_triangles();",    // Name of geometry shader main routine.
+     "fs_main_many_triangles();"     // Name of fragment shader main routine.
      );
 
   sp_sphere_true = new pShader
     ("links-shdr-sphere-true.cc", "vs_main();", "gs_main();", "fs_main();" );
 
-  sp_shaders.emplace_back("HW03",sp_hw03);
-  shader_is_true[sp_shaders.size()] = true;
-  sp_shaders.emplace_back("TRUE",sp_sphere_true);
+  sp_shaders.emplace_back("HW03-ONE",sp_hw03_one);
+  sp_shaders.emplace_back("HW03-MANY",sp_hw03_many);
+  if ( false )
+    {
+      shader_is_true[sp_shaders.size()] = true;
+      sp_shaders.emplace_back("TRUE",sp_sphere_true);
+    }
   sp_shaders.emplace_back("TRI",sp_instances_sphere);
   opt_sphere_shader = 0;
 

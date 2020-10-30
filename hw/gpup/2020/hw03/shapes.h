@@ -206,8 +206,11 @@ Sphere::render_bunch_render(bool use_sphere_true)
       return;
     }
 
-  glEnable(GL_CULL_FACE);
+  const bool cull = false;
+
+  if ( cull ) glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
+
   points_bo.bind();
   glVertexPointer(3,GL_FLOAT,0,0);
   glEnableClientState(GL_VERTEX_ARRAY);

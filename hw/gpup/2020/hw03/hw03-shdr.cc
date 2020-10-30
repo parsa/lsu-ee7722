@@ -16,7 +16,7 @@ layout ( binding = 3 ) buffer sc { vec4 sphere_color[]; };
 //
 layout ( location = 3 ) uniform bvec3 tryout;
 layout ( location = 2 ) uniform int lighting_options;
-layout ( location = 4 ) uniform float tryoutf;
+layout ( location = 4 ) uniform vec2 tryoutf;
 layout ( location = 5 ) uniform bool mirrored;
 layout ( location = 6 ) uniform mat4 trans_proj;
 
@@ -77,6 +77,8 @@ out Data_to_FS
   vec4 vertex_e;
   vec2 gl_TexCoord[1];
   flat vec4 color;
+
+  vec3 tpos;
 };
 
 // Type of primitive at geometry shader input.
@@ -89,11 +91,50 @@ layout ( triangle_strip, max_vertices = 3 ) out;
 
 
 void
-gs_main_simple()
+gs_main_many_triangles()
 {
+  // The tryout variables can be changed using the user interface.
+  // They are intended for debugging, tuning, familiarization, etc.
+  //
+  const bool opt_tryout1 = tryout.x;
+  const bool opt_tryout2 = tryout.y;
+  const float opt_tryoutf = tryoutf.x;
+
   const bool opt_normal_sphere = tryout.z;
+  const float opt_hw03_hole_frac = tryoutf.y;
+
   for ( int i=0; i<3; i++ )
     {
+      normal_e = In[opt_normal_sphere?i:0].normal_e;
+      vertex_e = In[i].vertex_e;
+      color = In[i].color;
+      gl_Position = In[i].gl_Position;
+      gl_TexCoord[0] = In[i].gl_TexCoord[0];
+      EmitVertex();
+    }
+
+  EndPrimitive();
+}
+
+
+void
+gs_main_one_triangle()
+{
+  // The tryout variables can be changed using the user interface.
+  // They are intended for debugging, tuning, familiarization, etc.
+  //
+  const bool opt_tryout1 = tryout.x;
+  const bool opt_tryout2 = tryout.y;
+  const float opt_tryoutf = tryoutf.x;
+
+  const bool opt_normal_sphere = tryout.z;
+  const float opt_hw03_hole_frac = tryoutf.y;
+
+  for ( int i=0; i<3; i++ )
+    {
+      tpos = vec3(0);
+      if ( i == 0 ) tpos.x = 1; else if ( i == 1 ) tpos.y = 1; else tpos.z = 1;
+
       normal_e = In[opt_normal_sphere?i:0].normal_e;
       vertex_e = In[i].vertex_e;
       color = In[i].color;
@@ -118,26 +159,84 @@ in Data_to_FS
   vec2 gl_TexCoord[1];
   flat vec4 color;
 
+  vec3 tpos;
 };
 
 vec4 generic_lighting(vec4 vertex_e, vec4 color, vec3 normal_e);
 
 
 void
-fs_main()
+fs_main_one_triangle()
 {
-  // Perform lighting, fetch and blend texture, then emit fragment.
+  // The tryout variables can be changed using the user interface.
+  // They are intended for debugging, tuning, familiarization, etc.
   //
+  const bool opt_tryout1 = tryout.x;
+  const bool opt_tryout2 = tryout.y;
+  const float opt_tryoutf = tryoutf.x;
 
-  // Get filtered texel.
-  //
-  vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
+  const bool opt_normal_sphere = tryout.z;
+  const float opt_hw03_hole_frac = tryoutf.y;
+
+
+  const bool hole_here = false;
+
+  if ( hole_here )
+      { discard; return; }
 
   vec4 color2 = gl_FrontFacing ? color : vec4(0.5,0,0,1);
 
-  // Multiply filtered texel color with lighted color of fragment.
+  // Draw colored lines inside of triangle.
+  const float f = 0.1;
+  if ( abs(tpos.x-f) < 0.02f ) color2 = vec4(1,0,0,1);
+  if ( abs(tpos.y-f) < 0.02f ) color2 = vec4(0,1,0,1);
+  if ( abs(tpos.z-f) < 0.02f ) color2 = vec4(0,0,1,1);
+
+  if ( gl_FrontFacing )
+    {
+      // Multiply filtered texel color with lighted color of fragment.
+      //
+      vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
+      gl_FragColor = texel * generic_lighting(vertex_e, color2, normal_e);
+    }
+  else
+    {
+      // Show back of primitives as red and without texture.
+      //
+      gl_FragColor = color2;
+    }
+
+  // Copy fragment depth unmodified.
   //
-  gl_FragColor = texel * generic_lighting(vertex_e, color2, normal_e);
+  gl_FragDepth = gl_FragCoord.z;
+}
+
+void
+fs_main_many_triangles()
+{
+  // The tryout variables can be changed using the user interface.
+  // They are intended for debugging, tuning, familiarization, etc.
+  //
+  const bool opt_tryout1 = tryout.x;
+  const bool opt_tryout2 = tryout.y;
+  const float opt_tryoutf = tryoutf.x;
+
+  const bool opt_normal_sphere = tryout.z;
+  const float opt_hw03_hole_frac = tryoutf.y;
+
+  if ( gl_FrontFacing )
+    {
+      // Multiply filtered texel color with lighted color of fragment.
+      //
+      vec4 texel = texture(tex_unit_0,gl_TexCoord[0]);
+      gl_FragColor = texel * generic_lighting(vertex_e, color, normal_e);
+    }
+  else
+    {
+      // Show back of primitives as red and without texture.
+      //
+      gl_FragColor = vec4(0.5,0,0,1);
+    }
 
   // Copy fragment depth unmodified.
   //
