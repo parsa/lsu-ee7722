@@ -6,7 +6,7 @@
 GP_ROOT =  ../../../..
 
 .PHONY:  clean
-default: hw03
+default: hw03 hw03-sol
 
 CUDAPATH = /usr/local/cuda
 CUDUMP = $(CUDAPATH)/bin/nvdisasm
@@ -102,12 +102,17 @@ endif
 	$(CUCC) $(CUFLAGS) $(PTXASFLAGS) -cubin $*.cu -o $*.cubin && \
 	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass &
 
-$(all):%: %.o
+$(all):%:
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -o $@ $^ $(LIBRARIES)
 	$(CUCC) $(CUFLAGS) -o $@-debug $(^:.o=-debug.o) $(LIBRARIES)
 
+hw03-sol: hw03
+	ln -f hw03 hw03-sol
+	ln -f hw03-debug hw03-sol-debug
+
 clean:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin \
-	$(all) $(all:=-debug) *.s *.d *.d.[0-9][0-9][0-9][0-9][0-9]
+	$(all) $(all:=-debug) *.s *.d *.d.[0-9][0-9][0-9][0-9][0-9] \
+	$(all:=-sol) $(all:=-sol-debug)
 
 

@@ -1351,14 +1351,21 @@ World::init(int argc, char **argv)
      "fs_main_sv();"
      );
 
+  PSplit exe_pieces(argv[0],'/');
+  string this_exe_name(exe_pieces.pop());
+  string sol_name("hw03-sol");
+  const char* const hw03_path =
+    this_exe_name.substr(0,sol_name.size()) == sol_name ?
+    "hw03-shdr-sol.cc" : "hw03-shdr.cc";
+
   sp_hw03_one = new pShader
-    ("hw03-shdr.cc",
+    (hw03_path,
      "vs_main_instances_sphere(); ", // Used to render many spheres at once.
      "gs_main_one_triangle();",      // Name of geometry shader main routine.
      "fs_main_one_triangle();"       // Name of fragment shader main routine.
      );
   sp_hw03_many = new pShader
-    ("hw03-shdr.cc",
+    (hw03_path,
      "vs_main_instances_sphere(); ", // Used to render many spheres at once.
      "gs_main_many_triangles();",    // Name of geometry shader main routine.
      "fs_main_many_triangles();"     // Name of fragment shader main routine.
@@ -1376,9 +1383,6 @@ World::init(int argc, char **argv)
     }
   sp_shaders.emplace_back("TRI",sp_instances_sphere);
   opt_sphere_shader = 0;
-
-  PSplit exe_pieces(argv[0],'/');
-  pString this_exe_name(exe_pieces.pop());
 
   const char* const links_shader_code_path = "links-shdr-links.cc";
 
