@@ -56,6 +56,10 @@
 //      Turing
 //      Ray tracing support.
 //      Machine learning support.
+//
+//   -- CC 8.0
+//      Ampere
+//      Sparse matrix support (intended for machine learning).
 
 
  /// CUDA Thread Organization

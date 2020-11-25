@@ -1,11 +1,11 @@
-/// LSU EE 4702-1 (Fall 2018), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
 
  /// Simple CUDA Example, without LSU ECE helper classes.
 
 /// References
 //
-//  :ccpg8: CUDA C Programming Guide Version 8
+//  :ccpg10: CUDA C Programming Guide Version 11.1
 //          https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
 #if 0
