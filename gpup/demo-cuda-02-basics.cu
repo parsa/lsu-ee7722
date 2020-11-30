@@ -5,7 +5,7 @@
 
 /// References
 //
-//  :ccpg10: CUDA C Programming Guide Version 10.2
+//  :ccpg11: CUDA C Programming Guide Version 11.1
 //           https://docs.nvidia.com/cuda/cuda-c-programming-guide
 
 
@@ -166,8 +166,7 @@
 //   - Off-Chip Global Memory
 //     Requires about 400 cycles to obtain data.
 //     Subject to off-chip BW limit. 
-//       BW limit in Telsa K20c:  208 GB/s
-//       BW limit in GTX 780:     288 GB/s
+//       BW limit in RTX 2060:    448 GB/s
 //
 //   - Level 2 Cache  (Not caché, please).
 //     Size varies, about 4 MiB.
@@ -179,11 +178,9 @@
 //     Available in some CC's, and only for certain code.
 //
 //   - Level 1 Cache
-//     Available in CC 2.x and CC 7.x (welcome back!).
+//     Available in CC 2.x and CC 7.0-.
 //     Varies, 32 - 64 kiB per SM.
 //
-//   Note: L2 only has a small latency benefit.
-//         Larger benefit is higher bandwidth.
 //
  /// Memory Requests
 //
