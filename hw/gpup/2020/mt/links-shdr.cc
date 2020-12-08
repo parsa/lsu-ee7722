@@ -122,6 +122,46 @@ gs_main_simple()
     }
   EndPrimitive();
 }
+#ifdef xxx
+void gs_typical()  // Original
+{
+  for ( int i=0; i<3; i++ )
+    {
+      gl_FrontColor = In[i].color;
+      gl_BackColor = In[i].color;
+      gl_Position = In[i].gl_Position;
+      gl_TexCoord[0] = In[i].gl_TexCoord[0];
+      EmitVertex();
+    }
+  EndPrimitive();
+}
+
+void gs_typical()  // Stunt A
+{
+  for ( int i=0; i<3; i++ )
+    {
+      gl_FrontColor = In[i].color;
+      gl_BackColor = In[i].gl_TexCoord[0];
+      gl_Position = In[i].gl_Position;
+      gl_TexCoord[0] = In[i].color;
+      EmitVertex();
+    }
+  EndPrimitive();
+}
+
+void gs_typical()  // Stunt B
+{
+  for ( int i=0; i<3; i++ )
+    {
+      gl_FrontColor = In[i].color;
+      gl_BackColor = In[i].gl_TexCoord[0];
+      gl_Position = In[i].color;
+      gl_TexCoord[0] = In[i].gl_Position;
+      EmitVertex();
+    }
+  EndPrimitive();
+}
+#endif
 
 void
 gs_main_sv()

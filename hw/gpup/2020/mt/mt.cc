@@ -445,8 +445,8 @@ public:
       return int(l0) | (int(l1)<<1);
     };
 
-  pShader *sp_mt_one;
   pShader *sp_mt_many;
+  pShader *sp_mt_many_sol;
   float opt_hw03_hole_frac;
 
   void render_prob1();
@@ -592,11 +592,63 @@ World::modelview_update()
 }
 
 void
-World::render_prob1()
+render_p()
 {
   glBegin(GL_TRIANGLE_STRIP);
+
+  glColor3f(0,.2,0);
+
+  glNormal3f(0,0,1);
+
+  glVertex3f(0,0,0);
+  glVertex3f(1,0,0);
+
+  glVertex3f(0,7,0);
+  glVertex3f(1,6,0);
+
+  glVertex3f(4,5,0);
+  glVertex3f(3,5,0);
+
+  glVertex3f(1,3,0);
+  glVertex3f(1,4,0);
+
   glEnd();
 }
+
+void
+World::render_prob1()
+{
+  if ( opt_tryout1 ) return;
+  glMatrixMode(GL_MODELVIEW);
+
+  for ( Ball *ball: balls )
+    {
+      glPushMatrix();
+
+      pNorm b_to_eye(ball->position,eye_location);
+      pVect d_p = ball->omatrix * pVect(0,1,0);
+      pCoor p_pos = ball->position + 1.5 * ball->radius * d_p;
+
+      pVect az = b_to_eye;
+      pNorm ax = cross(b_to_eye,pVect(0,-1,0));
+      pVect ay = cross(az,ax);
+
+      float s = 0.2 * ball->radius;
+      pVect vx = s * ax, vy = s * ay, vz = s * az;
+
+      pMatrix xform(vx,vy,vz,p_pos);
+
+      glMultTransposeMatrixf(xform);
+
+      render_p();
+
+      glPopMatrix();
+
+    }
+}
+
+
+
 
 void
 World::render_objects(Render_Option option)
@@ -698,6 +750,27 @@ World::render_objects(Render_Option option)
           glUniform2f(7, 2.0f/win_width, 2.0f/win_height );
 
           sphere.render_bunch_render(shader_is_true[opt_sphere_shader]);
+        }
+
+      const bool hide_p = false;
+      if ( !hide_p )
+        {
+          pShader_Use use( sp_fixed );
+          if ( false )
+            {
+              pShader_Use use( sp_shaders[opt_sphere_shader].second );
+              glUniform1i(2, light_state);
+              glUniform3i(3, opt_tryout1, opt_tryout2, opt_normal_sphere);
+              glUniform2f(4, opt_tryoutf, opt_hw03_hole_frac);
+              glUniform1i(5, mirrored );
+              glUniformMatrix4fv(6, 1, true, transform_projection);
+              const int win_width = ogl_helper.get_width();
+              const int win_height = ogl_helper.get_height();
+              glUniform2f(7, 2.0f/win_width, 2.0f/win_height );
+            }
+
+          render_prob1();
+
         }
 
       if ( !hide_links )
@@ -1371,31 +1444,31 @@ World::init(int argc, char **argv)
     this_exe_name.substr(0,sol_name.size()) == sol_name ?
     "mt-shdr-sol.cc" : "mt-shdr.cc";
 
-  sp_mt_one = new pShader
-    (mt_path,
-     "vs_main_instances_sphere(); ", // Used to render many spheres at once.
-     "gs_main_one_triangle();",      // Name of geometry shader main routine.
-     "fs_main_one_triangle();"       // Name of fragment shader main routine.
-     );
   sp_mt_many = new pShader
     (mt_path,
      "vs_main_instances_sphere(); ", // Used to render many spheres at once.
      "gs_main_many_triangles();",    // Name of geometry shader main routine.
      "fs_main_many_triangles();"     // Name of fragment shader main routine.
      );
+  sp_mt_many_sol = new pShader
+    (mt_path,
+     "vs_main_instances_sphere(); ", // Used to render many spheres at once.
+     "gs_main_many_triangles_sol();",
+     "fs_main_many_triangles();"     // Name of fragment shader main routine.
+     );
 
   sp_sphere_true = new pShader
     ("links-shdr-sphere-true.cc", "vs_main();", "gs_main();", "fs_main();" );
 
-  sp_shaders.emplace_back("HW03-ONE",sp_mt_one);
-  sp_shaders.emplace_back("HW03-MANY",sp_mt_many);
+  sp_shaders.emplace_back("MT-UNS",sp_mt_many);
+  sp_shaders.emplace_back("MT-SOL",sp_mt_many_sol);
   if ( false )
     {
       shader_is_true[sp_shaders.size()] = true;
       sp_shaders.emplace_back("TRUE",sp_sphere_true);
     }
   sp_shaders.emplace_back("TRI",sp_instances_sphere);
-  opt_sphere_shader = 0;
+  opt_sphere_shader = 2;
 
   const char* const links_shader_code_path = "links-shdr-links.cc";
 
