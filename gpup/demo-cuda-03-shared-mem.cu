@@ -1,4 +1,4 @@
-/// LSU EE 4702-1 (Fall 2019), GPU Programming
+/// LSU EE 4702-1 (Fall 2020), GPU Programming
 //
 
  /// Shared memory CUDA Example, without LSU ECE helper classes.
@@ -30,6 +30,7 @@
  //
  //   - Size of space is 48 kiB in CC 2.X to CC 6.x.
  //     Size of space is 96 kiB on CC 7.0 and 64 kiB on CC 7.5.
+ //     Size of space is 163 kiB on CC 8.0 and 99 kiB on CC 8.5
  //
  //   - Shared address space uses shared memory.
  //
@@ -44,6 +45,8 @@
  //     112 kiB  CC 3.7
  //      64 kiB  CC 5.0, 5.3, 6.0, 6.2, 7.5
  //      96 kiB  CC 5.2, 6.1, 7.0
+ //     164 kiB  CC 8.0
+ //     100 kiB  CC 8.6
  //
  //   - Low latency (fast). As low as 12 cycles.
  //
