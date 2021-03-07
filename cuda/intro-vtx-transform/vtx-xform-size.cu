@@ -19,7 +19,7 @@
 #define N 16
 #define M 16
 
-#if N * 1024 * 4 < 32769
+#if ( N + M ) * 1024 * 2 < 32769
 #define SMALL
 #endif
 
@@ -155,8 +155,7 @@ mxv_o_lbuf()
     {
       // Operate on vector number h.
 
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ ) vout[r] = 0;
+      Elt_Type vout[M]{};
 
       for ( int c=0; c<N; c++ )
         {
@@ -228,7 +227,7 @@ mxv_sh()
   const int thd_x_idx_st = threadIdx.x / CS;
 
   const int64_t BLOCK_SIZE = blockDim.x;
-  const int64_t MAX_BLOCK_SIZE = 1024;
+  constexpr int64_t MAX_BLOCK_SIZE = 1024;
 
   // Shared memory used to redistribute vector elements.
   //
@@ -238,8 +237,7 @@ mxv_sh()
     {
       // Compute matrix-vector product for vector number  hb + threadIdx.x.
 
-      Elt_Type vout[M];
-      for ( int r=0; r<M; r++ ) vout[r] = 0;
+      Elt_Type vout[M]{};
 
       for ( int c=0; c<N; c += CS )
         {
@@ -247,17 +245,10 @@ mxv_sh()
           // ... c+CS-1, then use those to compute part of the
           // matrix-vector product.
 
-          // Read input vector elements sequentially and place them in
-          // shared memory.
-          //
-          // The entire g loop reads CS elements of each thread's
-          // input vector. Each iteration of the g loop reads CS
-          // elements from BLOCK_SIZE / CS vectors.
-          //
           __syncthreads();
 
-          for ( int v=thd_x_idx_st;  v<BLOCK_SIZE; v += BLOCK_SIZE/CS )
-            vxfer[v][thd_x_offset] =
+          for ( int v = thd_x_idx_st;  v < BLOCK_SIZE;  v += BLOCK_SIZE/CS )
+            vxfer[ v ][ thd_x_offset ] =
               d_app.d_in[ hb * N + v * N + c + thd_x_offset ];
 
           // Copy the portion of the input vector just read to local
@@ -289,16 +280,16 @@ mxv_sh()
             {
               const int v = g * BLOCK_SIZE / CS + thd_x_idx_st;
 
-              // The if statement is needed of M is not a multiple of CS.
+              // The if statement is needed if M is not a multiple of CS.
               if ( thd_x_offset + r < M )
                 d_app.d_out[ hb * M + v * M + r + thd_x_offset ] =
-                  vxfer[v][thd_x_offset];
+                  vxfer[ v ][ thd_x_offset ];
             }
         }
     }
 }
 
-const int mxv_sh_ochunk_CS = 8;
+constexpr int mxv_sh_ochunk_CS = 8;
 
 extern "C" __global__ void
 mxv_sh_ochunk()
@@ -306,7 +297,7 @@ mxv_sh_ochunk()
   // Compute element number to start at.
   //
   // Chunk Size: Number of input vector elts to read.
-  const int CS = mxv_sh_ochunk_CS;
+  constexpr int CS = mxv_sh_ochunk_CS;
 
   const int num_threads = blockDim.x * gridDim.x;
 
@@ -319,15 +310,14 @@ mxv_sh_ochunk()
   const int thd_r_offset = threadIdx.x % CS;
   const int thd_v_offset = threadIdx.x / CS;
 
-  const int MAX_BLOCK_SIZE = 1024;
+  constexpr int MAX_BLOCK_SIZE = 1024;
   __shared__ Elt_Type vxfer[MAX_BLOCK_SIZE];
 
-  const int ML = ( M + CS - 1 ) / CS;
+  constexpr int ML = ( M + CS - 1 ) / CS;
 
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
-      Elt_Type vout[ML];
-      for ( int rl=0; rl<ML; rl++ ) vout[rl] = 0;
+      Elt_Type vout[ML]{};
 
 #pragma unroll
       for ( int c=0; c<N; c += CS )
@@ -349,11 +339,8 @@ mxv_sh_ochunk()
         }
 #pragma unroll
       for ( int rr=0; rr<ML; rr++ )
-        {
-          const int r = rr * CS + thd_r_offset;
-          if ( r < M )
-            d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
-        }
+        if ( const int r = rr * CS + thd_r_offset;   r < M   )
+          d_app.d_out[ ( hb + thd_v_offset ) * M + r ] = vout[rr];
 
     }
 }
@@ -375,41 +362,26 @@ mxv_vec_ld()
   for ( int h=start; h<stop; h += inc )
     {
       Elt_Type vin[N];
-      for ( int c=0; c<N; c += 4 )
-        {
-          // float4 f4 = d_app.d_in_f4[ ( h * N + c ) >> 2 ];
-          float4 f4 = d_app.d_in_f4[ h * ( N >> 2 ) + ( c >> 2 )];
-          vin[c] = f4.x;
-          vin[c+1] = f4.y;
-          vin[c+2] = f4.z;
-          vin[c+3] = f4.w;
-        }
+      float4* const vin4 = (float4*) &vin[0];
 
-      Elt_Type vout[M];
+      for ( int c4=0; c4<N/4; c4++ )
+        vin4[c4] = d_app.d_in_f4[ h * ( N >> 2 ) + c4 ];
+
+      Elt_Type vout[M]{};
+      float4* const vout4 = (float4*) &vout[0];
+
       for ( int r=0; r<M; r++ )
-        {
-          vout[r] = 0;
-          for ( int c=0; c<N; c++ )
-            vout[r] += d_app.matrix[r][c] * vin[c];
-        }
-      for ( int r=0; r<M; r+=4 )
-        {
-          float4 f4 = { vout[r], vout[r+1], vout[r+2], vout[r+3] };
-          d_app.d_out_f4[ ( h * M + r ) >> 2 ] = f4;
-        }
+        for ( int c=0; c<N; c++ )
+          vout[r] += d_app.matrix[r][c] * vin[c];
+
+      for ( int r4=0; r4<M/4; r4++ )
+        d_app.d_out_f4[ h * ( M >> 2 ) + r4 ] = vout4[r4];
     }
 }
 
-typedef union { float f; int i; } float_int;
 
-struct fi4 {
-  union { float x; int i; };
-  union { float y; int j; };
-  union { float z; int k; };
-  union { float w; int l; };
-};
-
-extern "C" __global__ void
+template<bool use_shared = true>
+__device__ void
 mxv_vls()
 {
   // Compute an id number that will be in the range from 0 to num_threads-1.
@@ -425,11 +397,6 @@ mxv_vls()
   const int stop = d_app.num_vecs;
   const int inc = num_threads;
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
-#undef USE_SHARED
-#else
-#define USE_SHARED
-#endif
   __shared__ float4 v0[1024];
 
   for ( int h=start; h<stop; h += inc )
@@ -438,103 +405,76 @@ mxv_vls()
 
       __syncthreads();
 
-
       Elt_Type vin[N];
+      float4* const vin4 = (float4*) &vin[0];
+
       for ( int cc=0; cc<N; cc += 8 )
         {
           const int c = cc + 4 * offset;
 
-#if 1
-          const int64_t addr =
-            (int64_t) &d_app.d_in_f4[ ( h0 * N + c ) >> 2 ];
-
-          float4 v0_o, v1_o;
-          asm( "ld.global.v4.f32 {%0,%1,%2,%3}, [%4]; // Hello, world!"
-               : "=f"(v0_o.x), "=f"(v0_o.y), "=f"(v0_o.z),"=f"(v0_o.w)
-               : "l" ( addr ) );
-
-          asm( "ld.global.v4.f32 {%0,%1,%2,%3}, [%4];"
-               : "=f"(v1_o.x), "=f"(v1_o.y), "=f"(v1_o.z),"=f"(v1_o.w)
-               : "l" ( addr + N * sizeof(v1_o.x) ) );
-
-#else
           float4 v0_o = d_app.d_in_f4[ ( h0 * N + c ) >> 2 ];
           float4 v1_o = d_app.d_in_f4[ ( ( h0 + 1 ) * N + c ) >> 2 ];
-#endif
+          float4 fswap = offset ? v0_o : v1_o;
 
-#ifdef USE_SHARED
-
-          v0[threadIdx.x] = offset ? v0_o : v1_o;
-
-          float4 v_xfer = v0[threadIdx.x ^ 1];
-          float4 v_03 = offset ? v_xfer : v0_o;
-          float4 v_47 = offset ? v1_o : v_xfer;
-
-#else
-
-          union { float4 fl4; fi4 fi4; } f40x, f41x;
-          f40x.fl4 = v0_o;
-          f41x.fl4 = v1_o;
-          fi4 f40 = f40x.fi4;
-          fi4 f41 = f41x.fi4;
-
-          fi4 fswap = offset ? f40 : f41;
-          const unsigned mask = ~0;
-          fswap.i = __shfl_xor_sync(mask,fswap.i,1);
-          fswap.j = __shfl_xor_sync(mask,fswap.j,1);
-          fswap.k = __shfl_xor_sync(mask,fswap.k,1);
-          fswap.l = __shfl_xor_sync(mask,fswap.l,1);
-
-          fi4 v_03 = offset ? fswap : f40;
-          fi4 v_47 = offset ? f41   : fswap;
-#endif
-
-          vin[cc] = v_03.x;
-          vin[cc+1] = v_03.y;
-          vin[cc+2] = v_03.z;
-          vin[cc+3] = v_03.w;
-          if ( cc + 4 < N )
+          if ( use_shared )
             {
-              vin[cc+4] = v_47.x;
-              vin[cc+5] = v_47.y;
-              vin[cc+6] = v_47.z;
-              vin[cc+7] = v_47.w;
+              v0[threadIdx.x] = fswap;
+              fswap = v0[threadIdx.x ^ 1];
             }
+          else
+            {
+              fswap.x = __shfl_xor_sync(~0,fswap.x,1);
+              fswap.y = __shfl_xor_sync(~0,fswap.y,1);
+              fswap.z = __shfl_xor_sync(~0,fswap.z,1);
+              fswap.w = __shfl_xor_sync(~0,fswap.w,1);
+            }
+
+          vin4[cc/4] = offset ? fswap : v0_o;
+          if ( cc + 4 < N ) vin4[cc/4+1] = offset ? v1_o  : fswap;
+
         }
 
       Elt_Type vbuf[8];
+      float4* const vbuf4 = (float4*) &vbuf[0];
       const int M8 = ( M + 7 ) & ~7;
 #pragma unroll
       for ( int64_t r=0; r<M8; r++ )
         {
           const int bpos = r % 8;
           Elt_Type elt = 0;
-          for ( int c=0; c<N; c++ )
-            elt += d_app.matrix[r][c] * vin[c];
+          for ( int c=0; c<N; c++ ) elt += d_app.matrix[r][c] * vin[c];
           vbuf[bpos] = elt;
           if ( bpos == 7 )
             {
-              float4 vo_0 = { vbuf[0], vbuf[1], vbuf[2], vbuf[3] };
-              float4 vo_1 = { vbuf[4], vbuf[5], vbuf[6], vbuf[7] };
-              v0[threadIdx.x] = offset ? vo_0 : vo_1;
-              float4 v_xfer = v0[threadIdx.x^1];
-              float4 v0_o = offset ? v_xfer : vo_0;
-              float4 v1_o = offset ? vo_1 : v_xfer;
+              float4 fswap = offset ? vbuf4[0] : vbuf4[1];
+              if ( use_shared )
+                {
+                  v0[threadIdx.x] = fswap;
+                  fswap = v0[threadIdx.x ^ 1];
+                }
+              else
+                {
+                  fswap.x = __shfl_xor_sync(~0,fswap.x,1);
+                  fswap.y = __shfl_xor_sync(~0,fswap.y,1);
+                  fswap.z = __shfl_xor_sync(~0,fswap.z,1);
+                  fswap.w = __shfl_xor_sync(~0,fswap.w,1);
+                }
 
-              const int rr = r - 7 + offset * 4;
+              float4 v0_o = offset ? fswap   : vbuf4[0];
+              float4 v1_o = offset ? vbuf4[1] : fswap;
 
-              if ( rr < M )
+              if ( const int rr = r - 7 + offset * 4;  rr < M  )
                 {
                   d_app.d_out_f4[ ( h0 * M + rr ) >> 2 ] = v0_o;
                   d_app.d_out_f4[ ( (h0+1) * M + rr ) >> 2 ] = v1_o;
                 }
-
             }
         }
-
     }
 }
 
+extern "C" __global__ void mxv_vls_shared() {mxv_vls<true>();}
+extern "C" __global__ void mxv_vls_shuffle() {mxv_vls<false>();}
 
 
 #ifdef SMALL
@@ -565,20 +505,17 @@ mxv_sh_easy()
   for ( int hb = bl_start; hb<stop; hb += inc )
     {
       for ( int g=0; g<N; g++ )
-        vins[ idx_start + g * BLOCK_SIZE/N ][ offset ] =
-          d_app.d_in[ g * BLOCK_SIZE + hb * N + threadIdx.x ];
+        vins[ idx_start + g * blockDim.x/N ][ offset ] =
+          d_app.d_in[ hb * N + g * blockDim.x + threadIdx.x ];
 
       __syncthreads();
       Elt_Type vin[N];
       for ( int c=0; c<N; c++ ) vin[c] = vins[ threadIdx.x ][ c ];
 
-      Elt_Type vout[M];
+      Elt_Type vout[M]{};
       for ( int r=0; r<M; r++ )
-        {
-          vout[r] = 0;
-          for ( int c=0; c<N; c++ )
-            vout[r] += d_app.matrix[r][c] * vin[c];
-        }
+        for ( int c=0; c<N; c++ )
+          vout[r] += d_app.matrix[r][c] * vin[c];
 
       __syncthreads();
 
@@ -587,8 +524,10 @@ mxv_sh_easy()
       __syncthreads();
 
       for ( int r=0; r<M; r++ )
-        d_app.d_out[ hb * M + r * BLOCK_SIZE + threadIdx.x ] =
-          vins[ threadIdx.x / M + r * BLOCK_SIZE/M ] [ threadIdx.x % M ];
+        d_app.d_out[ hb * M + r * blockDim.x + threadIdx.x ] =
+          vins[ threadIdx.x / M + r * blockDim.x/M ] [ threadIdx.x % M ];
+
+      __syncthreads();
     }
 }
 #endif
@@ -619,7 +558,8 @@ print_gpu_and_kernel_info()
   info.GET_INFO(mxv_vec_ld);
 #endif
 #if N / 4 == (N+3)/4 && M / 4 == (M+3)/4
-  info.GET_INFO(mxv_vls);
+  info.GET_INFO(mxv_vls_shared);
+  info.GET_INFO(mxv_vls_shuffle);
 #endif
   info.GET_INFO(mxv_sh);
   info.GET_INFO(mxv_sh_ochunk);
@@ -982,7 +922,8 @@ main(int argc, char **argv)
             // Copy output array from GPU to CPU.
             //
             CE( cudaMemcpy
-                ( app.h_out, app.d_out, out_size_bytes, cudaMemcpyDeviceToHost) );
+                ( app.h_out, app.d_out, out_size_bytes,
+                  cudaMemcpyDeviceToHost ) );
             int err_count = 0;
             for ( int i=0; i<app.num_vecs; i++ )
               for ( int r=0; r<M; r++ )
@@ -993,8 +934,9 @@ main(int argc, char **argv)
                     {
                       err_count++;
                       if ( err_count < 5 )
-                        printf("Error at vec %d elt %d: %.7f != %.7f (correct)\n",
-                               i, r, app.h_out[idx], app.h_out_check[idx] );
+                        printf
+                          ( "Error at vec %d elt %d: %.7f != %.7f (correct)\n",
+                            i, r, app.h_out[idx], app.h_out_check[idx] );
                     }
                 }
             if ( err_count )

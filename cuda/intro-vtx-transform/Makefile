@@ -25,7 +25,7 @@ INCLUDE += -I$(GP_ROOT)/lib
 
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
-SASS_FILTER = $(GP_ROOT)/util/sass-filter
+SASS_FILTER = $(GP_ROOT)/util/sass-filter --show-source-code
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
 
 BUILD_CC_FILE_PATH = $(CURDIR)/build-cc
@@ -49,11 +49,11 @@ COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH)
+CUCC_ONLY_FLAGS = -std c++17 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11
+CXX_ONLY_FLAGS = -std=c++17
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
