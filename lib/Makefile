@@ -11,8 +11,11 @@ CUDUMPFLAGS = --print-code
 CUCC = $(CUDAPATH)/bin/nvcc
 CXX = g++
 
+# Directory for NVidia Perfworks helper code.
+NVPWDIR = ./nvpw
+
 INCLUDE =  -I$(GP_ROOT)/include  -I$(CUDAPATH)/include \
- -I$(CUDAPATH)/extras/CUPTI/include
+ -I$(CUDAPATH)/extras/CUPTI/include -I$(NVPWDIR)
 
 ASM_WSRC = $(GP_ROOT)/util/asm-w-src
 GPU_GET_PATH = $(GP_ROOT)/util/gpu-get-cc
@@ -23,9 +26,12 @@ ifneq ($(MAKECMDGOALS),clean)
   GPU_ARCH := $(shell $(GPU_GET_PATH) $(BUILD_CC_FILE_PATH))
 endif
 
+.PHONY: clean clean_here clean_subidr nvpw_obj
+
+
 # Optimization Flag (Omitted from debug builds by make rules.)
 #
-OPT_FLAG = -O3
+OPT_FLAG = 
 
 # Recognized both by nvcc and g++
 #
@@ -37,12 +43,11 @@ COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++11 --gpu-architecture=$(GPU_ARCH) \
-   --ptxas-options=-v -lineinfo
+CUCC_ONLY_FLAGS = -std c++17 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++11
+CXX_ONLY_FLAGS = -std=c++17
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 
@@ -53,15 +58,19 @@ LIBRARIES = -lrt -lcuda \
   -L$(CUDAPATH)/extras/CUPTI/lib64 \
   -Xlinker -rpath,$(CUDAPATH)/extras/CUPTI/lib64 -lcupti -lnvidia-ml
 
+LIBUSER_LIBS = -lnperf -lnvperf_host -lnvperf_target
 
 SRC_FILES = nperf.cc
 
 default: libnperf.a
 
-libnperf.a: nperf.cc $(BUILD_CC_FILE_PATH) Makefile
+nvpw_obj:
+	$(MAKE) -C $(NVPWDIR)
+
+libnperf.a: nperf.cc $(BUILD_CC_FILE_PATH) Makefile nvpw_obj
 	$(CXX) $(CXXFLAGS) $(OPT_FLAG) $< -c -fPIC -o lib.o
-	ar r libnperf.a lib.o
-	echo -e "#!/bin/sh\necho $(LIBRARIES) -L$(realpath .) -lnperf " \
+	ar r libnperf.a lib.o $(NVPWDIR)/*.o
+	echo -e "#!/bin/sh\necho $(LIBRARIES) -L$(realpath .) $(LIBUSER_LIBS) " \
 	> ld-flags
 	chmod 0755 ld-flags
 
@@ -89,19 +98,18 @@ endif
          rm -f $@.$$$$
 
 %.o: %.cc Makefile
-	$(CXX) $(CXXFLAGS) $(OPT_FLAG) -S $*.cc \
-	  -fverbose-asm -o - | $(ASM_WSRC) > $*.s
-	$(CXX) $(CXXFLAGS) -c $*.s
-	$(CXX) $(CXXFLAGS) -c $*.cc -o $*-debug.o
+	$(CXX) $(CXXFLAGS) -c $*.cc
 
 %.o: %.cu Makefile $(BUILD_CC_FILE_PATH)
-	$(CUCC) $(CUFLAGS) -c $*.cu -o $*-debug.o
 	$(CUCC) $(CUFLAGS) $(OPT_FLAG) -c $*.cu
-	$(CUCC) $(CUFLAGS) -ptx $*.cu -o $*.ptx
-	$(CUCC) $(CUFLAGS) -cubin $*.ptx -o $*.cubin
-	$(CUDUMP) $(CUDUMPFLAGS) $*.cubin > $*.sass
 
-clean:
+
+clean: clean_here clean_subdir
+
+clean_subdir: clean_here
+	$(MAKE) -C $(NVPWDIR) clean
+
+clean_here:
 	/bin/rm -f $(BUILD_CC_FILE_PATH) *.o *.ptx *.sass *.cubin *.d \
 	*.a ld-flags \
-	$(all) $(all:=-debug) *.s *.d.[0-9][0-9][0-9][0-9][0-9]
+	*.s *.d.[0-9][0-9][0-9][0-9][0-9]

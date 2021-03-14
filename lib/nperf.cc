@@ -14,6 +14,24 @@
 #include <cuda.h>
 #include <cupti.h>
 
+#include <nvperf_host.h>
+#include <nvperf_cuda_host.h>
+#include <cupti_target.h>
+#include <cupti_profiler_target.h>
+#include <cupti_callbacks.h>
+#include <nvperf_host.h>
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <stdlib.h>
+
+#include <Metric.h>
+#include <Eval.h>
+#include <List.h>
+#include <Parser.h>
+#include <Utils.h>
+
+#include <iostream>
+
 #ifdef HAVE_BFD
 #include <bfd.h>
 static char* demangle(const char *m)
@@ -61,6 +79,472 @@ using namespace std;
       exit(1);                                                                \
      }                                                                        \
  }
+
+#define CP(apiFuncCall)                                                       \
+do {                                                                          \
+    NVPA_Status _status = apiFuncCall;                                        \
+    if (_status != NVPA_STATUS_SUCCESS) {                                     \
+        fprintf(stderr, "%s:%d: error: function %s failed with error %s.\n",  \
+                __FILE__, __LINE__, #apiFuncCall,                             \
+                NV::Metric::Utils::GetNVPWResultString(_status) );            \
+        exit(-1);                                                             \
+    }                                                                         \
+} while (0)
+
+#define CR(apiFuncCall)                                          \
+do {                                                                           \
+    cudaError_t _status = apiFuncCall;                                         \
+    if (_status != cudaSuccess) {                                              \
+        fprintf(stderr, "%s:%d: error: function %s failed with error %s.\n",   \
+                __FILE__, __LINE__, #apiFuncCall, cudaGetErrorString(_status));\
+        exit(-1);                                                              \
+    }                                                                          \
+} while (0)
+
+#define DEF_PROF_STRUCT(n)                                                    \
+struct p##n : public n                                                        \
+{                                                                             \
+  p##n():n{n##_STRUCT_SIZE}{};                                                \
+  p##n(CUptiResult (*f)(n*)):n{n##_STRUCT_SIZE}{CU(f(this));};                    \
+};
+
+#define DEF_NVPW_STRUCT(n)                                                    \
+struct p##n : public n                                                        \
+{                                                                             \
+  p##n():n{n##_STRUCT_SIZE}{};                                                \
+  p##n(NVPA_Status (*f)(n*)):n{n##_STRUCT_SIZE}{CP(f(this));};                \
+};
+
+DEF_PROF_STRUCT(CUpti_Profiler_BeginPass_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_BeginSession_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_CounterDataImageOptions);
+DEF_PROF_STRUCT(CUpti_Profiler_CounterDataImage_CalculateScratchBufferSize_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_CounterDataImage_CalculateSize_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_CounterDataImage_InitializeScratchBuffer_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_CounterDataImage_Initialize_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_DeInitialize_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_DisableProfiling_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_EnableProfiling_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_EndPass_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_EndSession_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_FlushCounterData_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_SetConfig_Params);
+DEF_PROF_STRUCT(CUpti_Profiler_UnsetConfig_Params);
+
+DEF_PROF_STRUCT(CUpti_Profiler_Initialize_Params);
+DEF_PROF_STRUCT(CUpti_Device_GetChipName_Params);
+
+DEF_NVPW_STRUCT(NVPW_InitializeHost_Params);
+DEF_NVPW_STRUCT(NVPW_CUDA_MetricsContext_Create_Params);
+DEF_NVPW_STRUCT(NVPW_MetricsContext_Destroy_Params);
+DEF_NVPW_STRUCT(NVPW_MetricsContext_GetMetricProperties_Begin_Params);
+DEF_NVPW_STRUCT(NVPW_MetricsContext_GetMetricProperties_End_Params);
+
+
+class CP_Info {
+  // Note: CP is for CUpti Profiling API.
+public:
+  CP_Info();
+
+  bool state_pending_init_metrics;
+  bool state_pending_init_session;
+
+  bool state_inited_metrics;
+  bool state_inited_session;
+
+  int numRanges;
+  string chipName;
+  bool allPassesSubmitted;
+
+  CUpti_ProfilerRange profilerRange;
+  CUpti_ProfilerReplayMode profilerReplayMode;
+
+  map<string,string> metric_alias;
+  string metric_name_translate (string user_metric_name);
+
+  vector<string> metric_names_user;
+  vector<string> metric_names_nvpw;
+  map<string,string> metric_user_to_nvpw;
+  map<string,double> metric_values;
+  bool state_metrics_retrieved;
+
+  vector<uint8_t> img_cnt_data_pfx;
+  vector<uint8_t> img_config;
+  vector<uint8_t> img_cnt_data;
+  vector<uint8_t> img_cnt_data_scr_buf;
+
+  bool metrics_setup();
+  bool session_start();
+  void at_launch_before();
+  void at_launch_after();
+  void metrics_retrieve();
+  void profiling_exit();
+};
+
+CP_Info::CP_Info()
+{
+  numRanges = 1;
+  profilerRange = CUPTI_AutoRange;
+  profilerReplayMode = CUPTI_KernelReplay;
+  allPassesSubmitted = true;
+
+  state_pending_init_metrics = true;
+  state_pending_init_session = true;
+
+  state_metrics_retrieved = false;
+  state_inited_metrics = false;
+  state_inited_session = false;
+
+  // Source:
+  //  https://docs.nvidia.com/cupti/Cupti/r_main.html#metrics_map_table_70
+  metric_alias["achieved_occupancy"] = "sm__warps_active.avg.pct_of_peak_sustained_active";
+  metric_alias["double_precision_fu_utilization"] = "smsp__inst_executed_pipe_fp64.avg.pct_of_peak_sustained_active";
+  metric_alias["dram_read_bytes"] = "dram__bytes_read.sum";
+  metric_alias["dram_read_throughput"] = "dram__bytes_read.sum.per_second";
+  metric_alias["dram_read_transactions"] = "dram__sectors_read.sum";
+  metric_alias["dram_utilization"] = "dram__throughput.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["dram_write_bytes"] = "dram__bytes_write.sum";
+  metric_alias["dram_write_throughput"] = "dram__bytes_write.sum.per_second";
+  metric_alias["dram_write_transactions"] = "dram__sectors_write.sum";
+  metric_alias["eligible_warps_per_cycle"] = "smsp__warps_eligible.sum.per_cycle_active";
+  metric_alias["flop_count_dp_add"] = "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum";
+  metric_alias["flop_count_dp_fma"] = "smsp__sass_thread_inst_executed_op_dfma_pred_on.sum";
+  metric_alias["flop_count_dp_mul"] = "smsp__sass_thread_inst_executed_op_dmul_pred_on.sum";
+  metric_alias["flop_count_hp_add"] = "smsp__sass_thread_inst_executed_op_hadd_pred_on.sum";
+  metric_alias["flop_count_hp_fma"] = "smsp__sass_thread_inst_executed_op_hfma_pred_on.sum";
+  metric_alias["flop_count_hp_mul"] = "smsp__sass_thread_inst_executed_op_hmul_pred_on.sum";
+  metric_alias["flop_count_sp_add"] = "smsp__sass_thread_inst_executed_op_fadd_pred_on.sum";
+  metric_alias["flop_count_sp_fma"] = "smsp__sass_thread_inst_executed_op_ffma_pred_on.sum";
+  metric_alias["flop_count_sp_mul"] = "smsp__sass_thread_inst_executed_op_fmul_pred_on.sum";
+  metric_alias["flop_dp_efficiency"] = "smsp__sass_thread_inst_executed_ops_dadd_dmul_dfma_pred_on.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["flop_hp_efficiency"] = "smsp__sass_thread_inst_executed_ops_hadd_hmul_hfma_pred_on.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["flop_sp_efficiency"] = "smsp__sass_thread_inst_executed_ops_fadd_fmul_ffma_pred_on.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["gld_efficiency"] = "smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct";
+  metric_alias["gld_throughput"] = "l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second";
+  metric_alias["gld_transactions"] = "l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum";
+  metric_alias["gld_transactions_per_request"] = "l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio";
+  metric_alias["global_atomic_requests"] = "l1tex__t_requests_pipe_lsu_mem_global_op_atom.sum";
+  metric_alias["global_load_requests"] = "l1tex__t_requests_pipe_lsu_mem_global_op_ld.sum";
+  metric_alias["global_reduction_requests"] = "l1tex__t_requests_pipe_lsu_mem_global_op_red.sum";
+  metric_alias["global_store_requests"] = "l1tex__t_requests_pipe_lsu_mem_global_op_st.sum";
+  metric_alias["gst_efficiency"] = "smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct";
+  metric_alias["gst_throughput"] = "l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second";
+  metric_alias["gst_transactions"] = "l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum";
+  metric_alias["gst_transactions_per_request"] = "l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_st.ratio";
+  metric_alias["half_precision_fu_utilization"] = "smsp__inst_executed_pipe_fp16.avg.pct_of_peak_sustained_active";
+  metric_alias["inst_bit_convert"] = "smsp__sass_thread_inst_executed_op_conversion_pred_on.sum";
+  metric_alias["inst_compute_ld_st"] = "smsp__sass_thread_inst_executed_op_memory_pred_on.sum";
+  metric_alias["inst_control"] = "smsp__sass_thread_inst_executed_op_control_pred_on.sum";
+  metric_alias["inst_executed"] = "smsp__inst_executed.sum";
+  metric_alias["inst_executed_global_atomics"] = "smsp__sass_inst_executed_op_global_atom.sum";
+  metric_alias["inst_executed_global_loads"] = "smsp__inst_executed_op_global_ld.sum";
+  metric_alias["inst_executed_global_reductions"] = "smsp__inst_executed_op_global_red.sum";
+  metric_alias["inst_executed_global_stores"] = "smsp__inst_executed_op_global_st.sum";
+  metric_alias["inst_executed_local_loads"] = "smsp__inst_executed_op_local_ld.sum";
+  metric_alias["inst_executed_local_stores"] = "smsp__inst_executed_op_local_st.sum";
+  metric_alias["inst_executed_shared_loads"] = "smsp__inst_executed_op_shared_ld.sum";
+  metric_alias["inst_executed_shared_stores"] = "smsp__inst_executed_op_shared_st.sum";
+  metric_alias["inst_executed_surface_atomics"] = "smsp__inst_executed_op_surface_atom.sum";
+  metric_alias["inst_executed_surface_reductions"] = "smsp__inst_executed_op_surface_red.sum";
+  metric_alias["inst_executed_surface_stores"] = "smsp__inst_executed_op_surface_st.sum";
+  metric_alias["inst_executed_tex_ops"] = "smsp__inst_executed_op_texture.sum";
+  metric_alias["inst_fp_16"] = "smsp__sass_thread_inst_executed_op_fp16_pred_on.sum";
+  metric_alias["inst_fp_32"] = "smsp__sass_thread_inst_executed_op_fp32_pred_on.sum";
+  metric_alias["inst_fp_64"] = "smsp__sass_thread_inst_executed_op_fp64_pred_on.sum";
+  metric_alias["inst_integer"] = "smsp__sass_thread_inst_executed_op_integer_pred_on.sum";
+  metric_alias["inst_inter_thread_communication"] = "smsp__sass_thread_inst_executed_op_inter_thread_communication_pred_on.sum";
+  metric_alias["inst_issued"] = "smsp__inst_issued.sum";
+  metric_alias["inst_misc"] = "smsp__sass_thread_inst_executed_op_misc_pred_on.sum";
+  metric_alias["inst_per_warp"] = "smsp__average_inst_executed_per_warp.ratio";
+  metric_alias["ipc"] = "smsp__inst_executed.avg.per_cycle_active";
+  metric_alias["issue_slot_utilization"] = "smsp__issue_active.avg.pct_of_peak_sustained_active";
+  metric_alias["issue_slots"] = "smsp__inst_issued.sum";
+  metric_alias["issued_ipc"] = "smsp__inst_issued.avg.per_cycle_active";
+  metric_alias["l1_sm_lg_utilization"] = "l1tex__lsu_writeback_active.avg.pct_of_peak_sustained_active";
+  metric_alias["l2_atomic_throughput"] = "lts__t_sectors_srcunit_l1_op_atom.sum.per_second";
+  metric_alias["l2_atomic_transactions"] = "lts__t_sectors_srcunit_l1_op_atom.sum";
+  metric_alias["l2_global_atomic_store_bytes"] = "lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_atom.sum";
+  metric_alias["l2_global_load_bytes"] = "lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_ld.sum";
+  metric_alias["l2_local_load_bytes"] = "lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_ld.sum";
+  metric_alias["l2_read_throughput"] = "lts__t_sectors_op_read.sum.per_second";
+  metric_alias["l2_read_transactions"] = "lts__t_sectors_op_read.sum";
+  metric_alias["l2_surface_load_bytes"] = "lts__t_bytes_equiv_l1sectormiss_pipe_tex_mem_surface_op_ld.sum";
+  metric_alias["l2_surface_store_bytes"] = "lts__t_bytes_equiv_l1sectormiss_pipe_tex_mem_surface_op_st.sum";
+  metric_alias["l2_tex_hit_rate"] = "lts__t_sector_hit_rate.pct";
+  metric_alias["l2_tex_read_hit_rate"] = "lts__t_sector_op_read_hit_rate.pct";
+  metric_alias["l2_tex_read_throughput"] = "lts__t_sectors_srcunit_tex_op_read.sum.per_second";
+  metric_alias["l2_tex_read_transactions"] = "lts__t_sectors_srcunit_tex_op_read.sum";
+  metric_alias["l2_tex_write_hit_rate"] = "lts__t_sector_op_write_hit_rate.pct";
+  metric_alias["l2_tex_write_throughput"] = "lts__t_sectors_srcunit_tex_op_read.sum.per_second";
+  metric_alias["l2_tex_write_transactions"] = "lts__t_sectors_srcunit_tex_op_read.sum";
+  metric_alias["l2_utilization"] = "lts__t_sectors.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["l2_write_throughput"] = "lts__t_sectors_op_write.sum.per_second";
+  metric_alias["l2_write_transactions"] = "lts__t_sectors_op_write.sum";
+  metric_alias["ldst_fu_utilization"] = "smsp__inst_executed_pipe_lsu.avg.pct_of_peak_sustained_active";
+  metric_alias["local_load_requests"] = "l1tex__t_requests_pipe_lsu_mem_local_op_ld.sum";
+  metric_alias["local_load_throughput"] = "l1tex__t_bytes_pipe_lsu_mem_local_op_ld.sum.per_second";
+  metric_alias["local_load_transactions"] = "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum";
+  metric_alias["local_load_transactions_per_request"] = "l1tex__average_t_sectors_per_request_pipe_lsu_mem_local_op_ld.ratio";
+  metric_alias["local_store_requests"] = "l1tex__t_requests_pipe_lsu_mem_local_op_st.sum";
+  metric_alias["local_store_throughput"] = "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum.per_second";
+  metric_alias["local_store_transactions"] = "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum";
+  metric_alias["local_store_transactions_per_request"] = "l1tex__average_t_sectors_per_request_pipe_lsu_mem_local_op_st.ratio";
+
+
+  metric_alias["pcie_total_data_received"] = "pcie__read_bytes.sum";
+  metric_alias["pcie_total_data_transmitted"] = "pcie__write_bytes.sum";
+  metric_alias["shared_efficiency"] = "smsp__sass_average_data_bytes_per_wavefront_mem_shared.pct";
+  metric_alias["shared_load_throughput"] = "l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum.per_second";
+  metric_alias["shared_load_transactions"] = "l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum";
+  metric_alias["shared_store_throughput"] = "l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum.per_second";
+  metric_alias["shared_store_transactions"] = "l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum";
+  metric_alias["shared_utilization"] = "l1tex__data_pipe_lsu_wavefronts_mem_shared.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["single_precision_fu_utilization"] = "smsp__pipe_fma_cycles_active.avg.pct_of_peak_sustained_active";
+  metric_alias["sm_efficiency"] = "smsp__cycles_active.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["sm_tex_utilization"] = "l1tex__texin_sm2tex_req_cycles_active.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["special_fu_utilization"] = "smsp__inst_executed_pipe_xu.avg.pct_of_peak_sustained_active";
+  metric_alias["stall_constant_memory_dependency"] = "smsp__warp_issue_stalled_imc_miss_per_warp_active.pct";
+  metric_alias["stall_inst_fetch"] = "smsp__warp_issue_stalled_no_instruction_per_warp_active.pct";
+  metric_alias["stall_memory_dependency"] = "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct";
+  metric_alias["stall_not_selected"] = "smsp__warp_issue_stalled_not_selected_per_warp_active.pct";
+  metric_alias["stall_sleeping"] = "smsp__warp_issue_stalled_sleeping_per_warp_active.pct";
+  metric_alias["stall_texture"] = "smsp__warp_issue_stalled_tex_throttle_per_warp_active.pct";
+  metric_alias["surface_atomic_requests"] = "l1tex__t_requests_pipe_tex_mem_surface_op_atom.sum";
+  metric_alias["surface_load_requests"] = "l1tex__t_requests_pipe_tex_mem_surface_op_ld.sum";
+  metric_alias["surface_reduction_requests"] = "l1tex__t_requests_pipe_tex_mem_surface_op_red.sum";
+  metric_alias["surface_store_requests"] = "l1tex__t_requests_pipe_tex_mem_surface_op_st.sum";
+  metric_alias["sysmem_read_throughput"] = "lts__t_sectors_aperture_sysmem_op_read.sum.per_second";
+  metric_alias["sysmem_read_transactions"] = "lts__t_sectors_aperture_sysmem_op_read.sum";
+  metric_alias["sysmem_write_throughput"] = "lts__t_sectors_aperture_sysmem_op_write.sum.per_second";
+  metric_alias["sysmem_write_transactions"] = "lts__t_sectors_aperture_sysmem_op_write.sum";
+  metric_alias["tensor_precision_fu_utilization"] = "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active";
+  metric_alias["tex_cache_hit_rate"] = "l1tex__t_sector_hit_rate.pct";
+  metric_alias["tex_fu_utilization"] = "smsp__inst_executed_pipe_tex.avg.pct_of_peak_sustained_active";
+  metric_alias["tex_sm_tex_utilization"] = "l1tex__f_tex2sm_cycles_active.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["tex_sm_utilization"] = "sm__mio2rf_writeback_active.avg.pct_of_peak_sustained_elapsed";
+  metric_alias["texture_load_requests"] = "l1tex__t_requests_pipe_tex_mem_texture.sum";
+  metric_alias["warp_execution_efficiency"] = "smsp__thread_inst_executed_per_inst_executed.ratio";
+  metric_alias["warp_nonpred_execution_efficiency"] = "smsp__thread_inst_executed_per_inst_executed.pct";
+
+}
+
+bool
+CP_Info::metrics_setup()
+{
+  if ( !state_pending_init_metrics ) return state_inited_metrics;
+  state_pending_init_metrics = false;
+
+  pNVPW_InitializeHost_Params{NVPW_InitializeHost};
+
+  if ( metric_names_user.empty() ) return state_inited_metrics;
+
+  // Try to filter the metrics.
+  pNVPW_CUDA_MetricsContext_Create_Params mctx_create_pars;
+  mctx_create_pars.pChipName = chipName.c_str();
+  CP( NVPW_CUDA_MetricsContext_Create(&mctx_create_pars) );
+  const auto mctx = mctx_create_pars.pMetricsContext;
+
+  for ( auto& name_user: metric_names_user )
+    {
+      string name =
+        metric_alias.count(name_user) ? metric_alias[name_user] : name_user;
+
+      string name_clean;
+      bool isolated, keepInstances;
+      NV::Metric::Parser::ParseMetricNameString
+        (name, &name_clean, &isolated, &keepInstances);
+
+      pNVPW_MetricsContext_GetMetricProperties_Begin_Params gmet_prop_beg_pars;
+      gmet_prop_beg_pars.pMetricsContext = mctx;
+      gmet_prop_beg_pars.pMetricName = name_clean.c_str();
+      bool okay =
+        NVPW_MetricsContext_GetMetricProperties_Begin( &gmet_prop_beg_pars )
+        == NVPA_STATUS_SUCCESS;
+      if ( !okay )
+        printf("Metric %s (%s) okay %d\n",
+               name.c_str(), name_clean.c_str(), okay);
+
+      if ( !okay ) continue;
+      if ( false )
+        printf(" %s\n",gmet_prop_beg_pars.pDescription);
+      metric_names_nvpw.push_back(name);
+      metric_user_to_nvpw[name_user] = name;
+
+      pNVPW_MetricsContext_GetMetricProperties_End_Params gmet_prop_end_pars;
+      gmet_prop_end_pars.pMetricsContext = mctx;
+      CP( NVPW_MetricsContext_GetMetricProperties_End(&gmet_prop_end_pars) );
+    }
+
+  pNVPW_MetricsContext_Destroy_Params mctx_destroy_pars;
+  mctx_destroy_pars.pMetricsContext = mctx;
+  NVPW_MetricsContext_Destroy(&mctx_destroy_pars);
+
+  if ( metric_names_nvpw.empty() ) return state_inited_metrics;
+
+  string nperf_metric = "gpu__cycles_elapsed.sum";
+  metric_names_nvpw.push_back(nperf_metric);
+  metric_user_to_nvpw[nperf_metric] = nperf_metric;
+
+  if ( !NV::Metric::Config::GetConfigImage
+       ( chipName, metric_names_nvpw, img_config ) )
+    {
+      std::cout << "Failed to create configImage" << std::endl;
+      exit(-1);
+    }
+  if ( !NV::Metric::Config::GetCounterDataPrefixImage
+       ( chipName, metric_names_nvpw, img_cnt_data_pfx ) )
+    {
+      std::cout << "Failed to create img_cnt_data_pfx" << std::endl;
+      exit(-1);
+    }
+  return state_inited_metrics = true;
+}
+
+bool
+CP_Info::session_start()
+{
+  if ( !state_inited_metrics ) return false;
+  if ( !state_pending_init_session ) return state_inited_session;
+  if ( state_inited_session )
+    {
+      pCUpti_Profiler_UnsetConfig_Params{cuptiProfilerUnsetConfig};
+      pCUpti_Profiler_EndSession_Params{cuptiProfilerEndSession};
+    }
+
+  state_metrics_retrieved = false;
+  state_pending_init_session = false;
+
+  // createCounterDataImage
+
+  pCUpti_Profiler_CounterDataImageOptions cdi_opts;
+  cdi_opts.pCounterDataPrefix = &img_cnt_data_pfx[0];
+  cdi_opts.counterDataPrefixSize = img_cnt_data_pfx.size();
+  cdi_opts.maxNumRanges = numRanges;
+  cdi_opts.maxNumRangeTreeNodes = numRanges;
+  cdi_opts.maxRangeNameLength = 64;
+
+  pCUpti_Profiler_CounterDataImage_CalculateSize_Params cs_pars;
+  cs_pars.pOptions = &cdi_opts;
+  cs_pars.sizeofCounterDataImageOptions =
+    CUpti_Profiler_CounterDataImageOptions_STRUCT_SIZE;
+  CU( cuptiProfilerCounterDataImageCalculateSize( &cs_pars ) );
+
+  const size_t cdi_elts = cs_pars.counterDataImageSize;
+  img_cnt_data.resize( cdi_elts );
+
+  pCUpti_Profiler_CounterDataImage_Initialize_Params cdii_pars;
+  cdii_pars.sizeofCounterDataImageOptions =
+    CUpti_Profiler_CounterDataImageOptions_STRUCT_SIZE;
+  cdii_pars.pOptions = &cdi_opts;
+  cdii_pars.counterDataImageSize = cdi_elts;
+  cdii_pars.pCounterDataImage = &img_cnt_data[0];
+  CU( cuptiProfilerCounterDataImageInitialize( &cdii_pars ) );
+
+  pCUpti_Profiler_CounterDataImage_CalculateScratchBufferSize_Params sbs_pars;
+  sbs_pars.counterDataImageSize = cdi_elts;
+  sbs_pars.pCounterDataImage = &img_cnt_data[0];
+  CU( cuptiProfilerCounterDataImageCalculateScratchBufferSize(&sbs_pars) );
+  img_cnt_data_scr_buf.resize( sbs_pars.counterDataScratchBufferSize );
+
+  pCUpti_Profiler_CounterDataImage_InitializeScratchBuffer_Params isb_pars;
+  isb_pars.counterDataImageSize = cdi_elts;
+  isb_pars.pCounterDataImage = &img_cnt_data[0];
+  isb_pars.counterDataScratchBufferSize = img_cnt_data_scr_buf.size();
+  isb_pars.pCounterDataScratchBuffer = &img_cnt_data_scr_buf[0];
+  CU( cuptiProfilerCounterDataImageInitializeScratchBuffer(&isb_pars) );
+
+  // beginSession(ProfilingData_t* pProfilingData)
+
+  pCUpti_Profiler_BeginSession_Params bs_pars;
+  bs_pars.ctx = nullptr;
+  bs_pars.counterDataImageSize = img_cnt_data.size();
+  bs_pars.pCounterDataImage = &img_cnt_data[0];
+  bs_pars.counterDataScratchBufferSize = img_cnt_data_scr_buf.size();
+  bs_pars.pCounterDataScratchBuffer = &img_cnt_data_scr_buf[0];
+  bs_pars.range = profilerRange;
+  bs_pars.replayMode = profilerReplayMode;
+  bs_pars.maxRangesPerPass = numRanges;
+  bs_pars.maxLaunchesPerPass = numRanges;
+
+  const auto rv = cuptiProfilerBeginSession(&bs_pars);
+  if ( rv == CUPTI_ERROR_INSUFFICIENT_PRIVILEGES )
+    {
+      printf
+        ( "NPerf error: Insufficient privileges for event register use.\n"
+          "  Hassle your system administrator.\n");
+      return state_inited_session;
+    }
+
+  CU( rv );
+
+  // setConfig(ProfilingData_t* pProfilingData)
+
+  pCUpti_Profiler_SetConfig_Params setConfigParams;
+  setConfigParams.pConfig = &img_config[0];
+  setConfigParams.configSize = img_config.size();
+  setConfigParams.passIndex = 0;
+  CU( cuptiProfilerSetConfig(&setConfigParams) );
+  return state_inited_session = true;
+}
+
+void
+CP_Info::at_launch_before()
+{
+  assert( !state_pending_init_session );
+  if ( !state_inited_session ) return;
+  if ( profilerReplayMode == CUPTI_UserReplay )
+    pCUpti_Profiler_BeginPass_Params{cuptiProfilerBeginPass};
+  pCUpti_Profiler_EnableProfiling_Params{cuptiProfilerEnableProfiling};
+}
+
+void
+CP_Info::at_launch_after()
+{
+  if ( !state_inited_session ) return;
+  pCUpti_Profiler_DisableProfiling_Params{cuptiProfilerDisableProfiling};
+
+  if ( profilerReplayMode == CUPTI_UserReplay )
+    {
+      pCUpti_Profiler_EndPass_Params endPassParams(cuptiProfilerEndPass);
+      allPassesSubmitted = endPassParams.allPassesSubmitted == 1;
+    }
+  else if ( profilerReplayMode == CUPTI_KernelReplay )
+    {
+      allPassesSubmitted = true;
+      if ( numRanges == 1 ) state_pending_init_session = true;
+    }
+
+  if ( allPassesSubmitted )
+    pCUpti_Profiler_FlushCounterData_Params{cuptiProfilerFlushCounterData};
+}
+
+void
+CP_Info::metrics_retrieve()
+{
+  if ( state_metrics_retrieved ) return;
+  vector<NV::Metric::Eval::MetricNameValue> mvmap; // Not actually a map.
+  NV::Metric::Eval::GetMetricGpuValue
+    (chipName, img_cnt_data, metric_names_nvpw, mvmap);
+
+  metric_values.clear();
+
+  for ( auto& e: mvmap )
+    {
+      assert( e.numRanges == 1 );
+      for ( auto& [name,val]: e.rangeNameMetricValueMap )
+        metric_values[e.metricName] = val;
+    }
+  state_metrics_retrieved = true;
+}
+
+void
+CP_Info::profiling_exit()
+{
+  pCUpti_Profiler_UnsetConfig_Params{cuptiProfilerUnsetConfig};
+  pCUpti_Profiler_EndSession_Params{cuptiProfilerEndSession};
+  pCUpti_Profiler_DeInitialize_Params{cuptiProfilerDeInitialize};
+}
+
 
 typedef CUpti_ActivityKernel2 Version_ActivityKernel;
 
@@ -281,21 +765,24 @@ public:
     cupti_on_pending = false;
     cupti_on_failed = false;
     cupti_on = false;
+    use_profiling_api = false;
     stop_tracing = false;
     event_tracing_user_on = true;
     context = NULL;
     dev = device_null;
+    dev_idx = -1;
     call_trace_count = 0;
     call_trace_end = 0;
     call_trace_pause_level = 0;
     fake_fh_next = NULL;
     event_callbacks_inited = false;
     event_tracing_active = false;
+
+    metrics_non_empty = false;
+
     device_data_collected = false;
     kernel_last = NULL;
     metrics_inited = false;
-    metrics_unusable_pending = true;
-    metrics_unusable_val = false;
   };
   ~RT_Info(){
     for ( auto ki: kernel_info_store ) free(ki);
@@ -305,6 +792,8 @@ public:
   bool cupti_on_pending;   // True if cupti is to be initialized.
   bool cupti_on; // True if CUPTI successfully initialized.
   bool cupti_on_failed;  // True if initialization tried and failed.
+  bool metrics_non_empty; // True if at least one metric (prof or event) set up.
+  bool use_profiling_api;
   bool event_callbacks_inited;
   bool stop_tracing;      // True if tracing was started unnecessarily.
   int call_trace_start, call_trace_count, call_trace_end;
@@ -314,9 +803,13 @@ public:
   map<string,CUfunction> fake_fh_map;
 
   bool nperf_init_finish();
-  bool cupti_check_on()
+  bool cupti_assure_on()
   {
     if ( cupti_on_pending ) nperf_init_finish();
+    return cupti_on;
+  }
+  bool cupti_check_on()
+  {
     return cupti_on;
   }
 
@@ -363,6 +856,7 @@ public:
   void nperf_kernel_data_append(NPerf_Kernel_Data& kd);
 
   CUdevice dev;                 // Device on which info being collected.
+  int dev_idx;
   CUcontext context;            // Make sure that only one context used.
 
   // GPU Characteristics
@@ -371,9 +865,12 @@ public:
   double clock_freq_hz;
   static const int gpu_name_size = 80;
   char gpu_name[gpu_name_size+1];
+  int cc_major, cc_minor;
   int wp_lg;
   int wp_sz;
   int wp_mask;
+
+  CP_Info cp_info;
 
   void device_data_collect()
   {
@@ -402,11 +899,36 @@ public:
   bool event_tracing_active; // If true event monitoring on. Detects nesting.
   uint64_t event_tracing_start_timestamp; // In ns
 
-  void context_set(CUcontext ctx)
+  void context_set(CUcontext ctx = nullptr)
   {
     if ( context ) return;
-    assert( !context );
+
+    if ( !ctx )
+      {
+        CE( cuCtxGetCurrent(&ctx) );
+        assert( ctx );
+      }
+
     context = ctx;
+
+    if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
+    int n_dev;
+    CE( cuDeviceGetCount(&n_dev) );
+    for ( int i=0; i<n_dev; i++ )
+      {
+        CUdevice devi;
+        CE( cuDeviceGet(&devi,i) );
+        if ( devi != dev ) continue;
+        dev_idx = i;
+        break;
+      }
+
+    assert( dev_idx >= 0 );
+
+    pCUpti_Device_GetChipName_Params getChipNameParams;
+    getChipNameParams.deviceIndex = dev_idx;
+    CU( cuptiDeviceGetChipName(&getChipNameParams) );
+    cp_info.chipName = getChipNameParams.pChipName;
   }
 
   void on_api_enter(CUpti_CallbackData *cbdata);
@@ -441,24 +963,8 @@ public:
 private:
   Metrics metrics;
   void metrics_init();
-  bool metrics_unusable_pending, metrics_unusable_val, metrics_inited;
+  bool metrics_inited;
 public:
-  bool metrics_unusable()
-    {
-      if ( metrics_unusable_pending )
-        {
-          metrics_unusable_pending = false;
-          assert( dev != device_null );
-          // Need to re-write for CC >= 7.5.
-          int cc_major, cc_minor;
-          CE( cuDeviceGetAttribute
-              (&cc_major,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,dev) );
-          CE( cuDeviceGetAttribute
-              (&cc_minor,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,dev) );
-          metrics_unusable_val = cc_major > 7 || cc_major == 7 && cc_minor >= 5;
-        }
-      return metrics_unusable_val;
-    }
   bool metric_add(string metric_name);
   template<typename T> double kernel_et_get(T k);
   int kernel_nlaunches_get(const char *kernel_name);
@@ -730,12 +1236,13 @@ replay_callback(const char *kname, int num_replays, void *data)
 void
 RT_Info::on_api_enter(CUpti_CallbackData *cbdata)
 {
-  context = cbdata->context;
-
-  if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
-  metrics_init();
+  context_set( cbdata->context );
   device_data_collect();
+
+  metrics_init();
+
   if ( !event_tracing_user_on ) return;
+  if ( !metrics_non_empty ) return;
 
   cuLaunchKernel_params* const params =
     (cuLaunchKernel_params*)cbdata->functionParams;
@@ -754,6 +1261,11 @@ RT_Info::on_api_enter(CUpti_CallbackData *cbdata)
     metrics.eg_sets && ki.call_count_lite >= md.set_rounds;
 
   ki.replay_num_launches = 0;
+
+  if ( use_profiling_api && metrics_non_empty )
+    {
+      cp_info.at_launch_before();
+    }
 
   if ( rt_info_metrics )
     {
@@ -799,10 +1311,12 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
     (cuLaunchKernel_params*)cbdata->functionParams;
   CUfunction hfunc = params->f;
   const uint32_t correlation_id = cbdata->correlationId;
-  const CUcontext context = cbdata->context;
+  const CUcontext ctx = cbdata->context;
+  assert( context == ctx );
   corr_to_h[correlation_id] = hfunc;
 
   if ( !event_tracing_user_on ) return;
+  if ( !metrics_non_empty ) return;
 
   CE( cuCtxSynchronize() ); ///  SHOULD THIS BE AVOIDED??
   assert( event_tracing_active );
@@ -811,6 +1325,9 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
   CU( cuptiDeviceGetTimestamp(context, &event_tracing_stop_timestamp) );
   const int64_t elapsed_raw =
     event_tracing_stop_timestamp - event_tracing_start_timestamp;
+
+  if ( use_profiling_api && metrics_non_empty )
+    cp_info.at_launch_after();
 
   RTI_Kernel_Info& ki = rt_info->kernel_info_fh[hfunc];
 
@@ -859,6 +1376,7 @@ RT_Info::on_api_exit(CUpti_CallbackData *cbdata)
     }
 
   if ( !metrics.eg_curr ) return;
+  assert( !use_profiling_api );
 
   Metrics_Data &md = ki.md;
 
@@ -970,6 +1488,12 @@ RT_Info::nperf_init_finish()
       cuptiGetResultString(err_reg_callbacks, &err_str);
       printf
         ("Could not set up GPU event-register statistics: %s\n", err_str);
+
+      cp_info.state_pending_init_metrics = false;
+      cp_info.state_pending_init_session = false;
+      assert( !cp_info.state_inited_metrics );
+      assert( !cp_info.state_inited_session );
+
       return false;
     }
 
@@ -988,6 +1512,20 @@ RT_Info::nperf_init_finish()
   CU(cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_RESOURCE));
   CU(cuptiEnableDomain(1, subscriber, CUPTI_CB_DOMAIN_SYNCHRONIZE));
 
+  context_set();
+
+  assert( dev != device_null );
+
+  // Determine whether to use the profile or the event API.
+  CE( cuDeviceGetAttribute
+      (&cc_major,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,dev) );
+  CE( cuDeviceGetAttribute
+      (&cc_minor,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,dev) );
+  use_profiling_api = cc_major >= 7;
+
+  if ( use_profiling_api )
+    pCUpti_Profiler_Initialize_Params{cuptiProfilerInitialize};
+
   cupti_on_pending = false;
   cupti_on = true;
   return true;
@@ -996,10 +1534,17 @@ RT_Info::nperf_init_finish()
 void
 RT_Info::metrics_init()
 {
-  if ( metrics_inited ) return;
-  if ( dev == device_null ) CE( cuCtxGetDevice(&dev) );
+  assert( device_data_collected );
   cupti_check_on();
-  if ( metrics_unusable() ) return;
+  if ( use_profiling_api )
+    {
+      cp_info.metrics_setup();
+      metrics_non_empty = !cp_info.metric_names_nvpw.empty();
+      cp_info.session_start();
+      return;
+    }
+
+  if ( metrics_inited ) return;
 
   metrics_inited = true;
 #if 0
@@ -1034,7 +1579,9 @@ RT_Info::metrics_init()
   if ( metrics.eg_sets )
     CU( cuptiEventGroupSetsDestroy( metrics.eg_sets ) );
 
-  if ( !metric_ids.size() )
+  metrics_non_empty = !metric_ids.empty();
+
+  if ( !metrics_non_empty )
     {
       metrics.eg_sets = NULL;
       return;
@@ -1049,6 +1596,14 @@ bool
 RT_Info::metric_add(string name)
 {
   if ( !cupti_on_requested ) return false;
+  if ( !cupti_assure_on() ) return false;
+
+  if ( use_profiling_api )
+    {
+      cp_info.metric_names_user.push_back(name);
+      return true;
+    }
+
   if ( dev == device_null )
     {
       CUresult rv = cuCtxGetDevice(&dev);
@@ -1061,9 +1616,6 @@ RT_Info::metric_add(string name)
           exit(1);
         }
     }
-
-  if ( !cupti_check_on() ) return false;
-  if ( metrics_unusable() ) return false;
 
   CUpti_MetricID met_id;
   CUptiResult rv = cuptiMetricGetIdFromName(dev,name.c_str(),&met_id);
@@ -1135,8 +1687,9 @@ bool
 RT_Info::need_run_get(const char* kernel_name)
 {
   if ( ! need_run_get_call_count++ ) return true;
-  if ( !cupti_check_on() ) return false;
-  if ( !event_tracing_user_on ) return false;
+  if ( !cupti_assure_on() ) return false;
+  if ( !metrics_non_empty ) return false;
+  if ( use_profiling_api && !cp_info.state_inited_session ) return false;
 
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
   if ( !ki && need_run_get_call_count > 0 )
@@ -1181,6 +1734,13 @@ RT_Info::kernel_et_get(T kernel_name)
   if ( !rt_info ) return -1;
   RTI_Kernel_Info* const ki = kernel_get(kernel_name);
   if ( !ki ) return -1;
+
+  if ( use_profiling_api )
+    if ( NPerf_Metric_Value npv =
+         metric_value_get("gpu__cycles_elapsed.sum",ki);
+         npv.status == NPerf_Status_OK && clock_freq_hz )
+      return npv.d / clock_freq_hz;
+
   if ( ki->call_count_lite == 0 ) return -1;
   return 1e-9 * ki->elapsed_time_lite_ns / ki->call_count_lite;
 }
@@ -1204,6 +1764,37 @@ NPerf_Metric_Value
 RT_Info::metric_value_get(const char *metric_name, RTI_Kernel_Info *ki)
 {
   if ( !ki ) return NPerf_Metric_Value(NPerf_Status_Kernel_Not_Found);
+
+  NPerf_Metric_Value npv(NPerf_Status_OK);
+  npv.blocks = ki->api_block_count;
+  npv.block_size = ki->api_block_size;
+  npv.warps_per_block = ki->api_warps_per_block;
+
+  if ( use_profiling_api )
+    {
+      if ( !metrics_non_empty ) return NPerf_Metric_Value(NPerf_Status_Off);
+      if ( !cp_info.state_inited_session )
+        return NPerf_Metric_Value(NPerf_Status_Off);
+      string mname_user = metric_name;
+      auto mii = cp_info.metric_user_to_nvpw.find(mname_user);
+      if ( mii == cp_info.metric_user_to_nvpw.end() )
+        return NPerf_Metric_Value(NPerf_Status_Metric_Not_Found);
+      string mname = mii->second;
+      cp_info.metrics_retrieve();
+      if ( !cp_info.metric_values.count(mname) )
+        return NPerf_Metric_Value(NPerf_Status_Error_Other);
+
+      // Battle Short
+      const double adj =
+        mname_user == "l2_read_throughput"
+        || mname_user == "l2_write_throughput" ? 32.0 : 1.0;
+
+      npv.kind = CUPTI_METRIC_VALUE_KIND_DOUBLE;
+      npv.d = cp_info.metric_values[mname] * adj;
+      npv.metric_value.metricValueDouble = npv.d;
+      return npv;
+    }
+
   auto mii = metrics.metric_info.find(metric_name);
   if ( mii == metrics.metric_info.end() )
     return NPerf_Metric_Value(NPerf_Status_Metric_Not_Found);
@@ -1225,11 +1816,8 @@ RT_Info::metric_value_get(const char *metric_name, RTI_Kernel_Info *ki)
     }
   const int num_events = md.event_ids.size();
 
-  NPerf_Metric_Value npv(NPerf_Status_OK);
   npv.kind = mi.kind;
-  npv.blocks = ki->api_block_count;
-  npv.block_size = ki->api_block_size;
-  npv.warps_per_block = ki->api_warps_per_block;
+
   assert( npv.blocks );
   assert( npv.warps_per_block );
 
@@ -1316,8 +1904,10 @@ NPerf_min_launches_get()
 bool
 NPerf_metrics_collection_get()
 {
-  if ( !rt_info || !rt_info->cupti_check_on() ) return false;
-  return rt_info->tracing_get();
+  if ( !rt_info || !rt_info->cupti_assure_on() ) return false;
+  if ( rt_info->use_profiling_api && !rt_info->cp_info.state_inited_session )
+    return false;
+  return rt_info->metrics_non_empty;
 }
 bool
 NPerf_metrics_collection_set(bool setting)
