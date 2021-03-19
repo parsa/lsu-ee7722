@@ -69,7 +69,64 @@ typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 const int chunk_size = 8;
 
 extern "C" __global__ void
-mxv()
+mxv_ld_all()
+{
+  // Group (chunk) size: The number of threads that cooperate to read
+  // and write vectors.
+  //
+  const int CS = chunk_size;
+  const int num_threads = blockDim.x * gridDim.x;
+
+  // First element used by this block.
+  const int bl_start = blockIdx.x * blockDim.x;
+  const int stop = d_app.num_vecs;
+
+  const int thd_c_offset = threadIdx.x % CS;
+  const int thd_v_offset = threadIdx.x;
+  const int thd_g_offset = threadIdx.x & ~ ( CS - 1 );
+
+  const int MAX_BLOCK_SIZE = 1024;
+  assert( threadIdx.x || blockDim.x <= MAX_BLOCK_SIZE );
+  __shared__ Elt_Type vxfer[CS][MAX_BLOCK_SIZE+1];
+
+  for ( int hb = bl_start; hb<stop; hb += num_threads )
+    {
+      const int h = hb + thd_v_offset;
+      const bool have_work = d_app.d_op[h] <= d_app.norm_threshold;
+
+      Elt_Type vout[M]{};
+
+      for ( int c=0; c<N; c += CS )
+        {
+          for ( int g=0; g<CS; g++ )
+            vxfer[g][threadIdx.x] =
+              d_app.d_in[( hb+thd_g_offset + g )*N + c + thd_c_offset ];
+
+          if ( !have_work ) continue;
+
+          Elt_Type vin[CS];
+          for ( int cc=0; cc<CS; cc++ )
+            vin[cc] = vxfer[ thd_c_offset ][ thd_g_offset + cc ];
+
+          for ( int r=0; r<M; r++ )
+            for ( int cc=0; cc<CS; cc++ )
+              vout[r] += d_app.matrix[r][c+cc] * vin[cc];
+        }
+
+#pragma unroll
+      for ( int rr=0; rr<M; rr += CS )
+        {
+          for ( int g=0; g<CS; g++ )
+            vxfer[thd_c_offset][thd_g_offset+g] = vout[rr+g];
+          for ( int g=0; g<CS; g++ )
+              d_app.d_out[ ( hb + thd_g_offset + g ) * M + rr + thd_c_offset ]
+                = vxfer[g][threadIdx.x];
+        }
+    }
+}
+
+extern "C" __global__ void
+mxv_ld_chunk()
 {
   // Group (chunk) size: The number of threads that cooperate to read
   // and write vectors.
@@ -101,31 +158,15 @@ mxv()
       if ( !have_work_wp_v ) continue;
       const uint32_t chunk_wk_v = have_work_wp_v >> thd_wp_c0;
 
-      Elt_Type vout[M];
-      for ( auto& e: vout ) e = 0;
-
-      const bool overlap_loads = true;
+      Elt_Type vout[M]{};
 
       for ( int c=0; c<N; c += CS )
         {
-          if ( overlap_loads )
-            {
-              Elt_Type vx[CS];
-              for ( int g=0; g<CS; g++ )
-                vx[g] = chunk_wk_v  &  1 << g
-                  ? d_app.d_in[ ( hb+thd_g_offset + g )*N + c + thd_c_offset ]
-                  : 0;
-
-              for ( int g=0; g<CS; g++ ) vxfer[g][threadIdx.x] = vx[g];
-            }
-          else
-            {
-              for ( int g=0; g<CS; g++ )
-                  vxfer[g][threadIdx.x] =
-                    chunk_wk_v  &  1 << g
-                    ? d_app.d_in[( hb+thd_g_offset + g )*N + c + thd_c_offset ]
-                    : 0;
-            }
+          for ( int g=0; g<CS; g++ )
+            vxfer[g][threadIdx.x] =
+              chunk_wk_v  &  1 << g
+              ? d_app.d_in[( hb+thd_g_offset + g )*N + c + thd_c_offset ]
+              : 0;
 
           if ( !have_work ) continue;
 
@@ -273,8 +314,7 @@ mxv_compress()
       // This thread, threadIdx.x, will operate on the same element
       // as thread work_v_offset would have.
 
-      Elt_Type vout[M];
-      for ( auto& e: vout ) e = 0;
+      Elt_Type vout[M]{};
 
       for ( int c=0; c<N; c += CS )
         {
@@ -377,8 +417,7 @@ mxv_compress_wps()
           wwork[lane] = wwork[thd_wp_c0];
         }
 
-      Elt_Type vout[M];
-      for ( auto& e: vout ) e = 0;
+      Elt_Type vout[M]{};
 
 #pragma unroll
       for ( int c=0; c<N; c += CS )
@@ -434,12 +473,14 @@ print_gpu_and_kernel_info()
   printf("Using GPU %d\n",dev);
   info.get_gpu_info(dev);
 
-  info.GET_INFO(mxv);
+  info.GET_INFO(mxv_ld_all);
+  info.GET_INFO(mxv_ld_chunk);
+#if 1
   info.GET_INFO(mxv_atomic);
-  //  info.GET_INFO(mxv_pfx_shared);
-  //  info.GET_INFO(mxv_pfx_ballot);
+  info.GET_INFO(mxv_pfx_shared);
+  info.GET_INFO(mxv_pfx_ballot);
   info.GET_INFO(mxv_compress_wps);
-
+#endif
   // Print information about kernel.
   //
   printf("\nCUDA Kernel Resource Usage:\n");
@@ -755,7 +796,7 @@ main(int argc, char **argv)
                 const int bl_per_mp =
                   min( max_bl_per_mp, ( n_blocks + num_mp - 1 )/ num_mp );
 
-                // Based on the number of blocks, compute the num ber of warps.
+                // Based on the number of blocks, compute the number of warps.
                 //
                 const int act_wps = num_wps * bl_per_mp;
 
