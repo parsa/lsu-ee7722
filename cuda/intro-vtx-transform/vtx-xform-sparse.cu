@@ -551,6 +551,8 @@ main(int argc, char **argv)
     }
 
   const bool vary_work = true;
+  const bool met_want_eff = true;
+  bool met_have_eff = false; // Reassigned.
 
   // Collect performance data using a wrapper to NVIDIA CUPTI event
   // counter API.
@@ -558,9 +560,13 @@ main(int argc, char **argv)
   NPerf_metric_collect("inst_executed");
   if ( opt_p )
     {
-      NPerf_metric_collect("gld_efficiency");
-      NPerf_metric_collect("gst_efficiency");
-      NPerf_metric_collect("shared_efficiency");
+      if ( met_want_eff )
+        {
+          NPerf_metric_collect("gld_efficiency");
+          NPerf_metric_collect("gst_efficiency");
+          NPerf_metric_collect("shared_efficiency");
+          met_have_eff = true;
+        }
       NPerf_metric_collect("l2_global_load_bytes");
       NPerf_metric_collect("l2_write_transactions");
       NPerf_metric_collect("dram_read_bytes");
@@ -603,12 +609,14 @@ main(int argc, char **argv)
 
   // Initialize input array.
   //
+# pragma omp parallel for
   for ( int i=0; i<app.num_vecs; i++ )
     for ( int c=0; c<N; c++ )
       app.h_in[ i * N + c ] = debug ? Elt_Type(c) : drand48();
 
   const Op_Type norm_threshold_max = ( 1 << 20 );
 
+# pragma omp parallel for
   for ( int i=0; i<app.num_vecs; i++ )
     app.h_op[i] = random() % norm_threshold_max;
 
@@ -620,6 +628,7 @@ main(int argc, char **argv)
 
   // Compute correct answer.
   //
+# pragma omp parallel for
   for ( int i=0; i<app.num_vecs; i++ )
     {
       vector<Elt_Type> vo(M);
@@ -841,7 +850,7 @@ main(int argc, char **argv)
                     double l2_wr_thpt = l2_wr_bytes / this_elapsed_time_s;
                     double l2_wr_eff = amt_data_wr_bytes / max1(l2_wr_bytes);
 
-                    if ( false )
+                    if ( met_have_eff )
                       {
                         table.entry
                           ("SM eff","%5.1f%%",
