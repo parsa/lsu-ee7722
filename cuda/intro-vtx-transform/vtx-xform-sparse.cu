@@ -66,6 +66,8 @@ __constant__ App d_app;
 // Pointer to kernel main (global) functions.
 typedef void (*KPtr)(Elt_Type *dout, const Elt_Type *din);
 
+template <typename T> T max1(T v) { return v < T(1) ? 1 : v; }
+
 const int chunk_size = 8;
 
 extern "C" __global__ void
@@ -559,10 +561,10 @@ main(int argc, char **argv)
       NPerf_metric_collect("gld_efficiency");
       NPerf_metric_collect("gst_efficiency");
       NPerf_metric_collect("shared_efficiency");
-      NPerf_metric_collect("l2_read_throughput");
-      NPerf_metric_collect("l2_write_throughput");
-      NPerf_metric_collect("dram_read_throughput");
-      NPerf_metric_collect("dram_write_throughput");
+      NPerf_metric_collect("l2_global_load_bytes");
+      NPerf_metric_collect("l2_write_transactions");
+      NPerf_metric_collect("dram_read_bytes");
+      NPerf_metric_collect("dram_write_bytes");
     }
   //
   // Note: The more metrics that are collected, the more times a kernel
@@ -763,8 +765,11 @@ main(int argc, char **argv)
             const int64_t num_ops =
               work_frac * num_ops_max_mxv + num_ops_max_iter;
 
+            const int64_t amt_data_rd_bytes =
+              op_size_bytes + work_frac * in_size_bytes;
+            const int64_t amt_data_wr_bytes = work_frac * out_size_bytes;
             const int64_t amt_data_bytes =
-              op_size_bytes + work_frac * ( in_size_bytes + out_size_bytes );
+              amt_data_rd_bytes + amt_data_wr_bytes;
 
             const double thpt_compute_gflops =
               work_frac * num_ops / this_elapsed_time_s * 1e-9;
@@ -814,33 +819,69 @@ main(int argc, char **argv)
                    * 32.0 / max(int64_t(1),num_ops) );
                 if ( opt_p )
                   {
-                    table.entry
-                      ("SM eff","%5.1f%%",
-                       NPerf_metric_value_get("shared_efficiency"));
-                    table.header_span_start("R-Eff-%");
-                    table.entry
-                      ("Ld","%3.0f",
-                       NPerf_metric_value_get("gld_efficiency"));
-                    table.entry
-                      ("St","%3.0f",
-                       NPerf_metric_value_get("gst_efficiency"));
-                    table.header_span_end();
-                    table.header_span_start("L2-Cache");
-                    table.entry
-                      ("Rd θ","%5.1f",
-                       NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
-                    table.entry
-                      ("Wr θ","%5.1f",
-                       NPerf_metric_value_get("l2_write_throughput") * 1e-9 );
-                    table.header_span_end();
-                    table.header_span_start("DRAM");
-                    table.entry
-                      ("Rd θ","%5.1f",
-                       NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
-                    table.entry
-                      ("Wr θ","%5.1f",
-                       NPerf_metric_value_get("dram_write_throughput") * 1e-9 );
-                    table.header_span_end();
+                    const double transaction_sz_bytes = 32;
+                    double dram_rd_bytes =
+                      NPerf_metric_value_get("dram_read_bytes");
+                    double dram_rd_thpt = dram_rd_bytes / this_elapsed_time_s;
+                    double dram_rd_eff =
+                      amt_data_rd_bytes / max1(dram_rd_bytes);
+                    double dram_wr_bytes =
+                      NPerf_metric_value_get("dram_write_bytes");
+                    double dram_wr_thpt = dram_wr_bytes / this_elapsed_time_s;
+                    double dram_wr_eff =
+                      amt_data_wr_bytes / max1(dram_wr_bytes);
+
+                    double l2_rd_bytes =
+                      NPerf_metric_value_get("l2_global_load_bytes");
+                    double l2_rd_thpt = l2_rd_bytes / this_elapsed_time_s;
+                    double l2_rd_eff = amt_data_rd_bytes / max1(l2_rd_bytes);
+                    double l2_wr_bytes =
+                      NPerf_metric_value_get("l2_write_transactions")
+                      * transaction_sz_bytes;
+                    double l2_wr_thpt = l2_wr_bytes / this_elapsed_time_s;
+                    double l2_wr_eff = amt_data_wr_bytes / max1(l2_wr_bytes);
+
+                    if ( false )
+                      {
+                        table.entry
+                          ("SM eff","%5.1f%%",
+                           NPerf_metric_value_get("shared_efficiency"));
+                        table.header_span_start("R-Eff-%");
+                        table.entry
+                          ("Ld","%3.0f",
+                           NPerf_metric_value_get("gld_efficiency"));
+                        table.entry
+                          ("St","%3.0f",
+                           NPerf_metric_value_get("gst_efficiency"));
+                        table.header_span_end();
+                      }
+                    if ( true )
+                      {
+                        table.header_span_start("L2-Cache");
+                        table.header_span_start("Use/s");
+                        table.entry("Rd","%3.0f", l2_rd_thpt * 1e-9 );
+                        table.entry("Wr","%3.0f", l2_wr_thpt * 1e-9);
+                        table.header_span_end();
+                        table.header_span_start("Need/Use");
+                        table.entry("Rd", "%5.2f", l2_rd_eff);
+                        table.entry("Wr", "%5.2f", l2_wr_eff);
+                        table.header_span_end();
+
+                        table.header_span_end();
+                      }
+                    if ( true )
+                      {
+                        table.header_span_start("DRAM");
+                        table.header_span_start("Use/s");
+                        table.entry("Rd","%3.0f", dram_rd_thpt * 1e-9 );
+                        table.entry("Wr","%3.0f", dram_wr_thpt * 1e-9);
+                        table.header_span_end();
+                        table.header_span_start("Need/Use");
+                        table.entry("Rd", "%5.2f", dram_rd_eff);
+                        table.entry("Wr", "%5.2f", dram_wr_eff);
+                        table.header_span_end();
+                        table.header_span_end();
+                      }
                   }
 
                 const bool plot_bandwidth = true;
@@ -850,7 +891,7 @@ main(int argc, char **argv)
 
                 if ( tscale == 0 ) tscale = this_elapsed_time_s * 2;
 
-                const int max_st_len =
+                const uint max_st_len =
                   max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
 
@@ -862,7 +903,8 @@ main(int argc, char **argv)
                 const double frac =
                   ref_time ? this_elapsed_time_s / tscale :
                   plot_bandwidth ? comm_frac : comp_frac;
-                util_hdr += string(max_st_len - util_hdr.length(),'-');
+                if ( max_st_len > util_hdr.length() )
+                  util_hdr += string(max_st_len - util_hdr.length(),'-');
                 table.entry
                   (util_hdr,fmt,
                    string( size_t(max(0.0,frac*max_st_len)), '*' ),
