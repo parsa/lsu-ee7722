@@ -26,8 +26,8 @@ class pCoor;
 class pColor;
 class pVect;
 class pVect4;
-inline pCoor mult_MC(pMatrix& m, pCoor c);
-inline void pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2);
+inline pCoor mult_MC(const pMatrix& m, const pCoor& c);
+inline void pMMultiply(pMatrix& p, const pMatrix& m1, const pMatrix& m2);
 pVect cross(pCoor a, pCoor b, pCoor c);
 pVect cross(pVect a, pVect b);
 float dot(pVect a, pVect b);
@@ -74,7 +74,10 @@ public:
 
   pMatrix(){set_identity();}
 
-  pMatrix(pVect c0, pVect c1, pVect c2);
+  pMatrix(const pVect& c0, const pVect& c1, const pVect& c2);
+  pMatrix
+  (const pVect& c0, const pVect& c1, const pVect& c2, const pVect& c3,
+   float s = 1);
 
   pMatrix(pMatrix m1, pMatrix m2){pMMultiply(*this,m1,m2);}
 
@@ -113,15 +116,15 @@ public:
     rc(3,2) = -1;
   }
 
-  void set_transpose3x3(pMatrix m)
+  void set_transpose3x3(const pMatrix& m)
   {
     for ( int r=0; r<3; r++ )
-      for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
+      for ( int c=0; c<3; c++ ) rc(r,c) = m.rc_get(c,r);
   }
-  void set_transpose(pMatrix m)
+  void set_transpose(const pMatrix& m)
   {
     for ( int r=0; r<4; r++ )
-      for ( int c=0; c<4; c++ ) rc(r,c) = m.rc(c,r);
+      for ( int c=0; c<4; c++ ) rc(r,c) = m.rc_get(c,r);
   }
 
   inline float det();
@@ -144,10 +147,11 @@ public:
   void local(pMatrix& m) {pMatrix mprod(*this,m); copy(mprod);}
 
   float* row_get(int row_num) { return &a[row_num<<2]; }
+  const float* r_get(int row_num) const { return &a[row_num<<2]; }
   float rc_get(int row, int col) const {return a[ ( row << 2 ) + col ];}
   float& rc(int row, int col) {return a[ ( row << 2 ) + col ];}
-  pCoor r(int row_num){
-    float* const row = row_get(row_num);
+  pCoor r(int row_num) const {
+    const float* const row = r_get(row_num);
     return pCoor(row[0],row[1],row[2],row[3]);
   }
 
@@ -196,7 +200,7 @@ public:
   float a[3*stride];
 
   pMatrix3x3x(){set_identity();}
-  pMatrix3x3x(pMatrix& m, int r = 3, int c = 3)
+  pMatrix3x3x(const pMatrix& m, int r = 3, int c = 3)
   {
     int rj = 0;
     for ( int ri=0; ri<4; ri++ )
@@ -206,7 +210,7 @@ public:
         for ( int ci=0; ci<4; ci++ )
           {
             if ( ci == c ) continue;
-            rc(rj,cj) = m.rc(ri,ci);
+            rc(rj,cj) = m.rc_get(ri,ci);
             cj++;
           }
         rj++;
@@ -214,15 +218,15 @@ public:
   }
 
   template<int s2>
-  pMatrix3x3x(pMatrix3x3x<s2> m)
+  pMatrix3x3x(const pMatrix3x3x<s2>& m)
     {
       for ( int r=0; r<3; r++ )
-        for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(r,c);
+        for ( int c=0; c<3; c++ ) rc(r,c) = m.rc_get(r,c);
     }
 
   operator float* () { return &a[0]; }
 
-  void copy(pMatrix m){ memcpy(a,m.a,sizeof(a)); }
+  void copy(const pMatrix& m){ memcpy(a,m.a,sizeof(a)); }
 
   void set_zero(){memset(a,0,sizeof(a));}
 
@@ -232,10 +236,10 @@ public:
     for ( int i=0; i<3; i++ ) rc(i,i) = 1;
   };
 
-  void set_transpose(pMatrix3x3x<stride> m)
+  void set_transpose(const pMatrix3x3x<stride>& m)
   {
     for ( int r=0; r<3; r++ )
-      for ( int c=0; c<3; c++ ) rc(r,c) = m.rc(c,r);
+      for ( int c=0; c<3; c++ ) rc(r,c) = m.rc_get(c,r);
   }
 
   inline float det();
@@ -280,7 +284,7 @@ typedef pMatrix3x3x<3> pMatrix3x3;
 typedef pMatrix3x3x<4> pMatrix3x3p;
 
 inline pMatrix
-transpose(const pMatrix m)
+transpose(const pMatrix& m)
 {
   pMatrix rv;
   rv.set_transpose(m);
@@ -288,22 +292,23 @@ transpose(const pMatrix m)
 }
 
 
-inline pCoor operator * (pMatrix m, pCoor c) { return mult_MC(m,c); }
+inline pCoor operator * (const pMatrix& m, const pCoor& c)
+{ return mult_MC(m,c); }
 
 inline void
-pMMultiply(pMatrix& p, pMatrix m1, pMatrix m2)
+pMMultiply(pMatrix& p, const pMatrix& m1, const pMatrix& m2)
 {
   p.set_zero();
   for ( int row=0; row<4; row++ )
     for ( int col=0; col<4; col++ )
       for ( int i=0; i<4; i++ )
-        p.rc(row,col) += m1.rc(row,i) * m2.rc(i,col);
+        p.rc(row,col) += m1.rc_get(row,i) * m2.rc_get(i,col);
 }
 
 inline void
-pMMultiply3x3(pMatrix& p, pMatrix m1, pMatrix m2)
+pMMultiply3x3(pMatrix& p, const pMatrix& m1, const pMatrix& m2)
 {
-#define T(r,c,i) m1.rc(r,i) * m2.rc(i,c)
+#define T(r,c,i) m1.rc_get(r,i) * m2.rc_get(i,c)
 #define E(r,c) p.rc(r,c) = T(r,c,0) + T(r,c,1) + T(r,c,2);
 #define C(r) E(r,0) E(r,1) E(r,2)
   C(0) C(1) C(2)
@@ -398,6 +403,33 @@ public:
   float x, y, z;
 };
 
+inline pVect operator + (pVect v, pVect q)
+{return pVect(v.x+q.x,v.y+q.y,v.z+q.z); }
+inline pVect operator - (pVect v, pVect q)
+{return pVect(v.x-q.x,v.y-q.y,v.z-q.z); }
+inline pVect operator - (pVect q){return pVect(-q.x,-q.y,-q.z); }
+inline pVect operator - (pCoor c1, pCoor c2){return pVect(c2,c1);}
+inline pVect operator + (pVect v, float s){return pVect(v.x+s,v.y+s,v.z+s); }
+inline pVect operator * (const pVect& v, float s){return pVect(s,v); }
+inline pVect operator * (float s,const pVect& v){return pVect(s,v); }
+inline pVect operator * (pVect v,pVect q)
+{return pVect(v.x*q.x,v.y*q.y,v.z*q.z);}
+inline pVect operator / (pVect v,pVect q)
+{return pVect(v.x/q.x,v.y/q.y,v.z/q.z);}
+inline pVect operator / (float f,pVect q)
+{return pVect(f/q.x,f/q.y,f/q.z);}
+inline pVect operator / (pVect v, float f)
+{
+  const float finv = 1.0 / f;
+  return pVect(v.x*finv,v.y*finv,v.z*finv);
+}
+
+inline pVect fabs(pVect v){ return pVect(fabs(v.x),fabs(v.y),fabs(v.z)); }
+inline float min(pVect v){ return min(min(v.x,v.y),v.z); }
+inline float max(pVect v){ return max(max(v.x,v.y),v.z); }
+inline float sum(pVect v){ return v.x+v.y+v.z; }
+
+
 // Intended for situations where a power-of-2 stride element is needed.
 class pVect4 {
 public:
@@ -481,8 +513,16 @@ pangle(pCoor a, pCoor b, pCoor c)
 
 
 inline
-pMatrix::pMatrix(pVect c0, pVect c1, pVect c2)
+pMatrix::pMatrix(const pVect& c0, const pVect& c1, const pVect& c2)
 { set_identity(); set_col(0,c0); set_col(1,c1);  set_col(2,c2); }
+
+inline
+pMatrix::pMatrix
+(const pVect& c0, const pVect& c1, const pVect& c2, const pVect& c3, float s)
+{
+  set_identity();
+  set_col(0,s*c0); set_col(1,s*c1);  set_col(2,s*c2);  set_col(3,c3);
+}
 
 inline pVect pMatrix::cv(int col)
 { return pVect(rc_get(0,col),rc_get(1,col),rc_get(2,col)); }
@@ -506,7 +546,7 @@ pMatrix::set_col(int c, pCoor v)
   for ( int r=0; r<4; r++ ) rc(r,c) = v[r];
 }
 
-inline pCoor mult_MC(pMatrix& m, pCoor c)
+inline pCoor mult_MC(const pMatrix& m, const pCoor& c)
 {
   return pCoor(dot(m.r(0),c),dot(m.r(1),c),dot(m.r(2),c),dot(m.r(3),c));
 }
@@ -520,12 +560,12 @@ inline pVect operator * (pMatrix3x3 m, pVect c) { return mult_MV(m,c); }
 inline pVect operator * (pMatrix m, pVect c) { return mult_MV(m,c); }
 
 // Multiply M transposed times V.
-inline pVect mult_MTV(pMatrix3x3 m, pVect v)
+inline pVect mult_MTV(const pMatrix3x3& m, pVect v)
 {
   pVect q(0,0,0);
   float* const qf = &q.x;
   for ( int r=0; r<3; r++ )
-    for ( int c=0; c<3; c++ ) qf[r] += m.rc(c,r) * v.elt(c);
+    for ( int c=0; c<3; c++ ) qf[r] += m.rc_get(c,r) * v.elt(c);
   return q;
 }
 
@@ -543,31 +583,6 @@ inline pCoor pCoor::operator + (pVect v)
 inline pCoor::pCoor(pVect v):x(v.x),y(v.y),z(v.z),w(1){}
 inline pCoor operator - (pCoor c, pVect v)
 {return pCoor(c.x-v.x,c.y-v.y,c.z-v.z); }
-inline pVect operator + (pVect v, pVect q)
-{return pVect(v.x+q.x,v.y+q.y,v.z+q.z); }
-inline pVect operator - (pVect v, pVect q)
-{return pVect(v.x-q.x,v.y-q.y,v.z-q.z); }
-inline pVect operator - (pVect q){return pVect(-q.x,-q.y,-q.z); }
-inline pVect operator - (pCoor c1, pCoor c2){return pVect(c2,c1);}
-inline pVect operator + (pVect v, float s){return pVect(v.x+s,v.y+s,v.z+s); }
-inline pVect operator * (pVect v, float s){return pVect(s,v); }
-inline pVect operator * (float s,pVect v){return pVect(s,v); }
-inline pVect operator * (pVect v,pVect q)
-{return pVect(v.x*q.x,v.y*q.y,v.z*q.z);}
-inline pVect operator / (pVect v,pVect q)
-{return pVect(v.x/q.x,v.y/q.y,v.z/q.z);}
-inline pVect operator / (float f,pVect q)
-{return pVect(f/q.x,f/q.y,f/q.z);}
-inline pVect operator / (pVect v, float f)
-{
-  const float finv = 1.0 / f;
-  return pVect(v.x*finv,v.y*finv,v.z*finv);
-}
-
-inline pVect fabs(pVect v){ return pVect(fabs(v.x),fabs(v.y),fabs(v.z)); }
-inline float min(pVect v){ return min(min(v.x,v.y),v.z); }
-inline float max(pVect v){ return max(max(v.x,v.y),v.z); }
-inline float sum(pVect v){ return v.x+v.y+v.z; }
 
 inline pMatrix operator * (pMatrix m1, pMatrix m2){ return pMatrix(m1,m2); }
 
