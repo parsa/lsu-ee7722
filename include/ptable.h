@@ -98,10 +98,28 @@ public:
     num_lines++;
   }
   int row_len_get() { return line.len(); }
+
+  string row_end_take()
+  {
+    row_end_();
+    string rv = move(line);
+    line = "";
+    return move(rv);
+  }
+
   void row_end()
   {
-    if ( !num_lines ) return;
-    if ( !line.len() ) return;
+    if ( !row_end_() ) return;
+    body += line + "\n";
+    if ( stream ) fprintf(stream,"%s\n",line.s);
+    line = "";
+  }
+
+private:
+  bool row_end_()
+  {
+    if ( !num_lines ) return false;
+    if ( !line.len() ) return false;
     assert( header_span_stack.empty() );
     if ( !body.len() )
       {
@@ -171,10 +189,9 @@ public:
           }
         if ( stream ) fprintf(stream,"%s",body.s);
       }
-    body += line + "\n";
-    if ( stream ) fprintf(stream,"%s\n",line.s);
-    line = "";
+    return true;
   }
+public:
   template <typename T>
   void entry
   (const char* h, const char* fmt, T val, Justification jp = pT_Right)
