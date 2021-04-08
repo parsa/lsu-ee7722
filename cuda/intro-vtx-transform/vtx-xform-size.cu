@@ -294,14 +294,12 @@ constexpr int mxv_sh_ochunk_CS = 8;
 extern "C" __global__ void
 mxv_sh_ochunk()
 {
-  // Compute element number to start at.
-  //
   // Chunk Size: Number of input vector elts to read.
   constexpr int CS = mxv_sh_ochunk_CS;
 
   const int num_threads = blockDim.x * gridDim.x;
 
-  // First element used by this block.
+  // First vector used by this block.
   const int bl_start = blockIdx.x * blockDim.x / CS;
   const int stop = d_app.num_vecs;
   const int inc = num_threads / CS;
@@ -353,7 +351,7 @@ mxv_vec_ld()
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int num_threads = blockDim.x * gridDim.x;
 
-  // Compute element number to start at.
+  // Compute vector number to start at.
   //
   const int start = tid;
   const int stop = d_app.num_vecs;
