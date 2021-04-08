@@ -518,6 +518,10 @@ main(int argc, char **argv)
   const int wp_lg = 5;
   const int wp_sz = 1 << wp_lg;
 
+  // Number of times to repeat each run. Data printed for run with
+  // lowest execution time.
+  const int n_repeats = 3;
+
   // Examine argument 1, number of blocks per MP.
   //
   // 0: Largest number that will fit.
@@ -538,9 +542,11 @@ main(int argc, char **argv)
   const int thd_per_block_goal = arg2_int ? arg2_int << wp_lg: 1024;
   const bool choose_wps_per_block = arg2_int == 0;
 
-  // Examine argument 3, size of array in elts per MP. Fractional values okay.
+  const int64_t ref_thds = num_mp * 1024;
+
+  // Examine argument 3, size of array in elts per thd.
   //
-  app.num_vecs = argc < 4 ? num_mp << 20 : int( atof(argv[3]) * (num_mp<<20) );
+  app.num_vecs = argc < 4 ? ref_thds << 6 : int( atof(argv[3]) * ref_thds );
 
   if ( thd_per_block_goal <= 0 || app.num_vecs <= 0 )
     {
@@ -551,7 +557,7 @@ main(int argc, char **argv)
     }
 
   const bool vary_work = true;
-  const bool met_want_eff = true;
+  const bool met_want_eff = false;
   bool met_have_eff = false; // Reassigned.
 
   // Collect performance data using a wrapper to NVIDIA CUPTI event
@@ -604,8 +610,11 @@ main(int argc, char **argv)
   CE( cudaMalloc( &app.d_op,  op_size_bytes + overrun_size_bytes ) );
   CE( cudaMalloc( &app.d_out, out_size_bytes + overrun_size_bytes ) );
 
-  printf("Matrix size: %d x %d.  Vectors: %d.\n",
-         N, M, app.num_vecs );
+  const double v_p_thd_min =
+    double(app.num_vecs) / ( num_mp * thd_per_block_goal );
+
+  printf("Matrix size: %d x %d.  Vectors: %d.  V/Thd min %.2f\n",
+         N, M, app.num_vecs, v_p_thd_min );
 
   // Initialize input array.
   //
@@ -650,7 +659,6 @@ main(int argc, char **argv)
   const int64_t num_ops_max_mxv = ( int64_t(M) * N + N + M ) * app.num_vecs;
   const int64_t num_ops_max_iter = 7 * app.num_vecs;
 
-  double elapsed_time_s = 86400; // Reassigned to minimum run time.
   const int output_width = stdout_width_get();
 
   {
@@ -744,225 +752,243 @@ main(int argc, char **argv)
             CE( cudaMemcpyToSymbol
                 ( d_app, &app, sizeof(app), 0, cudaMemcpyHostToDevice ) );
 
-            // Zero the output array.
-            //
-            CE(cudaMemset(app.d_out,0,out_size_bytes));
+            string line_best; // Refers to a row of the table printed to stdout.
+            double time_min_s = 1e9;
 
-            // Measure execution time starting "now", which is after data
-            // set to GPU.
-            //
-            CE(cudaEventRecord(gpu_start_ce,0));
-
-            // Launch Kernel
-            //
-            for ( NPerf_data_reset(); NPerf_need_run_get(); )
-              KPtr(info.ki[kernel].func_ptr)<<<n_blocks,block_sz>>>
-                (app.d_out,app.d_in);
-
-            // Stop measuring execution time now, which is before is data
-            // returned from GPU.
-            //
-            CE(cudaEventRecord(gpu_stop_ce,0));
-            CE(cudaEventSynchronize(gpu_stop_ce));
-            float cuda_time_ms = -1.1;
-            CE(cudaEventElapsedTime(&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
-
-            const double this_elapsed_time_s =
-              NPerf_metrics_collection_get()
-              ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
-
-            const int64_t num_ops =
-              work_frac * num_ops_max_mxv + num_ops_max_iter;
-
-            const int64_t amt_data_rd_bytes =
-              op_size_bytes + work_frac * in_size_bytes;
-            const int64_t amt_data_wr_bytes = work_frac * out_size_bytes;
-            const int64_t amt_data_bytes =
-              amt_data_rd_bytes + amt_data_wr_bytes;
-
-            const double thpt_compute_gflops =
-              work_frac * num_ops / this_elapsed_time_s * 1e-9;
-            const double thpt_data_gbps =
-              amt_data_bytes / this_elapsed_time_s * 1e-9;
-
-            if ( vary_work )
+            for ( int r=0; r<n_repeats; r++ )
               {
-                const double comp_frac =
-                  1e9 * thpt_compute_gflops
-                  / ( sizeof(Elt_Type) == 4 ? info.chip_sp_flops :
-                      sizeof(Elt_Type) == 8 ? info.chip_dp_flops : 1 );
-                const double comm_frac =
-                  min(2.0,1e9 * thpt_data_gbps / info.chip_bw_Bps);
-
-                // Number of warps, rounded up.
+                // Zero the output array.
                 //
-                const int num_wps = ( block_sz + 31 ) >> wp_lg;
+                CE(cudaMemset(app.d_out,0,out_size_bytes));
 
-                // The maximum number of active blocks per MP for this
-                // kernel when launched with a block size of thd_per_block.
+                // Measure execution time starting "now", which is after data
+                // set to GPU.
                 //
-                const int max_bl_per_mp =
-                  info.get_max_active_blocks_per_mp(kernel,block_sz);
+                CE(cudaEventRecord(gpu_start_ce,0));
 
-                // The number of active blocks is the minimum of what
-                // can fit and how many are available.
+                // Launch Kernel
                 //
-                const int bl_per_mp =
-                  min( max_bl_per_mp, ( n_blocks + num_mp - 1 )/ num_mp );
+                for ( NPerf_data_reset(); NPerf_need_run_get(); )
+                  KPtr(info.ki[kernel].func_ptr)<<<n_blocks,block_sz>>>
+                    (app.d_out,app.d_in);
 
-                // Based on the number of blocks, compute the number of warps.
+                // Stop measuring execution time now, which is before is data
+                // returned from GPU.
                 //
-                const int act_wps = num_wps * bl_per_mp;
+                CE(cudaEventRecord(gpu_stop_ce,0));
+                CE(cudaEventSynchronize(gpu_stop_ce));
+                float cuda_time_ms = -1.1;
+                CE(cudaEventElapsedTime
+                   (&cuda_time_ms,gpu_start_ce,gpu_stop_ce));
 
-                if ( table.num_lines < 1 )
-                  printf("Kernel %s:\n", info.ki[kernel].name);
+                const double this_elapsed_time_s =
+                  NPerf_metrics_collection_get()
+                  ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
-                table.row_start();
-                table.entry("wp",num_wps);
-                table.entry("ac",act_wps);
-                table.entry("work","%5.3f", work_frac);
-                table.entry("t/µs","%5.0f", this_elapsed_time_s * 1e6);
-                table.entry
-                  ("I/op","%4.1f",
-                   NPerf_metric_value_get("inst_executed")
-                   * 32.0 / max(int64_t(1),num_ops) );
-                if ( opt_p )
+                const int64_t num_ops =
+                  work_frac * num_ops_max_mxv + num_ops_max_iter;
+
+                const int64_t amt_data_rd_bytes =
+                  op_size_bytes + work_frac * in_size_bytes;
+                const int64_t amt_data_wr_bytes = work_frac * out_size_bytes;
+                const int64_t amt_data_bytes =
+                  amt_data_rd_bytes + amt_data_wr_bytes;
+
+                const double thpt_compute_gflops =
+                  work_frac * num_ops / this_elapsed_time_s * 1e-9;
+                const double thpt_data_gbps =
+                  amt_data_bytes / this_elapsed_time_s * 1e-9;
+
+                if ( vary_work )
                   {
-                    const double transaction_sz_bytes = 32;
-                    double dram_rd_bytes =
-                      NPerf_metric_value_get("dram_read_bytes");
-                    double dram_rd_thpt = dram_rd_bytes / this_elapsed_time_s;
-                    double dram_rd_eff =
-                      amt_data_rd_bytes / max1(dram_rd_bytes);
-                    double dram_wr_bytes =
-                      NPerf_metric_value_get("dram_write_bytes");
-                    double dram_wr_thpt = dram_wr_bytes / this_elapsed_time_s;
-                    double dram_wr_eff =
-                      amt_data_wr_bytes / max1(dram_wr_bytes);
+                    const double comp_frac =
+                      1e9 * thpt_compute_gflops
+                      / ( sizeof(Elt_Type) == 4 ? info.chip_sp_flops :
+                          sizeof(Elt_Type) == 8 ? info.chip_dp_flops : 1 );
+                    const double comm_frac =
+                      min(2.0,1e9 * thpt_data_gbps / info.chip_bw_Bps);
 
-                    double l2_rd_bytes =
-                      NPerf_metric_value_get("l2_global_load_bytes");
-                    double l2_rd_thpt = l2_rd_bytes / this_elapsed_time_s;
-                    double l2_rd_eff = amt_data_rd_bytes / max1(l2_rd_bytes);
-                    double l2_wr_bytes =
-                      NPerf_metric_value_get("l2_write_transactions")
-                      * transaction_sz_bytes;
-                    double l2_wr_thpt = l2_wr_bytes / this_elapsed_time_s;
-                    double l2_wr_eff = amt_data_wr_bytes / max1(l2_wr_bytes);
+                    // Number of warps, rounded up.
+                    //
+                    const int num_wps = ( block_sz + 31 ) >> wp_lg;
 
-                    if ( met_have_eff )
+                    // The maximum number of active blocks per MP for this
+                    // kernel when launched with a block size of thd_per_block.
+                    //
+                    const int max_bl_per_mp =
+                      info.get_max_active_blocks_per_mp(kernel,block_sz);
+
+                    // The number of active blocks is the minimum of what
+                    // can fit and how many are available.
+                    //
+                    const int bl_per_mp =
+                      min( max_bl_per_mp, ( n_blocks + num_mp - 1 )/ num_mp );
+
+                    // Based on the number of blocks, compute number of warps.
+                    //
+                    const int act_wps = num_wps * bl_per_mp;
+
+                    if ( table.num_lines < 1 )
+                      printf("Kernel %s:\n", info.ki[kernel].name);
+
+                    table.row_start();
+                    table.entry("wp",num_wps);
+                    table.entry("ac",act_wps);
+                    table.entry("work","%5.3f", work_frac);
+                    table.entry("t/µs","%5.0f", this_elapsed_time_s * 1e6);
+                    table.entry
+                      ("I/op","%4.1f",
+                       NPerf_metric_value_get("inst_executed")
+                       * 32.0 / max(int64_t(1),num_ops) );
+                    if ( opt_p )
                       {
-                        table.entry
-                          ("SM eff","%5.1f%%",
-                           NPerf_metric_value_get("shared_efficiency"));
-                        table.header_span_start("R-Eff-%");
-                        table.entry
-                          ("Ld","%3.0f",
-                           NPerf_metric_value_get("gld_efficiency"));
-                        table.entry
-                          ("St","%3.0f",
-                           NPerf_metric_value_get("gst_efficiency"));
-                        table.header_span_end();
+                        const double transaction_sz_bytes = 32;
+                        double dram_rd_bytes =
+                          NPerf_metric_value_get("dram_read_bytes");
+                        double dram_rd_thpt =
+                          dram_rd_bytes / this_elapsed_time_s;
+                        double dram_rd_eff =
+                          amt_data_rd_bytes / max1(dram_rd_bytes);
+                        double dram_wr_bytes =
+                          NPerf_metric_value_get("dram_write_bytes");
+                        double dram_wr_thpt =
+                          dram_wr_bytes / this_elapsed_time_s;
+                        double dram_wr_eff =
+                          amt_data_wr_bytes / max1(dram_wr_bytes);
+
+                        double l2_rd_bytes =
+                          NPerf_metric_value_get("l2_global_load_bytes");
+                        double l2_rd_thpt = l2_rd_bytes / this_elapsed_time_s;
+                        double l2_rd_eff =
+                          amt_data_rd_bytes / max1(l2_rd_bytes);
+                        double l2_wr_bytes =
+                          NPerf_metric_value_get("l2_write_transactions")
+                          * transaction_sz_bytes;
+                        double l2_wr_thpt = l2_wr_bytes / this_elapsed_time_s;
+                        double l2_wr_eff =
+                          amt_data_wr_bytes / max1(l2_wr_bytes);
+
+                        if ( met_have_eff )
+                          {
+                            table.entry
+                              ("SM eff","%5.1f%%",
+                               NPerf_metric_value_get("shared_efficiency"));
+                            table.header_span_start("R-Eff-%");
+                            table.entry
+                              ("Ld","%3.0f",
+                               NPerf_metric_value_get("gld_efficiency"));
+                            table.entry
+                              ("St","%3.0f",
+                               NPerf_metric_value_get("gst_efficiency"));
+                            table.header_span_end();
+                          }
+                        if ( true )
+                          {
+                            table.header_span_start("L2-Cache");
+                            table.header_span_start("Use/s");
+                            table.entry("Rd","%3.0f", l2_rd_thpt * 1e-9 );
+                            table.entry("Wr","%3.0f", l2_wr_thpt * 1e-9);
+                            table.header_span_end();
+                            table.header_span_start("Need/Use");
+                            table.entry("Rd", "%5.2f", l2_rd_eff);
+                            table.entry("Wr", "%5.2f", l2_wr_eff);
+                            table.header_span_end();
+
+                            table.header_span_end();
+                          }
+                        if ( true )
+                          {
+                            table.header_span_start("DRAM");
+                            table.header_span_start("Use/s");
+                            table.entry("Rd","%3.0f", dram_rd_thpt * 1e-9 );
+                            table.entry("Wr","%3.0f", dram_wr_thpt * 1e-9);
+                            table.header_span_end();
+                            table.header_span_start("Need/Use");
+                            table.entry("Rd", "%5.2f", dram_rd_eff);
+                            table.entry("Wr", "%5.2f", dram_wr_eff);
+                            table.header_span_end();
+                            table.header_span_end();
+                          }
                       }
-                    if ( true )
-                      {
-                        table.header_span_start("L2-Cache");
-                        table.header_span_start("Use/s");
-                        table.entry("Rd","%3.0f", l2_rd_thpt * 1e-9 );
-                        table.entry("Wr","%3.0f", l2_wr_thpt * 1e-9);
-                        table.header_span_end();
-                        table.header_span_start("Need/Use");
-                        table.entry("Rd", "%5.2f", l2_rd_eff);
-                        table.entry("Wr", "%5.2f", l2_wr_eff);
-                        table.header_span_end();
 
-                        table.header_span_end();
-                      }
-                    if ( true )
+                    const bool plot_bandwidth = true;
+                    if ( !plot_bandwidth )
+                      table.entry("FP θ","%4.0f", thpt_compute_gflops);
+                    table.entry("GB/s","%4.0f", thpt_data_gbps);
+
+                    if ( tscale == 0 ) tscale = this_elapsed_time_s * 2;
+
+                    const uint max_st_len =
+                      max(5, output_width - 1 - table.row_len_get() );
+                    pStringF fmt("%%-%ds",max_st_len);
+
+                    const bool ref_time = false;
+
+                    string util_hdr =
+                      ref_time ? "Reference Time" :
+                      plot_bandwidth ? "Data BW Util" : "FP Utilization";
+                    const double frac =
+                      ref_time ? this_elapsed_time_s / tscale :
+                      plot_bandwidth ? comm_frac : comp_frac;
+                    if ( max_st_len > util_hdr.length() )
+                      util_hdr += string(max_st_len - util_hdr.length(),'-');
+                    table.entry
+                      (util_hdr,fmt,
+                       string( size_t(max(0.0,frac*max_st_len)), '*' ),
+                       pTable::pT_Left);
+
+                    string line = table.row_end_take();
+                    if ( set_min(time_min_s,this_elapsed_time_s) )
+                      line_best = move(line);
+
+                  } else {
+
+                  printf
+                    ("%-15s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
+                     "%5.2f I/F  %5.1f%%\n",
+                     info.ki[kernel].name,
+                     (block_sz + wp_sz - 1 ) >> wp_lg,
+                     this_elapsed_time_s * 1e6,
+                     thpt_compute_gflops, thpt_data_gbps,
+                     NPerf_metric_value_get("inst_executed") * 32 / num_ops,
+                     NPerf_metric_value_get("gld_efficiency")
+                     );
+                }
+
+                // Copy output array from GPU to CPU.
+                //
+                CE( cudaMemcpy
+                    ( app.h_out, app.d_out, out_size_bytes,
+                      cudaMemcpyDeviceToHost ) );
+                int err_count = 0;
+                for ( int i=0; i<app.num_vecs; i++ )
+                  {
+                    const bool norm = app.h_op[i] > norm_threshold;
+                    for ( int r=0; r<M; r++ )
                       {
-                        table.header_span_start("DRAM");
-                        table.header_span_start("Use/s");
-                        table.entry("Rd","%3.0f", dram_rd_thpt * 1e-9 );
-                        table.entry("Wr","%3.0f", dram_wr_thpt * 1e-9);
-                        table.header_span_end();
-                        table.header_span_start("Need/Use");
-                        table.entry("Rd", "%5.2f", dram_rd_eff);
-                        table.entry("Wr", "%5.2f", dram_wr_eff);
-                        table.header_span_end();
-                        table.header_span_end();
+                        const int idx = i * M + r;
+                        Elt_Type cval = norm ? 0 : app.h_out_check[idx];
+
+                        if ( fabs( cval - app.h_out[idx] ) > 1e-5 )
+                          {
+                            err_count++;
+                            if ( err_count < 5 )
+                              printf
+                                ("Error at vec %d elt %d: "
+                                 "%.7f != %.7f (correct)\n",
+                                 i, r, app.h_out[idx], cval );
+                          }
                       }
                   }
-
-                const bool plot_bandwidth = true;
-                if ( !plot_bandwidth )
-                  table.entry("FP θ","%4.0f", thpt_compute_gflops);
-                table.entry("GB/s","%4.0f", thpt_data_gbps);
-
-                if ( tscale == 0 ) tscale = this_elapsed_time_s * 2;
-
-                const uint max_st_len =
-                  max(5, output_width - 1 - table.row_len_get() );
-                pStringF fmt("%%-%ds",max_st_len);
-
-                const bool ref_time = false;
-
-                string util_hdr =
-                  ref_time ? "Reference Time" :
-                  plot_bandwidth ? "Data BW Util" : "FP Utilization";
-                const double frac =
-                  ref_time ? this_elapsed_time_s / tscale :
-                  plot_bandwidth ? comm_frac : comp_frac;
-                if ( max_st_len > util_hdr.length() )
-                  util_hdr += string(max_st_len - util_hdr.length(),'-');
-                table.entry
-                  (util_hdr,fmt,
-                   string( size_t(max(0.0,frac*max_st_len)), '*' ),
-                   pTable::pT_Left);
-                table.row_end();
-
-              } else {
-
-              printf
-                ("%-15s %2d wp  %7.0f µs  %8.3f GF  %8.3f GB/s  "
-                 "%5.2f I/F  %5.1f%%\n",
-                 info.ki[kernel].name,
-                 (block_sz + wp_sz - 1 ) >> wp_lg,
-                 this_elapsed_time_s * 1e6,
-                 thpt_compute_gflops, thpt_data_gbps,
-                 NPerf_metric_value_get("inst_executed") * 32 / num_ops,
-                 NPerf_metric_value_get("gld_efficiency")
-                 );
-            }
-
-            elapsed_time_s = min(this_elapsed_time_s,elapsed_time_s);
-
-            // Copy output array from GPU to CPU.
-            //
-            CE( cudaMemcpy
-                ( app.h_out, app.d_out, out_size_bytes,
-                  cudaMemcpyDeviceToHost ) );
-            int err_count = 0;
-            for ( int i=0; i<app.num_vecs; i++ )
-              {
-                const bool norm = app.h_op[i] > norm_threshold;
-                for ( int r=0; r<M; r++ )
-                  {
-                    const int idx = i * M + r;
-                    Elt_Type cval = norm ? 0 : app.h_out_check[idx];
-
-                    if ( fabs( cval - app.h_out[idx] ) > 1e-5 )
-                      {
-                        err_count++;
-                        if ( err_count < 5 )
-                          printf
-                            ("Error at vec %d elt %d: %.7f != %.7f (correct)\n",
-                             i, r, app.h_out[idx], cval );
-                      }
-                  }
+                if ( err_count )
+                  printf("Total errors %d\n", err_count);
               }
-            if ( err_count )
-              printf("Total errors %d\n", err_count);
+
+            printf("%s\n",line_best.c_str());
           }
+
       }
   }
 }
+
+
