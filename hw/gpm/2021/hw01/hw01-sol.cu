@@ -1,17 +1,17 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
  /// Spring 2021
- /// Homework 1
+ /// Homework 1 -- SOLUTION
  //
  //  Assignment: https://www.ece.lsu.edu/koppel/gp/2021/hw01.pdf
  //
- //  Modify this file only.
 
 #include <stdio.h>
 
 #include <cuda_runtime.h>
 #include <gp/cuda-gpuinfo.h>
 #include <ptable.h>
+#include <nperf.h>
 
 typedef float wht_t;
 typedef float acc_t;
@@ -21,6 +21,7 @@ struct Layer_Shape
   int nn, nc, ni, no, nm;
 };
 
+//                               n    c   i   o   m
 constexpr Layer_Shape ls[] = { { 800, 20, 28, 28, 20 },
                                { 800, 52, 44, 44, 52 } };
 
@@ -102,18 +103,25 @@ dnn_sol_a(Layer l)
   wht_t [[gnu::unused]] * const w = l.w_d;
   wht_t [[gnu::unused]] * const w2 = l.w2_d;
 
-  for ( int in = blockIdx.x; in < nn; in += gridDim.x )
-    for ( int im = threadIdx.x; im < nm; im += blockDim.x )
-      for ( int io = 0; io < no; io++ )
-          {
-            acc_t ac = 0;
-            for ( int ic = 0; ic < nc; ic++ )
-              for ( int ii = 0; ii < ni; ii++ )
-                ac +=
-                  ai[ ii + ni * ( ic + nc * in ) ]
-                  * w[ ic + nc * ( im + nm * ( ii + ni * io ) ) ];
-            ao[ io + no * ( im + nm * in ) ] = ac;
-          }
+
+  /// PARTIAL SOLUTION -- Reorder Iterations, But use Existing w Array
+  int nnmo = nn * nm * no;
+
+  for ( int inmo = tid; inmo < nnmo; inmo += num_threads )
+    {
+      const int im = inmo % nm;
+      const int ino = inmo / nm;
+      const int in = ino % nn;
+      const int io = ino / nn;
+      acc_t ac = 0;
+      for ( int ic = 0; ic < nc; ic++ )
+        for ( int ii = 0; ii < ni; ii++ )
+          ac +=
+            ai[ ii + ni * ( ic + nc * in ) ]
+              * w[ ic + nc * ( im + nm * ( ii + ni * io ) ) ];
+
+      ao[ io + no * ( im + nm * in ) ] = ac;
+    }
 }
 
 template<int tpnn=0, int tpnc=0, int tpni=0>
@@ -140,20 +148,28 @@ dnn_sol_b(Layer l)
   wht_t [[gnu::unused]] * const w = l.w_d;
   wht_t [[gnu::unused]] * const w2 = l.w2_d;
 
-  for ( int in = blockIdx.x; in < nn; in += gridDim.x )
-    for ( int im = threadIdx.x; im < nm; im += blockDim.x )
-      for ( int io = 0; io < no; io++ )
-          {
-            acc_t ac = 0;
-            for ( int ic = 0; ic < nc; ic++ )
-              for ( int ii = 0; ii < ni; ii++ )
-                ac +=
-                  ai[ ii + ni * ( ic + nc * in ) ]
-                  * w[ ic + nc * ( im + nm * ( ii + ni * io ) ) ];
-            ao[ io + no * ( im + nm * in ) ] = ac;
-          }
-}
 
+  /// SOLUTION -- Reorder Iterations and Use Re-Ordered W Array
+  const int nnmo = nn * nm * no;
+
+  for ( int inmo = tid; inmo < nnmo; inmo += num_threads )
+    {
+      // o n m
+      const int im = inmo % nm;
+      const int ino = inmo / nm;
+      const int in = ino % nn;
+      const int io = ino / nn;
+
+      acc_t ac = 0;
+      for ( int ic = 0; ic < nc; ic++ )
+        for ( int ii = 0; ii < ni; ii++ )
+          ac +=
+            ai[ ii + ni * ( ic + nc * in ) ]
+            * w2[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
+
+      ao[ io + no * ( im + nm * in ) ] = ac;
+    }
+}
 
 
 void
@@ -246,7 +262,8 @@ layer_init(Layer &l)
             assert( idx_w < l.sz_w_elts );
 
             /// Homework 1: Modify line below to re-organize w2.
-            size_t idx_w2 = ic + nc * ( im + nm * ( ii + ni * io ) ); 
+            /// SOLUTION
+            size_t idx_w2 = im + nm * ( ii + ni * ( ic + nc * io ) );
 
             assert( idx_w2 < l.sz_w_elts );
             l.w2_h[idx_w2] = w[idx_w];
@@ -280,9 +297,13 @@ print_gpu_and_kernel_info()
 int
 main(int argc, char **argv)
 {
+  NPerf_init();
   // Get info about GPU and each kernel.
   //
   GPU_Info info = print_gpu_and_kernel_info();
+  NPerf_metric_collect("inst_executed");
+  NPerf_metric_collect("l2_read_throughput");
+  NPerf_metric_collect("dram_read_throughput");
 
   constexpr int wp_sz = 32;
 
@@ -478,7 +499,8 @@ main(int argc, char **argv)
 
               /// Launch Kernel
               //
-              KPtr(ki->func_ptr) <<< num_blocks, thd_per_block >>>(l);
+              for ( NPerf_data_reset(); NPerf_need_run_get(); )
+                KPtr(ki->func_ptr) <<< num_blocks, thd_per_block >>>(l);
 
               // Stop measuring execution time now, which is before is data
               // returned from GPU.
@@ -489,7 +511,9 @@ main(int argc, char **argv)
               CE( cudaEventElapsedTime
                   (&cuda_time_ms,gpu_start_ce,gpu_stop_ce) );
 
-              const double this_elapsed_time_s = cuda_time_ms * 0.001;
+              const double this_elapsed_time_s =
+                NPerf_metrics_collection_get()
+                ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
               const double thpt_compute_gflops =
                 num_ops_fp / this_elapsed_time_s * 1e-9;
@@ -542,16 +566,31 @@ main(int argc, char **argv)
                 table.entry("ni","%2d",s.ni);
                 table.entry("wp",num_wps);
                 table.entry("ac",act_wps);
+                if ( NPerf_metrics_collection_get() )
+                  {
+                    table.entry
+                      ("I/op","%4.1f",
+                       NPerf_metric_value_get("inst_executed")
+                       * 32.0 / num_ops_fp );
+                    table.entry
+                      ("L2 θ","%4.0f",
+                       NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
+                    table.entry
+                      ("DR θ","%4.0f",
+                       NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
+                  }
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
                 table.entry("FP θ","%4.0f", thpt_compute_gflops);
-                table.entry("GB/s","%4.0f", thpt_data_gbps);
+                if ( false )
+                  table.entry("GB/s","%4.0f", thpt_data_gbps);
 
-                const int max_st_len =
+                const size_t max_st_len =
                   max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
                 string util_hdr =
-                  "--- Utilization: ++Compute++   **Data**  ";
-                util_hdr += string(max_st_len - util_hdr.length(),'-');
+                  "--- Utiliz: ++Compute++   **Data**  ";
+                if ( max_st_len > util_hdr.length() )
+                  util_hdr += string(max_st_len - util_hdr.length(),'-');
                 const bool bw_more = bw_frac > comp_frac;
                 const char* sym = bw_more ? "+*" : "*+";
                 const double frac_min =  bw_more ? comp_frac : bw_frac;
@@ -599,3 +638,4 @@ main(int argc, char **argv)
       }
   }
 }
+
