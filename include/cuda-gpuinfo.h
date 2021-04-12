@@ -224,13 +224,17 @@ public:
   void get_gpu_info(int dev)
     {
       CE(cudaGetDeviceProperties(&cuda_prop,dev));
+
+      const int ccmaj = cuda_prop.major, ccmin = cuda_prop.minor;
       cc_per_mp =
         cuda_prop.major == 1 ? 8 :
         cuda_prop.major == 2 ? ( cuda_prop.minor == 0 ? 32 : 48 ) :
         cuda_prop.major == 3 ? 192 :
         cuda_prop.major == 5 ? 128 :
         cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 64 : 128 ) :
-        cuda_prop.major == 7 ? 64 : 0;
+        cuda_prop.major == 7 ? 64 :
+        ccmaj == 8 ? ( ccmin == 0 ? 64 : ccmin == 6 ? 128 : 0 ) :
+        0;
 
       const bool is_geforce = strncmp("GeForce",cuda_prop.name,7) == 0;
 
@@ -240,7 +244,20 @@ public:
         cuda_prop.major == 3 ? ( cuda_prop.minor < 3 || is_geforce ? 8 : 64 ) :
         cuda_prop.major == 5 ? 4 :
         cuda_prop.major == 6 ? ( cuda_prop.minor == 0 ? 32 : 4 ) :
-        cuda_prop.major == 7 ? ( cuda_prop.minor == 0 ? 32 : 2 ) : 0;
+        cuda_prop.major == 7 ? ( cuda_prop.minor == 0 ? 32 : 2 ) :
+        ccmaj == 8 ? ( ccmin == 0 ? 32 : ccmin == 6 ? 2 : 0 )
+        : 0;
+
+      fp16_per_mp =
+        ccmaj == 5 && ccmin == 3 ? 256 :
+        ccmaj == 6 ?
+        ( ccmin == 0 ? 128 : ccmin == 1 ? 2 : ccmin == 2 ? 256 : -1 ) :
+        ccmaj == 7 ? 128 :
+        ccmaj == 8 ? 256 // 8.0 and 8.6
+        : 0;
+
+      bp16_per_mp =
+        ccmaj == 8 ? 128 : 0;
 
       chip_bw_Bps =
         2 * cuda_prop.memoryClockRate * 1000.0
@@ -266,7 +283,7 @@ public:
   double chip_bw_Bps;
   double chip_sp_flops; // MADD counted as 1 FLOP.
   double chip_dp_flops; // MADD counted as 1 FLOP.
-  int cc_per_mp, dp_per_mp;
+  int cc_per_mp, dp_per_mp, fp16_per_mp, bp16_per_mp;
   std::vector<Kernel_Info> ki;
   std::map<GPU_Info_Func,int> ki_map;
   cudaDeviceProp cuda_prop;  // Properties of cuda device (GPU, cuda version).
