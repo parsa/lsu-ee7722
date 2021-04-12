@@ -104,7 +104,7 @@ public:
     row_end_();
     string rv = move(line);
     line = "";
-    return move(rv);
+    return rv;
   }
 
   void row_end()
