@@ -81,7 +81,7 @@ dnn_base(Layer l)
         for ( int ii = 0; ii < ni; ii++ )
           ac +=
             ai[ ii + ni * ( ic + nc * in ) ]
-            * w2[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
+            * w[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
 
       ao[ io + no * ( im + nm * in ) ] = ac;
     }
@@ -309,8 +309,10 @@ main(int argc, char **argv)
   //
   GPU_Info info = print_gpu_and_kernel_info();
   NPerf_metric_collect("inst_executed");
-  NPerf_metric_collect("l2_read_throughput");
-  NPerf_metric_collect("dram_read_throughput");
+  NPerf_metric_collect("l2_global_load_bytes");
+  NPerf_metric_collect("l2_write_transactions");
+  NPerf_metric_collect("dram_read_bytes");
+  NPerf_metric_collect("dram_write_bytes");
 
   constexpr int wp_sz = 32;
 
@@ -402,9 +404,6 @@ main(int argc, char **argv)
       printf("  Weights size: %zu kiB   L2 cache units: %.3f\n",
              l.sz_w_bytes >> 10,
              double(l.sz_w_bytes) / info.cuda_prop.l2CacheSize);
-      printf("  Act size one batch  : %zu B   L2 cache units: %.3f\n",
-             act_one_bytes,
-             double(act_one_bytes) / info.cuda_prop.l2CacheSize);
       printf("  Act size all batches: %zu B   L2 cache units: %.3f\n",
              act_all_bytes,
              double(act_all_bytes) / info.cuda_prop.l2CacheSize);
@@ -412,7 +411,7 @@ main(int argc, char **argv)
 
   if ( n_threads <= 0 )
     {
-      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [THD_PER_BLOCK] "
+      printf("Usage: %s [ NUM_CUDA_BLOCKS ] [WARPS_PER_BLOCK] "
              "[COL PER MP]\n",
              argv[0]);
       exit(1);
@@ -573,19 +572,36 @@ main(int argc, char **argv)
                 table.entry("nc","%2d",s.nc);
                 table.entry("ni","%2d",s.ni);
                 table.entry("wp",num_wps);
-                table.entry("ac",act_wps);
+                if ( num_blocks > num_mp )
+                  table.entry("ac",act_wps);
                 if ( NPerf_metrics_collection_get() )
                   {
+                    const double transaction_sz_bytes = 32;
+                    double dram_rd_bytes =
+                      NPerf_metric_value_get("dram_read_bytes");
+                    double dram_wr_bytes =
+                      NPerf_metric_value_get("dram_write_bytes");
+
+                    double l2_rd_bytes =
+                      NPerf_metric_value_get("l2_global_load_bytes");
+                    double l2_wr_bytes =
+                      NPerf_metric_value_get("l2_write_transactions")
+                      * transaction_sz_bytes;
+
                     table.entry
                       ("I/op","%4.1f",
                        NPerf_metric_value_get("inst_executed")
                        * 32.0 / num_ops_fp );
                     table.entry
-                      ("L2 θ","%4.0f",
-                       NPerf_metric_value_get("l2_read_throughput") * 1e-9 );
+                      ("DUse","%4.1f",
+                       ( dram_rd_bytes + dram_wr_bytes ) / amt_data_bytes);
+                    if ( false )
+                    table.entry("DW","%4.1f", dram_wr_bytes / l.sz_ao_bytes );
                     table.entry
-                      ("DR θ","%4.0f",
-                       NPerf_metric_value_get("dram_read_throughput") * 1e-9 );
+                      ("2Use","%5.1f",
+                       ( l2_rd_bytes + l2_wr_bytes ) / amt_data_bytes);
+                    if ( false )
+                      table.entry("2W","%4.1f", l2_wr_bytes / l.sz_ao_bytes);
                   }
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
                 table.entry("FP θ","%4.0f", thpt_compute_gflops);
@@ -596,19 +612,27 @@ main(int argc, char **argv)
                   max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
                 string util_hdr =
-                  "--- Util: FP++  Insn-- Data**  ";
+                  "=== Util: FP++  Insn-- Data**  ";
                 if ( max_st_len > util_hdr.length() )
-                  util_hdr += string(max_st_len - util_hdr.length(),'-');
+                  util_hdr += string(max_st_len - util_hdr.length(),'=');
 
-                const bool bw_more = bw_frac > comp_frac;
+                typedef struct { double f; char c; } Elt;
+                vector<Elt> segments =
+                  { { fp_frac, '+' }, { comp_frac, '-' }, { bw_frac, '*' } };
 
-                const char* sym = bw_more ? "-*" : "+-";
-                const double frac_min =  bw_more ? comp_frac : fp_frac;
-                const double frac_max = !bw_more ? comp_frac : bw_frac;
-                const size_t len_min = frac_min * max_st_len + 0.5;
-                const size_t len_max = frac_max * max_st_len + 0.5;
-                string bar = string( len_min, sym[0] ) +
-                  string( len_max - len_min, sym[1] );
+                sort( segments.begin(), segments.end(),
+                      [](Elt& a, Elt& b){ return a.f < b.f; } );
+
+                string bar;
+                for ( Elt& e: segments )
+                  if ( size_t p = e.f * max_st_len + 0.5; p > bar.length() )
+                    bar += string( p - bar.length(), e.c );
+
+                if ( bar.length() > max_st_len )
+                  {
+                    bar.resize(max_st_len);
+                    bar[max_st_len-1] = '>';
+                  }
 
                 table.entry(util_hdr,fmt, bar, pTable::pT_Left);
               }
