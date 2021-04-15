@@ -49,11 +49,11 @@ COMMON_FLAGS = -Wall -Wno-parentheses  -fopenmp -march=native
 
 # Used only by nvcc.
 #
-CUCC_ONLY_FLAGS = -std c++14 --gpu-architecture=$(GPU_ARCH)
+CUCC_ONLY_FLAGS = -std c++17 --gpu-architecture=$(GPU_ARCH)
 
 # Used only by g++
 #
-CXX_ONLY_FLAGS = -std=c++14
+CXX_ONLY_FLAGS = -std=c++17
 
 COMMON_FLAGS_PREFIXED = $(COMMON_FLAGS:%=-Xcompiler %)
 

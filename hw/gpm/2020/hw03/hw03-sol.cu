@@ -1,7 +1,7 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
  /// Spring 2020
- /// Homework 3 -- Partial SOLUTION  (Problem 3 solution omitted.)
+ /// Homework 3 -- SOLUTION
  //
  //  Assignment: https://www.ece.lsu.edu/koppel/gp/2020/hw03.pdf
  //
@@ -18,6 +18,7 @@
 #include <cuda_runtime.h>
 #include <gp/cuda-gpuinfo.h>
 #include <ptable.h>
+#include <nperf.h>
 
 inline __device__ int
 fl1(u_int32_t n) { return 8 * sizeof(n) - __clz(n);}
@@ -110,8 +111,8 @@ conv_prob1()
 
   /// SOLUTION -- Problem 1.
   //
-  //  Assign a group of columns to each block. Choose number of columns
-  //  to largest amount for which data fits in cache.
+  //  Assign a group of columns to each block. Set the number of columns
+  //  to the largest amount for which data fits in the L1 cache.
 
   // Number of floats that will fit in the L1 or texture cache.
   const int cache_elts = use_ro ? 4 << 10 : 16 << 10;
@@ -180,6 +181,7 @@ conv_prob2_inefficient()
 
   // Inefficient solution to Problem 2.
   // To be used for a final exam question.
+  // See https://www.ece.lsu.edu/koppel/gp/2020/fe.pdf
 
   const int h_0 = tid * n_per_thd;
   const int n_elt = dapp.out_nr * dapp.out_nc;
@@ -189,7 +191,7 @@ conv_prob2_inefficient()
       const int ro = h / dapp.out_nc;
       const int co = h % dapp.out_nc;
 
-      float s[n_per_thd] = { 0 };
+      float s[n_per_thd]{};
 
 #pragma unroll
       for ( int rw=0; rw<w_nr; rw++ )
@@ -269,7 +271,7 @@ conv_prob2t()
 
         // Initialize sum for the n_per_thd outputs.
         //
-        float s[n_per_thd] = { 0 };
+        float s[n_per_thd]{};
 
         // The unroll pragmata are important, if the loops aren't unrolled
         // the values of widx-k*w_nc, used to index dapp.s, will not
@@ -347,9 +349,17 @@ print_gpu_and_kernel_info()
 int
 main(int argc, char **argv)
 {
+  NPerf_init();
+
   // Get info about GPU and each kernel.
   //
   GPU_Info info = print_gpu_and_kernel_info();
+
+  NPerf_metric_collect("inst_executed");
+  NPerf_metric_collect("l2_global_load_bytes");
+  NPerf_metric_collect("l2_write_transactions");
+  NPerf_metric_collect("dram_read_bytes");
+  NPerf_metric_collect("dram_write_bytes");
 
   constexpr int wp_sz = 32;
 
@@ -583,10 +593,26 @@ main(int argc, char **argv)
 
             /// Compute Expected Computation and Communication
             //
-            // Number of multiply/add operations. Ignore everything else.
+            // Number of multiply/add (FMA) operations. Ignore everything else.
             //
             const int64_t num_ops_fp = out_size_elts * w_size_elts;
-            const int64_t num_ops_ls = 0; // Load and store instructions.
+
+            /// SOLUTION -- Problem 3
+            //
+            /// Number of Load and Store Instructions
+            //
+            //  Each inner loop iteration in conv_wbuf and conv_prob1
+            //  consists of two loads and a multiply/add. The load of
+            //  dapp.w[widx] is from the constant address space, and
+            //  if the loop is unrolled widx will be a compile-time
+            //  constant and therefore the load of dapp.w[widx] can be
+            //  done directly by an FFMA instruction. The load of
+            //  dapp.d_in is from global memory, and so a separate
+            //  load instruction is needed. Therefore there is one
+            //  load instruction per multiply/add. There is one store
+            //  instruction per output element, or out_nr*out_nc.
+            //
+            const int64_t num_ops_ls = num_ops_fp + out_size_elts;
 
             //
             // Amount of data in and out of GPU chip --- if perfect.
@@ -610,7 +636,8 @@ main(int argc, char **argv)
 
               /// Launch Kernel
               //
-              KPtr(ki->func_ptr) <<< num_blocks, thd_per_block >>>();
+              for ( NPerf_data_reset(); NPerf_need_run_get(); )
+                KPtr(ki->func_ptr) <<< num_blocks, thd_per_block >>>();
 
               // Stop measuring execution time now, which is before is data
               // returned from GPU.
@@ -621,7 +648,9 @@ main(int argc, char **argv)
               CE( cudaEventElapsedTime
                   (&cuda_time_ms,gpu_start_ce,gpu_stop_ce) );
 
-              const double this_elapsed_time_s = cuda_time_ms * 0.001;
+              const double this_elapsed_time_s =
+                NPerf_metrics_collection_get()
+                ? NPerf_kernel_et_get() : cuda_time_ms * 0.001;
 
               const double thpt_compute_gflops =
                 num_ops_fp / this_elapsed_time_s * 1e-9;
@@ -640,6 +669,7 @@ main(int argc, char **argv)
                 //  1e9 * thpt_compute_gflops / info.chip_sp_flops;
                 const double bw_frac =
                   1e9 * thpt_data_gbps / info.chip_bw_Bps;
+                const double fp_frac = t_bound_fp / this_elapsed_time_s;
 
                 // Number of warps, rounded up.
                 //
@@ -672,25 +702,69 @@ main(int argc, char **argv)
                 table.entry("r","%2d",wr);
                 table.entry("c","%2d",wc);
                 table.entry("wp",num_wps);
-                table.entry("ac",act_wps);
+                if ( num_blocks > num_mp )
+                  table.entry("ac",act_wps);
+
+                if ( NPerf_metrics_collection_get() )
+                  {
+                    const double transaction_sz_bytes = 32;
+                    double dram_rd_bytes =
+                      NPerf_metric_value_get("dram_read_bytes");
+                    double dram_wr_bytes =
+                      NPerf_metric_value_get("dram_write_bytes");
+
+                    double l2_rd_bytes =
+                      NPerf_metric_value_get("l2_global_load_bytes");
+                    double l2_wr_bytes =
+                      NPerf_metric_value_get("l2_write_transactions")
+                      * transaction_sz_bytes;
+
+                    table.entry
+                      ("I/op","%4.1f",
+                       NPerf_metric_value_get("inst_executed")
+                       * 32.0 / num_ops_fp );
+                    table.header_span_start("Data Amt");
+                    table.entry
+                      ("DRAM","%4.1f",
+                       ( dram_rd_bytes + dram_wr_bytes ) / amt_data_bytes);
+                    table.entry
+                      ("L2","%5.1f",
+                       ( l2_rd_bytes + l2_wr_bytes ) / amt_data_bytes);
+                    table.header_span_end();
+                  }
+
+
                 table.entry("t/µs","%6.0f", this_elapsed_time_s * 1e6);
                 table.entry("FP θ","%4.0f", thpt_compute_gflops);
-                table.entry("GB/s","%4.0f", thpt_data_gbps);
+                if ( false )
+                  table.entry("GB/s","%4.0f", thpt_data_gbps);
 
-                const int max_st_len =
+                const size_t max_st_len =
                   max(5, output_width - 1 - table.row_len_get() );
                 pStringF fmt("%%-%ds",max_st_len);
+
                 string util_hdr =
-                  "--- Utilization: ++Compute++   **Data**  ";
-                util_hdr += string(max_st_len - util_hdr.length(),'-');
-                const bool bw_more = bw_frac > comp_frac;
-                const char* sym = bw_more ? "+*" : "*+";
-                const double frac_min =  bw_more ? comp_frac : bw_frac;
-                const double frac_max = !bw_more ? comp_frac : bw_frac;
-                const size_t len_min = frac_min * max_st_len + 0.5;
-                const size_t len_max = frac_max * max_st_len + 0.5;
-                string bar = string( len_min, sym[0] ) +
-                  string( len_max - len_min, sym[1] );
+                  "=== Util: FP++  Insn-- Data**  ";
+                if ( max_st_len > util_hdr.length() )
+                  util_hdr += string(max_st_len - util_hdr.length(),'=');
+
+                typedef struct { double f; char c; } Elt;
+                vector<Elt> segments =
+                  { { fp_frac, '+' }, { comp_frac, '-' }, { bw_frac, '*' } };
+
+                sort( segments.begin(), segments.end(),
+                      [](Elt& a, Elt& b){ return a.f < b.f; } );
+
+                string bar;
+                for ( Elt& e: segments )
+                  if ( size_t p = e.f * max_st_len + 0.5; p > bar.length() )
+                    bar += string( p - bar.length(), e.c );
+
+                if ( bar.length() > max_st_len )
+                  {
+                    bar.resize(max_st_len);
+                    bar[max_st_len-1] = '>';
+                  }
 
                 table.entry(util_hdr,fmt, bar, pTable::pT_Left);
               }
