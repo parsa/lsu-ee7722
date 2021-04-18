@@ -123,6 +123,81 @@ conv_prob1()
   const float qa = w_nr;  // Quadratic formula coefficient.
   const float qb = block_dim + w_nr * w_nc - cache_elts;
   const float qc = w_nc;
+  const float rad = qb*qb - 4 * qa * qc;
+  assert( rad >= 0 );
+  const float bwid_raw = ( -qb + sqrt( qb*qb - 4 * qa * qc ) ) / ( 2 * qa );
+  assert( bwid_raw >= 0 );
+
+  // Round number of columns down to a multiple of 8 (for request
+  // efficiency) and clamp between 8 and the block size.
+  //
+  const int block_wid =
+    min( block_dim, max(8, int(bwid_raw) & ~0x7 ) );
+  const int block_ht = block_dim / block_wid;
+
+  // Number of columns handled by all blocks.
+  const int grid_calc_wid = block_wid * gridDim.x;
+
+  // The initial row and column handled by this thread.
+  const int thread_c0 = blockIdx.x * block_wid + tid % block_wid;
+  const int thread_r0 = threadIdx.x / block_wid;
+
+  for ( int cc = 0; cc < dapp.out_nc; cc += grid_calc_wid )
+    {
+      const int co = cc + thread_c0;
+      if ( co >= dapp.out_nc ) break;
+
+      for ( int rr = 0; rr < dapp.out_nr; rr += block_ht )
+        {
+          const int ro = rr + thread_r0;
+          if ( ro >= dapp.out_nr ) break;
+          const int oidx = ro * dapp.out_nc + co;
+
+          float s = 0;
+
+#pragma unroll
+          for ( int rw=0; rw<w_nr; rw++ )
+#pragma unroll
+            for ( int cw=0; cw<w_nc; cw++ )
+              {
+                const int ri = ro + rw;
+                const int ci = co + cw;
+                const int iidx = ri * dapp.in_nc + ci;
+                const int widx = rw * w_nc + cw;
+                const float din = dapp.d_in[iidx];
+                s += din * dapp.w[widx];
+              }
+          dapp.d_out[oidx] = s;
+        }
+    }
+}
+
+template <int w_nr, int w_nc>
+__global__ void
+conv_prob1b()
+{
+  const int block_dim = blockDim.x;
+  const int tid = threadIdx.x + blockIdx.x * block_dim;
+
+  // Make sure that template parameters match actual weight array size.
+  assert( w_nr == dapp.w_nr && w_nc == dapp.w_nc );
+
+  /// SOLUTION -- Problem 1.
+  //
+  //  Assign a group of columns to each block. Set the number of columns
+  //  to the largest amount for which data fits in the L1 cache.
+
+  // Number of floats that will fit in the L1 or texture cache.
+  const int cache_elts = use_ro ? 4 << 10 : 16 << 10;
+
+  // Find the maximum number of columns that a block can handle without
+  // exceeding the assumed cache capacity, cache_elts.
+  //
+  const float qa = w_nr;  // Quadratic formula coefficient.
+  const float qb = block_dim + w_nr * w_nc - cache_elts;
+  const float qc = block_dim * w_nc;
+  const float rad = qb*qb - 4 * qa * qc;
+  assert( rad >= 0 );
   const float bwid_raw = ( -qb + sqrt( qb*qb - 4 * qa * qc ) ) / ( 2 * qa );
   assert( bwid_raw >= 0 );
 
@@ -386,12 +461,15 @@ main(int argc, char **argv)
   #define SPECIALIZE_KERNEL(r,c) \
     EXAMINE_KERNEL(conv_wbuf,r,c); \
     EXAMINE_KERNEL(conv_prob1,r,c); \
+    EXAMINE_KERNEL(conv_prob1b,r,c);
+
+#if 0
     EXAMINE_KERNEL(conv_prob2_inefficient,r,c); \
     EXAMINE_KERNEL(conv_prob21,r,c); \
     EXAMINE_KERNEL(conv_prob22,r,c); \
     EXAMINE_KERNEL(conv_prob24,r,c);\
     EXAMINE_KERNEL(conv_prob28,r,c);
-
+#endif
 
   SPECIALIZE_KERNEL(8,8);
   SPECIALIZE_KERNEL(16,16);
@@ -741,7 +819,7 @@ main(int argc, char **argv)
 
                 const size_t max_st_len =
                   max(5, output_width - 1 - table.row_len_get() );
-                pStringF fmt("%%-%ds",max_st_len);
+                pStringF fmt("%%-%zds",max_st_len);
 
                 string util_hdr =
                   "=== Util: FP++  Insn-- Data**  ";

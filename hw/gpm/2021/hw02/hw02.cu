@@ -610,7 +610,7 @@ main(int argc, char **argv)
 
                 const size_t max_st_len =
                   max(5, output_width - 1 - table.row_len_get() );
-                pStringF fmt("%%-%ds",max_st_len);
+                pStringF fmt("%%-%zds",max_st_len);
                 string util_hdr =
                   "=== Util: FP++  Insn-- Data**  ";
                 if ( max_st_len > util_hdr.length() )
