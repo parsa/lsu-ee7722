@@ -1,7 +1,7 @@
 /// LSU EE 7722 GPU Microarchitecture
 //
  /// Spring 2021
- /// Homework 2
+ /// Homework 2 -- SOLUTION
  //
  //  Assignment: https://www.ece.lsu.edu/koppel/gp/2021/hw02.pdf
  //
@@ -106,29 +106,79 @@ dnn_sol_a(Layer l)
   assert( nc == s.nc );
   assert( nn == s.nn );
 
-  acc_t* const ai = l.ai_d;
-  acc_t* const ao = l.ao_d;
-  wht_t [[gnu::unused]] * const w = l.w_d;
-  wht_t [[gnu::unused]] * const w2 = l.w2_d;
 
+  /// SOLUTION 
+  //  Wrap l.ai_d and other pointers in __builtin_assume_aligned with
+  //  alignment set to 16 bytes so that compiler can use vector loads.
+  //
+  acc_t* const ai = (acc_t*) __builtin_assume_aligned(l.ai_d,16);
+  acc_t* const ao = (acc_t*) __builtin_assume_aligned(l.ao_d,16);
+  wht_t [[gnu::unused]] * const w = (wht_t*) __builtin_assume_aligned(l.w_d,16);
+  wht_t [[gnu::unused]] * const w2 =
+    (wht_t*) __builtin_assume_aligned(l.w2_d,16);
+
+  /// SOLUTION -- Partial (See dnn_sol_b for full solution)
+  //
+  //  Load a weight once and use it 8 (or value of bn) times.
+  //
+  //  To do this a new loop, i_bn has been added ..
+  //  .. and the outer inmo loop iterates for 1/8 the number of iterations.
+  //
+  //  With the code in this file each load for a weight will be used 8
+  //  (bn) times, but each load of ai will be used just once. See
+  //  dnn_sol_b for a solution in which loads of both w and ai are
+  //  re-used.
+
+  // Blocking factor for n.
+  constexpr int bn = 8;
+
+  constexpr int ab = bn;
+
+  // The number of outer-loop iterations without blocking.
   const int nnmo = nn * nm * no;
 
-  for ( int inmo = tid; inmo < nnmo; inmo += num_threads )
+  // The number of outer-loop iterations with blocking. 
+  const int nnmo_ab = nnmo / ab;
+
+  // Number of values of in iterated over by outer loop.
+  const int nn_bn = nn / bn;
+
+  for ( int inmo = tid; inmo < nnmo_ab; inmo += num_threads )
     {
       // o n m
       const int im = inmo % nm;
       const int ino = inmo / nm;
-      const int in = ino % nn;
-      const int io = ino / nn;
 
-      acc_t ac = 0;
+      // The first of 8 (bn) values of in0.
+      const int in0 = ino % nn_bn * bn;
+      //
+      // That is, the loop below will compute outputs for
+      //    in =  in0, in0+1, in0+2, ..., in0+bn-1.
+
+      const int io = ino / nn_bn;
+
+      // Declare storage for the bn different values being computed.
+      //
+      acc_t ac[bn]{};
+
       for ( int ic = 0; ic < nc; ic++ )
+        /// SOLUTION
+        //  Unroll by 4 so that can use vector loads for ai.
+#pragma unroll 4
         for ( int ii = 0; ii < ni; ii++ )
-          ac +=
-            ai[ ii + ni * ( ic + nc * in ) ]
-            * w2[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
-
-      ao[ io + no * ( im + nm * in ) ] = ac;
+          {
+            wht_t wht = w[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
+            for ( int i_bn = 0; i_bn < bn; i_bn++ )
+              {
+                const int in = in0 + i_bn;
+                ac[i_bn] += ai[ ii + ni * ( ic + nc * in ) ] * wht;
+              }
+          }
+      for ( int i_bn = 0; i_bn < bn; i_bn++ )
+        {
+          const int in = in0 + i_bn;
+          ao[ io + no * ( im + nm * in ) ] = ac[i_bn];
+        }
     }
 }
 
@@ -151,31 +201,178 @@ dnn_sol_b(Layer l)
   assert( nc == s.nc );
   assert( nn == s.nn );
 
-  acc_t* const ai = l.ai_d;
-  acc_t* const ao = l.ao_d;
-  wht_t [[gnu::unused]] * const w = l.w_d;
-  wht_t [[gnu::unused]] * const w2 = l.w2_d;
+  acc_t* const ai = (acc_t*) __builtin_assume_aligned(l.ai_d,16);
+  acc_t* const ao = (acc_t*) __builtin_assume_aligned(l.ao_d,16);
+  wht_t [[gnu::unused]] * const w = (wht_t*) __builtin_assume_aligned(l.w_d,16);
+  wht_t [[gnu::unused]] * const w2 =
+    (wht_t*) __builtin_assume_aligned(l.w2_d,16);
+
+
+  /// SOLUTION -- Better
+  //
+  //  To re-use loads of ai, we need to compute the output for
+  //  different values of io or im or both. That is because neither io
+  //  or im are used to compute the address of ai.
+  //
+  //  The code below blocks the inmo loop into three new loops, i_bm,
+  //  i_bo, and i_bn. Each loaded weight is used bn=8 times and each
+  //  loaded input is used bo * bm = 2*4=8 times. (Based on the values
+  //  of bn, bm, and bo AOTW.)
+
+  constexpr int bo = 2;
+  constexpr int bm = 4;
+  constexpr int bn = 8;
+  constexpr int ab = bo * bn * bm;
 
   const int nnmo = nn * nm * no;
+  const int nnmo_ab = nnmo / ab;
+  const int nn_bn = nn / bn;
+  const int nm_bm = nm / bm;
 
-  for ( int inmo = tid; inmo < nnmo; inmo += num_threads )
+  for ( int inmo = tid; inmo < nnmo_ab; inmo += num_threads )
     {
       // o n m
-      const int im = inmo % nm;
-      const int ino = inmo / nm;
-      const int in = ino % nn;
-      const int io = ino / nn;
+      const int im_bm = inmo % nm_bm;
+      const int im0 = im_bm * bm;
+      const int ino = inmo / nm_bm;
+      const int in_bn = ino % nn_bn;
+      const int in0 = in_bn * bn;
+      const int io_bo = ino / nn_bn;
+      const int io0 = io_bo * bo;
 
-      acc_t ac = 0;
+      acc_t ac[bo][bm][bn]{};
       for ( int ic = 0; ic < nc; ic++ )
+#pragma unroll 4
         for ( int ii = 0; ii < ni; ii++ )
-          ac +=
-            ai[ ii + ni * ( ic + nc * in ) ]
-            * w2[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
+          {
 
-      ao[ io + no * ( im + nm * in ) ] = ac;
+            // Pre-load the inputs (ai) that will be needed, one input
+            // for each of bn batches. Each input will be used bm * bo
+            // times.
+            //
+            acc_t ain[bn];
+            for ( int i_bn = 0; i_bn < bn; i_bn++ )
+              {
+                const int in = in0 + i_bn;
+                ain[i_bn] = ai[ ii + ni * ( ic + nc * in ) ];
+              }
+
+            for ( int i_bm = 0; i_bm < bm; i_bm++ )
+              for ( int i_bo = 0; i_bo < bo; i_bo++ )
+                {
+                  const int im = im0 + i_bm;
+                  const int io = io0 + i_bo;
+
+                  // Load a weight. The weight will be used bn times.
+                  //
+                  wht_t wht = w[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
+
+                  for ( int i_bn = 0; i_bn < bn; i_bn++ )
+                    ac[i_bo][i_bm][i_bn] += ain[i_bn] * wht;
+                }
+          }
+
+      for ( int i_bn = 0; i_bn < bn; i_bn++ )
+        for ( int i_bm = 0; i_bm < bm; i_bm++ )
+          for ( int i_bo = 0; i_bo < bo; i_bo++ )
+            {
+              const int io = io0 + i_bo;
+              const int in = in0 + i_bn;
+              const int im = im0 + i_bm;
+              ao[ io + no * ( im + nm * in ) ] = ac[i_bo][i_bm][i_bn];
+            }
     }
 }
+
+
+template<int tpnn=0, int tpnc=0, int tpni=0>
+__global__ void
+dnn_sol_b_alt(Layer l)
+{
+  Layer_Shape& s = l.s;
+
+  const int [[gnu::unused]] tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int [[gnu::unused]] num_threads = blockDim.x * gridDim.x;
+
+  // If template parameters are non-zero verify and use them.
+  const int nn = tpnn ? tpnn : s.nn;  // Number of batches.
+  const int ni = tpni ? tpni : s.ni;  // Number of input neurons per channel.
+  const int nc = tpnc ? tpnc : s.nc;  // Number of input channels.
+  const int no = ni;                  // Number of output neurons per channel.
+  const int nm = nc;                  // Number of output channels.
+  assert( ni == s.ni );
+  assert( nc == s.nc );
+  assert( nn == s.nn );
+
+  acc_t* const ai = (acc_t*) __builtin_assume_aligned(l.ai_d,16);
+  acc_t* const ao = (acc_t*) __builtin_assume_aligned(l.ao_d,16);
+  wht_t [[gnu::unused]] * const w = (wht_t*) __builtin_assume_aligned(l.w_d,16);
+  wht_t [[gnu::unused]] * const w2 =
+    (wht_t*) __builtin_assume_aligned(l.w2_d,16);
+
+
+  /// SOLUTION -- Better, Simpler
+  //
+  //  This solution blocks the loop in the same way as dnn_sol_b,
+  //  but it relies on the compiler to buffer w and ai. That is,
+  //  in dnn_sol_b a value of w was copied into variable wht, and
+  //  bn values of ai were copied into an array. The code below relies
+  //  on the compiler to recognize that values of w and ai are reused
+  //  and to load them just once. (For the compiler to do this the
+  //  loop must be properly blocked, otherwise re-used values would
+  //  not be assigned to the same thread.)
+
+  constexpr int bo = 2;
+  constexpr int bm = 4;
+  constexpr int bn = 8;
+  constexpr int ab = bo * bn * bm;
+
+  const int nnmo = nn * nm * no;
+  const int nnmo_ab = nnmo / ab;
+  const int nn_bn = nn / bn;
+  const int nm_bm = nm / bm;
+
+  for ( int inmo = tid; inmo < nnmo_ab; inmo += num_threads )
+    {
+      // o n m
+      const int im_bm = inmo % nm_bm;
+      const int im0 = im_bm * bm;
+      const int ino = inmo / nm_bm;
+      const int in_bn = ino % nn_bn;
+      const int in0 = in_bn * bn;
+      const int io_bo = ino / nn_bn;
+      const int io0 = io_bo * bo;
+
+      acc_t ac[bo][bm][bn]{};
+      for ( int ic = 0; ic < nc; ic++ )
+#pragma unroll 4
+        for ( int ii = 0; ii < ni; ii++ )
+          for ( int i_bm = 0; i_bm < bm; i_bm++ )
+            for ( int i_bo = 0; i_bo < bo; i_bo++ )
+              for ( int i_bn = 0; i_bn < bn; i_bn++ )
+                {
+                  const int in = in0 + i_bn;
+                  const int im = im0 + i_bm;
+                  const int io = io0 + i_bo;
+
+                  ac[i_bo][i_bm][i_bn] +=
+                    ai[ ii + ni * ( ic + nc * in ) ]
+                    * w[ im + nm * ( ii + ni * ( ic + nc * io ) ) ];
+                }
+
+      for ( int i_bn = 0; i_bn < bn; i_bn++ )
+        for ( int i_bm = 0; i_bm < bm; i_bm++ )
+          for ( int i_bo = 0; i_bo < bo; i_bo++ )
+            {
+              const int io = io0 + i_bo;
+              const int in = in0 + i_bn;
+              const int im = im0 + i_bm;
+              ao[ io + no * ( im + nm * in ) ] = ac[i_bo][i_bm][i_bn];
+            }
+    }
+}
+
+
 
 
 
@@ -404,6 +601,9 @@ main(int argc, char **argv)
       printf("  Weights size: %zu kiB   L2 cache units: %.3f\n",
              l.sz_w_bytes >> 10,
              double(l.sz_w_bytes) / info.cuda_prop.l2CacheSize);
+      printf("  Act size one batch  : %zu B   L2 cache units: %.3f\n",
+             act_one_bytes,
+             double(act_one_bytes) / info.cuda_prop.l2CacheSize);
       printf("  Act size all batches: %zu B   L2 cache units: %.3f\n",
              act_all_bytes,
              double(act_all_bytes) / info.cuda_prop.l2CacheSize);
